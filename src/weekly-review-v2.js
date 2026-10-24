@@ -39,7 +39,7 @@ function reviewWeek(input){
   return true;
  });
  const suppressed=proposals.length-guarded.length;
- const unique=guarded.filter((p,i)=>proposals.findIndex(q=>q.kind===p.kind&&q.lift===p.lift)===i);
+ const unique=guarded.filter((p,i)=>guarded.findIndex(q=>q.kind===p.kind&&q.lift===p.lift)===i);
  return {schema:'lhrf-v2-weekly-review',signals,running,suppressedProgressionProposals:suppressed,proposals:unique,
   approvalRequired:unique.length>0,appliedChanges:[],
   summary:unique.length?unique.length+' proposed coaching change(s) awaiting athlete approval.':
