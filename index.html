@@ -847,14 +847,14 @@ function generatedSessions(c,w){
    const suggested=useVariation?(loadBaseline>0?roundLoad(loadBaseline*factor):recent?roundLoad(recent.weight*(+recent.rpe<variationRpe-.5?1.025:1)):0):(loadBaseline>0?roundLoad(loadBaseline*factor):0);
    const primary=!secondary;
    const strengthBlock=phase==='Development'||phase==='Specificity';
-   const peakPractice=!!strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench'&&slot.day===peakBenchDay;
+   const peakPractice=!!strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench'&&(slot.day===peakBenchDay||slot.day.slice(0,3)===peakBenchDay?.slice(0,3));
     const topEligible=(primary&&(strengthBlock||(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3))&&!vb.deload&&!taper)||peakPractice;
    if(topEligible){
-    const profile=peakPractice?{topReps:1,backReps:2,backSets:2,backRpe:6.5,minDrop:.08,maxDrop:.14,fatigue:.01,label:'final heavy single'}:backoffProfile(phase,w/c.weeks);
-    const topReps=peakPractice?1:profile.topReps;
-    const topRpe=peakPractice?8.5:phase==='Development'?8:Math.min(8.5,8+Math.max(0,w/c.weeks-.75));
+    const profile=peakPractice?{topReps:1,backReps:2,backSets:1,backRpe:6,minDrop:.10,maxDrop:.16,fatigue:.01,label:'final heavy single'}:backoffProfile(phase,w/c.weeks);
+    const topReps=peakPractice?1:(weeksToStrengthEvent===1&&lift==='Bench'?1:profile.topReps);
+    const topRpe=peakPractice?8.5:weeksToStrengthEvent===1&&lift==='Bench'?7.5:phase==='Development'?8:Math.round(Math.min(8.5,8+Math.max(0,w/c.weeks-.75))*2)/2;
     const targetPct=(phase==='Development'?(topReps===5?.77:.83):(topReps===2?.87:.91))+Math.max(0,Math.min(3,block.position-1))*(phase==='Development'?.012:.009);
-    const topWeight=baseline?roundLoad(baseline*(peakPractice?.92:(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3?[0,.90,.86,.82][weeksToStrengthEvent]:targetPct))):0;
+    const topWeight=baseline?roundLoad(baseline*(peakPractice?.94:(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3?[0,.88,.85,.82][weeksToStrengthEvent]:targetPct))):0;
     const topIndex=ex.length;
     ex.push([exerciseName,1,topReps,topWeight,topRpe,{role:'top',category:'primary',baseline}]);
     const initialBackWeight=topWeight?phaseBackoffLoad(topWeight,topReps,topRpe,profile):0;
