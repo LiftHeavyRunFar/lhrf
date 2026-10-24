@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {reviewWeek}=require('../src/weekly-review-v2.js');
+const squatLogs=[6,6,6].map(actualRPE=>({lift:'squat',actualRPE,targetRPE:8}));
+const benchLogs=[6,6,6].map(actualRPE=>({lift:'bench',actualRPE,targetRPE:8}));
+const hardRuns=[8,8,7].map(actualRPE=>({actualRPE,targetRPE:7}));
+const input={strengthLogs:[...squatLogs,...benchLogs],runLogs:hardRuns};
+const snapshot=JSON.stringify(input),r=reviewWeek(input);
+assert.ok(r.proposals.some(p=>p.kind==='review-running-intensity'));
+assert.ok(!r.proposals.some(p=>p.kind==='review-progression'&&p.lift==='squat'));
+assert.ok(r.proposals.some(p=>p.kind==='review-progression'&&p.lift==='bench'));
+assert.ok(r.suppressedProgressionProposals>=1);
+const systemic=reviewWeek({...input,readiness:{fatigue:5}});
+assert.ok(!systemic.proposals.some(p=>p.kind==='review-progression'));
+const recovered=reviewWeek({strengthLogs:squatLogs});
+assert.ok(recovered.proposals.some(p=>p.kind==='review-progression'&&p.lift==='squat'));
+assert.equal(JSON.stringify(input),snapshot);
+assert.deepEqual(reviewWeek(input),r);
+console.log('PASS hybrid recovery guard suppresses conflicting progression proposals');
