@@ -792,7 +792,8 @@ function generatedSessions(c,w){
  const strengthEventWeek=c.strengthTargetDate&&c.startDate?Math.max(1,Math.ceil((Date.parse(c.strengthTargetDate+'T12:00:00')-Date.parse(c.startDate+'T12:00:00')+86400000)/604800000)):null;
  const strengthWeeks=strengthEventWeek||c.weeks;
  const phase=strengthEventWeek?customPhase(Math.min(w,strengthWeeks),strengthWeeks):(!c.strengthTargetDate&&w>c.weeks-2?'Development':customPhase(w,c.weeks));const plan=customPlan(c),out=[];
- const taper=!!strengthEventWeek&&w===strengthEventWeek; // retain heavy practice in the preceding weekconst isRunPriority=c.priority==='Running';
+ const taper=!!strengthEventWeek&&w===strengthEventWeek; // Event week only; preserve final heavy single in preceding week.
+ const isRunPriority=c.priority==='Running';
  const phases={Foundation:{sets:4,reps:6,intensity:.66,rpe:7},Development:{sets:4,reps:5,intensity:.73,rpe:7.5},Specificity:{sets:3,reps:3,intensity:.82,rpe:8},'Taper / event':{sets:2,reps:2,intensity:.68,rpe:6.5}};
  const settings={...phases[phase]};
  const block=cycleWeek(w,c.weeks);
@@ -801,10 +802,10 @@ function generatedSessions(c,w){
  if(!taper){settings.intensity+=step*(phase==='Foundation'?.012:phase==='Development'?.01:.008);}
  if(block.deload){settings.sets=Math.max(2,Math.ceil(settings.sets*.55));settings.intensity=Math.max(.60,settings.intensity-.045);settings.rpe=6;}
  if(taper){
-  settings.sets=w===19?2:1;
-  settings.reps=w===19?2:1;
-  settings.intensity=w===19?.84:.72;
-  settings.rpe=w===19?7:6;
+  settings.sets=1;
+  settings.reps=2;
+  settings.intensity=.70;
+  settings.rpe=6;
  }
 
  const peakBenchDay=plan.slots.filter(slot=>slot.items.some(item=>item.type==='strength'&&item.name==='Bench')).slice(-1)[0]?.day;
