@@ -42,7 +42,11 @@
   const runPriority=priority==='Running'||priority==='running';
   const easyBase=runPriority?35:25;
   const factor=phase==='recovery'?.65:phase==='realisation'?.7:phase==='assessment'||phase==='event'?.5:1;
-  const progression=phase==='foundation'||phase==='development'||phase==='intensification'?1+Math.min(.12,((week-1)%4)*.04):1;
+  // Three progressive loading weeks followed by a reduced-load week.
+  // Do not restart at the original baseline every fifth week: blocks build on each other.
+  const loading=['foundation','development','intensification'].includes(phase);
+  const block=Math.floor((week-1)/4),within=(week-1)%4;
+  const progression=loading?(1+Math.min(.24,block*.04))*(1+within*.035):1;
   const easyMinutes=Math.round(easyBase*factor*progression);
   const sessions=Array.from({length:runCount},(_,i)=>({
    type:i===0&&runCount>=2?'quality':i===runCount-1&&runCount>=3?'long':'easy',
