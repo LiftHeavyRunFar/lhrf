@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LHRF — Coaching Engine Preview</title><style>
+:root{color-scheme:dark;font:16px/1.5 system-ui;background:#0d1117;color:#f2f6fa}
+*{box-sizing:border-box}body{margin:auto;max-width:850px;padding:24px 18px 70px}
+h1{font-size:2rem;margin-bottom:0}h2{font-size:1.1rem}p{color:#b6c7d8}
+a{color:#8dbdff}.panel{background:#19232f;border:1px solid #344759;border-radius:14px;padding:18px;margin:18px 0}
+label{display:block;margin:10px 0;color:#dce8f5}input,select,button{font:inherit;border-radius:8px;padding:9px;border:1px solid #52657b;background:#0d1722;color:white}
+input{width:100%;max-width:170px}select{width:100%;max-width:230px}
+button{background:#295a93;border-color:#467bb6;cursor:pointer;padding:12px 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.week{border-top:1px solid #354657;padding:12px 0}.week h3{margin:0 0 6px}
+small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
+</style></head><body>
+<a href="./index.html">← Existing LHRF app</a>
+<h1>Coaching engine v2</h1><p>Read-only programme preview — no onboarding, training logs or existing app data are changed.</p>
+<div class="panel"><strong class="warn">Prototype, not yet approved for athlete use.</strong>
+<p>Competition-date scheduling, individualised recovery and live workout logging are still being validated. This preview deliberately excludes dated competition plans.</p></div>
+<form id="builder" class="panel"><h2>Explore an undated training block</h2>
+<div class="grid">
+<label>Weeks <input name="weeks" type="number" min="4" max="52" value="12" required></label>
+<label>Bench sessions/week <input name="bench" type="number" min="0" max="5" value="3" required></label>
+<label>Squat sessions/week <input name="squat" type="number" min="0" max="4" value="1" required></label>
+<label>Deadlift sessions/week <input name="deadlift" type="number" min="0" max="4" value="1" required></label>
+<label>Runs/week <input name="runs" type="number" min="0" max="6" value="3" required></label>
+<label>Priority <select name="priority"><option>Bench</option><option>Running</option><option>Squat</option><option>Deadlift</option><option>Balanced</option></select></label>
+<label>Bench 1RM (kg, optional) <input name="benchMax" type="number" min="0" max="500" step="2.5" value="160"></label>
+</div><p class="muted">Suggested loads are provisional estimates; adjust to prescribed RPE. The final assessment is optional.</p>
+<button type="submit">Generate preview</button></form>
+<section id="output" aria-live="polite"></section>
+<script src="./src/coaching-v2.js"></script>
+<script src="./src/prescriptions-v2.js"></script>
+<script src="./src/hybrid-v2.js"></script>
+<script src="./src/scheduler-v2.js"></script>
+<script src="./src/running-paces-v2.js"></script>
+<script src="./src/run-sessions-v2.js"></script>
+<script src="./src/programme-v2.js"></script>
+<script>
+(function(){
+ const form=document.getElementById('builder'),out=document.getElementById('output');
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ form.addEventListener('submit',e=>{
+  e.preventDefault();
+  try{
+   const f=new FormData(form),num=k=>Number(f.get(k)),c={
+    weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),
+    runs:num('runs'),priority:String(f.get('priority')),benchMax:num('benchMax')
+   };
+   if(!Number.isInteger(c.weeks)||c.weeks<4||c.weeks>52||
+      ['bench','squat','deadlift','runs'].some(k=>!Number.isInteger(c[k])||c[k]<0||c[k]>6)||
+      c.bench+c.squat+c.deadlift+c.runs===0)throw Error('Enter a valid programme with at least one session.');
+   const p=window.LHRFProgrammeV2.buildProgramme(c);
+   const header='<div class="panel"><h2>Programme preview</h2><p>'+esc(p.outcome.description)+'</p>'+
+    '<p>Structural checks: <strong>'+esc(p.passesStructuralChecks?'passed':'review needed')+'</strong>. These do not establish coaching safety.</p>'+
+    '<p class="warn">'+esc(p.issues.length)+' scheduling or approval flags across the programme.</p></div>';
+   const weeks=p.weeks.map(w=>'<div class="week"><h3>Week '+w.week+' — '+esc(w.phase)+'</h3>'+
+    '<p>'+esc(w.objective)+'</p><p>'+w.calendar.sessions.map(s=>esc(s.day+': '+(s.kind==='strength'?s.lift:'run '+s.runType))).join(' · ')+'</p>'+
+    (w.reviewRequired?'<small class="warn">Coach review required</small>':'')+'</div>').join('');
+   out.innerHTML=header+'<div class="panel"><h2>Weekly schedule</h2>'+weeks+'</div>';
+  }catch(err){out.innerHTML='<p class="error">Could not generate preview: '+esc(err.message)+'</p>';}
+ });
+})();
+</script></body></html>
