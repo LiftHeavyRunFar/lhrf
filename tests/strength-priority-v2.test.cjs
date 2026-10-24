@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const {strengthPrescription,prescribeWeek}=require('../src/prescriptions-v2.js');
+const bench=strengthPrescription('bench',5,'development',160,'Bench');
+const squatSecondary=strengthPrescription('squat',5,'development',160,'Bench');
+const squatPrimary=strengthPrescription('squat',5,'development',160,'Squat');
+assert.equal(squatSecondary.top.suggestedWeight,squatPrimary.top.suggestedWeight);
+assert.equal(squatSecondary.top.percent1RM,squatPrimary.top.percent1RM);
+assert.ok(squatSecondary.backoff.sets<squatPrimary.backoff.sets);
+assert.equal(bench.priorityRole,'primary');
+assert.equal(squatSecondary.priorityRole,'secondary');
+assert.equal(strengthPrescription('bench',5,'development',undefined,'Bench').top.suggestedWeight,null);
+const recovery=strengthPrescription('squat',4,'recovery',160,'Bench');
+assert.ok(recovery.totalReps<squatPrimary.totalReps);
+const week=prescribeWeek({bench:2,squat:1,deadlift:1,priority:'Bench',maxes:{bench:160,squat:180,deadlift:200}},{week:5,phase:'development'});
+assert.ok(week.strengths.every(x=>x.totalStress<=x.stressBudget+.001));
+assert.equal(week.strengths.filter(x=>x.lift==='bench').length,2);
+console.log('PASS lift-specific baselines, priority volume allocation, recovery and stress budgets');
