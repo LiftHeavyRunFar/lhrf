@@ -1317,13 +1317,13 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
     w.append(heading,overview,btn);slide.appendChild(w);
    }
    const hint=document.createElement('div');hint.className='day-hint';slide.appendChild(hint);
-   slide.addEventListener('click',e=>{if(e.target.closest('button'))return;if(selectedDay!==i){selectDay(i,1);return}if(detailLevel<2){detailLevel++;update()}else{detailLevel=1;update()}});
+   slide.addEventListener('click',e=>{if(e.target.closest('button'))return;if(selectedDay!==i){selectDay(i,2);return}if(detailLevel===0){detailLevel=2;update()}else{detailLevel=0;update()}});
    rail.appendChild(slide);slides.push(slide);
   }
   const dots=document.getElementById('dayDots');trainingDays.forEach(()=>{const d=document.createElement('span');d.className='day-dot';dots.appendChild(d)});
   function update(){
    const position=trainingDays.findIndex(d=>d.i===selectedDay);
-   slides.forEach((slide,j)=>{const on=j===position;slide.classList.toggle('is-current',on);slide.classList.toggle('is-expanded',on&&detailLevel>=1);slide.classList.toggle('is-detailed',on&&detailLevel>=2);slide.setAttribute('aria-expanded',String(on&&detailLevel>=1));const hint=slide.querySelector('.day-hint');hint.textContent=!on?'Tap for overview':detailLevel===0?'Tap for quick overview ↓':detailLevel===1?'Tap again for sets, reps and loads ↓':'Tap to return to overview ↑'});
+   slides.forEach((slide,j)=>{const on=j===position;slide.classList.toggle('is-current',on);slide.classList.toggle('is-expanded',on&&detailLevel>=1);slide.classList.toggle('is-detailed',on&&detailLevel>=2);slide.setAttribute('aria-expanded',String(on&&detailLevel>=1));const hint=slide.querySelector('.day-hint');hint.textContent=!on?'Tap for overview':detailLevel===0?'Tap for exercises, sets and weights ↓':'Tap to close workout details ↑'});
    [...dots.children].forEach((d,j)=>d.classList.toggle('active',j===position));
    document.getElementById('dayPosition').textContent=trainingDays[position].day+' '+formatDate(trainingDays[position].date)+' · '+(position+1)+' / '+trainingDays.length;
    document.getElementById('dayPrev').disabled=position===0;document.getElementById('dayNext').disabled=position===trainingDays.length-1;
@@ -1747,4 +1747,51 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     } catch(err) {console.warn('Offline install unavailable:',err)}
   });
 }
+</script><script>
+/* First workout release: readiness is collected before opening any workout.
+   No harder-session prompt during initial baseline weeks. */
+(function(){
+ const oldOpen=openWorkout;
+ const readinessSection=document.querySelector('#today details:has(#sleep)');
+ const challengeSection=document.querySelector('#challengeCard')?.closest('details');
+ if(readinessSection)readinessSection.style.display='none';
+ if(challengeSection)challengeSection.style.display='none';
+ const challengeCard=document.getElementById('challengeCard');
+ if(challengeCard)challengeCard.style.display='none';
+ function readinessGate(id){
+  const session=effectiveSession(id);
+  if(!session){oldOpen(id);return}
+  document.getElementById('lhrfPreflight')?.remove();
+  const cover=document.createElement('div');cover.id='lhrfPreflight';
+  cover.style.cssText='position:fixed;inset:0;z-index:99990;background:#06101beF;overflow-y:auto;padding:20px 14px 40px;display:flex;justify-content:center;align-items:flex-start';
+  cover.innerHTML='<section role="dialog" aria-modal="true" aria-label="Pre-workout readiness" style="background:#112439;border:1px solid #315578;border-radius:20px;padding:20px;width:min(100%,480px);margin:20px auto;color:#f1f7ff"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div><span style="color:#68baff;font-size:12px;font-weight:800">BEFORE YOU TRAIN</span><h2 style="margin:6px 0">Readiness check-in</h2></div><button type="button" id="preflightClose" style="width:auto">✕</button></div><p style="color:#b7cbe0;font-size:14px">Your plan stays unchanged unless you approve a coaching adjustment. Check how you feel before starting '+String(session.name).replace(/[&<>"']/g,'')+'.</p><div id="preflightFields"></div><div id="preflightMessage" style="margin:12px 0;color:#b7cbe0;font-size:14px"></div><button type="button" id="preflightContinue" style="width:100%;margin-top:12px">Review readiness &amp; start workout →</button></section>';
+  document.body.appendChild(cover);
+  const fields=cover.querySelector('#preflightFields');
+  [['Sleep','sleep',['Poor','Below average','Okay','Good','Excellent']],['Energy','energy',['Very low','Low','Moderate','Good','Excellent']],['Leg soreness','soreness',['None','Mild','Moderate','High','Severe']],['Stress','stress',['Low','Manageable','Moderate','High','Very high']]].forEach(([label,key,options])=>{
+   const wrap=document.createElement('label');wrap.style.cssText='display:block;margin:12px 0;font-size:14px';wrap.textContent=label;
+   const select=document.createElement('select');select.dataset.readiness=key;select.style.cssText='display:block;width:100%;margin-top:5px';
+   options.forEach((name,i)=>{const o=document.createElement('option');o.value=i+1;o.textContent=name;if(i===2)o.selected=true;select.appendChild(o)});
+   wrap.appendChild(select);fields.appendChild(wrap);
+  });
+  const notes=document.createElement('label');notes.textContent='Pain, illness or unusual symptoms (optional)';notes.style.cssText='display:block;margin-top:12px;font-size:14px';
+  const input=document.createElement('input');input.placeholder='Optional notes';input.style.cssText='display:block;width:100%;margin-top:5px';notes.appendChild(input);fields.appendChild(notes);
+  cover.querySelector('#preflightClose').onclick=()=>cover.remove();
+  cover.querySelector('#preflightContinue').onclick=()=>{
+   const val=k=>Number(cover.querySelector('[data-readiness="'+k+'"]').value);
+   const x={date:new Date().toISOString(),sleep:val('sleep'),energy:val('energy'),soreness:val('soreness'),stress:val('stress'),symptoms:input.value,sessionId:id};
+   data.checkins=data.checkins||[];data.checkins.push(x);
+   if(!save()){data.checkins.pop();cover.querySelector('#preflightMessage').textContent='Could not save readiness. Please try again.';return}
+   const score=(x.sleep+x.energy+6-x.soreness+6-x.stress)/4;
+   const caution=x.symptoms.trim()||score<2.8;
+   if(caution&&!cover.dataset.reviewed){
+    cover.dataset.reviewed='yes';
+    cover.querySelector('#preflightMessage').textContent=x.symptoms.trim()?'You reported pain or symptoms. Consider postponing or modifying training. Do not train through pain or illness.':'Readiness is low today. Check warm-ups carefully and adjust effort if needed. One difficult day does not automatically change your programme.';
+    cover.querySelector('#preflightContinue').textContent='I understand · Continue to workout →';
+    return;
+   }
+   cover.remove();oldOpen(id);
+  };
+ }
+ openWorkout=readinessGate;
+})();
 </script></body></html>
