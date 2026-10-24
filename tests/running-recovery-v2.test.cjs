@@ -11,6 +11,12 @@ assert.equal(result.proposals[0].kind,'review-running-intensity');
 assert.equal(JSON.stringify(input),before);
 assert.equal(reviewRunningRecovery({runLogs:[{actualRPE:7,targetRPE:7}]}).approvalRequired,false);
 assert.equal(reviewRunningRecovery({readiness:{fatigue:5,legSoreness:5}}).approvalRequired,false);
+const incomplete=reviewRunningRecovery({runLogs:[
+ {actualRPE:7,targetRPE:7,completed:false},
+ {actualRPE:7,targetRPE:7,completed:true},
+ {actualRPE:7,targetRPE:7,completed:false}]});
+assert.equal(incomplete.signal,'repeated-running-overshoot');
+assert.equal(incomplete.approvalRequired,true);
 const combined=reviewWeek(input);
 assert.equal(combined.running.signal,'repeated-running-overshoot');
 assert.ok(combined.proposals.some(p=>p.kind==='review-running-intensity'));
