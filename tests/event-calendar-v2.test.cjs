@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');
+const {eventCalendar,dayNumber}=require('../src/event-calendar-v2.js');
+assert.equal(dayNumber('2026-02-30'),null);
+assert.equal(dayNumber('2026-11-28')-dayNumber('2026-11-27'),1);
+const dual=eventCalendar({startDate:'2026-10-19',weeks:6,strengthTargetDate:'2026-11-28',runningTargetDate:'2026-11-29'});
+assert.equal(dual.status,'valid');assert.deepEqual(dual.events.map(e=>e.week),[6,6]);
+assert.equal(dual.sameWeek,true);assert.equal(dual.consecutiveDays,true);
+const middle=eventCalendar({startDate:'2026-10-19',weeks:12,strengthTargetDate:'2026-11-28'});
+assert.equal(middle.events[0].week,6);
+assert.equal(eventCalendar({weeks:12,strengthTargetDate:'2026-11-28'}).status,'invalid');
+assert.equal(eventCalendar({startDate:'2026-10-19',weeks:4,strengthTargetDate:'2026-11-28'}).status,'invalid');
+assert.equal(eventCalendar({startDate:'2026-10-19',weeks:12}).status,'not-required');
+console.log('PASS date parsing, mid-cycle events, adjacent dual events and missing/invalid dates');
