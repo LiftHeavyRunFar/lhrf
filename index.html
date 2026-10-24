@@ -318,7 +318,7 @@ function renderPlanDashboard(){
  const baseDate=c.startDate?new Date(c.startDate+'T12:00:00'):null;
  const weekMonday=baseDate?new Date(baseDate.getTime()-((baseDate.getDay()+6)%7)*86400000+(prev-1)*7*86400000):null;
  const days={Monday:0,Tuesday:1,Wednesday:2,Thursday:3,Friday:4,Saturday:5,Sunday:6};
- const dateFor=day=>{if(!weekMonday)return '';const d=new Date(weekMonday.getTime()+(days[day]??0)*86400000);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})};
+ const dateFor=day=>{if(!weekMonday)return '';const offsets={Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6};const offset=days[day]??offsets[day];if(offset===undefined)return '';const d=new Date(weekMonday.getTime()+offset*86400000);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})};
  const dateRange=weekMonday?new Date(weekMonday.getTime()+6*86400000):null;
  const rangeText=weekMonday?weekMonday.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+dateRange.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'Dates unavailable';
  const rows=sessions.length?sessions.map((session,i)=>{
@@ -805,7 +805,10 @@ function generatedSessions(c,w){
  const block=cycleWeek(w,c.weeks);
  // Within-block progressive loading; deloads preserve moderate intensity while halving work.
  const step=Math.max(0,Math.min(3,block.position-1));
- if(!taper){settings.intensity+=step*(phase==='Foundation'?.012:phase==='Development'?.01:.008);}
+ // Short event preparations must still increase specificity before competition week.
+ const weeksToStrengthEvent=strengthEventWeek?strengthEventWeek-w:null;
+ if(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3){settings.intensity=[0,.87,.84,.80][weeksToStrengthEvent];settings.sets=weeksToStrengthEvent===1?2:3;settings.reps=weeksToStrengthEvent===1?2:3;settings.rpe=weeksToStrengthEvent===1?8:7.5;}
+ if(!taper&&!(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3)){settings.intensity+=step*(phase==='Foundation'?.012:phase==='Development'?.01:.008);}
  if(block.deload){settings.sets=Math.max(2,Math.ceil(settings.sets*.55));settings.intensity=Math.max(.60,settings.intensity-.045);settings.rpe=6;}
  if(taper){
   settings.sets=1;
@@ -814,7 +817,7 @@ function generatedSessions(c,w){
   settings.rpe=6;
  }
 
- const dayOffset={Monday:0,Tuesday:1,Wednesday:2,Thursday:3,Friday:4,Saturday:5,Sunday:6};
+ const dayOffset={Monday:0,Tuesday:1,Wednesday:2,Thursday:3,Friday:4,Saturday:5,Sunday:6,Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6};
  const peakCandidates=plan.slots.filter(slot=>slot.items.some(item=>item.type==='strength'&&item.name==='Bench')).map(slot=>({day:slot.day,offset:dayOffset[slot.day]??0}));
  const peakBenchDay=peakCandidates.length?peakCandidates.reduce((best,item)=>{const daysOut=((new Date(c.strengthTargetDate+'T12:00:00').getDay()+6)%7-item.offset+7)%7;return daysOut>=5&&daysOut<=9&&(!best||daysOut<best.daysOut)?{day:item.day,daysOut}:best},null)?.day||peakCandidates[peakCandidates.length-1].day:null;
  const liftCount={};
@@ -845,13 +848,13 @@ function generatedSessions(c,w){
    const primary=!secondary;
    const strengthBlock=phase==='Development'||phase==='Specificity';
    const peakPractice=!!strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench'&&slot.day===peakBenchDay;
-    const topEligible=(primary&&strengthBlock&&!vb.deload&&!taper)||peakPractice;
+    const topEligible=(primary&&(strengthBlock||(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3))&&!vb.deload&&!taper)||peakPractice;
    if(topEligible){
     const profile=peakPractice?{topReps:1,backReps:2,backSets:2,backRpe:6.5,minDrop:.08,maxDrop:.14,fatigue:.01,label:'final heavy single'}:backoffProfile(phase,w/c.weeks);
     const topReps=peakPractice?1:profile.topReps;
     const topRpe=peakPractice?8.5:phase==='Development'?8:Math.min(8.5,8+Math.max(0,w/c.weeks-.75));
     const targetPct=(phase==='Development'?(topReps===5?.77:.83):(topReps===2?.87:.91))+Math.max(0,Math.min(3,block.position-1))*(phase==='Development'?.012:.009);
-    const topWeight=baseline?roundLoad(baseline*(peakPractice?.92:targetPct)):0;
+    const topWeight=baseline?roundLoad(baseline*(peakPractice?.92:(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3?[0,.90,.86,.82][weeksToStrengthEvent]:targetPct))):0;
     const topIndex=ex.length;
     ex.push([exerciseName,1,topReps,topWeight,topRpe,{role:'top',category:'primary',baseline}]);
     const initialBackWeight=topWeight?phaseBackoffLoad(topWeight,topReps,topRpe,profile):0;
@@ -866,7 +869,7 @@ function generatedSessions(c,w){
    for(const acc of accessories){if(ex.some(e=>e[0]===acc.name))continue;ex.push([acc.name,acc.sets,acc.reps,acc.weight,acc.rpe]);variationNotes.push(acc.name+' ('+acc.range+' reps): '+acc.why)}
   }else{
    const isLongRun=/Long run|Longer easy aerobic/.test(item.detail);
-   const quality=!isLongRun&&c.runGoal!=='fitness'&&/Quality/.test(item.detail);
+   const quality=!isLongRun&&c.runGoal!=='fitness'&&/Quality/.test(item.detail)&&!(strengthEventWeek&&w===strengthEventWeek);
    const rp=runningPaces(c),runWeek=hybridRunWeek(c,w),weekly=runWeek.km;
    const longKm=weekly*runWeek.longShare,otherKm=Math.max(0,weekly-longKm)/Math.max(1,c.runs-1);
    const perRun=isLongRun?longKm:otherKm;
@@ -910,11 +913,11 @@ function generatedSessions(c,w){
   const eventWeek=Math.round((monday(event.date)-monday(c.startDate))/604800000)+1;
   if(eventWeek!==w)continue;
   const day=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][target.getDay()];
-  const index=out.findIndex(session=>session.day===day);
+  const short=day.slice(0,3);const index=out.findIndex(session=>session.day===day||session.day===short);
   if(index>=0)out.splice(index,1);
   out.push({id:'event-'+event.type+'-'+event.date,day,name:event.name,desc:'Target event · '+event.date,reason:'Competition replaces scheduled training.',hybridNotes:[],variationNotes:[],ex:[],runs:[],run:false,week:w,phase:'Competition',eventDate:event.date,eventType:event.type});
  }
- out.sort((a,b)=>['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(a.day)-['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(b.day));
+ const dayOrder={Monday:0,Mon:0,Tuesday:1,Tue:1,Wednesday:2,Wed:2,Thursday:3,Thu:3,Friday:4,Fri:4,Saturday:5,Sat:5,Sunday:6,Sun:6};out.sort((a,b)=>(dayOrder[a.day]??7)-(dayOrder[b.day]??7));
  return ensureKnownLiftLoads(out,c);
 }
 function ensureKnownLiftLoads(sessions,c){
