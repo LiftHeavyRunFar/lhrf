@@ -313,8 +313,13 @@ function renderPlanDashboard(){
  $('planDashLegend').innerHTML=[['Strength reps (primary + secondary)','#2abda7'],['Relative intensity (%1RM)','#ef9a70'],['Foundation','#2abda7'],['Development','#5799df'],['Specificity','#ef9a70'],['Taper / event','#ae91eb'],['Deload','#8994a8']].map(([label,color])=>'<span><span style="color:'+color+'">■</span> '+label+'</span>').join('');
  const m=metrics[prev-1];let sessions=[];try{sessions=generatedSessions(c,prev)}catch(e){}
  const activeNote=prev===active?' · Active week':' · Preview';
- const details='<b>Week '+prev+' · '+(m.deload?'Deload / transition':m.phase)+activeNote+'</b><div class="muted small" style="margin:7px 0">'+m.reps+' prescribed strength reps across '+m.sets+' sets'+(m.rpe?' · Relative intensity '+m.rpe.toFixed(1)+'% 1RM':'')+'</div>';
- const rows=sessions.length?sessions.map(s=>'<div style="padding:8px 0;border-top:1px solid rgba(130,140,160,.16)"><b>'+s.day+'</b><span class="muted small"> · '+s.name+'</span></div>').join(''):'<div class="muted small">No training sessions planned.</div>';
+ const details='<p class="muted small">Read-only preview · Open any session to see full prescriptions. Viewing never activates a week.</p><b>Week '+prev+' · '+(m.deload?'Deload / transition':m.phase)+activeNote+'</b><div class="muted small" style="margin:7px 0">'+m.reps+' prescribed strength reps across '+m.sets+' sets'+(m.rpe?' · Relative intensity '+m.rpe.toFixed(1)+'% 1RM':'')+'</div>';
+ const escPlan=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ const rows=sessions.length?sessions.map(session=>{
+  const exerciseRows=(session.ex||[]).map(e=>'<div style="padding:5px 0;border-top:1px solid #ffffff14"><b>'+escPlan(e[0])+'</b> · '+e[1]+' × '+e[2]+(Number(e[3])>0?' @ '+e[3]+' kg':' · load by RPE')+' · RPE '+e[4]+(e[5]?.role==='top'?' · Top set':e[5]?.role==='backoff'?' · Back-offs':'')+'</div>').join('');
+  const runRows=(session.runs||[]).map(r=>'<div style="padding:5px 0;border-top:1px solid #ffffff14"><b>'+escPlan(r.name)+'</b> · '+escPlan(r.structure||r.minutes+' min')+' · '+escPlan(readableRunPace(r.pace))+' · RPE '+escPlan(r.rpe)+'</div>').join('');
+  return '<details style="padding:10px 0;border-top:1px solid rgba(130,140,160,.24)"><summary style="cursor:pointer;font-weight:650">'+escPlan(session.day)+' · '+escPlan(session.name)+' <span class="muted small">▾</span></summary><div style="padding:10px 0 4px 8px;font-size:13px">'+exerciseRows+runRows+(session.reason?'<p class="muted small">'+escPlan(session.reason)+'</p>':'')+'</div></details>';
+ }).join(''):'<div class="muted small">No training sessions planned.</div>';
  $('planDashWeekDetails').innerHTML=details+rows+(prev!==active?'<button class="secondary" style="margin-top:10px" onclick="activatePlanDashWeek()">Activate week '+prev+'</button>':'');
  $('planDashEmpty').style.display='none';
 }
@@ -787,7 +792,7 @@ function generatedSessions(c,w){
  const strengthEventWeek=c.strengthTargetDate&&c.startDate?Math.max(1,Math.ceil((Date.parse(c.strengthTargetDate+'T12:00:00')-Date.parse(c.startDate+'T12:00:00')+86400000)/604800000)):null;
  const strengthWeeks=strengthEventWeek||c.weeks;
  const phase=strengthEventWeek?customPhase(Math.min(w,strengthWeeks),strengthWeeks):(!c.strengthTargetDate&&w>c.weeks-2?'Development':customPhase(w,c.weeks));const plan=customPlan(c),out=[];
- const taper=!!strengthEventWeek&&w>=strengthEventWeek-1&&w<=strengthEventWeek;const isRunPriority=c.priority==='Running';
+ const taper=!!strengthEventWeek&&w===strengthEventWeek; // retain heavy practice in the preceding weekconst isRunPriority=c.priority==='Running';
  const phases={Foundation:{sets:4,reps:6,intensity:.66,rpe:7},Development:{sets:4,reps:5,intensity:.73,rpe:7.5},Specificity:{sets:3,reps:3,intensity:.82,rpe:8},'Taper / event':{sets:2,reps:2,intensity:.68,rpe:6.5}};
  const settings={...phases[phase]};
  const block=cycleWeek(w,c.weeks);
@@ -795,7 +800,7 @@ function generatedSessions(c,w){
  const step=Math.max(0,Math.min(3,block.position-1));
  if(!taper){settings.intensity+=step*(phase==='Foundation'?.012:phase==='Development'?.01:.008);}
  if(block.deload){settings.sets=Math.max(2,Math.ceil(settings.sets*.55));settings.intensity=Math.max(.60,settings.intensity-.045);settings.rpe=6;}
- if(taper&&c.weeks===20){
+ if(taper){
   settings.sets=w===19?2:1;
   settings.reps=w===19?2:1;
   settings.intensity=w===19?.84:.72;
@@ -829,13 +834,14 @@ function generatedSessions(c,w){
    const suggested=useVariation?(loadBaseline>0?roundLoad(loadBaseline*factor):recent?roundLoad(recent.weight*(+recent.rpe<variationRpe-.5?1.025:1)):0):(loadBaseline>0?roundLoad(loadBaseline*factor):0);
    const primary=!secondary;
    const strengthBlock=phase==='Development'||phase==='Specificity';
-   const topEligible=primary&&strengthBlock&&!vb.deload&&!taper;
+   const peakPractice=!!strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench'&&primary;
+    const topEligible=primary&&((strengthBlock&&!vb.deload&&!taper)||peakPractice);
    if(topEligible){
-    const profile=backoffProfile(phase,w/c.weeks);
-    const topReps=profile.topReps;
-    const topRpe=phase==='Development'?8:Math.min(8.5,8+Math.max(0,w/c.weeks-.75));
+    const profile=peakPractice?{topReps:1,backReps:2,backSets:2,backRpe:6.5,minDrop:.08,maxDrop:.14,fatigue:.01,label:'final heavy single'}:backoffProfile(phase,w/c.weeks);
+    const topReps=peakPractice?1:profile.topReps;
+    const topRpe=peakPractice?8.5:phase==='Development'?8:Math.min(8.5,8+Math.max(0,w/c.weeks-.75));
     const targetPct=(phase==='Development'?(topReps===5?.77:.83):(topReps===2?.87:.91))+Math.max(0,Math.min(3,block.position-1))*(phase==='Development'?.012:.009);
-    const topWeight=baseline?roundLoad(baseline*targetPct):0;
+    const topWeight=baseline?roundLoad(baseline*(peakPractice?.92:targetPct)):0;
     const topIndex=ex.length;
     ex.push([exerciseName,1,topReps,topWeight,topRpe,{role:'top',category:'primary',baseline}]);
     const initialBackWeight=topWeight?phaseBackoffLoad(topWeight,topReps,topRpe,profile):0;
