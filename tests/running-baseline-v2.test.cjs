@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const {runningPrescription,prescribeWeek}=require('../src/prescriptions-v2.js');
+const total=r=>r.reduce((sum,s)=>sum+s.minutes,0);
+const baseline=180;
+const first=runningPrescription(1,'foundation',3,'Running',baseline);
+assert.ok(Math.abs(total(first)-baseline)<=3,'Week one should reflect existing weekly minutes');
+assert.ok(total(runningPrescription(3,'foundation',3,'Running',baseline))>total(first));
+assert.ok(total(runningPrescription(4,'recovery',3,'Running',baseline))<total(first));
+assert.ok(total(runningPrescription(5,'development',3,'Running',baseline))>total(first));
+assert.ok(Math.abs(total(runningPrescription(1,'foundation',2,'Running',120))-120)<=2);
+const fallback=runningPrescription(1,'foundation',3,'Running');
+assert.equal(total(runningPrescription(1,'foundation',3,'Running',-10)),total(fallback));
+assert.equal(total(runningPrescription(1,'foundation',3,'Running','nonsense')),total(fallback));
+const c={weeks:8,runs:3,runningBaselineMinutes:180};
+assert.ok(Math.abs(prescribeWeek(c,{week:1,phase:'foundation'}).runningMinutes-180)<=3);
+assert.equal(c.runningBaselineMinutes,180);
+console.log('PASS athlete-specific running baseline, progression, recovery and invalid-input fallback');
