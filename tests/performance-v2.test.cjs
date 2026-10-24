@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {reviewSession}=require('../src/performance-v2.js');
+const session={top:{rpe:8,suggestedWeight:125},backoff:{rpe:7}};
+const before=JSON.stringify(session);
+const hard=reviewSession(session,{completed:true,topRpe:9.5});
+assert.equal(hard.changes[0].kind,'reduce-next-load');
+assert.equal(hard.changes[0].suggestedNextWeight,122.5);
+assert.equal(hard.approvalRequired,true);
+const easy=reviewSession(session,{completed:true,topRpe:6});
+assert.equal(easy.changes[0].kind,'increase-next-load');
+assert.equal(easy.changes[0].suggestedNextWeight,127.5);
+assert.equal(reviewSession(session,{completed:true,topRpe:8}).status,'on-target');
+assert.equal(reviewSession(session,{completed:false,topRpe:8}).changes[0].kind,'review-incomplete');
+assert.equal(reviewSession(session,{completed:true}).status,'insufficient-data');
+assert.equal(reviewSession(session,{completed:true,topRpe:12}).status,'insufficient-data');
+assert.equal(JSON.stringify(session),before,'Do not mutate planned session');
+assert.deepEqual(reviewSession(session,{completed:true,topRpe:9.5}),hard,'Deterministic');
+console.log('PASS athlete RPE feedback and approval-only coaching proposals');
