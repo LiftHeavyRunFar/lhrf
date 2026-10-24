@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const {scheduleWeek}=require('../src/scheduler-v2.js');
+const week={week:4,strengths:[{lift:'bench',exposure:1,top:{rpe:8}},{lift:'squat',exposure:1,top:{rpe:8}},{lift:'deadlift',exposure:1,top:{rpe:8}}],runs:[{type:'quality'},{type:'easy'},{type:'long'}]};
+const input=JSON.stringify(week);
+const c={availableDays:['Tue','Thu','Fri','Sat','Sun'],fixedSessions:[{kind:'strength',lift:'bench',day:'Tue'},{kind:'run',runType:'long',day:'Sat'},{kind:'strength',lift:'squat',day:'Thu'}]};
+const r=scheduleWeek(c,week);
+assert.equal(r.sessions.length,6);assert.equal(r.unscheduled,0);
+assert.equal(r.sessions.find(x=>x.lift==='bench').day,'Tue');
+assert.equal(r.sessions.find(x=>x.lift==='squat').day,'Thu');
+assert.equal(r.sessions.find(x=>x.runType==='long').day,'Sat');
+assert.equal(JSON.stringify(week),input);assert.deepEqual(scheduleWeek(c,week),r);
+const conflict=scheduleWeek({availableDays:['Tue'],fixedSessions:[{kind:'strength',lift:'squat',day:'Tue'},{kind:'run',runType:'quality',day:'Tue'}]},{week:1,strengths:[{lift:'squat',top:{rpe:8}}],runs:[{type:'quality'}]});
+assert.equal(conflict.requiresReview,true);assert.ok(conflict.warnings.some(x=>x.includes('Lower-body')));
+assert.throws(()=>scheduleWeek({availableDays:['Mon'],fixedSessions:[{kind:'run',runType:'quality',day:'Tue'}]},{week:1,runs:[{type:'quality'}]}),/unavailable/);
+console.log('PASS scheduler constraints, deterministic assignment, conflict reporting and immutability');
