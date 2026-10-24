@@ -1792,6 +1792,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     return;
    }
    cover.remove();oldOpen(id);
+   // The existing live-workout API opens a second preview; proceed through it after readiness.
+   const liveStart=document.querySelector('#livePreview #previewStart');
+   if(liveStart)liveStart.click();
   };
  }
  openWorkout=readinessGate;
