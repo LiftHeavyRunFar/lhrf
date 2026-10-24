@@ -1,4 +1,4 @@
-const CACHE = 'lhrf-shell-v1.12.1';
+const CACHE = 'lhrf-shell-v1.12.2';
 const SHELL = ['./','./index.html','./manifest.webmanifest'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
 self.addEventListener('activate', event => event.waitUntil((async () => {
