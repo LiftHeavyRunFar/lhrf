@@ -1779,8 +1779,10 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   cover.querySelector('#preflightContinue').onclick=()=>{
    const val=k=>Number(cover.querySelector('[data-readiness="'+k+'"]').value);
    const x={date:new Date().toISOString(),sleep:val('sleep'),energy:val('energy'),soreness:val('soreness'),stress:val('stress'),symptoms:input.value,sessionId:id};
-   data.checkins=data.checkins||[];data.checkins.push(x);
-   if(!save()){data.checkins.pop();cover.querySelector('#preflightMessage').textContent='Could not save readiness. Please try again.';return}
+   if(!cover.dataset.saved){data.checkins=data.checkins||[];data.checkins.push(x);
+    if(!save()){data.checkins.pop();cover.querySelector('#preflightMessage').textContent='Could not save readiness. Please try again.';return}
+    cover.dataset.saved='yes';
+   }
    const score=(x.sleep+x.energy+6-x.soreness+6-x.stress)/4;
    const caution=x.symptoms.trim()||score<2.8;
    if(caution&&!cover.dataset.reviewed){
