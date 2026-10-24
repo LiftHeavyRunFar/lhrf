@@ -313,14 +313,20 @@ function renderPlanDashboard(){
  $('planDashLegend').innerHTML=[['Strength reps (primary + secondary)','#2abda7'],['Relative intensity (%1RM)','#ef9a70'],['Foundation','#2abda7'],['Development','#5799df'],['Specificity','#ef9a70'],['Taper / event','#ae91eb'],['Deload','#8994a8']].map(([label,color])=>'<span><span style="color:'+color+'">■</span> '+label+'</span>').join('');
  const m=metrics[prev-1];let sessions=[];try{sessions=generatedSessions(c,prev)}catch(e){}
  const activeNote=prev===active?' · Active week':' · Preview';
- const details='<p class="muted small">Read-only preview · Open any session to see full prescriptions. Viewing never activates a week.</p><b>Week '+prev+' · '+(m.deload?'Deload / transition':m.phase)+activeNote+'</b><div class="muted small" style="margin:7px 0">'+m.reps+' prescribed strength reps across '+m.sets+' sets'+(m.rpe?' · Relative intensity '+m.rpe.toFixed(1)+'% 1RM':'')+'</div>';
+ const details='<p class="muted small">Read-only preview · Swipe the days to inspect prescriptions. Viewing never activates a week.</p><b>Week '+prev+' · '+(m.deload?'Deload / transition':m.phase)+activeNote+'</b><div class="muted small" style="margin:7px 0">'+m.reps+' prescribed strength reps across '+m.sets+' sets'+(m.rpe?' · Relative intensity '+m.rpe.toFixed(1)+'% 1RM':'')+'</div>';
  const escPlan=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
- const rows=sessions.length?sessions.map(session=>{
-  const exerciseRows=(session.ex||[]).map(e=>'<div style="padding:5px 0;border-top:1px solid #ffffff14"><b>'+escPlan(e[0])+'</b> · '+e[1]+' × '+e[2]+(Number(e[3])>0?' @ '+e[3]+' kg':' · load by RPE')+' · RPE '+e[4]+(e[5]?.role==='top'?' · Top set':e[5]?.role==='backoff'?' · Back-offs':'')+'</div>').join('');
-  const runRows=(session.runs||[]).map(r=>'<div style="padding:5px 0;border-top:1px solid #ffffff14"><b>'+escPlan(r.name)+'</b> · '+escPlan(r.structure||r.minutes+' min')+' · '+escPlan(readableRunPace(r.pace))+' · RPE '+escPlan(r.rpe)+'</div>').join('');
-  return '<details style="padding:10px 0;border-top:1px solid rgba(130,140,160,.24)"><summary style="cursor:pointer;font-weight:650">'+escPlan(session.day)+' · '+escPlan(session.name)+' <span class="muted small">▾</span></summary><div style="padding:10px 0 4px 8px;font-size:13px">'+exerciseRows+runRows+(session.reason?'<p class="muted small">'+escPlan(session.reason)+'</p>':'')+'</div></details>';
+ const baseDate=c.startDate?new Date(c.startDate+'T12:00:00'):null;
+ const weekMonday=baseDate?new Date(baseDate.getTime()-((baseDate.getDay()+6)%7)*86400000+(prev-1)*7*86400000):null;
+ const days={Monday:0,Tuesday:1,Wednesday:2,Thursday:3,Friday:4,Saturday:5,Sunday:6};
+ const dateFor=day=>{if(!weekMonday)return '';const d=new Date(weekMonday.getTime()+(days[day]??0)*86400000);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})};
+ const dateRange=weekMonday?new Date(weekMonday.getTime()+6*86400000):null;
+ const rangeText=weekMonday?weekMonday.toLocaleDateString('en-GB',{day:'numeric',month:'short'})+' – '+dateRange.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'Dates unavailable';
+ const rows=sessions.length?sessions.map((session,i)=>{
+  const exerciseRows=(session.ex||[]).map(e=>'<div style="padding:7px 0;border-top:1px solid #ffffff18"><b>'+escPlan(e[0])+'</b> · '+e[1]+' × '+e[2]+(Number(e[3])>0?' @ '+e[3]+' kg':' · load by RPE')+' · RPE '+e[4]+(e[5]?.role==='top'?' · Top set':e[5]?.role==='backoff'?' · Back-offs':'')+'</div>').join('');
+  const runRows=(session.runs||[]).map(r=>'<div style="padding:7px 0;border-top:1px solid #ffffff18"><b>'+escPlan(r.name)+'</b> · '+escPlan(r.structure||r.minutes+' min')+' · '+escPlan(readableRunPace(r.pace))+' · RPE '+escPlan(r.rpe)+'</div>').join('');
+  return '<article class="plan-swipe-day" style="scroll-snap-align:center;flex:0 0 88%;min-width:0;box-sizing:border-box;background:#0a1a2a;border:1px solid #315678;border-radius:16px;padding:16px"><div class="tag">'+escPlan(session.day)+' '+dateFor(session.day)+'</div><h3 style="margin:10px 0">'+escPlan(session.name)+'</h3>'+exerciseRows+runRows+(session.reason?'<p class="muted small" style="margin-top:12px">'+escPlan(session.reason)+'</p>':'')+'</article>';
  }).join(''):'<div class="muted small">No training sessions planned.</div>';
- $('planDashWeekDetails').innerHTML=details+rows+(prev!==active?'<button class="secondary" style="margin-top:10px" onclick="activatePlanDashWeek()">Activate week '+prev+'</button>':'');
+ $('planDashWeekDetails').innerHTML=details+'<div class="muted small" style="margin-bottom:8px">'+rangeText+'</div><b>Week '+prev+' · '+(m.deload?'Deload / transition':m.phase)+activeNote+'</b><div class="muted small" style="margin:7px 0 12px">'+m.reps+' prescribed strength reps across '+m.sets+' sets'+(m.rpe?' · Relative intensity '+m.rpe.toFixed(1)+'% 1RM':'')+'</div><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><button type="button" class="secondary" style="width:44px;flex:none" onclick="this.parentNode.nextElementSibling.scrollBy({left:-this.parentNode.nextElementSibling.clientWidth*.88,behavior:\'smooth\'})">‹</button><span class="muted small" style="flex:1;text-align:center">Swipe to view sessions</span><button type="button" class="secondary" style="width:44px;flex:none" onclick="this.parentNode.nextElementSibling.scrollBy({left:this.parentNode.nextElementSibling.clientWidth*.88,behavior:\'smooth\'})">›</button></div><div style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:12px;-webkit-overflow-scrolling:touch">'+rows+'</div>';
  $('planDashEmpty').style.display='none';
 }
 function selectPlanDashWeek(w){planDashSelection=w;renderPlanDashboard();}
@@ -789,7 +795,7 @@ function hybridRunWeek(c,w){
  return {km,factor,deload,taper,longShare,longKm,warnings,remaining,provisional:!known,hybridStrain,observed};
 }
 function generatedSessions(c,w){
- const strengthEventWeek=c.strengthTargetDate&&c.startDate?Math.max(1,Math.ceil((Date.parse(c.strengthTargetDate+'T12:00:00')-Date.parse(c.startDate+'T12:00:00')+86400000)/604800000)):null;
+ const strengthEventWeek=c.strengthTargetDate&&c.startDate?Math.max(1,Math.floor((Date.parse(c.strengthTargetDate+'T12:00:00')-(Date.parse(c.startDate+'T12:00:00')-((new Date(c.startDate+'T12:00:00').getDay()+6)%7)*86400000))/604800000)+1):null;
  const strengthWeeks=strengthEventWeek||c.weeks;
  const phase=strengthEventWeek?customPhase(Math.min(w,strengthWeeks),strengthWeeks):(!c.strengthTargetDate&&w>c.weeks-2?'Development':customPhase(w,c.weeks));const plan=customPlan(c),out=[];
  const taper=!!strengthEventWeek&&w===strengthEventWeek; // Event week only; preserve final heavy single in preceding week.
@@ -808,7 +814,9 @@ function generatedSessions(c,w){
   settings.rpe=6;
  }
 
- const peakBenchDay=plan.slots.filter(slot=>slot.items.some(item=>item.type==='strength'&&item.name==='Bench')).slice(-1)[0]?.day;
+ const dayOffset={Monday:0,Tuesday:1,Wednesday:2,Thursday:3,Friday:4,Saturday:5,Sunday:6};
+ const peakCandidates=plan.slots.filter(slot=>slot.items.some(item=>item.type==='strength'&&item.name==='Bench')).map(slot=>({day:slot.day,offset:dayOffset[slot.day]??0}));
+ const peakBenchDay=peakCandidates.length?peakCandidates.reduce((best,item)=>{const daysOut=((new Date(c.strengthTargetDate+'T12:00:00').getDay()+6)%7-item.offset+7)%7;return daysOut>=5&&daysOut<=9&&(!best||daysOut<best.daysOut)?{day:item.day,daysOut}:best},null)?.day||peakCandidates[peakCandidates.length-1].day:null;
  const liftCount={};
  for(const slot of plan.slots){if(!slot.items.length)continue;
   const ex=[],runs=[],variationNotes=[];
