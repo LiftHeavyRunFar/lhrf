@@ -901,6 +901,20 @@ function generatedSessions(c,w){
   if(ex.some(e=>/Squat|Deadlift/.test(e[0]))&&runs.some(r=>r.rpe>=7))hybridNotes.push('Hard running with lower-body lifting: consider moving the quality run or reducing its intensity.');
   out.push({id,day:slot.day,name,desc:reason,hybridNotes,variationNotes,ex,run:!ex.length&&runs.length>0,runs,reason,week:w,phase});
  }
+ // Replace ordinary training on the exact target dates, using Monday-anchored calendar weeks.
+ const monday=date=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return d;};
+ if(c.startDate)for(const event of [{date:c.strengthTargetDate,type:'strength',name:'Strength competition'},{date:c.runningTargetDate,type:'running',name:'Running event'}]){
+  if(!event.date)continue;
+  const target=new Date(event.date+'T12:00:00');
+  if(!Number.isFinite(+target))continue;
+  const eventWeek=Math.round((monday(event.date)-monday(c.startDate))/604800000)+1;
+  if(eventWeek!==w)continue;
+  const day=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][target.getDay()];
+  const index=out.findIndex(session=>session.day===day);
+  if(index>=0)out.splice(index,1);
+  out.push({id:'event-'+event.type+'-'+event.date,day,name:event.name,desc:'Target event · '+event.date,reason:'Competition replaces scheduled training.',hybridNotes:[],variationNotes:[],ex:[],runs:[],run:false,week:w,phase:'Competition',eventDate:event.date,eventType:event.type});
+ }
+ out.sort((a,b)=>['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(a.day)-['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].indexOf(b.day));
  return ensureKnownLiftLoads(out,c);
 }
 function ensureKnownLiftLoads(sessions,c){
@@ -1663,6 +1677,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   if(step===5)renderPreview();
   root.scrollTop=0;
  }
+ function mondayAlignedDate(value){const d=new Date(value+'T12:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return d;}
  function sync(){
   const val=(a,b)=>{get('custom'+b).value=get('fr'+a).value};
   const focus=root.querySelector('input[name="frFocus"]:checked').value;
@@ -1673,7 +1688,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const targets=[get('frStrengthDate').value,get('frRunningDate').value].filter(Boolean).sort();
   const latest=targets.length?targets[targets.length-1]:'';
   const days=latest&&start?Math.round((Date.parse(latest+'T12:00:00')-Date.parse(start+'T12:00:00'))/86400000):0;
-  const weeks=latest?Math.max(1,Math.ceil((days+1)/7)):Math.max(1,Math.min(52,+get('frWeeks').value||8));
+  const weeks=latest&&start?Math.max(1,Math.floor((mondayAlignedDate(latest)-mondayAlignedDate(start))/604800000)+1):Math.max(1,Math.min(52,+get('frWeeks').value||8));
   get('customNoDate').checked=true;
   get('customDate').value='';
   get('customWeeks').value=weeks;
