@@ -7,7 +7,9 @@
  const stress=(sets,reps,rpe)=>Math.round(sets*reps*(rpe/10)*10)/10;
  function strengthPrescription(lift,week,phase,baseline,priority){
   const main=priority?.toLowerCase()===lift;
-  const scale=main?1:.85;
+  // Priority changes training volume, not the athlete's lift-specific strength baseline.
+  // A secondary lift should not receive an arbitrary 15% load penalty.
+  const secondary=Boolean(priority)&&['bench','squat','deadlift'].includes(String(priority).toLowerCase())&&!main;
   const templates={
    foundation:{top:null,back:{sets:4,reps:6,rpe:7,pct:.66}},
    development:{top:{sets:1,reps:5,rpe:8,pct:.77},back:{sets:3,reps:5,rpe:7,pct:.70}},
@@ -21,12 +23,15 @@
   const progress=phase==='foundation'||phase==='development'||phase==='intensification'?Math.min(0.025,((week-1)%4)*.008):0;
   function item(x,role){
    if(!x)return null;
-   const pct=clamp((x.pct+progress)*scale,.4,.94);
+   const pct=clamp(x.pct+progress,.4,.94);
    return {role,sets:x.sets,reps:x.reps,rpe:x.rpe,percent1RM:Math.round(pct*1000)/10,
     suggestedWeight:Number(baseline)>0?round(Number(baseline)*pct):null,
     stress:stress(x.sets,x.reps,x.rpe)};
   }
   let top=item(t.top,'top'),back=item(t.back,'backoff');
+  if(secondary&&back&&back.sets>1&&phase!=='event'){
+   back={...back,sets:back.sets-1,stress:stress(back.sets-1,back.reps,back.rpe)};
+  }
   // Do not add a heavy top set to the old foundation volume unchanged.
   // Use a conservative stress budget; trim backoffs before touching the top set.
   const cap=stress(4,6,7)*1.1;
@@ -35,7 +40,7 @@
   }
   return {lift,phase,top,backoff:back,totalReps:(top?.sets||0)*(top?.reps||0)+(back?.sets||0)*(back?.reps||0),
    totalStress:(top?.stress||0)+(back?.stress||0),stressBudget:cap,
-   assessmentOptional:phase==='assessment'};
+   assessmentOptional:phase==='assessment',priorityRole:main?'primary':secondary?'secondary':'balanced'};
  }
  function runningPrescription(week,phase,runCount,priority,weeklyBaselineMinutes){
   if(!runCount)return [];
