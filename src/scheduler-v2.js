@@ -9,7 +9,14 @@ function scheduleWeek(config,week){
  const fixed=new Map(),used=new Set();
  for(const f of c.fixedSessions||[]){
   const d=index(f.day);if(!days.includes(d))throw Error('Fixed day unavailable: '+f.day);
-  const item=items.find(x=>!used.has(x.id)&&x.kind===f.kind&&(f.lift==null||x.lift===f.lift)&&(f.runType==null||x.runType===f.runType)&&(f.exposure==null||x.exposure===f.exposure));
+  let item=items.find(x=>!used.has(x.id)&&x.kind===f.kind&&(f.lift==null||x.lift===f.lift)&&(f.runType==null||x.runType===f.runType)&&(f.exposure==null||x.exposure===f.exposure));
+  // Recovery/taper may downgrade a planned quality or long run to easy.
+  // Preserve the athlete's fixed day by matching its stable run slot.
+  if(!item&&f.kind==='run'&&['quality','long'].includes(f.runType)){
+   const runs=items.filter(x=>x.kind==='run');
+   const slot=f.runType==='quality'?runs[0]:runs[runs.length-1];
+   if(slot&&slot.runType==='easy'&&!used.has(slot.id))item=slot;
+  }
   if(!item)throw Error('Cannot match fixed session');used.add(item.id);fixed.set(item.id,d);
  }
  const lower=x=>x.kind==='strength'&&['squat','deadlift'].includes(x.lift);
