@@ -5,7 +5,7 @@ function reviewRunningRecovery(input){
  const c=input||{},runs=Array.isArray(c.runLogs)?c.runLogs:[];
  const valid=runs.filter(r=>r&&Number.isFinite(r.actualRPE)&&r.actualRPE>=1&&r.actualRPE<=10&&
   Number.isFinite(r.targetRPE)&&r.targetRPE>=1&&r.targetRPE<=10).slice(-3);
- const hard=valid.filter(r=>r.actualRPE-r.targetRPE>=1).length;
+ const hard=valid.filter(r=>r.actualRPE-r.targetRPE>=1||r.completed===false).length;
  const readiness=c.readiness||{};
  const legSoreness=Number(readiness.legSoreness);
  const fatigue=Number(readiness.fatigue);
@@ -16,7 +16,7 @@ function reviewRunningRecovery(input){
  if(repeated||((elevated||sore)&&valid.length>0&&hard>=1)){
   proposals.push({kind:'review-running-intensity',change:'consider replacing the next quality run with easy running',
    appliesTo:'next quality run only',requiresApproval:true,
-   reason:repeated?'At least two of three recent runs exceeded target RPE.':
+   reason:repeated?'At least two of three recent runs exceeded target RPE or were incomplete.':
     'High reported fatigue or leg soreness coincides with a harder-than-planned run.'});
  }
  return {signal:repeated?'repeated-running-overshoot':elevated||sore?'recovery-caution':
