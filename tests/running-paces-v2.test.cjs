@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {seconds,calibrate10K,attachPaces}=require('../src/running-paces-v2.js');
+assert.equal(seconds('1:05:00'),3900);
+assert.equal(seconds('65:00'),3900);
+assert.equal(seconds('1:75:00'),null);
+assert.equal(seconds('not-a-time'),null);
+const c=calibrate10K({pb10k:'1:05:00'});
+assert.equal(c.available,true);
+assert.equal(c.racePace,'6:30/km');
+assert.ok(c.easy.minSecondsPerKm>390);
+assert.ok(c.easy.maxSecondsPerKm>c.easy.minSecondsPerKm);
+const source=[{type:'quality',minutes:30},{type:'easy',minutes:25}];
+const out=attachPaces(source,{pb10k:'1:05:00'});
+assert.equal(source[0].pace,undefined,'Inputs must be immutable');
+assert.ok(out[0].pace.maxSecondsPerKm<out[1].pace.maxSecondsPerKm);
+assert.equal(attachPaces(source,{}).every(r=>r.pace===null),true);
+assert.equal(calibrate10K({pb10k:'12:00'}).available,false);
+console.log('PASS 10K pace calibration, missing data, malformed values and immutable annotations');
