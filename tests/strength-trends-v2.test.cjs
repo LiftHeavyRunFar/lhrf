@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {reviewStrengthTrend}=require('../src/strength-trends-v2.js');
+const sample=(rpes,lift='bench')=>rpes.map(actualRPE=>({lift,actualRPE,targetRPE:8}));
+const overshoot=reviewStrengthTrend(sample([9,8,9]),'bench');
+assert.equal(overshoot.signal,'repeated-overshoot');
+assert.equal(overshoot.proposal.kind,'trim-accessory-volume');
+assert.equal(overshoot.approvalRequired,true);
+assert.equal(reviewStrengthTrend(sample([9,8]),'bench').approvalRequired,false);
+assert.equal(reviewStrengthTrend(sample([7,7,7]),'bench').signal,'consistently-easy');
+assert.equal(reviewStrengthTrend(sample([8,8,9]),'bench').signal,'within-variation');
+const mixed=[...sample([9,9,9]),...sample([8,8,8],'squat')];
+assert.equal(reviewStrengthTrend(mixed,'squat').signal,'within-variation');
+assert.equal(reviewStrengthTrend(mixed,'bench').signal,'repeated-overshoot');
+const original=JSON.stringify(mixed);
+assert.deepEqual(reviewStrengthTrend(mixed,'bench'),reviewStrengthTrend(mixed,'bench'));
+assert.equal(JSON.stringify(mixed),original);
+assert.equal(reviewStrengthTrend([{lift:'bench',actualRPE:12,targetRPE:8}], 'bench').sampleSize,0);
+console.log('PASS multi-exposure trend review, insufficient data, approval, lift isolation and immutability');
