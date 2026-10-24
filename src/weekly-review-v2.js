@@ -25,8 +25,22 @@ function reviewWeek(input){
  }
  const running=d.running.reviewRunningRecovery(c);
  for(const proposal of running.proposals)proposals.push({...proposal,source:'running-recovery-feedback'});
- const unique=proposals.filter((p,i)=>proposals.findIndex(q=>q.kind===p.kind&&q.lift===p.lift)===i);
- return {schema:'lhrf-v2-weekly-review',signals,running,proposals:unique,
+ // Combined-load guard: avoid contradictory progression advice while recovery
+ // signals call for caution. Preserve strength-specific load reductions.
+ const fatigue=Number(c.readiness?.fatigue),soreness=Number(c.readiness?.legSoreness);
+ const systemic=Number.isFinite(fatigue)&&fatigue>=4&&fatigue<=5;
+ const lowerBody=Number.isFinite(soreness)&&soreness>=4&&soreness<=5;
+ const runningStrain=running.signal==='repeated-running-overshoot';
+ const guarded=proposals.filter(p=>{
+  const progression=p.kind==='review-progression'||p.kind==='next-exposure-top-load'&&p.direction==='increase';
+  if(!progression)return true;
+  if(systemic)return false;
+  if((runningStrain||lowerBody)&&['squat','deadlift'].includes(p.lift))return false;
+  return true;
+ });
+ const suppressed=proposals.length-guarded.length;
+ const unique=guarded.filter((p,i)=>proposals.findIndex(q=>q.kind===p.kind&&q.lift===p.lift)===i);
+ return {schema:'lhrf-v2-weekly-review',signals,running,suppressedProgressionProposals:suppressed,proposals:unique,
   approvalRequired:unique.length>0,appliedChanges:[],
   summary:unique.length?unique.length+' proposed coaching change(s) awaiting athlete approval.':
    'No changes proposed from available strength feedback.',
