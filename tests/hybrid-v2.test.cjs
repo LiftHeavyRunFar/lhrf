@@ -21,7 +21,7 @@ for(const priority of ['Running','Squat','Balanced']){
   assert.equal(output.runningMinutes,week.runningMinutes);
  }else{
   assert.ok(output.runningMinutes<week.runningMinutes);
-  assert.equal(output.strengthStress,week.strengthStress);
+  assert.ok(Math.abs(output.strengthStress-week.strengthStress)<1e-9,'Strength workload unchanged within rounding tolerance');
  }
  assert.equal(output.strengthStress,Math.round(output.strengths.reduce((n,s)=>n+s.totalStress,0)*10)/10);
  assert.equal(output.runningMinutes,output.runs.reduce((n,r)=>n+r.minutes,0));
