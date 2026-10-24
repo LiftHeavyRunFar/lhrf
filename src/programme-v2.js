@@ -4,9 +4,9 @@
 function dependencies(){
  if(typeof module==='object'&&module.exports)return {
   plan:require('./coaching-v2.js'),prescribe:require('./prescriptions-v2.js'),
-  hybrid:require('./hybrid-v2.js'),schedule:require('./scheduler-v2.js')
+  hybrid:require('./hybrid-v2.js'),schedule:require('./scheduler-v2.js'),runSessions:require('./run-sessions-v2.js')
  };
- return {plan:root.LHRFCoachingV2,prescribe:root.LHRFPrescriptionsV2,hybrid:root.LHRFHybridV2,schedule:root.LHRFSchedulerV2};
+ return {plan:root.LHRFCoachingV2,prescribe:root.LHRFPrescriptionsV2,hybrid:root.LHRFHybridV2,schedule:root.LHRFSchedulerV2,runSessions:root.LHRFRunSessionsV2};
 }
 function buildProgramme(input){
  const c={...(input||{})},d=dependencies();
@@ -15,8 +15,9 @@ function buildProgramme(input){
  for(const phase of outline.phases){
   const prescribed=d.prescribe.prescribeWeek(c,phase);
   const coordinated=d.hybrid.coordinateWeek(c,prescribed);
-  const calendar=d.schedule.scheduleWeek(c,coordinated);
-  const week={...coordinated,objective:phase.objective,deload:phase.deload,
+  const withSessions={...coordinated,runs:d.runSessions.structureRuns(coordinated.runs,c)};
+  const calendar=d.schedule.scheduleWeek(c,withSessions);
+  const week={...withSessions,objective:phase.objective,deload:phase.deload,
    calendar,reviewRequired:coordinated.hybrid.approvalRequired||calendar.requiresReview||calendar.unscheduled>0};
   weeks.push(week);
   if(calendar.unscheduled)issues.push({week:phase.week,type:'unscheduled',detail:calendar.unscheduled+' sessions could not be placed'});
@@ -40,7 +41,7 @@ function buildProgramme(input){
   weeks,issues,checks,passesStructuralChecks:Object.values(checks).every(Boolean),
   limitations:['Prototype only; not wired into live application.',
    'Event dates are not yet mapped to exact calendar weeks; event phase assumes final week.',
-   'Running paces, session-day ordering, athlete recovery and training efficacy are not validated.',
+   'Pace estimates and interval structures are preliminary; individual recovery and coaching efficacy are not validated.',
    'Stress budget is a coarse heuristic and does not prove injury risk or coaching quality.']};
 }
 const api={buildProgramme};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeV2=api;
