@@ -807,6 +807,7 @@ function generatedSessions(c,w){
   settings.rpe=w===19?7:6;
  }
 
+ const peakBenchDay=plan.slots.filter(slot=>slot.items.some(item=>item.type==='strength'&&item.name==='Bench')).slice(-1)[0]?.day;
  const liftCount={};
  for(const slot of plan.slots){if(!slot.items.length)continue;
   const ex=[],runs=[],variationNotes=[];
@@ -817,7 +818,7 @@ function generatedSessions(c,w){
    const reps=settings.reps+(secondary&&!taper?1:0);
    const factor=settings.intensity*(secondary?.9:1)*(lift===c.priority?1.015:1);
    const vb=variationBlock(w,c.weeks),selectedVariation=variationChoice(c,lift,w);
-   const useVariation=secondary&&!taper;const exerciseName=useVariation?selectedVariation.name:lift;
+   const useVariation=secondary&&!taper&&!(strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench');const exerciseName=useVariation?selectedVariation.name:lift;
    const variationSets=useVariation?Math.max(1,sets-(phase==='Specificity'?1:0)):sets;
    const variationReps=useVariation?(phase==='Foundation'?6:phase==='Development'?5:phase==='Specificity'?3:reps):reps;
    const variationRpe=useVariation?(phase==='Foundation'?7:phase==='Development'?7.5:8):Math.max(5,settings.rpe-(secondary?.5:0));
@@ -834,8 +835,8 @@ function generatedSessions(c,w){
    const suggested=useVariation?(loadBaseline>0?roundLoad(loadBaseline*factor):recent?roundLoad(recent.weight*(+recent.rpe<variationRpe-.5?1.025:1)):0):(loadBaseline>0?roundLoad(loadBaseline*factor):0);
    const primary=!secondary;
    const strengthBlock=phase==='Development'||phase==='Specificity';
-   const peakPractice=!!strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench'&&primary;
-    const topEligible=primary&&((strengthBlock&&!vb.deload&&!taper)||peakPractice);
+   const peakPractice=!!strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench'&&slot.day===peakBenchDay;
+    const topEligible=(primary&&strengthBlock&&!vb.deload&&!taper)||peakPractice;
    if(topEligible){
     const profile=peakPractice?{topReps:1,backReps:2,backSets:2,backRpe:6.5,minDrop:.08,maxDrop:.14,fatigue:.01,label:'final heavy single'}:backoffProfile(phase,w/c.weeks);
     const topReps=peakPractice?1:profile.topReps;
