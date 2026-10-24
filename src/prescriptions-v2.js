@@ -37,17 +37,23 @@
    totalStress:(top?.stress||0)+(back?.stress||0),stressBudget:cap,
    assessmentOptional:phase==='assessment'};
  }
- function runningPrescription(week,phase,runCount,priority){
+ function runningPrescription(week,phase,runCount,priority,weeklyBaselineMinutes){
   if(!runCount)return [];
   const runPriority=priority==='Running'||priority==='running';
   const easyBase=runPriority?35:25;
+  const baseline=Number(weeklyBaselineMinutes);
+  const validBaseline=Number.isFinite(baseline)&&baseline>=30&&baseline<=1200;
+  // For 3+ runs the template has (runCount + 0.5) easy-duration units.
+  // For 1-2 runs, all sessions have one unit each.
+  const sessionUnits=runCount>=3?runCount+.5:runCount;
+  const baseMinutes=validBaseline?baseline/sessionUnits:easyBase;
   const factor=phase==='recovery'?.65:phase==='realisation'?.7:phase==='assessment'||phase==='event'?.5:1;
   // Three progressive loading weeks followed by a reduced-load week.
   // Do not restart at the original baseline every fifth week: blocks build on each other.
   const loading=['foundation','development','intensification'].includes(phase);
   const block=Math.floor((week-1)/4),within=(week-1)%4;
   const progression=loading?(1+Math.min(.24,block*.04))*(1+within*.035):1;
-  const easyMinutes=Math.round(easyBase*factor*progression);
+  const easyMinutes=Math.round(baseMinutes*factor*progression);
   const sessions=Array.from({length:runCount},(_,i)=>({
    type:i===0&&runCount>=2?'quality':i===runCount-1&&runCount>=3?'long':'easy',
    minutes:i===runCount-1&&runCount>=3?Math.round(easyMinutes*1.5):easyMinutes,
@@ -62,7 +68,7 @@
   const strengths=strengthLifts.flatMap(lift=>Array.from({length:Math.max(0,Math.min(4,Number(config[lift])||0))},(_,i)=>({
    exposure:i+1,...strengthPrescription(lift,w,phase,config.maxes?.[lift],config.priority)
   })));
-  const runs=runningPrescription(w,phase,Math.max(0,Math.min(7,Number(config.runs)||0)),config.priority);
+  const runs=runningPrescription(w,phase,Math.max(0,Math.min(7,Number(config.runs)||0)),config.priority,config.runningBaselineMinutes);
   const strengthStress=strengths.reduce((n,s)=>n+s.totalStress,0);
   const runningMinutes=runs.reduce((n,s)=>n+s.minutes,0);
   return {week:w,phase,strengths,runs,strengthStress,runningMinutes,
