@@ -2,8 +2,8 @@
 (function(root){
 'use strict';
 function deps(){return typeof module==='object'&&module.exports?
- {trends:require('./strength-trends-v2.js'),feedback:require('./strength-feedback-v2.js')}:
- {trends:root.LHRFStrengthTrendsV2,feedback:root.LHRFStrengthFeedbackV2};}
+ {trends:require('./strength-trends-v2.js'),feedback:require('./strength-feedback-v2.js'),running:require('./running-recovery-v2.js')}:
+ {trends:root.LHRFStrengthTrendsV2,feedback:root.LHRFStrengthFeedbackV2,running:root.LHRFRunningRecoveryV2};}
 function reviewWeek(input){
  const c=input||{},d=deps(),logs=Array.isArray(c.strengthLogs)?c.strengthLogs:[];
  const lifts=['squat','bench','deadlift'],signals=[],proposals=[];
@@ -23,12 +23,14 @@ function reviewWeek(input){
     proposals.push({...single.proposal,source:'latest-session-feedback'});
   }
  }
+ const running=d.running.reviewRunningRecovery(c);
+ for(const proposal of running.proposals)proposals.push({...proposal,source:'running-recovery-feedback'});
  const unique=proposals.filter((p,i)=>proposals.findIndex(q=>q.kind===p.kind&&q.lift===p.lift)===i);
- return {schema:'lhrf-v2-weekly-review',signals,proposals:unique,
+ return {schema:'lhrf-v2-weekly-review',signals,running,proposals:unique,
   approvalRequired:unique.length>0,appliedChanges:[],
   summary:unique.length?unique.length+' proposed coaching change(s) awaiting athlete approval.':
    'No changes proposed from available strength feedback.',
-  limitations:['Strength top-set RPE only; running, sleep, soreness and readiness are not yet included.',
+  limitations:['Running uses reported RPE and optional fatigue/leg soreness only; sleep and pace trends are not yet included.',
    'No programme edits or persistence.']};
 }
 const api={reviewWeek};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFWeeklyReviewV2=api;
