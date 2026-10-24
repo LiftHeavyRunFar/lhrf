@@ -20,7 +20,11 @@
    event:{top:null,back:{sets:0,reps:0,rpe:0,pct:0}}
   };
   const t=templates[phase]||templates.development;
-  const progress=phase==='foundation'||phase==='development'||phase==='intensification'?Math.min(0.025,((week-1)%4)*.008):0;
+  // Carry a modest intensity progression into successive blocks instead of
+  // resetting to the original load every fifth week. RPE remains the ceiling.
+  const loading=['foundation','development','intensification'].includes(phase);
+  const block=Math.floor((week-1)/4),within=(week-1)%4;
+  const progress=loading?Math.min(.04,Math.min(.025,block*.005)+within*.006):0;
   function item(x,role){
    if(!x)return null;
    const pct=clamp(x.pct+progress,.4,.94);
