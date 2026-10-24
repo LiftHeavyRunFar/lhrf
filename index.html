@@ -794,12 +794,27 @@ function hybridRunWeek(c,w){
  if(race&&remaining>0&&remaining<5)warnings.push('Limited time to race: do not force rapid increases.');
  return {km,factor,deload,taper,longShare,longKm,warnings,remaining,provisional:!known,hybridStrain,observed};
 }
+// Programme selection is deterministic and explainable. It does not require AI or
+// replace an athlete's saved plan. Future feedback can adapt these prescriptions.
+function selectTrainingFramework(c){
+ const strengthEvent=!!c.strengthTargetDate;
+ const runningEvent=!!c.runningTargetDate;
+ const runPriority=c.priority==='Running'||c.hybridFocus==='running';
+ return {
+  strength:strengthEvent?'event-specific strength blocks':runPriority?'strength maintenance':'progressive strength blocks',
+  running:runningEvent?'race-specific running':c.runGoal==='fitness'?'aerobic maintenance':'progressive running',
+  coordination:strengthEvent&&runningEvent?'dual-event priority and recovery':runPriority?'protect key runs':'protect key strength sessions',
+  rationale:strengthEvent?'Strength competition requires a specificity phase and event-week taper.':'Without a strength event, continue building rather than imposing a competition peak.'
+ };
+}
 function generatedSessions(c,w){
  const strengthEventWeek=c.strengthTargetDate&&c.startDate?Math.max(1,Math.floor((Date.parse(c.strengthTargetDate+'T12:00:00')-(Date.parse(c.startDate+'T12:00:00')-((new Date(c.startDate+'T12:00:00').getDay()+6)%7)*86400000))/604800000)+1):null;
  const strengthWeeks=strengthEventWeek||c.weeks;
- const phase=strengthEventWeek?customPhase(Math.min(w,strengthWeeks),strengthWeeks):(!c.strengthTargetDate&&w>c.weeks-2?'Development':customPhase(w,c.weeks));const plan=customPlan(c),out=[];
+ const framework=selectTrainingFramework(c);
+ const phase=strengthEventWeek?customPhase(Math.min(w,strengthWeeks),strengthWeeks):(w/c.weeks>.72?'Development':w/c.weeks>.30?'Development':'Foundation');const plan=customPlan(c),out=[];
  const taper=!!strengthEventWeek&&w===strengthEventWeek; // Event week only; preserve final heavy single in preceding week.
  const isRunPriority=c.priority==='Running';
+ // No event date means no artificial strength peaking or taper; the next cycle can continue progression.
  const phases={Foundation:{sets:4,reps:6,intensity:.66,rpe:7},Development:{sets:4,reps:5,intensity:.73,rpe:7.5},Specificity:{sets:3,reps:3,intensity:.82,rpe:8},'Taper / event':{sets:2,reps:2,intensity:.68,rpe:6.5}};
  const settings={...phases[phase]};
  const block=cycleWeek(w,c.weeks);
