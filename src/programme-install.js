@@ -10,5 +10,28 @@ function install(state,config,engineModule,now=new Date().toISOString()){
  next.activeSchedule=engineModule.createEngine({data:next}).generatedSessions(next.customRoadmap,1);next.onboardingComplete=true;
  return next;
 }
-const api={install};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeInstall=api;
+// Repair only future, unfinished running prescriptions; never rebuild lifting or history.
+function refreshRunningGuidance(state,engineModule,now=new Date().toISOString(),liveWorkout=false){
+ const c=state.customRoadmap;
+ if(liveWorkout||!c||c.runTemplate!=='easy-one-quality-10k'||c.runningGuidanceVersion===2)return state;
+ const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
+ next.customRoadmap.runningGuidanceVersion=2;
+ const fresh=engineModule.createEngine({data:next}).generatedSessions(next.customRoadmap,week);
+ const days={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6};
+ const today=new Date(now);today.setHours(0,0,0,0);
+ const monday=new Date(c.startDate+'T12:00:00');monday.setDate(monday.getDate()-(monday.getDay()+6)%7+(week-1)*7);
+ const previous=[];
+ next.activeSchedule=(next.activeSchedule||[]).map(session=>{
+  const offset=days[String(session.day).slice(0,3).toLowerCase()];
+  if(offset===undefined)return session;
+  const date=new Date(monday);date.setDate(date.getDate()+offset);
+  if(!Number.isFinite(+date)||date<today||(next.completedWorkouts||[]).some(x=>x.id===session.id&&Number(x.week||1)===week))return session;
+  const replacement=fresh.find(x=>x.id===session.id);
+  if(!replacement||!(session.runs||[]).length)return session;
+  previous.push({id:session.id,runs:session.runs});return {...session,runs:replacement.runs};
+ });
+ next.runningGuidanceArchive=[...(next.runningGuidanceArchive||[]),{version:1,week,updatedAt:now,sessions:previous}];
+ return next;
+}
+const api={install,refreshRunningGuidance};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeInstall=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

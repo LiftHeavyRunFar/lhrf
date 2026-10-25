@@ -346,7 +346,7 @@ function hybridRecoverySignals(){
  const distance=(a,b)=>runs.filter(r=>{const age=(now-Date.parse(r.date))/day;return age>=a&&age<b}).reduce((sum,r)=>sum+(+r.km||0),0);
  const recentKm=distance(0,7),priorKm=distance(7,14);
  const recentLong=Math.max(0,...runs.filter(r=>(now-Date.parse(r.date))/day<30).map(r=>+r.km||0));
- const hardRuns=runs.filter(r=>(now-Date.parse(r.date))/day<10&&+r.rpe>=8).length;
+ const hardRuns=runs.filter(r=>(now-Date.parse(r.date))/day<10&&(Number(r.rpe)>=8||(r.rpe==null&&/quality|interval|threshold|tempo/i.test(r.type||'')))).length;
  const lower=(data.sets||[]).filter(x=>{const t=Date.parse(x.date);return Number.isFinite(t)&&t<=now&&t>=now-10*day&&/squat|deadlift|leg press|lunge/i.test(x.exercise||'')&&+x.rpe>=8});
  const lowerDays=new Set(lower.map(x=>String(x.date).slice(0,10))).size;
  const recovery=typeof reviewRecovery==='function'?reviewRecovery():{lowDays:0,symptoms:false};
@@ -585,6 +585,7 @@ function generatedSessions(c,w){
    const isLongRun=/Long run|Longer easy aerobic/.test(item.detail);
    const template=candidatePolicy(c)&&c.runTemplate==='easy-one-quality-10k'&&c.runGoal==='10k';
    const quality=!isLongRun&&c.runGoal!=='fitness'&&/Quality/.test(item.detail)&&!(strengthEventWeek&&w===strengthEventWeek)&&(!template||(!hybridRunWeek(c,w).taper&&!out.some(s=>s.runs.some(r=>r.role==='quality-run'))));
+   const distanceGuidance=broaderPolicy(c)||c.runningGuidanceVersion===2;
    const rp=runningPaces(c),runWeek=hybridRunWeek(c,w),weekly=runWeek.km;
    const longKm=weekly*runWeek.longShare,otherKm=Math.max(0,weekly-longKm)/Math.max(1,c.runs-1);
    const perRun=isLongRun?longKm:otherKm;
@@ -596,19 +597,19 @@ function generatedSessions(c,w){
     const reps=candidatePolicy(c)&&runWeek.deload?Math.max(2,Math.ceil(baseReps*.5)):baseReps;
     const workKm=template?.8:runWeek.taper?.4:phase==='Foundation'?.5:.6,recoveryKm=.25;
     const warmKm=template?2:1.5;
-    // Allocate the remaining easy distance here so weekly targets match actual sessions.
-    const coolKm=template?Math.max(1,Math.round((perRun-warmKm-reps*workKm-(reps-1)*recoveryKm)*4)/4):1.25;
+    // Versioned correction: cooldowns are short steps, never padding for a mileage budget.
+    const coolKm=distanceGuidance?1.25:template?Math.max(1,Math.round((perRun-warmKm-reps*workKm-(reps-1)*recoveryKm)*4)/4):1.25;
     const easy=rp?paceText(rp.easyLow)+' to '+paceText(rp.easyHigh):'Easy · RPE 3–4';
-    const threshold=rp?paceText(rp.threshold):'RPE 7 · pace to be established';
+    const threshold=rp?(distanceGuidance?paceText(rp.threshold-5)+' to '+paceText(rp.threshold+5):paceText(rp.threshold)):distanceGuidance?'Add a recent running PB to set pace':'RPE 7 · pace to be established';
     const steps=[{label:'Warm-up',distanceKm:warmKm,detail:template?'Zone 2 / conversational · RPE 3–4':'Easy running · RPE 3–4',pace:easy}];
     for(let i=0;i<reps;i++){
       steps.push({label:'Threshold interval '+(i+1)+' of '+reps,distanceKm:workKm,detail:'RPE 7 · controlled',pace:threshold});
-      if(i<reps-1)steps.push({label:'Easy recovery',distanceKm:recoveryKm,detail:'Jog or walk · RPE 2–3',pace:'Easy'});
+      if(i<reps-1)steps.push({label:'Easy recovery',distanceKm:recoveryKm,detail:'Jog or walk · RPE 2–3',pace:distanceGuidance?easy:'Easy'});
     }
     steps.push({label:'Cool-down',distanceKm:coolKm,detail:template?'Zone 2 / conversational · RPE 3–4':'Easy running · RPE 3–4',pace:easy});
     const distanceKm=steps.reduce((n,x)=>n+x.distanceKm,0);
     const minutes=Math.round((warmKm+coolKm+(reps-1)*recoveryKm)*(rp?.easyLow||480)/60+reps*workKm*(rp?.threshold||420)/60);
-    runs.push({role:'quality-run',name:'Controlled threshold intervals',distanceKm,minutes,rpe:7,pace:threshold,paceRole:'threshold intervals only',steps,structure:`${distanceLabel(warmKm)} easy + ${reps} × ${distanceLabel(workKm)} threshold / ${distanceLabel(recoveryKm)} recovery + ${distanceLabel(coolKm)} easy`,workMinutes:Math.round(reps*workKm*(rp?.threshold||420)/60),reason:template?'One controlled intensity session this week. Warm-up, recoveries and remaining distance stay conversational / Zone 2; pace is secondary to effort.':'Distances are the targets. Pace guides threshold efforts; adjust using RPE.'});
+    runs.push({role:'quality-run',name:'Controlled threshold intervals',distanceKm,minutes,rpe:7,pace:threshold,paceRole:'threshold intervals only',steps,structure:`${distanceLabel(warmKm)} easy + ${reps} × ${distanceLabel(workKm)} threshold / ${distanceLabel(recoveryKm)} recovery + ${distanceLabel(coolKm)} easy`,workMinutes:Math.round(reps*workKm*(rp?.threshold||420)/60),reason:distanceGuidance?'One controlled intensity session. Follow the distance and pace for each step; weekly mileage is the sum of prescribed sessions, with no filler cooldown.':template?'One controlled intensity session this week. Warm-up, recoveries and remaining distance stay conversational / Zone 2; pace is secondary to effort.':'Distances are the targets. Pace guides threshold efforts; adjust using RPE.'});
    }else{
     const distanceKm=Math.round(perRun*4)/4;
     const duration=Math.round(distanceKm*(rp?.easyLow||480)/60);

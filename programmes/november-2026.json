@@ -126,5 +126,6 @@
   ],
   "programmeVersion": "2026-10-27-v1",
   "programmeId": "november-2026",
-  "sessionNamespace": "november-2026-"
+  "sessionNamespace": "november-2026-",
+  "runningGuidanceVersion": 2
 }
