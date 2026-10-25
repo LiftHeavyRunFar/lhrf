@@ -29,6 +29,11 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  assert.equal(await page.locator('#thisWeekCarousel .day-slide').count(),5);
  assert.equal(await page.locator('#todaySessions').count(),0,'Weekly cards are the sole Today workout list');
  assert.equal(await page.locator('.day-workout.is-complete').count(),2);
+ assert.equal(await page.locator('#upcomingSessions button').count(),5);
+ const upcoming=page.locator('#upcomingSessions button').first();
+ assert.equal(await upcoming.getAttribute('data-date'),'2026-10-27');assert.equal(await upcoming.getAttribute('data-week'),'2');
+ await upcoming.click();assert.match(await page.locator('#livePreview').innerText(),/Week 2 · Future preview/);assert.equal(await page.locator('#previewStart').count(),0);assert.equal(await page.locator('#preWorkoutReadiness').isVisible(),false);await page.locator('#previewClose').click();
+
  assert.deepEqual(await getData(),fixture,'initialisation preserves every athlete field');
  for(const tab of ['today','train','plan','progress','settings']){
   await page.locator(`nav [data-screen="${tab}"]`).click();
