@@ -21,7 +21,16 @@ function buildDatedProgramme(config){
   else if(w>Math.max(...eventWeeks))phase='foundation';
   else if(w<Math.max(...eventWeeks)&&['event','realisation','assessment'].includes(phase))phase='development';
   const next=d.hybrid.coordinateWeek(c,d.prescribe.prescribeWeek(c,{week:w,phase}));
-  const schedule=d.schedule.scheduleWeek(c,next);
+  let schedule=d.schedule.scheduleWeek(c,next);
+  // An event is not an ordinary training workout. Avoid presenting scheduled
+  // training as a competition-day prescription before sport-specific taper validation.
+  if(events.length){
+   const eventSessions=events.map(e=>({id:'event-'+e.sport,kind:'event',sport:e.sport,
+    date:e.date,dayIndex:e.dayOfWeek,day:d.schedule.DAYS[e.dayOfWeek],fixed:true}));
+   schedule={...schedule,sessions:eventSessions,requiresReview:true,
+    warnings:[...schedule.warnings,'Event week requires athlete-approved sport-specific taper and training schedule.'],
+    withheldTrainingSessions:schedule.sessions.length};
+  }
   weeks.push({...next,objective:phase==='event'?'Event week: '+events.map(e=>e.sport+' '+e.date).join(', '):phase==='realisation'?'Reduce fatigue before event':'Continue training with recovery awareness',
    calendar:schedule,events,reviewRequired:next.hybrid.approvalRequired||schedule.requiresReview});
  }
@@ -35,7 +44,7 @@ function buildDatedProgramme(config){
  return {...result,schema:'lhrf-v2-dated-preview',valid:true,eventCalendar:calendar,weeks,issues,
   checks,passesStructuralChecks:false,
   limitations:[...result.limitations,'Date-aware phases are provisional; per-sport event-week session prescriptions and charts are not integrated.',
-   'This is not safe for live competition programming without sport-specific taper and event-day scheduling.']};
+   'Event dates are placed exactly, but ordinary event-week training is withheld pending sport-specific taper review.']};
 }
 const api={buildDatedProgramme};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFDatedProgrammeV2=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
