@@ -314,12 +314,16 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
       planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace}:
       {sets:item.weekStrengths.map(x=>({role:x.role,sets:x.sets,reps:x.reps,rpe:x.rpe,weight:x.suggestedWeight}))}};
     const override=readOverrides()[kind];
-    if(kind!=='run'&&override&&prescription.planned.sets.length){
-     const base=Number(prescription.planned.sets[0].weight);
+    // A prior approval is not permission to raise loads in a taper or recovery week.
+    // Apply only to a real top set in an ordinary loading phase.
+    const loadingPhase=['foundation','development','intensification'].includes(chosen.phase);
+    const topSet=prescription.planned.sets.find(x=>x.role==='top');
+    if(kind!=='run'&&override&&loadingPhase&&topSet){
+     const base=Number(topSet.weight);
      if(Number.isFinite(base)&&base>0&&Number.isFinite(override.delta)&&Math.abs(override.delta)<=10){
       const next=Math.max(2.5,Math.round((base+override.delta)/2.5)*2.5);
+      topSet.weight=next;
       prescription.approvedOverride={original:base,weight:next,delta:override.delta};
-      prescription.planned.sets[0].weight=next;
      }
     }
     try{sessionStorage.setItem('lhrf-v2-live-handoff',JSON.stringify(prescription));window.location.href='./index.html?trialTrain=1#train'}
