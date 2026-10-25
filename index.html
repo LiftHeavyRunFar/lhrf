@@ -658,6 +658,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
 (function(){
  const $id=id=>document.getElementById(id);
  const move=(parent,child)=>{if(parent&&child)parent.appendChild(child)};
+ const details=(label,children,open=false)=>{const d=document.createElement('details');d.className='ux-details';d.open=open;const sum=document.createElement('summary');sum.textContent=label;d.appendChild(sum);for(const c of children)if(c)d.appendChild(c);return d};
  const intro=(title,subtitle)=>{const d=document.createElement('div');d.className='ux-intro';d.innerHTML='<h2>'+title+'</h2><p>'+subtitle+'</p>';return d};
  const today=$id('today'),plan=$id('plan'),strength=$id('strength'),running=$id('running'),progress=$id('progress');
  // Keep all existing elements and IDs in the DOM: only reorganize them.
