@@ -1,19 +1,21 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const html=fs.readFileSync('coaching-preview.html','utf8');
-for(const path of ['coaching-v2','prescriptions-v2','hybrid-v2','scheduler-v2','running-paces-v2','run-sessions-v2','programme-v2']){
- assert.ok(html.includes('./src/'+path+'.js'),'Missing browser dependency '+path);
+for(const path of ['coach-engine','coach-adapters']){
+ assert.ok(html.includes('./src/'+path+'.js'),'Missing shared browser dependency '+path);
  assert.ok(fs.existsSync('src/'+path+'.js'),'Dependency not found '+path);
 }
+assert.ok(!/<script src="\.\/src\/[^\"]*-v2\.js"/.test(html),'Historical prototypes cannot be loaded by the preview');
 assert.ok(html.includes('Prototype, not yet approved for athlete use.'));
-assert.ok(html.includes('LHRFProgrammeV2.buildProgramme'));
+assert.ok(html.includes('LHRFCoachAdapters.previewProgramme(c)'));
+assert.ok(html.includes('LHRFCoachAdapters.reviewPreviewLogs(logs,profile)'));
 assert.ok(html.includes("maxes:{bench:num('benchMax')"),'Bench baseline must reach prescription engine');
 assert.ok(html.includes('suggestedWeight'),'Strength prescriptions must be visible');
 assert.ok(html.includes('runMinutes'),'Running durations must be visible');
 for(const key of ['squatMax','deadliftMax','tenKTime','runningBaselineMinutes'])assert.ok(html.includes('name="'+key+'"'),'Missing athlete input '+key);
 assert.ok(html.includes('runPace:run?.pace?.label'),'Pace band must be visible');
 for(const key of ['startDate','strengthTargetDate','runningTargetDate'])assert.ok(html.includes('name="'+key+'"'),'Missing date field '+key);
-assert.ok(html.includes('LHRFDatedProgrammeV2.buildDatedProgramme'));
+assert.ok(html.includes('This preview uses the same coaching engine as the app.'));
 assert.ok(html.includes("entry.kind==='event'"),'Event entries must render separately');
 assert.ok(html.includes("storageKey='lhrf-v2-preview-athlete-inputs'"),'Trial inputs must use separate storage key');
 assert.ok(html.includes('localStorage.getItem(storageKey)'));
@@ -31,6 +33,6 @@ assert.ok(html.includes('id="addSet"'),'Must support adding actual lifting sets'
 assert.ok(html.includes('sets,notes,plannedSession:activePrescription,recordedAt'),'Set-by-set data must be persisted');
 assert.ok(html.includes('setRows.replaceChildren()'),'Set rows must reset only after successful save');
 assert.ok(html.includes("source:'genuine-athlete-entry'"),'Real logs must be explicitly marked');
-assert.ok(html.includes('Recording a session does not yet change the programme.'),'Do not imply live adaptation');
+assert.ok(html.includes('Recording a session alone does not apply coaching changes; load overrides require explicit approval.'),'Do not imply live adaptation');
 assert.ok(!html.includes('localStorage.clear('),'Preview must not clear app storage');
 console.log('PASS read-only browser preview dependency and safety checks');

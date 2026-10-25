@@ -2,9 +2,11 @@
   "name": "lhrf-coaching-engine",
   "private": true,
   "version": "0.0.0",
-  "description": "Zero-dependency tests for the isolated LHRF coaching v2 prototype",
+  "description": "Shared LHRF coaching engine and synthetic athlete tests; historical v2 regressions retained",
   "scripts": {
-    "test": "node --test tests/*.test.cjs"
+    "test": "node --test tests/*.test.cjs",
+    "test:athletes": "node scripts/test-athletes.cjs",
+    "test:athletes:json": "node scripts/test-athletes.cjs --json"
   },
   "engines": {
     "node": ">=20"

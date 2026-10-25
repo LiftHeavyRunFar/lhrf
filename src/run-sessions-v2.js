@@ -4,9 +4,11 @@
 function deps(){return typeof module==='object'&&module.exports?require('./running-paces-v2.js'):root.LHRFRunningPacesV2}
 function structureRuns(runs,config){
  const pace=deps(),annotated=pace.attachPaces(runs,config);
+ const easyFallback=(run,minutes)=>({...pace.attachPaces([{...run,type:'easy',effort:'conversational / RPE 3–4'}],config)[0],minutes,workout:{kind:'continuous-easy',blocks:[{kind:'easy',minutes}],totalMinutes:minutes}});
  return annotated.map(run=>{
   const minutes=Math.max(0,Math.round(Number(run.minutes)||0));
-  if(run.type!=='quality'||minutes<24){
+  if(run.type==='quality'&&minutes<24)return easyFallback(run,minutes);
+  if(run.type!=='quality'){
    return {...run,minutes,workout:{kind:run.type==='long'?'long-easy':'continuous-easy',
     blocks:[{kind:'easy',minutes}],totalMinutes:minutes},effort:run.type==='quality'?'conversational / RPE 3–4':run.effort};
   }
@@ -18,8 +20,7 @@ function structureRuns(runs,config){
   const workMinutes=3;
   const recoveryMinutes=2;
   const used=repetitions*workMinutes+recoveries*recoveryMinutes;
-  if(used>available)return {...run,minutes,workout:{kind:'continuous-easy',
-   blocks:[{kind:'easy',minutes}],totalMinutes:minutes},effort:'conversational / RPE 3–4'};
+  if(used>available)return easyFallback(run,minutes);
   const extra=available-used;
   const blocks=[{kind:'warmup',minutes:warmup+extra,effort:'RPE 3–4'}];
   for(let i=0;i<repetitions;i++){

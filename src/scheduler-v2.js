@@ -34,7 +34,14 @@ function scheduleWeek(config,week){
   if(((lower(a)&&demanding(b))||(lower(b)&&demanding(a)))&&gap<=1)warnings.push('Lower-body lift and demanding run '+gap+' days apart: '+a.id+'/'+b.id);
   else if(a.hard&&b.hard&&gap===0)warnings.push('Two hard sessions on '+a.day+': '+a.id+'/'+b.id);
  }
- return {week:week.week,sessions:placed.sort((a,b)=>a.dayIndex-b.dayIndex),warnings,requiresReview:warnings.length>0,unscheduled:items.length-placed.length,limitations:['Day-level spacing only; no times or measured fatigue.','Fixed athlete constraints never silently overridden.']};
+ const capacityConflicts=[];
+ const capacity=Number(c.maxSessionsPerDay);
+ if(Number.isInteger(capacity)&&capacity>0){
+  for(const day of days){const count=placed.filter(s=>s.dayIndex===day).length;
+   if(count>capacity){capacityConflicts.push({day:DAYS[day],requested:count,limit:capacity});warnings.push('Daily session capacity exceeded on '+DAYS[day]+': '+count+' requested, limit '+capacity+'.');}
+  }
+ }
+ return {week:week.week,capacityConflicts,sessions:placed.sort((a,b)=>a.dayIndex-b.dayIndex),warnings,requiresReview:warnings.length>0,unscheduled:items.length-placed.length,limitations:['Day-level spacing only; no times or measured fatigue.','Fixed athlete constraints never silently overridden.']};
 }
 const api={scheduleWeek,DAYS};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFSchedulerV2=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

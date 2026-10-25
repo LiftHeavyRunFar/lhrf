@@ -3,9 +3,9 @@
 'use strict';
 function deps(){return typeof module==='object'&&module.exports?{
  calendar:require('./event-calendar-v2.js'),programme:require('./programme-v2.js'),
- prescribe:require('./prescriptions-v2.js'),hybrid:require('./hybrid-v2.js'),schedule:require('./scheduler-v2.js')
+ prescribe:require('./prescriptions-v2.js'),hybrid:require('./hybrid-v2.js'),schedule:require('./scheduler-v2.js'),runSessions:require('./run-sessions-v2.js')
 }:{calendar:root.LHRFEventCalendarV2,programme:root.LHRFProgrammeV2,
- prescribe:root.LHRFPrescriptionsV2,hybrid:root.LHRFHybridV2,schedule:root.LHRFSchedulerV2};}
+ prescribe:root.LHRFPrescriptionsV2,hybrid:root.LHRFHybridV2,schedule:root.LHRFSchedulerV2,runSessions:root.LHRFRunSessionsV2};}
 function buildDatedProgramme(config){
  const c={...(config||{})},d=deps(),calendar=d.calendar.eventCalendar(c);
  if(calendar.status==='invalid')return {schema:'lhrf-v2-dated-preview',valid:false,errors:calendar.errors,eventCalendar:calendar};
@@ -20,7 +20,8 @@ function buildDatedProgramme(config){
   else if(eventWeeks.has(w-1))phase='recovery';
   else if(w>Math.max(...eventWeeks))phase='foundation';
   else if(w<Math.max(...eventWeeks)&&['event','realisation','assessment'].includes(phase))phase='development';
-  const next=d.hybrid.coordinateWeek(c,d.prescribe.prescribeWeek(c,{week:w,phase}));
+  const coordinated=d.hybrid.coordinateWeek(c,d.prescribe.prescribeWeek(c,{week:w,phase}));
+  const next={...coordinated,runs:d.runSessions.structureRuns(coordinated.runs,c)};
   let schedule=d.schedule.scheduleWeek(c,next);
   // An event is not an ordinary training workout. Avoid presenting scheduled
   // training as a competition-day prescription before sport-specific taper validation.
@@ -31,7 +32,7 @@ function buildDatedProgramme(config){
     warnings:[...schedule.warnings,'Event week requires athlete-approved sport-specific taper and training schedule.'],
     withheldTrainingSessions:schedule.sessions.length};
   }
-  weeks.push({...next,objective:phase==='event'?'Event week: '+events.map(e=>e.sport+' '+e.date).join(', '):phase==='realisation'?'Reduce fatigue before event':'Continue training with recovery awareness',
+  weeks.push({...next,deload:phase==='recovery',objective:phase==='event'?'Event week: '+events.map(e=>e.sport+' '+e.date).join(', '):phase==='realisation'?'Reduce fatigue before event':'Continue training with recovery awareness',
    calendar:schedule,events,reviewRequired:next.hybrid.approvalRequired||schedule.requiresReview});
  }
  const issues=weeks.flatMap(w=>[

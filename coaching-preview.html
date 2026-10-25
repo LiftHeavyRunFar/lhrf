@@ -15,7 +15,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <a href="./index.html">← Existing LHRF app</a>
 <h1>Coaching engine v2</h1><p>Programme preview — your inputs are saved locally under a separate trial key. Existing onboarding and training logs are not changed.</p>
 <div class="panel"><strong class="warn">Prototype, not yet approved for athlete use.</strong>
-<p>Dated competition plans are shown for inspection only: event-week workouts are withheld until sport-specific tapers are validated. Individualised recovery and live workout logging are still being validated.</p></div>
+<p>This preview uses the same coaching engine as the app. Programmes and event-week prescriptions remain subject to athlete review. Individualised recovery and live workout logging are still being validated. Recording a session alone does not apply coaching changes; load overrides require explicit approval.</p></div>
 <form id="builder" class="panel"><h2>Explore an undated training block</h2>
 <div class="grid">
 <label>Programme start date (optional) <input name="startDate" type="date"></label>
@@ -26,6 +26,9 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <label>Squat sessions/week <input name="squat" type="number" min="0" max="4" value="1" required></label>
 <label>Deadlift sessions/week <input name="deadlift" type="number" min="0" max="4" value="1" required></label>
 <label>Runs/week <input name="runs" type="number" min="0" max="6" value="3" required></label>
+<label>Strength experience <select name="trainingAge"><option value="">Please confirm</option><option value="beginner">Beginner</option><option value="returning">Returning after a break</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></label>
+<label>Strength objective <select name="strengthMode"><option value="auto">Follow goal priority</option><option value="progression">Build strength</option><option value="maintenance">Maintain strength</option></select></label>
+<label>Running objective <select name="runGoal"><option value="fitness">General fitness</option><option value="5k">5K</option><option value="10k">10K</option><option value="half">Half marathon</option><option value="marathon">Marathon</option></select></label>
 <label>Priority <select name="priority"><option>Bench</option><option>Running</option><option>Squat</option><option>Deadlift</option><option>Balanced</option></select></label>
 <label>Bench 1RM (kg, optional) <input name="benchMax" type="number" min="0" max="500" step="2.5" value="160"></label>
 <label>Squat 1RM (kg, optional) <input name="squatMax" type="number" min="0" max="600" step="2.5" placeholder="Unknown"></label>
@@ -48,15 +51,8 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 </div><label>Notes (optional) <input type="text" name="notes" maxlength="300" style="max-width:100%;width:100%" placeholder="How did it feel?"></label>
 <div id="setLogger"><h3>Working sets (optional)</h3><p class="muted">Add each completed set and tick Completed. Suggested sets must be confirmed individually before saving. For running, use duration and RPE above instead.</p><div id="setRows"></div><button type="button" id="addSet">+ Add set</button></div><p><button type="submit">Save genuine session</button></p></form>
 <p id="logMessage" role="status"></p><div id="logHistory"></div><div id="performanceReview" aria-live="polite"></div></section>
-<script src="./src/coaching-v2.js"></script>
-<script src="./src/prescriptions-v2.js"></script>
-<script src="./src/hybrid-v2.js"></script>
-<script src="./src/scheduler-v2.js"></script>
-<script src="./src/running-paces-v2.js"></script>
-<script src="./src/run-sessions-v2.js"></script>
-<script src="./src/programme-v2.js"></script>
-<script src="./src/event-calendar-v2.js"></script>
-<script src="./src/dated-programme-v2.js"></script>
+<script src="./src/coach-engine.js"></script>
+<script src="./src/coach-adapters.js"></script>
 <script>
 (function(){
  const form=document.getElementById('builder'),out=document.getElementById('output');
@@ -67,7 +63,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   try{keys.forEach(k=>localStorage.removeItem(k));document.getElementById('clearTrialStatus').textContent='Trial workouts and coach decisions cleared. Ready for your first real session.';renderLogs()}
   catch(err){document.getElementById('clearTrialStatus').textContent='Could not clear all trial data. Please retry.'}
  });
- const fields=['startDate','strengthTargetDate','runningTargetDate','weeks','bench','squat','deadlift','runs','priority','benchMax','squatMax','deadliftMax','tenKTime','runningBaselineMinutes'];
+ const fields=['trainingAge','strengthMode','runGoal','startDate','strengthTargetDate','runningTargetDate','weeks','bench','squat','deadlift','runs','priority','benchMax','squatMax','deadliftMax','tenKTime','runningBaselineMinutes'];
  try{
   const saved=JSON.parse(localStorage.getItem(storageKey)||'null');
   if(saved&&typeof saved==='object')for(const name of fields){
@@ -112,91 +108,15 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    const targets=planned.sets||[],actual=x.sets||[];
    if(!targets.length||!actual.length)return {label:x.date+' · '+x.kind,message:'Not enough paired planned and completed sets to assess the prescription.'};
    const targetSets=targets.reduce((n,g)=>n+Number(g.sets||0),0);
-   const top=targets.find(group=>group.role==='top');
-   const first=actual[0];
-   const comparable=top&&first&&Number(top.weight)>0&&Number(first.weight)>0&&
-    Math.abs(Number(top.weight)-Number(first.weight))<=2.5&&Number(first.reps)===Number(top.reps)&&
-    Number.isFinite(Number(first.rpe))&&Number.isFinite(Number(top.rpe));
-   const gap=comparable?Number(first.rpe)-Number(top.rpe):null;
-   const effort=!comparable?'Top-set effort not compared: no matching prescribed top set, reps or weight.':
-    gap>=1?'Top set felt harder than prescribed.':gap<=-1?'Top set felt easier than prescribed.':'Top-set effort was close to target.';
-   return {label:x.date+' · '+x.kind,message:'Completed '+actual.length+'/'+targetSets+' planned sets. '+effort+' Consider readiness and repeat-session trends before changing loads.'};
+   return {label:x.date+' · '+x.kind,message:'Completed '+actual.length+'/'+targetSets+' planned sets. Coaching decisions are assessed by the shared engine below.'};
   });
-  const groups={};
-  for(const entry of [...logs].sort((a,b)=>String(a.date).localeCompare(String(b.date)))){
-   if(!['bench','squat','deadlift'].includes(entry.kind)||!entry.plannedSession?.planned?.sets?.length||!entry.sets?.length)continue;
-   const target=entry.plannedSession.planned.sets.find(x=>x.role==='top');
-   // Only compare the prescribed top set. A logged backoff or altered load
-   // is not valid evidence that the prescribed top-set RPE was too easy/hard.
-   if(!target||!entry.sets.length)continue;
-   const actualSet=entry.sets[0];
-   const planned=Number(target.rpe),actual=Number(actualSet.rpe);
-   const plannedWeight=Number(target.weight),actualWeight=Number(actualSet.weight);
-   const plannedReps=Number(target.reps),actualReps=Number(actualSet.reps);
-   if(!Number.isFinite(planned)||!Number.isFinite(actual)||
-      !(plannedWeight>0&&actualWeight>0&&plannedReps>0&&actualReps===plannedReps))continue;
-   // A single 2.5 kg rounding difference is tolerated; bigger changes invalidate the comparison.
-   if(Math.abs(plannedWeight-actualWeight)>2.5)continue;
-   const key=entry.kind+'|'+plannedReps+'|top';
-   (groups[key]??=[]).push({date:entry.date,delta:actual-planned,lift:entry.kind});
-  }
-  const proposals=[];
-  for(const entries of Object.values(groups)){
-   const lift=entries[0].lift;
-   const unique=[...new Map(entries.map(x=>[x.date,x])).values()];
-   const last=unique.slice(-3);
-   if(last.length<3)continue;
-   const harder=last.every(x=>x.delta>=1),easier=last.every(x=>x.delta<=-1);
-   if(!harder&&!easier)continue;
-   proposals.push({lift,direction:harder?'hard':'easy',date:last[2].date,latest:entries.at(-1),message:harder?'Three comparable sessions were harder than prescribed. Review fatigue and recovery before considering a smaller accessory workload.':'Three comparable sessions were easier than prescribed. Consider a modest load progression after reviewing technique and recovery.',evidence:last.map(x=>x.date+' ('+(x.delta>0?'+':'')+x.delta+' RPE)').join(', ')});
-  }
-  // Hybrid fatigue guard: run load and reduced-volume phases require a manual review.
-  for(const proposal of proposals){
-   const last=logs.filter(x=>x.kind===proposal.lift&&x.plannedSession?.planned?.sets?.length).at(-1);
-   const phase=String(last?.plannedSession?.phase||'').toLowerCase();
-   const anchor=Date.parse(proposal.date+'T12:00:00Z');
-   const recentRuns=logs.filter(x=>x.kind==='run'&&Number(x.minutes)>0&&Number.isFinite(Date.parse(x.date+'T12:00:00Z'))&&anchor-Date.parse(x.date+'T12:00:00Z')>=0&&anchor-Date.parse(x.date+'T12:00:00Z')<=7*86400000);
-   const runMinutes=recentRuns.reduce((n,x)=>n+Number(x.minutes),0);
-   const earlierRuns=logs.filter(x=>x.kind==='run'&&Number(x.minutes)>0&&anchor-Date.parse(x.date+'T12:00:00Z')>7*86400000&&anchor-Date.parse(x.date+'T12:00:00Z')<=14*86400000);
-   const priorMinutes=earlierRuns.reduce((n,x)=>n+Number(x.minutes),0);
-   const highRunLoad=priorMinutes>0&&runMinutes>priorMinutes*1.3&&runMinutes-priorMinutes>=20;
-   const phaseCaution=/deload|taper|recovery|peak|competition/.test(phase);
-   proposal.cautions=[];
-   if(highRunLoad)proposal.cautions.push('Running duration increased from '+priorMinutes+' to '+runMinutes+' minutes across consecutive seven-day windows.');
-   if(phaseCaution)proposal.cautions.push('Current phase ('+phase+') requires a manual coaching review.');
-   if(!priorMinutes||!runMinutes)proposal.cautions.push('Running load history is incomplete; no assumption of full recovery.');
-   // Use genuine session feedback only when a recognizable numeric score exists.
-   const recentLiftLogs=logs.filter(x=>x.kind===proposal.lift&&x.date<=proposal.date).slice(-3);
-   const feedback=recentLiftLogs.map(x=>x.postWorkout||x.recovery||x.feedback||x.notes).filter(x=>x&&typeof x==='object');
-   const fatigueScores=feedback.map(x=>Number(x.fatigue??x.fatigueScore??x.exertion)).filter(x=>Number.isFinite(x)&&x>=1&&x<=10);
-   const readinessScores=feedback.map(x=>Number(x.readiness??x.readinessScore)).filter(x=>Number.isFinite(x)&&x>=1&&x<=10);
-   const painFlag=feedback.some(x=>x.pain===true||x.injury===true||x.painReported===true);
-   const highFatigue=fatigueScores.length>=2&&fatigueScores.slice(-2).every(n=>n>=8);
-   const lowReadiness=readinessScores.length>=2&&readinessScores.slice(-2).every(n=>n<=3);
-   const lowEnergyReports=feedback.filter(x=>['low','okay','good'].includes(x.energy)).slice(-2);
-   const repeatedLowEnergy=lowEnergyReports.length===2&&lowEnergyReports.every(x=>x.energy==='low');
-   const harderReports=feedback.filter(x=>['harder','expected','easier'].includes(x.difficulty)).slice(-2);
-   const repeatedHarder=harderReports.length===2&&harderReports.every(x=>x.difficulty==='harder');
-   if(painFlag)proposal.cautions.push('Pain or injury was flagged in workout feedback. Seek appropriate assessment before progressing.');
-   if(highFatigue)proposal.cautions.push('Recent feedback reports sustained high fatigue. Review recovery and accessory volume first.');
-   if(lowReadiness)proposal.cautions.push('Recent feedback reports low readiness. Hold load progression until recovery improves.');
-   if(repeatedLowEnergy)proposal.cautions.push('Two recent workouts reported low energy. Review sleep, fuelling and recovery before adjusting loads.');
-   if(repeatedHarder)proposal.cautions.push('Two recent workouts felt harder than expected. Review training stress before progressing.');
-   if(!feedback.length)proposal.cautions.push('No structured recovery feedback available; use RPE trends cautiously.');
-   proposal.blockLoad=highRunLoad||phaseCaution||painFlag||highFatigue||lowReadiness||repeatedLowEnergy||repeatedHarder;
-  }
-  // Conservative proposed loading is a preview only; do not alter current or future workouts.
-  for(const proposal of proposals){
-   const entries=logs.filter(x=>x.kind===proposal.lift&&x.plannedSession?.planned?.sets?.length&&x.sets?.length);
-   const last=entries.at(-1);
-   const planned=last?.plannedSession?.planned?.sets?.[0];
-   const current=Number(planned?.weight);
-   if(!(current>0)||proposal.blockLoad)continue;
-   const step=proposal.direction==='easy'?2.5:-2.5;
-   const next=Math.max(0,Math.round((current+step)/2.5)*2.5);
-   proposal.loadSuggestion=proposal.direction==='easy'?{current,next,description:'Optional next top-set target: '+next+' kg (+'+step+' kg). Confirm recovery and bar speed before applying.'}:
-    {current,next,description:'Optional next top-set target: '+next+' kg ('+step+' kg), only if fatigue persists after reviewing recovery and accessories.'};
-  }
+  // Adapt storage rows; the app and preview use the same coaching decisions.
+  const previewFields=new FormData(form),num=k=>Number(previewFields.get(k));
+  const profile={coachingPolicy:'review-v2',hybridFocus:String(previewFields.get('priority'))==='Running'?'running':'balanced',trainingAge:String(previewFields.get('trainingAge')||''),strengthMode:String(previewFields.get('strengthMode')||'auto'),runGoal:String(previewFields.get('runGoal')||'fitness'),weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),runs:num('runs'),priority:String(previewFields.get('priority')),
+   startDate:String(previewFields.get('startDate')||''),strengthTargetDate:String(previewFields.get('strengthTargetDate')||''),runningTargetDate:String(previewFields.get('runningTargetDate')||''),
+   maxes:{bench:num('benchMax'),squat:num('squatMax'),deadlift:num('deadliftMax')},tenKTime:String(previewFields.get('tenKTime')||''),runningBaselineMinutes:num('runningBaselineMinutes')};
+  const assessment=LHRFCoachAdapters.reviewPreviewLogs(logs,profile);
+  const proposals=assessment.proposals;
   const decisionKey='lhrf-v2-coach-decisions';
   let decisions={};try{decisions=JSON.parse(localStorage.getItem(decisionKey)||'{}')||{}}catch(err){}
   const trendHtml=proposals.length?'<h3>Coach proposals · approval required</h3>'+proposals.map(x=>{
@@ -205,7 +125,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    return '<div class="week"><p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small></p>'+(x.cautions.length?'<p><strong>Hybrid context:</strong> '+esc(x.cautions.join(' '))+'</p>':'')+(x.loadSuggestion?'<p><strong>Example adjustment (not applied):</strong> '+esc(x.loadSuggestion.description)+'</p>':'<p>Suggested weight unavailable; review load manually.</p>')+
     (state?'<p><strong>Decision: '+esc(state)+'.</strong> '+(state==='accepted'?(decisions[id]?.appliedTrialOverride?'Approved relative trial load override saved; original programme unchanged.':'Recorded for plan review; no prescription changed.'):'No change requested.')+'</p>':
     '<p><button type="button" class="coachDecision" data-decision="accepted" data-id="'+esc(id)+'">Approve for plan review</button> <button type="button" class="coachDecision" data-decision="rejected" data-id="'+esc(id)+'">Dismiss</button></p>')+'</div>';
-  }).join(''):'<p class="muted">No sustained three-session RPE trend. No adjustment proposed.</p>';
+  }).join(''):'<p class="muted">'+esc(assessment.decision.summary)+'</p>';
   target.innerHTML='<h3>Coach review · observations only</h3><p class="muted">These comparisons do not alter your programme. Suggested changes will require your approval.</p>'+reviews.reverse().map(r=>'<p><strong>'+esc(r.label)+'</strong> · '+esc(r.message)+'</p>').join('')+trendHtml;
   const active=readOverrides();
   if(Object.keys(active).length){const controls=document.createElement('div');controls.className='week';controls.innerHTML='<h3>Trial load overrides</h3>'+Object.entries(active).map(([lift,v])=>'<p>'+esc(lift)+': '+esc(v.delta>0?'+':'')+esc(v.delta)+' kg relative to planned top set <button type="button" class="undoOverride" data-lift="'+esc(lift)+'">Undo</button></p>').join('');target.appendChild(controls);controls.querySelectorAll('.undoOverride').forEach(b=>b.addEventListener('click',()=>{if(updateOverride(b.dataset.lift,null))reviewPerformance(readLogs())}));}
@@ -241,7 +161,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    reps=v.get('reps')===''?null:Number(v.get('reps')),
    minutes=v.get('minutes')===''?null:Number(v.get('minutes')),
    notes=String(v.get('notes')||'').trim();
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!['bench','squat','deadlift','run'].includes(kind)||
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!['bench','squat','deadlift','run'].includes(kind)||
     !Number.isFinite(rpe)||rpe<1||rpe>10||
     (weight!==null&&(!Number.isFinite(weight)||weight<0||weight>600))||
     (reps!==null&&(!Number.isInteger(reps)||reps<1||reps>100))||
@@ -263,7 +183,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
  form.addEventListener('submit',e=>{
   e.preventDefault();
   try{
-   const f=new FormData(form),num=k=>Number(f.get(k)),c={
+   const f=new FormData(form),num=k=>Number(f.get(k)),c={coachingPolicy:'review-v2',trainingAge:String(f.get('trainingAge')||''),strengthMode:String(f.get('strengthMode')||'auto'),runGoal:String(f.get('runGoal')||'fitness'),hybridFocus:String(f.get('priority'))==='Running'?'running':'balanced',
     startDate:String(f.get('startDate')||''),strengthTargetDate:String(f.get('strengthTargetDate')||''),runningTargetDate:String(f.get('runningTargetDate')||''),
     weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),
     runs:num('runs'),priority:String(f.get('priority')),maxes:{bench:num('benchMax')||null,squat:num('squatMax')||null,deadlift:num('deadliftMax')||null},
@@ -272,10 +192,10 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    if(!Number.isInteger(c.weeks)||c.weeks<4||c.weeks>52||
       ['bench','squat','deadlift','runs'].some(k=>!Number.isInteger(c[k])||c[k]<0||c[k]>6)||
       c.bench+c.squat+c.deadlift+c.runs===0)throw Error('Enter a valid programme with at least one session.');
-   if(c.tenKTime&&!window.LHRFRunningPacesV2.calibrate10K(c).available)throw Error('Enter a plausible 10K PB as mm:ss or h:mm:ss, or leave it blank.');
+   if(c.tenKTime&&!(LHRFCoach.createEngine().pbSeconds(c.tenKTime)>0))throw Error('Enter a plausible 10K PB as mm:ss or h:mm:ss, or leave it blank.');
    if((c.strengthTargetDate||c.runningTargetDate)&&!c.startDate)throw Error('Set a programme start date when entering an event.');
    const dated=!!(c.strengthTargetDate||c.runningTargetDate);
-   const p=dated?window.LHRFDatedProgrammeV2.buildDatedProgramme(c):window.LHRFProgrammeV2.buildProgramme(c);
+   const p=LHRFCoachAdapters.previewProgramme(c);
    if(p.valid===false)throw Error(p.errors.join(' '));
    const header='<div class="panel"><h2>Programme preview</h2><p>'+esc(p.outcome.description)+'</p>'+
     '<p>Structural checks: <strong>'+esc(p.passesStructuralChecks?'passed':'review needed')+'</strong>. These do not establish coaching safety.</p>'+
@@ -284,8 +204,8 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     if(entry.kind==='event')return esc(entry.sport+' EVENT — '+entry.date+' (training withheld pending review)');
     if(entry.kind==='strength'){
      const lift=entry.lift,items=entry.weekStrengths||[];
-     return esc(lift)+': '+items.map(x=>{
-      const label=x.role==='top'?'top set':'back-off';
+     return esc(entry.exercise||lift)+': '+items.map(x=>{
+      const label=x.role==='top'?'top set':x.role==='straight'?'sets':'back-off';
       return esc(label+' '+x.sets+'×'+x.reps+' @ RPE '+x.rpe+
        (x.suggestedWeight!=null?' ('+x.suggestedWeight+' kg suggested)':''));
      }).join(' · ');
@@ -326,8 +246,8 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     const override=readOverrides()[kind];
     // A prior approval is not permission to raise loads in a taper or recovery week.
     // Apply only to a real top set in an ordinary loading phase.
-    const loadingPhase=['foundation','development','intensification'].includes(chosen.phase);
-    const topSet=prescription.planned.sets.find(x=>x.role==='top');
+    const loadingPhase=LHRFCoach.allowsProgression(chosen.phase);
+    const topSet=prescription.planned.sets?.find(x=>x.role==='top');
     if(kind!=='run'&&override&&loadingPhase&&topSet){
      const base=Number(topSet.weight);
      if(Number.isFinite(base)&&base>0&&Number.isFinite(override.delta)&&Math.abs(override.delta)<=10){

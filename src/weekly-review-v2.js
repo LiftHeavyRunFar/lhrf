@@ -2,8 +2,8 @@
 (function(root){
 'use strict';
 function deps(){return typeof module==='object'&&module.exports?
- {trends:require('./strength-trends-v2.js'),feedback:require('./strength-feedback-v2.js'),running:require('./running-recovery-v2.js')}:
- {trends:root.LHRFStrengthTrendsV2,feedback:root.LHRFStrengthFeedbackV2,running:root.LHRFRunningRecoveryV2};}
+ {trends:require('./strength-trends-v2.js'),feedback:require('./strength-feedback-v2.js'),running:require('./running-recovery-v2.js'),runningTrend:require('./running-feedback-v2.js')}:
+ {trends:root.LHRFStrengthTrendsV2,feedback:root.LHRFStrengthFeedbackV2,running:root.LHRFRunningRecoveryV2,runningTrend:root.LHRFRunningFeedbackV2};}
 function reviewWeek(input){
  const c=input||{},d=deps(),logs=Array.isArray(c.strengthLogs)?c.strengthLogs:[];
  const lifts=['squat','bench','deadlift'],signals=[],proposals=[];
@@ -24,6 +24,8 @@ function reviewWeek(input){
   }
  }
  const running=d.running.reviewRunningRecovery(c);
+ const runningTrend=d.runningTrend.reviewRunning((Array.isArray(c.runLogs)?c.runLogs:[]).map(x=>({...x,sessionRPE:x.actualRPE})));
+ if(runningTrend.proposal?.kind==='review-running-progression')proposals.push({...runningTrend.proposal,source:'multi-run-trend'});
  for(const proposal of running.proposals)proposals.push({...proposal,source:'running-recovery-feedback'});
  // Combined-load guard: avoid contradictory progression advice while recovery
  // signals call for caution. Preserve strength-specific load reductions.
@@ -31,11 +33,16 @@ function reviewWeek(input){
  const systemic=Number.isFinite(fatigue)&&fatigue>=4&&fatigue<=5;
  const lowerBody=Number.isFinite(soreness)&&soreness>=4&&soreness<=5;
  const runningStrain=running.signal==='repeated-running-overshoot';
+ const phase=String(c.phase||'').toLowerCase();
+ const phaseReview=['recovery','realisation','assessment','event'].includes(phase);
+ const pain=c.readiness?.pain===true||c.readiness?.unusualDiscomfort===true;
+ const incomplete=last?.feedback?.completed===false;
  const guarded=proposals.filter(p=>{
-  const progression=p.kind==='review-progression'||p.kind==='next-exposure-top-load'&&p.direction==='increase';
+  const progression=p.kind==='review-progression'||p.kind==='review-running-progression'||p.kind==='next-exposure-top-load'&&p.direction==='increase';
   if(!progression)return true;
-  if(systemic)return false;
-  if((runningStrain||lowerBody)&&['squat','deadlift'].includes(p.lift))return false;
+  if(systemic||pain||phaseReview)return false;
+  if(incomplete&&p.lift===last.prescription?.lift)return false;
+  if((runningStrain||lowerBody)&&(['squat','deadlift'].includes(p.lift)||p.kind==='review-running-progression'))return false;
   return true;
  });
  const suppressed=proposals.length-guarded.length;
@@ -43,7 +50,7 @@ function reviewWeek(input){
  return {schema:'lhrf-v2-weekly-review',signals,running,suppressedProgressionProposals:suppressed,proposals:unique,
   approvalRequired:unique.length>0,appliedChanges:[],
   summary:unique.length?unique.length+' proposed coaching change(s) awaiting athlete approval.':
-   'No changes proposed from available strength feedback.',
+   'No changes proposed from available training feedback.',
   limitations:['Running uses reported RPE and optional fatigue/leg soreness only; sleep and pace trends are not yet included.',
    'No programme edits or persistence.']};
 }

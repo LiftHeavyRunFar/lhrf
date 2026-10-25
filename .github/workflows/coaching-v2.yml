@@ -4,12 +4,20 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'index.html'
+      - 'coaching-preview.html'
+      - 'sw.js'
+      - 'scripts/**'
       - 'tests/**'
       - 'package.json'
       - '.github/workflows/coaching-v2.yml'
   pull_request:
     paths:
       - 'src/**'
+      - 'index.html'
+      - 'coaching-preview.html'
+      - 'sw.js'
+      - 'scripts/**'
       - 'tests/**'
       - 'package.json'
       - '.github/workflows/coaching-v2.yml'
@@ -26,3 +34,56 @@ jobs:
           node-version: '22'
       - name: Run coaching v2 tests
         run: npm test
+
+  athlete-coaching-gates:
+    name: Athlete bots — coaching acceptance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Replay synthetic athletes and check coaching gates
+        run: node scripts/test-athletes.cjs --json > athlete-report.json
+      - name: Retain the full report, including blocked gates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-athlete-report
+          path: athlete-report.json
+
+  shared-coach-browser:
+    name: Shared engine — browser and PWA upgrade
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test dependency
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test all tabs and workout flow
+        run: node tests/today-flow.browser.cjs
+      - name: Test preview to live logging and shared review
+        run: node tests/shared-preview.browser.cjs
+      - name: Test new athlete onboarding and policy selection
+        run: node tests/onboarding-athletes.browser.cjs
+      - name: Test install icons and approved programme activation
+        run: node tests/release.browser.cjs
+      - name: Prepare pre-extraction PWA fixture
+        run: |
+          git fetch origin 58bbb0ba3603a36b40cbe1587b9d388e474a57c6
+          mkdir -p /tmp/lhrf-previous
+          git archive 58bbb0ba3603a36b40cbe1587b9d388e474a57c6 | tar -x -C /tmp/lhrf-previous
+      - name: Test PWA update and offline data preservation
+        env:
+          LHRF_PREVIOUS_ROOT: /tmp/lhrf-previous
+        run: node tests/shared-update.browser.cjs

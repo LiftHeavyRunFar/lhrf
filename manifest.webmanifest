@@ -5,26 +5,26 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#07111e",
-  "theme_color": "#07111e",
+  "background_color": "#03070e",
+  "theme_color": "#03070e",
   "icons": [
     {
-      "src": "./icon-lhrf.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./icon-lhrf-192-v2.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "./icon-512.png",
+      "src": "./icon-lhrf-512-v2.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-lhrf-maskable-v2.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

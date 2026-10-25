@@ -1,0 +1,103 @@
+{
+  "schema": "lhrf-athlete-test-report-v2",
+  "engine": "lhrf-shared-coach-v1",
+  "policy": "review-v2",
+  "synthetic": true,
+  "profiles": [
+    {
+      "id": "bench-dual-event",
+      "name": "Bench-first adjacent events",
+      "weeks": 6,
+      "expectations": [
+        "fixed split",
+        "bench top set first",
+        "light lower body",
+        "event precedence and taper"
+      ]
+    },
+    {
+      "id": "novice",
+      "name": "Beginner with unknown strength baselines",
+      "weeks": 8,
+      "expectations": [
+        "unknown loads remain unknown",
+        "experience-aware entry",
+        "no invented pace"
+      ]
+    },
+    {
+      "id": "powerlifter",
+      "name": "Experienced strength-priority hybrid",
+      "weeks": 20,
+      "expectations": [
+        "priority workload",
+        "purposeful variations",
+        "phase transition recovery"
+      ]
+    },
+    {
+      "id": "runner",
+      "name": "10K race with maintenance lifting",
+      "weeks": 12,
+      "expectations": [
+        "running priority",
+        "maintenance lifting",
+        "structured runs after dated overlay"
+      ]
+    },
+    {
+      "id": "restricted",
+      "name": "Restricted three-day schedule",
+      "weeks": 8,
+      "expectations": [
+        "capacity conflicts must be explicit",
+        "fixed long-run day",
+        "schedule change"
+      ]
+    },
+    {
+      "id": "fatigue",
+      "name": "Repeated overshoot with recovery signals",
+      "weeks": 12,
+      "expectations": [
+        "accessory-first proposal",
+        "suppress progression with fatigue",
+        "no automatic deload"
+      ]
+    },
+    {
+      "id": "fast",
+      "name": "Consistently improving athlete",
+      "weeks": 12,
+      "expectations": [
+        "ambitious optional progression",
+        "no increase with pain or incomplete training"
+      ]
+    }
+  ],
+  "scenarios": [
+    "on-target",
+    "rapid-progress",
+    "accumulated-fatigue",
+    "missed-for-schedule",
+    "variable-effort",
+    "pain-report"
+  ],
+  "summary": {
+    "profiles": 7,
+    "trajectories": 42,
+    "simulatedWeeks": 468,
+    "checks": 9994,
+    "regressionFailures": 0,
+    "coachingGaps": 0,
+    "coachingGatesPassed": true,
+    "readyForLiveUse": false
+  },
+  "failures": [],
+  "coachingGaps": [],
+  "limitations": [
+    "RPE and recovery are scripted inputs, not predicted physiological responses.",
+    "Tests now exercise the live app shared engine; old v2 prototype tests are historical only.",
+    "Real-world efficacy and device-local records are not certified."
+  ]
+}
