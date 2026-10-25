@@ -11,7 +11,7 @@ function runSuite(){
  function check(id,fn){checks++;try{fn()}catch(e){failures.push({id,message:e.message})}}
  function gap(id,athlete,expected,observed){if(!gaps.has(id))gaps.set(id,{id,status:'blocked',expected,examples:[]});const g=gaps.get(id);if(g.examples.length<3&&!g.examples.some(x=>x.athlete===athlete&&x.observed===observed))g.examples.push({athlete,observed})}
  for(const profile of profiles)for(const scenario of scenarios){
-  const c=normalizeProfile({...profile.config,coachingPolicy:'review-v1'}),data={sets:[],runs:[],checkins:[],sessionFeedback:[],decisions:[],overrides:{},completedWorkouts:[],customRoadmap:c,activeCustomWeek:1};
+  const c=normalizeProfile({...profile.config,coachingPolicy:'review-v2'}),data={sets:[],runs:[],checkins:[],sessionFeedback:[],decisions:[],overrides:{},completedWorkouts:[],customRoadmap:c,activeCustomWeek:1};
   let serial=0;const weeks=[];
   for(let w=1;w<=c.weeks;w++){
    const now=Date.UTC(2026,9,19+(w-1)*7+6,23),base=JSON.stringify(data);
@@ -49,8 +49,8 @@ function runSuite(){
  }
  // These are acceptance requirements, independent of the implementation's labels.
  for(const profile of profiles){
-  const c=normalizeProfile({...profile.config,coachingPolicy:'review-v1'}),p=buildProgramme(c,{now:()=>Date.UTC(2026,9,19)}),engine=createEngine({data:{sets:[],runs:[],checkins:[],decisions:[],customRoadmap:c},now:()=>Date.UTC(2026,9,19)});
-  for(let i=1;i<p.weeks.length;i++){const a=p.weeks[i-1],b=p.weeks[i];if(a.phase!==b.phase&&!a.deload&&!b.deload&&!/Taper/.test(b.phase)&&!(p.config.coachingPolicy==='review-v1'&&createEngine({data:{customRoadmap:p.config}}).candidateWeek(p.config,a.week).transitionReviewed))gap('phase-transition-recovery',profile.id,'Phase changes include recovery or a reviewed rationale.',a.phase+' → '+b.phase+' at week '+b.week)}
+  const c=normalizeProfile({...profile.config,coachingPolicy:'review-v2'}),p=buildProgramme(c,{now:()=>Date.UTC(2026,9,19)}),engine=createEngine({data:{sets:[],runs:[],checkins:[],decisions:[],customRoadmap:c},now:()=>Date.UTC(2026,9,19)});
+  for(let i=1;i<p.weeks.length;i++){const a=p.weeks[i-1],b=p.weeks[i];if(a.phase!==b.phase&&!a.deload&&!b.deload&&!/Taper/.test(b.phase)&&!(['review-v1','review-v2'].includes(p.config.coachingPolicy)&&createEngine({data:{customRoadmap:p.config}}).candidateWeek(p.config,a.week).transitionReviewed))gap('phase-transition-recovery',profile.id,'Phase changes include recovery or a reviewed rationale.',a.phase+' → '+b.phase+' at week '+b.week)}
   if(c.topSetFirst&&p.weeks[0].sessions.some(s=>s.ex.some(e=>e[0]==='Bench'&&e[5]?.role==='straight')))gap('bench-top-set-preference',profile.id,'Honour requested bench top-set-first style.','Foundation bench uses straight sets');
   if(c.lightLifts)for(const s of p.weeks.flatMap(w=>w.sessions))for(const e of s.ex||[])if(c.lightLifts.some(l=>String(e[0]).toLowerCase()===l)&&e[4]>6)gap('light-lower-body',profile.id,'Represent explicitly light lower-body work.',e[0]+' target RPE '+e[4]);
   if(c.trainingAge){const changed={...c,trainingAge:c.trainingAge==='beginner'?'advanced':'beginner'};if(JSON.stringify(engine.generatedSessions(c,1))===JSON.stringify(engine.generatedSessions(changed,1)))gap('training-experience',profile.id,'Training experience influences prescription or prompts review.','Beginner/advanced input has no effect')}
@@ -62,9 +62,9 @@ function runSuite(){
   if(c.fixedSessions?.some(s=>s.kind==='run'&&s.runType==='long')){const fixed=c.fixedSessions.find(s=>s.kind==='run'&&s.runType==='long');if(!p.weeks[0].sessions.some(s=>s.day.slice(0,3)===fixed.day.slice(0,3)&&s.runs?.some(r=>r.role==='long-run')))gap('fixed-long-run-role',profile.id,'Protect both day and training role.','Requested long run is absent')}
   if(c.maxSessionsPerDay&&p.weeks.some(w=>w.sessions.some(s=>(s.ex||[]).filter(e=>['top','straight'].includes(e[5]?.role)&&!e[5]?.optional).length+(s.runs||[]).length>c.maxSessionsPerDay)))gap('daily-session-capacity',profile.id,'Respect component limits or return explicit unscheduled work.','Generated day exceeds requested component capacity; generic warnings are not a resolution');
  }
- const reference=normalizeProfile({...profiles[0].config,weeks:12,coachingPolicy:'review-v1'}),post=buildProgramme(reference);
+ const reference=normalizeProfile({...profiles[0].config,weeks:12,coachingPolicy:'review-v2'}),post=buildProgramme(reference);
  if(post.weeks.slice(6).every(w=>w.phase==='Taper / event'))gap('post-event-progression','bench-dual-event','Recover after the event and review the next training phase.','Strength event leaves all later weeks labelled taper/event');
  const summary={profiles:profiles.length,trajectories:trajectories.length,simulatedWeeks:trajectories.reduce((n,t)=>n+t.weeks.length,0),checks,regressionFailures:failures.length,coachingGaps:gaps.size,coachingGatesPassed:failures.length===0&&gaps.size===0,readyForLiveUse:false};
- return {schema:'lhrf-athlete-test-report-v2',engine:'lhrf-shared-coach-v1',policy:'review-v1',synthetic:true,profiles:profiles.map(p=>({id:p.id,name:p.name,weeks:p.config.weeks,expectations:p.expectations})),scenarios,summary,failures,coachingGaps:[...gaps.values()],trajectories,limitations:['RPE and recovery are scripted inputs, not predicted physiological responses.','Tests now exercise the live app shared engine; old v2 prototype tests are historical only.','Real-world efficacy and device-local records are not certified.']};
+ return {schema:'lhrf-athlete-test-report-v2',engine:'lhrf-shared-coach-v1',policy:'review-v2',synthetic:true,profiles:profiles.map(p=>({id:p.id,name:p.name,weeks:p.config.weeks,expectations:p.expectations})),scenarios,summary,failures,coachingGaps:[...gaps.values()],trajectories,limitations:['RPE and recovery are scripted inputs, not predicted physiological responses.','Tests now exercise the live app shared engine; old v2 prototype tests are historical only.','Real-world efficacy and device-local records are not certified.']};
 }
 module.exports={runSuite,profiles,scenarios};

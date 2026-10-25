@@ -1,8 +1,12 @@
-/* Shared LHRF coaching engine. Extracted without changing the existing live prescriptions.
+/* Shared LHRF coaching engine. Programme policies are versioned; legacy records retain their prescriptions.
  * Views supply plain athlete state and a clock. This module has no DOM, storage or network access. */
 (function(root){
 'use strict';
 function allowsProgression(phase,deload=false){return !deload&&['foundation','development','specificity','intensification'].includes(String(phase||'').toLowerCase())}
+function candidatePolicy(c){return ['review-v1','review-v2'].includes(c?.coachingPolicy)}
+function broaderPolicy(c){return c?.coachingPolicy==='review-v2'}
+function maintenancePolicy(c){return broaderPolicy(c)&&(c.strengthMode==='maintenance'||((!c.strengthMode||c.strengthMode==='auto')&&c.hybridFocus==='running'&&!c.strengthTargetDate))}
+function beginnerPolicy(c){return broaderPolicy(c)&&['beginner','novice','returning'].includes(String(c.trainingAge||'').toLowerCase())}
 function createEngine(context={}){
  const data=context.data||{sets:[],runs:[],checkins:[],decisions:[],overrides:{}};
  const schedule=context.schedule||data.activeSchedule||[];
@@ -55,7 +59,7 @@ function candidateWeek(c,w){
 }
 
 function customPhase(w,n,c=data.customRoadmap){
- if(c?.coachingPolicy==='review-v1')return candidateWeek(c,w).phase;
+ if(candidatePolicy(c))return candidateWeek(c,w).phase;
  // Only a scheduled strength event justifies a competition specificity/taper phase.
  if(c&&!c.strengthTargetDate){const ratio=w/Math.max(1,n);return ratio<=.30?'Foundation':'Development';}
  if(n===20){if(w<=5)return 'Foundation';if(w<=15)return 'Development';if(w<=18)return 'Specificity';return 'Taper / event'}
@@ -63,7 +67,7 @@ function customPhase(w,n,c=data.customRoadmap){
 }
 
 function cycleWeek(w,n,c=data.customRoadmap){
- if(c?.coachingPolicy==='review-v1')return candidateWeek(c,w);
+ if(candidatePolicy(c))return candidateWeek(c,w);
  if(n===20){
   if(w<=4)return {block:1,position:w,deload:false,label:'Accumulation 1'};
   if(w===5)return {block:1,position:5,deload:true,label:'Deload · Accumulation 1'};
@@ -83,13 +87,57 @@ const variationCycles={Squat:['Safety-bar squat','Front squat','Paused squat'],B
 
 const variationWhy={'Safety-bar squat':'Build quad and upper-back strength while practising upright bracing.','Front squat':'Challenge quad strength and upright positioning.','Paused squat':'Develop control and force production from the bottom.','Tempo squat':'Reinforce positional control under slower eccentric loading.','Competition squat':'Practise competition technique and specificity.','Close-grip bench':'Build triceps contribution and pressing strength.','Spoto press':'Practise tightness and control near the chest.','Paused bench':'Improve paused competition-style strength.','Tempo bench':'Reinforce bar path and control.','Competition bench':'Practise competition setup and commands.','Paused deadlift':'Improve position and tension through the pull.','Deficit deadlift':'Challenge the start position and leg drive.','Romanian deadlift':'Develop posterior-chain strength with controlled range.','Competition deadlift':'Practise the competition pull.'};
 
-function variationBlock(w,n){const b=cycleWeek(w,n);return {index:Math.max(0,b.block-1),label:b.label,deload:b.deload};}
+function variationBlock(w,n,c=data.customRoadmap){const b=cycleWeek(w,n,c);return {index:Math.max(0,b.block-1),label:b.label,deload:b.deload};}
 
-function variationChoice(c,lift,w){const b=variationBlock(w,c.weeks),specific=w/c.weeks>.74;
+function variationChoice(c,lift,w){const b=variationBlock(w,c.weeks,c),specific=w/c.weeks>.74;
  const cfg=c.variations?.[lift]||{choice:'auto',lock:false};
  if(specific&&!cfg.lock)return {name:'Competition '+lift.toLowerCase(),why:'Competition-specific practice takes priority as the event approaches.',locked:false};
  if(cfg.choice&&cfg.choice!=='auto')return {name:cfg.choice,why:(variationWhy[cfg.choice]||'Athlete-selected variation.')+(cfg.lock?' Athlete-locked choice.':''),locked:!!cfg.lock};
  const options=variationCycles[lift],name=options[b.index%options.length];return {name,why:variationWhy[name],locked:false};
+}
+
+// Component capacity is a hard constraint. Unplaced work is returned explicitly.
+function constrainedPlan(c,warnings,activities){
+ const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],short=x=>String(x).slice(0,3);
+ const allowed=new Set((c.availableDays?.length?c.availableDays:days).map(short));
+ const doubles=Array.isArray(c.doubleDays)?new Set(c.doubleDays.map(short)):null;
+ const cap=Math.max(1,Math.min(4,Number(c.maxSessionsPerDay)||2)),dayCap=Math.max(1,Math.min(7,Number(c.days)||7));
+ const slots=days.map(day=>({day,items:[]})),pending=activities.map((x,i)=>({...x,componentId:'component-'+i})),unscheduled=[];
+ const active=()=>slots.filter(s=>s.items.length).length;
+ const reason=(slot,item)=>{
+  if(!slot||!allowed.has(slot.day))return 'Requested day is unavailable';
+  if(!slot.items.length&&active()>=dayCap)return 'Maximum active days reached';
+  if(slot.items.length>=cap)return 'Daily component capacity reached';
+  if(slot.items.some(x=>x.name===item.name))return 'Duplicate lift or run on the same day';
+  const mixed=slot.items.length&&slot.items.some(x=>x.type!==item.type);
+  if(mixed&&(!doubles||!doubles.has(slot.day)))return 'Lift + run double session is not permitted';
+  if(slot.items.some(x=>/Long run/.test(x.detail))||(/Long run/.test(item.detail)&&slot.items.length))return 'Protected long run needs its own day';
+  return null;
+ };
+ const place=(item,day)=>{const slot=slots.find(s=>s.day===short(day)),why=reason(slot,item);if(why){unscheduled.push({...item,requestedDay:short(day),reason:why});return false}slot.items.push(item);return true};
+ const take=(type,name,long=false)=>{let i=pending.findIndex(x=>x.type===type&&(!name||x.name===name)&&(!long||!/Quality/.test(x.detail)));if(i<0&&long)i=pending.findIndex(x=>x.type==='run');return i<0?null:pending.splice(i,1)[0]};
+ const fixed=(kind,name,day,long)=>{const item=take(kind,name,long);if(!item){warnings.push('Fixed '+(name||'run')+' on '+short(day)+' exceeds requested frequency.');return}if(long)item.detail='Long run · protected endurance';place(item,day)};
+ if(c.manualSplit){
+  for(const [day,items] of Object.entries(c.manualSplit))for(const type of items||[]){
+   if(type==='lower'){for(const name of ['Squat','Deadlift'])if(Number(c[name.toLowerCase()])>0)fixed('strength',name,day,false)}
+   else if(type==='bench')fixed('strength','Bench',day,false);
+   else if(type==='run'||type==='long')fixed('run',null,day,type==='long');
+  }
+  for(const item of pending)unscheduled.push({...item,reason:'Requested frequency has no assignment in the fixed split'});
+ }else{
+  for(const f of c.fixedSessions||[])fixed(f.kind==='run'?'run':'strength',f.kind==='run'?null:({bench:'Bench',squat:'Squat',deadlift:'Deadlift'}[String(f.lift).toLowerCase()]),f.day,f.runType==='long');
+  if(c.longRunDay&&!slots.some(s=>s.items.some(x=>/Long run/.test(x.detail)))){const item=take('run',null,true);if(item){item.detail='Long run · protected endurance';place(item,c.longRunDay)}}
+  // Give the remaining long run its role even without a fixed day.
+  if(!slots.some(s=>s.items.some(x=>/Long run/.test(x.detail)))&&!unscheduled.some(x=>/Long run/.test(x.detail))){const runs=pending.filter(x=>x.type==='run');if(runs.length>=2)runs[1].detail='Long run · protected endurance'}
+  pending.sort((a,b)=>{const rank=x=>/Long run/.test(x.detail)?0:x.name===c.priority?1:x.type==='strength'?2:3;return rank(a)-rank(b)});
+  for(const item of pending){
+   const candidates=slots.filter(slot=>!reason(slot,item));
+   candidates.sort((a,b)=>{const score=slot=>{const i=days.indexOf(slot.day);return slot.items.length*10+slots.reduce((n,s,j)=>n+(Math.abs(i-j)===1&&s.items.some(x=>x.name===item.name)?5:0),0)+i*.01};return score(a)-score(b)});
+   if(candidates.length)candidates[0].items.push(item);else unscheduled.push({...item,reason:'No day fits the requested availability, capacity and double-session permissions'});
+  }
+ }
+ for(const item of unscheduled)warnings.push('Could not schedule '+item.name+(item.requestedDay?' on '+item.requestedDay:'')+': '+item.reason+'. Adjust frequencies or availability before approval.');
+ return {warnings,slots,total:activities.length,scheduled:slots.reduce((n,s)=>n+s.items.length,0),unscheduled,feasible:unscheduled.length===0&&!warnings.some(w=>w.startsWith('Fixed '))};
 }
 
 function customPlan(c){
@@ -99,6 +147,9 @@ function customPlan(c){
  if(c.event==='squat'&&c.squat===0||c.event==='bench'&&c.bench===0||c.event==='deadlift'&&c.deadlift===0)warnings.push('Your chosen goal lift has zero sessions. Increase its frequency to prepare specifically.');
  if(c.priority==='Running'&&c.runs===0)warnings.push('Running is the top priority but you have no running sessions.');
  if(c.runs>0&&c.runGoal==='marathon'&&c.runs<3)warnings.push('Marathon preparation with fewer than three runs a week may limit specificity; this needs individual review.');
+ if(broaderPolicy(c)&&!c.trainingAge)warnings.push('Strength experience is unknown; confirm beginner, intermediate, advanced or returning status before approving.');
+ if(broaderPolicy(c)&&beginnerPolicy(c)&&c.strengthTargetDate)warnings.push('Beginner event preparation requires technique and readiness review; the calendar cannot establish competition readiness.');
+ if(broaderPolicy(c)&&c.strengthMode==='maintenance'&&c.strengthTargetDate)warnings.push('Maintenance lifting and a strength competition conflict; review the strength objective before approval.');
  if(c.date&&!c.noDate){const target=new Date(c.date+'T12:00:00');const days=(target-new Date())/86400000;if(days<0)warnings.push('The event date is in the past.');}
  if(total===0)warnings.push('Add at least one training session.');
  for(const k of ['Squat','Bench','Deadlift'])if(c[k.toLowerCase()]>0&&!(c.liftProfiles[k].kg>0))warnings.push('Enter a valid '+k+' performance baseline.');
@@ -107,6 +158,7 @@ function customPlan(c){
  const names={squat:'Squat',bench:'Bench',deadlift:'Deadlift'};const activities=[];
  for(const k of ['squat','bench','deadlift'])for(let i=0;i<c[k];i++)activities.push({type:'strength',name:names[k],detail:i===0?'Primary exposure':i===1?'Secondary exposure':'Additional technique / volume'});
  for(let i=0;i<c.runs;i++)activities.push({type:'run',name:'Run',detail:c.runGoal==='fitness'?(i===0?'Easy aerobic':i===1?'Longer easy aerobic':'Optional easy aerobic'):(i===0?'Quality / race-specific':i===1?'Easy aerobic':'Endurance / supporting run')});
+ if(broaderPolicy(c))return constrainedPlan(c,warnings,activities);
  // Seven calendar days are always available. c.days is the maximum number of active days, not a Mon–Fri cutoff.
  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
  const allowed=Array.isArray(c.availableDays)&&c.availableDays.length?c.availableDays:dayNames;
@@ -254,8 +306,8 @@ function accessoryPrefs(){return data.accessoryPreferences||{}}
 
 function accessoryNames(){return [...new Set(Object.values(accessoryPools).flat(2).map(x=>x.name))].sort()}
 
-function accessorySelection(lift,w,totalWeeks,secondary){
- const phase=customPhase(w,totalWeeks,data.customRoadmap||null),b=variationBlock(w,totalWeeks),idx=Math.min(3,Math.floor((w-1)/5));
+function accessorySelection(lift,w,totalWeeks,secondary,c=data.customRoadmap){
+ const phase=customPhase(w,totalWeeks,c||null),b=variationBlock(w,totalWeeks,c),idx=Math.min(3,Math.floor((w-1)/5));
  if(phase==='Taper / event')return [];
  const deload=b.deload,base=accessoryPools[lift][idx%4],prefs=accessoryPrefs(),prior=accessoryPools[lift][Math.max(0,idx-1)%4];
  const output=[],used=new Set();
@@ -374,11 +426,11 @@ function hybridRunWeek(c,w){
  const target=c.runningTargetDate?new Date(c.runningTargetDate+'T12:00:00'):null;
  const origin=c.startDate?new Date(c.startDate+'T12:00:00'):new Date();
  const monday=d=>{const m=new Date(+d);m.setDate(m.getDate()-((m.getDay()+6)%7));return m};
- const raceWeek=target&&Number.isFinite(+target)?c.coachingPolicy==='review-v1'?Math.max(1,Math.round((monday(target)-monday(origin))/604800000)+1):Math.max(1,Math.ceil((target-origin+86400000)/604800000)):null;
+ const raceWeek=target&&Number.isFinite(+target)?candidatePolicy(c)?Math.max(1,Math.round((monday(target)-monday(origin))/604800000)+1):Math.max(1,Math.ceil((target-origin+86400000)/604800000)):null;
  const remaining=raceWeek!==null?raceWeek-w+1:n-w+1;
- const template=c.coachingPolicy==='review-v1'&&c.runTemplate==='easy-one-quality-10k'&&goal==='10k';
+ const template=candidatePolicy(c)&&c.runTemplate==='easy-one-quality-10k'&&goal==='10k';
  const taper=race&&(template?remaining===1:remaining>=0&&remaining<=2);
- const deload=c.coachingPolicy==='review-v1'?candidateWeek(c,w).deload&&!taper:w>1&&w%4===0&&!taper;
+ const deload=candidatePolicy(c)?candidateWeek(c,w).deload&&!taper:w>1&&w%4===0&&!taper;
  const maxBuild=focus==='strength'?1.45:focus==='running'?2.3:1.85;
  // Modest gradual growth, recovery every fourth week; no forced end-of-year taper for fitness.
  const growth=Math.min(maxBuild,Math.pow(1.035,Math.max(0,w-1)));
@@ -424,13 +476,13 @@ function generatedSessions(c,w){
  const strengthEventWeek=c.strengthTargetDate&&c.startDate?Math.max(1,Math.floor((Date.parse(c.strengthTargetDate+'T12:00:00')-(Date.parse(c.startDate+'T12:00:00')-((new Date(c.startDate+'T12:00:00').getDay()+6)%7)*86400000))/604800000)+1):null;
  const strengthWeeks=strengthEventWeek||c.weeks;
  const framework=selectTrainingFramework(c);
- const phase=customPhase(c.coachingPolicy==='review-v1'?w:Math.min(w,strengthWeeks),strengthWeeks,c);const plan=customPlan(c),out=[];
+ const phase=customPhase(candidatePolicy(c)?w:Math.min(w,strengthWeeks),strengthWeeks,c);const plan=customPlan(c),out=[];
  const taper=!!strengthEventWeek&&w===strengthEventWeek; // Event week only; preserve final heavy single in preceding week.
  const isRunPriority=c.priority==='Running';
  // No event date means no artificial strength peaking or taper; the next cycle can continue progression.
  const phases={Foundation:{sets:4,reps:6,intensity:.66,rpe:7},Development:{sets:4,reps:5,intensity:.73,rpe:7.5},Specificity:{sets:3,reps:3,intensity:.82,rpe:8},'Taper / event':{sets:2,reps:2,intensity:.68,rpe:6.5}};
  const settings={...phases[phase]};
- const block=cycleWeek(w,c.weeks);
+ const block=cycleWeek(w,c.weeks,c);
  // Within-block progressive loading; deloads preserve moderate intensity while halving work.
  const step=Math.max(0,Math.min(3,block.position-1));
  // Short event preparations must still increase specificity before competition week.
@@ -457,14 +509,14 @@ function generatedSessions(c,w){
    const sets=Math.max(1,settings.sets-(secondary?1:0));
    const reps=settings.reps+(secondary&&!taper?1:0);
    const factor=settings.intensity*(secondary?.9:1)*(lift===c.priority?1.015:1);
-   const vb=variationBlock(w,c.weeks),selectedVariation=variationChoice(c,lift,w);
-   const candidate=c.coachingPolicy==='review-v1';
+   const vb=variationBlock(w,c.weeks,c),selectedVariation=variationChoice(c,lift,w);
+   const candidate=candidatePolicy(c);
    const light=candidate&&(c.lightLifts||[]).some(x=>String(x).toLowerCase()===lift.toLowerCase());
    const nearBenchMeet=lift==='Bench'&&strengthEventWeek&&weeksToStrengthEvent!==null&&weeksToStrengthEvent>=0&&weeksToStrengthEvent<=6;
    // Within six weeks of a bench meet, the first two weekly exposures must
    // practise the competition lift; only the third may use a variation.
    const competitionBenchExposure=nearBenchMeet&&occurrence<2;
-   const useVariation=secondary&&!taper&&!competitionBenchExposure&&!(strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench');const exerciseName=useVariation?selectedVariation.name:lift;
+   const useVariation=!beginnerPolicy(c)&&!maintenancePolicy(c)&&secondary&&!taper&&!competitionBenchExposure&&!(strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench');const exerciseName=useVariation?selectedVariation.name:lift;
    const variationSets=useVariation?Math.max(1,sets-(phase==='Specificity'?1:0)):sets;
    const variationReps=useVariation?(phase==='Foundation'?6:phase==='Development'?5:phase==='Specificity'?3:reps):reps;
    const variationRpe=useVariation?(phase==='Foundation'?7:phase==='Development'?7.5:8):Math.max(5,settings.rpe-(secondary?.5:0));
@@ -483,10 +535,17 @@ function generatedSessions(c,w){
    const strengthBlock=phase==='Development'||phase==='Specificity';
    const peakPractice=!!strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench'&&(slot.day===peakBenchDay||slot.day.slice(0,3)===peakBenchDay?.slice(0,3));
     const requestedTop=candidate&&c.topSetFirst&&lift==='Bench';
-    const topEligible=!light&&((requestedTop&&!vb.deload&&!taper)||(primary&&(strengthBlock||(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3))&&!vb.deload&&!taper)||peakPractice);
+    const topEligible=!light&&!beginnerPolicy(c)&&!maintenancePolicy(c)&&((requestedTop&&!vb.deload&&!taper)||(primary&&(strengthBlock||(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3))&&!vb.deload&&!taper)||peakPractice);
    if(light){
     ex.push([exerciseName,vb.deload||taper?1:2,3,baseline?roundLoad(baseline*.55):0,5.5,{role:'straight',category:'secondary',baseline,light:true}]);
     variationNotes.push(exerciseName+': light technique work, capped at RPE 5.5; no heavy top set.');
+   }else if(beginnerPolicy(c)||maintenancePolicy(c)){
+    const novice=beginnerPolicy(c),maintain=maintenancePolicy(c);
+    const sets=vb.deload||taper?1:novice?(w<=2?2:3):2;
+    const reps=novice?6:3,target=novice?(w<=2?6:7):7.5;
+    const pct=novice?(w<=2?.60:.65):.78;
+    ex.push([exerciseName,sets,reps,baseline?roundLoad(baseline*pct):0,vb.deload||taper?6:target,{role:'straight',category:'primary',baseline,policy:maintain?'maintenance':'beginner'}]);
+    variationNotes.push(maintain?'Maintain strength with reduced volume; no scheduled strength load escalation.':'Practise the main lift with bounded effort and fewer initial sets; discover unknown loads through warm-ups.');
    }else if(topEligible){
     const profile=phase==='Foundation'&&requestedTop?{topReps:4,backReps:6,backSets:secondary?2:3,backRpe:6.5,minDrop:.12,maxDrop:.20,fatigue:.025,label:'foundation top set and controlled back-offs'}:peakPractice?{topReps:1,backReps:2,backSets:1,backRpe:6,minDrop:.10,maxDrop:.16,fatigue:.01,label:'final heavy single'}:backoffProfile(phase,w/c.weeks);
     if(requestedTop&&secondary&&!peakPractice)profile.backSets=Math.max(1,profile.backSets-1);
@@ -512,18 +571,19 @@ function generatedSessions(c,w){
    if(useVariation){const why=selectedVariation.why+' '+(recent?'Suggested load uses previous exercise-specific history; verify by warm-ups.':'First exposure: discover working load through warm-ups at target RPE.');variationNotes.push(exerciseName+': '+why)}
    // Two optional, low-priority isolation slots rotate by training block.
    // Their completion is never required to finish a workout or assess adherence.
-   if(lift==='Bench'&&!taper&&!(candidate&&vb.deload)){
+   if(!beginnerPolicy(c)&&!maintenancePolicy(c)&&lift==='Bench'&&!taper&&!(candidate&&vb.deload)){
     const extras=[['Cable biceps curl','Hammer curl','Preacher curl','Incline dumbbell curl'],['Rope triceps pushdown','Overhead cable triceps extension','Single-arm cable pushdown','Dumbbell triceps extension']];
     const rotation=Math.floor((w-1)/4)%4;
     for(const pool of extras){const name=pool[rotation];if(!ex.some(e=>e[0]===name))ex.push([name,2,12,0,7,{role:'optional',category:'optional',optional:true}]);}
    }
    // Accessories rotate by block, respect preferences, and use exercise-specific RPE loading.
-   let accessories=accessorySelection(lift,w,c.weeks,secondary);
+   let accessories=accessorySelection(lift,w,c.weeks,secondary,c);
+   if(beginnerPolicy(c)||maintenancePolicy(c))accessories=accessories.filter(a=>isTertiaryExercise(a.name)).slice(0,1).map(a=>({...a,sets:1,rpe:6}));
    if(light)accessories=accessories.filter(a=>isTertiaryExercise(a.name)).slice(0,1).map(a=>({...a,sets:Math.min(2,a.sets),rpe:6}));
    for(const acc of accessories){if(ex.some(e=>e[0]===acc.name))continue;ex.push([acc.name,acc.sets,acc.reps,acc.weight,acc.rpe]);variationNotes.push(acc.name+' ('+acc.range+' reps): '+acc.why)}
   }else{
    const isLongRun=/Long run|Longer easy aerobic/.test(item.detail);
-   const template=c.coachingPolicy==='review-v1'&&c.runTemplate==='easy-one-quality-10k'&&c.runGoal==='10k';
+   const template=candidatePolicy(c)&&c.runTemplate==='easy-one-quality-10k'&&c.runGoal==='10k';
    const quality=!isLongRun&&c.runGoal!=='fitness'&&/Quality/.test(item.detail)&&!(strengthEventWeek&&w===strengthEventWeek)&&(!template||(!hybridRunWeek(c,w).taper&&!out.some(s=>s.runs.some(r=>r.role==='quality-run'))));
    const rp=runningPaces(c),runWeek=hybridRunWeek(c,w),weekly=runWeek.km;
    const longKm=weekly*runWeek.longShare,otherKm=Math.max(0,weekly-longKm)/Math.max(1,c.runs-1);
@@ -533,7 +593,7 @@ function generatedSessions(c,w){
    // Running fitness maintenance stays easy; quality running has explicit capped work intervals.
    if(quality){
     const baseReps=template?Math.min(5,3+Math.floor(Math.max(0,w-1)/2)):runWeek.taper?3:phase==='Foundation'?4:phase==='Development'?5:4;
-    const reps=c.coachingPolicy==='review-v1'&&runWeek.deload?Math.max(2,Math.ceil(baseReps*.5)):baseReps;
+    const reps=candidatePolicy(c)&&runWeek.deload?Math.max(2,Math.ceil(baseReps*.5)):baseReps;
     const workKm=template?.8:runWeek.taper?.4:phase==='Foundation'?.5:.6,recoveryKm=.25;
     const warmKm=template?2:1.5;
     // Allocate the remaining easy distance here so weekly targets match actual sessions.
@@ -557,8 +617,9 @@ function generatedSessions(c,w){
   }}
   const id='custom-'+slot.day.toLowerCase();const name=[...slot.items.filter(x=>x.type==='strength').map(x=>x.name),...runs.map(x=>x.name)].join(' + ');
   const purpose=phase==='Foundation'?'Build repeatable technique and capacity.':phase==='Development'?'Progress productive workload with manageable effort.':phase==='Specificity'?'Practise event-specific effort while managing fatigue.':'Reduce workload to arrive fresher for the event.';
-  const reason=(c.coachingPolicy==='review-v1'&&block.deload?block.rationale+' ':'')+purpose+' '+(slot.items.some(x=>x.name===c.priority)?c.priority+' gets priority for progression and recovery.':isRunPriority&&runs.length?'Running is the protected priority.':'Support the main goal without unnecessary fatigue.');
-  const hybridNotes=[];
+  const policyReason=maintenancePolicy(c)?'Strength maintenance: reduced volume without planned load escalation. ':beginnerPolicy(c)?'Beginner / return-to-training entry: fewer sets and bounded effort; confirm technique and recovery. ':'';
+  const reason=policyReason+(candidatePolicy(c)&&block.deload?block.rationale+' ':'')+purpose+' '+(slot.items.some(x=>x.name===c.priority)?c.priority+' gets priority for progression and recovery.':isRunPriority&&runs.length?'Running is the protected priority.':'Support the main goal without unnecessary fatigue.');
+  const hybridNotes=broaderPolicy(c)?plan.warnings.filter(x=>x.startsWith('Could not schedule')||x.startsWith('Fixed ')):[];
   if(runs.length){const rw=hybridRunWeek(c,w);hybridNotes.push(...rw.warnings);if(rw.deload)hybridNotes.push('Running recovery week: reduced running volume.');if(rw.taper)hybridNotes.push('Running event taper: reduced running volume.');}
   if(ex.some(e=>/Squat|Deadlift/.test(e[0]))&&runs.some(r=>r.rpe>=7))hybridNotes.push('Hard running with lower-body lifting: consider moving the quality run or reducing its intensity.');
   out.push({id,day:slot.day,name,desc:reason,hybridNotes,variationNotes,ex,run:!ex.length&&runs.length>0,runs,reason,week:w,phase});
@@ -591,7 +652,7 @@ function ensureKnownLiftLoads(sessions,c){
 
 function carryForwardApprovedProgression(sessions,week){
  const phase=customPhase(week,Number(data.customRoadmap?.weeks)||20,data.customRoadmap);
- if(!allowsProgression(phase,cycleWeek(week,Number(data.customRoadmap?.weeks)||20).deload))return sessions;
+ if(maintenancePolicy(data.customRoadmap)||!allowsProgression(phase,cycleWeek(week,Number(data.customRoadmap?.weeks)||20).deload))return sessions;
  for(const session of sessions)for(const ex of session.ex||[]){
   if(ex[5]?.role!=='top'||!(+ex[3]>0))continue;
   const decisions=(data.decisions||[]).filter(d=>d.approved===true&&d.kind==='adaptive-progression'&&d.exercise===ex[0]&&Number(d.week)<week);
@@ -729,10 +790,11 @@ function reviewDecision(){
    if((target==='lower')===lower)candidates.push({id:session.id,exercise:ex[0]});}
   if(candidates.length)return {status:'fatigue',key:'fatigue|'+reviewKey,title:'Recovery-led adjustment',summary:`Repeated ${concern.name} exposures exceeded their RPE targets, alongside recovery or post-session fatigue concerns.`,changes:candidates.slice(0,2).map(x=>({...x,setDelta:-1})),why:'Offer a small accessory-volume reduction while retaining the primary lift prescription. This does not prove fatigue is the cause.'};
  }
- if(!locked&&!lowRecovery&&improvements.length){
+ if(!maintenancePolicy(data.customRoadmap)&&!locked&&!lowRecovery&&improvements.length){
   const priority=String(data.customRoadmap?.priority||'Squat').toLowerCase();
   improvements.sort((a,b)=>Number(b.name.toLowerCase()===priority)-Number(a.name.toLowerCase()===priority));
   for(const x of improvements){
+   if(maintenancePolicy(data.customRoadmap))continue;
    // Apply only to a primary top set in the *currently activated* week. Never change back-offs independently.
    const target=schedule.find(y=>y.ex?.some(e=>e[0].toLowerCase()===x.name.toLowerCase()&&e[5]?.role==='top'));
    const ex=target?.ex?.find(e=>e[0].toLowerCase()===x.name.toLowerCase()&&e[5]?.role==='top');
@@ -747,6 +809,7 @@ function reviewDecision(){
  }
  const recent=(data.sets||[]).filter(x=>+x.reps>0&&+x.rpe>=1&&+x.target>=1).slice(-40);
  const matched=recent.filter(x=>+x.rpe<=+x.target+.5).length;
+ if(maintenancePolicy(data.customRoadmap)&&!lowRecovery)return {status:recent.length>=3?'on-track':'observe',title:'Maintain strength while prioritising running',summary:'Retain the maintenance dose. Strong sets do not automatically change the strength objective.',details:'Review strength retention and running recovery before approving a change of focus.'};
  const onTrack=recent.length>=3&&matched/recent.length>=.75&&!concerns.length;
  return {status:onTrack?'on-track':'observe',title:locked?'Maintain the planned recovery / taper week':onTrack?'On track — continue planned progression':'Building the evidence',summary:locked?'Deload and taper weeks are protected from automatic acceleration.':lowRecovery?'Recovery or post-session feedback raises concerns. Keep the planned load and reassess before accelerating.':onTrack?`Effort was within target on ${matched} of the last ${recent.length} logged sets. Continue the planned progression.`:'Consistent, comparable top-set exposures across multiple weeks are needed before suggesting faster progression.',details:`${sessions.length} main-lift exposures logged. Suggestions remain lift-specific and require approval.`};
 }
@@ -787,7 +850,7 @@ function coachCandidate(){if(data.activeSchedule?.length)return null;
  }
  return null;
 }
- function describeWeek(c,week){const sessions=generatedSessions(c,week);return {week,sessions,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||sessions[0]?.phase||customPhase(week,c.weeks,c),deload:cycleWeek(week,c.weeks).deload}}
+ function describeWeek(c,week){const sessions=generatedSessions(c,week);return {week,sessions,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||sessions[0]?.phase||customPhase(week,c.weeks,c),deload:cycleWeek(week,c.weeks,c).deload}}
  return {candidateWeek,describeWeek,isDesignatedTopSet,generatedSessions,selectTrainingFramework,customPhase,customPlan,runningPaces,cycleWeek,variationBlock,variationChoice,estimatedMax,exerciseEstimatedMax,roundLoad,backoffProfile,phaseBackoffLoad,loadFromTopSet,accessorySelection,accessoryPrefs,hybridRunWeek,hybridRecoverySignals,reviewRecovery,paceText,distanceLabel,ensureKnownLiftLoads,effectiveSession,reviewDecision,hybridWorkloadRecommendation,hybridAthleteBaseline,hybridInterventionFollowup,reviewSessions,isPrimaryExercise,isTertiaryExercise,plannedNextWeek,reviewNextStep,coachCandidate,latestCheckin,accessoryNames,carryForwardApprovedProgression,applyApprovedHybridRunning,pbSeconds};
 }
 const api={schema:'lhrf-shared-coach-v1',createEngine,allowsProgression};

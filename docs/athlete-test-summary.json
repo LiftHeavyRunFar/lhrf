@@ -1,7 +1,7 @@
 {
   "schema": "lhrf-athlete-test-report-v2",
   "engine": "lhrf-shared-coach-v1",
-  "policy": "review-v1",
+  "policy": "review-v2",
   "synthetic": true,
   "profiles": [
     {
@@ -87,52 +87,14 @@
     "profiles": 7,
     "trajectories": 42,
     "simulatedWeeks": 468,
-    "checks": 11835,
+    "checks": 9994,
     "regressionFailures": 0,
-    "coachingGaps": 3,
-    "coachingGatesPassed": false,
+    "coachingGaps": 0,
+    "coachingGatesPassed": true,
     "readyForLiveUse": false
   },
   "failures": [],
-  "coachingGaps": [
-    {
-      "id": "training-experience",
-      "status": "blocked",
-      "expected": "Training experience influences prescription or prompts review.",
-      "examples": [
-        {
-          "athlete": "novice",
-          "observed": "Beginner/advanced input has no effect"
-        },
-        {
-          "athlete": "powerlifter",
-          "observed": "Beginner/advanced input has no effect"
-        }
-      ]
-    },
-    {
-      "id": "strength-maintenance-policy",
-      "status": "blocked",
-      "expected": "A distinct maintenance prescription policy supports running.",
-      "examples": [
-        {
-          "athlete": "runner",
-          "observed": "Maintenance and progressive strength use identical prescriptions"
-        }
-      ]
-    },
-    {
-      "id": "daily-session-capacity",
-      "status": "blocked",
-      "expected": "Respect component limits or return explicit unscheduled work.",
-      "examples": [
-        {
-          "athlete": "restricted",
-          "observed": "Generated day exceeds requested component capacity; generic warnings are not a resolution"
-        }
-      ]
-    }
-  ],
+  "coachingGaps": [],
   "limitations": [
     "RPE and recovery are scripted inputs, not predicted physiological responses.",
     "Tests now exercise the live app shared engine; old v2 prototype tests are historical only.",

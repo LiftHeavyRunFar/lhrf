@@ -26,6 +26,9 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <label>Squat sessions/week <input name="squat" type="number" min="0" max="4" value="1" required></label>
 <label>Deadlift sessions/week <input name="deadlift" type="number" min="0" max="4" value="1" required></label>
 <label>Runs/week <input name="runs" type="number" min="0" max="6" value="3" required></label>
+<label>Strength experience <select name="trainingAge"><option value="">Please confirm</option><option value="beginner">Beginner</option><option value="returning">Returning after a break</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></label>
+<label>Strength objective <select name="strengthMode"><option value="auto">Follow goal priority</option><option value="progression">Build strength</option><option value="maintenance">Maintain strength</option></select></label>
+<label>Running objective <select name="runGoal"><option value="fitness">General fitness</option><option value="5k">5K</option><option value="10k">10K</option><option value="half">Half marathon</option><option value="marathon">Marathon</option></select></label>
 <label>Priority <select name="priority"><option>Bench</option><option>Running</option><option>Squat</option><option>Deadlift</option><option>Balanced</option></select></label>
 <label>Bench 1RM (kg, optional) <input name="benchMax" type="number" min="0" max="500" step="2.5" value="160"></label>
 <label>Squat 1RM (kg, optional) <input name="squatMax" type="number" min="0" max="600" step="2.5" placeholder="Unknown"></label>
@@ -60,7 +63,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   try{keys.forEach(k=>localStorage.removeItem(k));document.getElementById('clearTrialStatus').textContent='Trial workouts and coach decisions cleared. Ready for your first real session.';renderLogs()}
   catch(err){document.getElementById('clearTrialStatus').textContent='Could not clear all trial data. Please retry.'}
  });
- const fields=['startDate','strengthTargetDate','runningTargetDate','weeks','bench','squat','deadlift','runs','priority','benchMax','squatMax','deadliftMax','tenKTime','runningBaselineMinutes'];
+ const fields=['trainingAge','strengthMode','runGoal','startDate','strengthTargetDate','runningTargetDate','weeks','bench','squat','deadlift','runs','priority','benchMax','squatMax','deadliftMax','tenKTime','runningBaselineMinutes'];
  try{
   const saved=JSON.parse(localStorage.getItem(storageKey)||'null');
   if(saved&&typeof saved==='object')for(const name of fields){
@@ -109,7 +112,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   });
   // Adapt storage rows; the app and preview use the same coaching decisions.
   const previewFields=new FormData(form),num=k=>Number(previewFields.get(k));
-  const profile={weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),runs:num('runs'),priority:String(previewFields.get('priority')),
+  const profile={coachingPolicy:'review-v2',hybridFocus:String(previewFields.get('priority'))==='Running'?'running':'balanced',trainingAge:String(previewFields.get('trainingAge')||''),strengthMode:String(previewFields.get('strengthMode')||'auto'),runGoal:String(previewFields.get('runGoal')||'fitness'),weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),runs:num('runs'),priority:String(previewFields.get('priority')),
    startDate:String(previewFields.get('startDate')||''),strengthTargetDate:String(previewFields.get('strengthTargetDate')||''),runningTargetDate:String(previewFields.get('runningTargetDate')||''),
    maxes:{bench:num('benchMax'),squat:num('squatMax'),deadlift:num('deadliftMax')},tenKTime:String(previewFields.get('tenKTime')||''),runningBaselineMinutes:num('runningBaselineMinutes')};
   const assessment=LHRFCoachAdapters.reviewPreviewLogs(logs,profile);
@@ -180,7 +183,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
  form.addEventListener('submit',e=>{
   e.preventDefault();
   try{
-   const f=new FormData(form),num=k=>Number(f.get(k)),c={
+   const f=new FormData(form),num=k=>Number(f.get(k)),c={coachingPolicy:'review-v2',trainingAge:String(f.get('trainingAge')||''),strengthMode:String(f.get('strengthMode')||'auto'),runGoal:String(f.get('runGoal')||'fitness'),hybridFocus:String(f.get('priority'))==='Running'?'running':'balanced',
     startDate:String(f.get('startDate')||''),strengthTargetDate:String(f.get('strengthTargetDate')||''),runningTargetDate:String(f.get('runningTargetDate')||''),
     weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),
     runs:num('runs'),priority:String(f.get('priority')),maxes:{bench:num('benchMax')||null,squat:num('squatMax')||null,deadlift:num('deadliftMax')||null},
@@ -202,7 +205,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     if(entry.kind==='strength'){
      const lift=entry.lift,items=entry.weekStrengths||[];
      return esc(entry.exercise||lift)+': '+items.map(x=>{
-      const label=x.role==='top'?'top set':'back-off';
+      const label=x.role==='top'?'top set':x.role==='straight'?'sets':'back-off';
       return esc(label+' '+x.sets+'×'+x.reps+' @ RPE '+x.rpe+
        (x.suggestedWeight!=null?' ('+x.suggestedWeight+' kg suggested)':''));
      }).join(' · ');

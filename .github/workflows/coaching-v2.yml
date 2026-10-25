@@ -74,6 +74,8 @@ jobs:
         run: node tests/today-flow.browser.cjs
       - name: Test preview to live logging and shared review
         run: node tests/shared-preview.browser.cjs
+      - name: Test new athlete onboarding and policy selection
+        run: node tests/onboarding-athletes.browser.cjs
       - name: Prepare pre-extraction PWA fixture
         run: |
           git fetch origin 58bbb0ba3603a36b40cbe1587b9d388e474a57c6

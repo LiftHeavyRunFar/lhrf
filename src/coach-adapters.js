@@ -36,10 +36,15 @@ function createProfileEngine(input,options={}){
 }
 function buildProgramme(input,options={}){
  const {config:c,data,engine}=createProfileEngine(input,options),weeks=[];
+ if(c.coachingPolicy==='review-v2'){
+  if(!Number.isInteger(c.weeks)||c.weeks<1||c.weeks>104)throw new RangeError('Programme horizon must be 1–104 whole weeks.');
+  if(['bench','squat','deadlift','runs'].some(k=>!Number.isInteger(c[k])||c[k]<0||c[k]>7))throw new RangeError('Weekly frequencies must be whole numbers from 0–7.');
+  if(c.strengthMode&&!['auto','maintenance','progression'].includes(c.strengthMode))throw new RangeError('Choose maintenance or progression for strength.');
+ }
  for(let week=1;week<=c.weeks;week++){
   const described=engine.describeWeek(c,week),{sessions,phase}=described,cycle=engine.cycleWeek(week,c.weeks);
   const constraints=engine.customPlan(c),warnings=constraints.warnings.slice();
-  weeks.push({week,phase,deload:cycle.deload,sessions,warnings,reviewRequired:warnings.length>0});
+  weeks.push({week,phase,deload:cycle.deload,sessions,warnings,...(constraints.unscheduled?{unscheduled:constraints.unscheduled,feasible:constraints.feasible}:{}),reviewRequired:warnings.length>0});
  }
  return {schema:'lhrf-shared-programme-v1',config:c,framework:engine.selectTrainingFramework(c),weeks,
   requiresAthleteApproval:true,limitations:['Current live coaching rules, not a new programme-policy rollout.','Known programme acceptance gaps remain; generation alone does not establish coaching quality.']};
@@ -57,7 +62,7 @@ function previewProgramme(input,options={}){
     const back=meta.role==='top'?session.ex.find(e=>e[5]?.role==='backoff'&&e[5]?.topIndex===i):ex;
     const group=(e,role)=>e?{role,sets:e[1],reps:e[2],suggestedWeight:e[3]||null,rpe:e[4]}:null;
     const index=strengths.length,exposure=exposures[lift]=(exposures[lift]||0)+1;
-    strengths.push({lift,exposure,exercise:ex[0],top:meta.role==='top'?group(ex,'top'):null,backoff:group(back,'backoff')});
+    strengths.push({lift,exposure,exercise:ex[0],top:meta.role==='top'?group(ex,'top'):null,backoff:group(back,meta.role==='top'?'backoff':'straight')});
     calendar.push({id:'s'+index,kind:'strength',lift,exposure,exercise:ex[0],day:session.day});
    });
    for(const run of session.runs||[]){const type=run.role==='quality-run'?'quality':run.role==='long-run'?'long':'easy';
