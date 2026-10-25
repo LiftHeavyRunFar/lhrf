@@ -121,13 +121,19 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   const groups={};
   for(const entry of [...logs].sort((a,b)=>String(a.date).localeCompare(String(b.date)))){
    if(!['bench','squat','deadlift'].includes(entry.kind)||!entry.plannedSession?.planned?.sets?.length||!entry.sets?.length)continue;
-   const planned=Number(entry.plannedSession.planned.sets[0].rpe);
-   const actual=Number(entry.sets[0].rpe);
-   if(!Number.isFinite(planned)||!Number.isFinite(actual))continue;
-   const plannedWeight=Number(entry.plannedSession.planned.sets[0].weight);
-   const actualWeight=Number(entry.sets[0].weight);
-   if(!(plannedWeight>0&&actualWeight>0))continue;
-   const key=entry.kind+'|'+(entry.plannedSession.planned.sets[0].reps||'')+'|'+(entry.plannedSession.planned.sets[0].role||'top');
+   const target=entry.plannedSession.planned.sets.find(x=>x.role==='top');
+   // Only compare the prescribed top set. A logged backoff or altered load
+   // is not valid evidence that the prescribed top-set RPE was too easy/hard.
+   if(!target||!entry.sets.length)continue;
+   const actualSet=entry.sets[0];
+   const planned=Number(target.rpe),actual=Number(actualSet.rpe);
+   const plannedWeight=Number(target.weight),actualWeight=Number(actualSet.weight);
+   const plannedReps=Number(target.reps),actualReps=Number(actualSet.reps);
+   if(!Number.isFinite(planned)||!Number.isFinite(actual)||
+      !(plannedWeight>0&&actualWeight>0&&plannedReps>0&&actualReps===plannedReps))continue;
+   // A single 2.5 kg rounding difference is tolerated; bigger changes invalidate the comparison.
+   if(Math.abs(plannedWeight-actualWeight)>2.5)continue;
+   const key=entry.kind+'|'+plannedReps+'|top';
    (groups[key]??=[]).push({date:entry.date,delta:actual-planned,lift:entry.kind});
   }
   const proposals=[];
