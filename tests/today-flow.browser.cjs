@@ -82,11 +82,13 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  // Sunday completion and the Monday/DST boundary must not relabel old workouts as future.
  await page.clock.setSystemTime(new Date('2026-10-25T10:00:00Z'));
  await page.reload();await page.locator('nav [data-screen="today"]').click();
+ await page.clock.runFor(100); // Flush the two animation frames used to select the calendar day.
  assert.equal(await page.locator('#todaySessions button').count(),0);
  assert.equal(await page.locator('.day-workout.is-complete').count(),4);
  assert.match(await page.locator('#dayPosition').innerText(),/Sunday 25 Oct/);
  await page.clock.setSystemTime(new Date('2026-10-26T10:00:00Z'));
  await page.reload();await page.locator('nav [data-screen="today"]').click();
+ await page.clock.runFor(100); // Flush the two animation frames used to select the calendar day.
  assert.equal(await page.locator('#todaySessions button').count(),0,'past active week is never rolled forward');
  assert.match(await page.locator('#thisWeekCarousel').innerText(),/19 Oct – 25 Oct/);
  assert.equal((await getData()).onboardingComplete,true);
