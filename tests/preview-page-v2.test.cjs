@@ -23,7 +23,7 @@ assert.ok(html.includes('class="startPrescribed"'),'Programme sessions must open
 assert.ok(html.includes('plannedSession:activePrescription'),'Actual log must retain prescribed context');
 assert.ok(html.includes('setRows.children.length===0'),'Set-only lifting logs must be valid');
 assert.ok(html.includes('id="addSet"'),'Must support adding actual lifting sets');
-assert.ok(html.includes('sets,notes,recordedAt'),'Set-by-set data must be persisted');
+assert.ok(html.includes('sets,notes,plannedSession:activePrescription,recordedAt'),'Set-by-set data must be persisted');
 assert.ok(html.includes('setRows.replaceChildren()'),'Set rows must reset only after successful save');
 assert.ok(html.includes("source:'genuine-athlete-entry'"),'Real logs must be explicitly marked');
 assert.ok(html.includes('Recording a session does not yet change the programme.'),'Do not imply live adaptation');
