@@ -35,8 +35,11 @@ header{padding-top:16px;padding-bottom:4px}header h1{font-size:24px}header p{fon
 .day-heading{padding:2px 16px 13px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .day-heading h2{font-size:22px;margin:0;letter-spacing:-.03em}
 .day-heading span{font-size:12px;color:var(--muted)}
-.day-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:0;padding:4px 36px 15px;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.day-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:36px;padding:4px 36px 15px;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
 .day-carousel::-webkit-scrollbar{display:none}
+/* Ensure edge cards have enough scrollable trailing/leading room to centre. */
+.day-carousel::before,.day-carousel::after{content:'';flex:0 0 0px}
+.day-carousel::after{margin-right:0}
 .day-slide{flex:0 0 calc(100% - 72px);min-width:0;scroll-snap-align:center;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:20px 17px;min-height:295px;display:flex;flex-direction:column;gap:10px;transition:border-color .15s,opacity .15s;opacity:.66}
 .day-slide.is-current{border-color:var(--accent);opacity:1}
 .day-carousel .day-slide.is-past{opacity:.48;filter:saturate(.6);border-color:var(--border)}
@@ -1399,7 +1402,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    document.getElementById('dayPrev').disabled=position===0;document.getElementById('dayNext').disabled=position===trainingDays.length-1;
    document.querySelector('.day-controls').style.display=trainingDays.length>1?'flex':'none';dots.style.display=trainingDays.length>1?'flex':'none';
   }
-  function selectDay(i,level=0,smooth=true){const index=trainingDays.findIndex(d=>d.i===i);if(index<0)return;selectedDay=i;detailLevel=level;update();const slide=slides[index];const railRect=rail.getBoundingClientRect(),cardRect=slide.getBoundingClientRect();const left=rail.scrollLeft+(cardRect.left+cardRect.width/2)-(railRect.left+railRect.width/2);rail.scrollTo({left,behavior:smooth?'smooth':'instant'})}
+  function selectDay(i,level=0,smooth=true){const index=trainingDays.findIndex(d=>d.i===i);if(index<0)return;selectedDay=i;detailLevel=level;update();const slide=slides[index];const railRect=rail.getBoundingClientRect(),cardRect=slide.getBoundingClientRect();const left=rail.scrollLeft+(cardRect.left+cardRect.width/2)-(railRect.left+railRect.width/2);rail.scrollTo({left:Math.max(0,left),behavior:smooth?'smooth':'instant'})}
   document.getElementById('dayPrev').onclick=()=>{const j=trainingDays.findIndex(d=>d.i===selectedDay);if(j>0)selectDay(trainingDays[j-1].i)};
   document.getElementById('dayNext').onclick=()=>{const j=trainingDays.findIndex(d=>d.i===selectedDay);if(j<trainingDays.length-1)selectDay(trainingDays[j+1].i)};
   let raf=0,positioning=true;
