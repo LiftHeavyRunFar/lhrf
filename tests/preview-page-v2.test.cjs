@@ -19,6 +19,9 @@ assert.ok(html.includes("storageKey='lhrf-v2-preview-athlete-inputs'"),'Trial in
 assert.ok(html.includes('localStorage.getItem(storageKey)'));
 assert.ok(html.includes('localStorage.setItem(storageKey'));
 assert.ok(html.includes("logKey='lhrf-v2-genuine-training-log'"),'Real sessions must have isolated storage');
+assert.ok(html.includes('id="addSet"'),'Must support adding actual lifting sets');
+assert.ok(html.includes('sets,notes,recordedAt'),'Set-by-set data must be persisted');
+assert.ok(html.includes('setRows.replaceChildren()'),'Set rows must reset only after successful save');
 assert.ok(html.includes("source:'genuine-athlete-entry'"),'Real logs must be explicitly marked');
 assert.ok(html.includes('Recording a session does not yet change the programme.'),'Do not imply live adaptation');
 assert.ok(!html.includes('localStorage.clear('),'Preview must not clear app storage');
