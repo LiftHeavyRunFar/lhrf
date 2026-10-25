@@ -112,7 +112,24 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    const effort=Number.isFinite(gap)?gap>=1?'Top set felt harder than prescribed.':gap<=-1?'Top set felt easier than prescribed.':'Top-set effort was close to target.':'Top-set effort needs review.';
    return {label:x.date+' · '+x.kind,message:'Completed '+actual.length+'/'+targetSets+' planned sets. '+effort+' Consider readiness and repeat-session trends before changing loads.'};
   });
-  target.innerHTML='<h3>Coach review · observations only</h3><p class="muted">These comparisons do not alter your programme. Suggested changes will require your approval.</p>'+reviews.reverse().map(r=>'<p><strong>'+esc(r.label)+'</strong> · '+esc(r.message)+'</p>').join('');
+  const groups={};
+  for(const entry of logs){
+   if(!['bench','squat','deadlift'].includes(entry.kind)||!entry.plannedSession?.planned?.sets?.length||!entry.sets?.length)continue;
+   const planned=Number(entry.plannedSession.planned.sets[0].rpe);
+   const actual=Number(entry.sets[0].rpe);
+   if(!Number.isFinite(planned)||!Number.isFinite(actual))continue;
+   (groups[entry.kind]??=[]).push({date:entry.date,delta:actual-planned});
+  }
+  const proposals=[];
+  for(const [lift,entries] of Object.entries(groups)){
+   const last=entries.slice(-3);
+   if(last.length<3)continue;
+   const harder=last.every(x=>x.delta>=1),easier=last.every(x=>x.delta<=-1);
+   if(!harder&&!easier)continue;
+   proposals.push({lift,message:harder?'Three comparable sessions were harder than prescribed. Review fatigue and recovery before considering a smaller accessory workload.':'Three comparable sessions were easier than prescribed. Consider a modest load progression after reviewing technique and recovery.',evidence:last.map(x=>x.date+' ('+(x.delta>0?'+':'')+x.delta+' RPE)').join(', ')});
+  }
+  const trendHtml=proposals.length?'<h3>Coach proposals · not applied</h3>'+proposals.map(x=>'<p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small><br>Approval is required before any programme change.</p>').join(''):'<p class="muted">No sustained three-session RPE trend. No adjustment proposed.</p>';
+  target.innerHTML='<h3>Coach review · observations only</h3><p class="muted">These comparisons do not alter your programme. Suggested changes will require your approval.</p>'+reviews.reverse().map(r=>'<p><strong>'+esc(r.label)+'</strong> · '+esc(r.message)+'</p>').join('')+trendHtml;
  };
  const renderLogs=()=>{
   const logs=readLogs();reviewPerformance(logs);logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
