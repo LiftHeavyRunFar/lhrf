@@ -112,10 +112,14 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    const targets=planned.sets||[],actual=x.sets||[];
    if(!targets.length||!actual.length)return {label:x.date+' · '+x.kind,message:'Not enough paired planned and completed sets to assess the prescription.'};
    const targetSets=targets.reduce((n,g)=>n+Number(g.sets||0),0);
-   const targetRpe=Number(targets[0]?.rpe);
-   const actualRpe=Number(actual[0]?.rpe);
-   const gap=actualRpe-targetRpe;
-   const effort=Number.isFinite(gap)?gap>=1?'Top set felt harder than prescribed.':gap<=-1?'Top set felt easier than prescribed.':'Top-set effort was close to target.':'Top-set effort needs review.';
+   const top=targets.find(group=>group.role==='top');
+   const first=actual[0];
+   const comparable=top&&first&&Number(top.weight)>0&&Number(first.weight)>0&&
+    Math.abs(Number(top.weight)-Number(first.weight))<=2.5&&Number(first.reps)===Number(top.reps)&&
+    Number.isFinite(Number(first.rpe))&&Number.isFinite(Number(top.rpe));
+   const gap=comparable?Number(first.rpe)-Number(top.rpe):null;
+   const effort=!comparable?'Top-set effort not compared: no matching prescribed top set, reps or weight.':
+    gap>=1?'Top set felt harder than prescribed.':gap<=-1?'Top set felt easier than prescribed.':'Top-set effort was close to target.';
    return {label:x.date+' · '+x.kind,message:'Completed '+actual.length+'/'+targetSets+' planned sets. '+effort+' Consider readiness and repeat-session trends before changing loads.'};
   });
   const groups={};
