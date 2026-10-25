@@ -146,19 +146,30 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    const id=x.lift+'-'+x.direction+'-'+x.date;
    const state=decisions[id]?.status;
    return '<div class="week"><p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small></p>'+(x.loadSuggestion?'<p><strong>Example adjustment (not applied):</strong> '+esc(x.loadSuggestion.description)+'</p>':'<p>Suggested weight unavailable; review load manually.</p>')+
-    (state?'<p><strong>Decision: '+esc(state)+'.</strong> '+(state==='accepted'?'Recorded for a future plan review; no workout prescription has been changed.':'No change requested.')+'</p>':
+    (state?'<p><strong>Decision: '+esc(state)+'.</strong> '+(state==='accepted'?(decisions[id]?.appliedTrialOverride?'Approved trial load override saved; original programme unchanged.':'Recorded for plan review; no prescription changed.'):'No change requested.')+'</p>':
     '<p><button type="button" class="coachDecision" data-decision="accepted" data-id="'+esc(id)+'">Approve for plan review</button> <button type="button" class="coachDecision" data-decision="rejected" data-id="'+esc(id)+'">Dismiss</button></p>')+'</div>';
   }).join(''):'<p class="muted">No sustained three-session RPE trend. No adjustment proposed.</p>';
   target.innerHTML='<h3>Coach review · observations only</h3><p class="muted">These comparisons do not alter your programme. Suggested changes will require your approval.</p>'+reviews.reverse().map(r=>'<p><strong>'+esc(r.label)+'</strong> · '+esc(r.message)+'</p>').join('')+trendHtml;
+  const active=readOverrides();
+  if(Object.keys(active).length){const controls=document.createElement('div');controls.className='week';controls.innerHTML='<h3>Trial load overrides</h3>'+Object.entries(active).map(([lift,v])=>'<p>'+esc(lift)+': '+esc(v.weight)+' kg <button type="button" class="undoOverride" data-lift="'+esc(lift)+'">Undo</button></p>').join('');target.appendChild(controls);controls.querySelectorAll('.undoOverride').forEach(b=>b.addEventListener('click',()=>{if(updateOverride(b.dataset.lift,null))reviewPerformance(readLogs())}));}
   target.querySelectorAll('.coachDecision').forEach(button=>button.addEventListener('click',()=>{
    const id=button.dataset.id,status=button.dataset.decision;
    if(!proposals.some(x=>x.lift+'-'+x.direction+'-'+x.date===id)||!['accepted','rejected'].includes(status))return;
    if(status==='accepted'&&!confirm('Record approval for a future plan review? This does NOT change any workouts yet.'))return;
    let saved={};try{saved=JSON.parse(localStorage.getItem(decisionKey)||'{}')||{}}catch(err){}
+   const proposal=proposals.find(x=>x.lift+'-'+x.direction+'-'+x.date===id);
    saved[id]={status,at:new Date().toISOString()};
+   if(status==='accepted'&&proposal?.loadSuggestion){
+    if(!confirm('Apply '+proposal.loadSuggestion.next+' kg to future opt-in v2 live Train top sets? Your original programme will not change.'))return;
+    if(!updateOverride(proposal.lift,proposal.loadSuggestion.next)){alert('Could not save override.');return}
+    saved[id].appliedTrialOverride=true;
+   }
    try{localStorage.setItem(decisionKey,JSON.stringify(saved));reviewPerformance(readLogs())}catch(err){alert('Could not save your decision. No change was made.')}
   }));
  };
+ const overrideKey='lhrf-v2-approved-load-overrides';
+ const readOverrides=()=>{try{return JSON.parse(localStorage.getItem(overrideKey)||'{}')||{}}catch(err){return {}}};
+ const updateOverride=(lift,weight)=>{const saved=readOverrides();if(weight===null)delete saved[lift];else saved[lift]={weight,approvedAt:new Date().toISOString()};try{localStorage.setItem(overrideKey,JSON.stringify(saved));return true}catch(err){return false}};
  const renderLogs=()=>{
   const logs=readLogs();reviewPerformance(logs);logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
    (logs.length?logs.slice(-15).reverse().map(x=>'<p>'+esc(x.date+' · '+x.kind+' · RPE '+x.rpe+
@@ -254,6 +265,11 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     const prescription={week:chosen.week,phase:chosen.phase,kind,day:item.day,
       planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace}:
       {sets:item.weekStrengths.map(x=>({role:x.role,sets:x.sets,reps:x.reps,rpe:x.rpe,weight:x.suggestedWeight}))}};
+    const override=readOverrides()[kind];
+    if(kind!=='run'&&override&&prescription.planned.sets.length){
+     prescription.approvedOverride={original:prescription.planned.sets[0].weight,weight:override.weight};
+     prescription.planned.sets[0].weight=override.weight;
+    }
     try{sessionStorage.setItem('lhrf-v2-live-handoff',JSON.stringify(prescription));window.location.href='./index.html?trialTrain=1#train'}
     catch(err){logMessage.textContent='Could not open live Train; use the trial logger instead.'}
    }));
