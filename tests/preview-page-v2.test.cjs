@@ -18,5 +18,8 @@ assert.ok(html.includes("entry.kind==='event'"),'Event entries must render separ
 assert.ok(html.includes("storageKey='lhrf-v2-preview-athlete-inputs'"),'Trial inputs must use separate storage key');
 assert.ok(html.includes('localStorage.getItem(storageKey)'));
 assert.ok(html.includes('localStorage.setItem(storageKey'));
+assert.ok(html.includes("logKey='lhrf-v2-genuine-training-log'"),'Real sessions must have isolated storage');
+assert.ok(html.includes("source:'genuine-athlete-entry'"),'Real logs must be explicitly marked');
+assert.ok(html.includes('Recording a session does not yet change the programme.'),'Do not imply live adaptation');
 assert.ok(!html.includes('localStorage.clear('),'Preview must not clear app storage');
 console.log('PASS read-only browser preview dependency and safety checks');

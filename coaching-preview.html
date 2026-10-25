@@ -36,6 +36,18 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <button type="submit">Generate preview</button></form>
 <p class="muted" id="saveStatus" role="status">Your preview inputs are stored only on this device, separately from the existing LHRF app.</p>
 <section id="output" aria-live="polite"></section>
+<section class="panel" id="trialLog"><h2>Genuine training log · trial</h2>
+<p>Only record workouts you actually complete. This log is separate from all previous test data. Recording a session does not yet change the programme.</p>
+<form id="logForm"><div class="grid">
+<label>Session date <input type="date" name="date" required></label>
+<label>Discipline <select name="kind"><option value="bench">Bench</option><option value="squat">Squat</option><option value="deadlift">Deadlift</option><option value="run">Run</option></select></label>
+<label>Duration (minutes, optional) <input type="number" name="minutes" min="1" max="600" step="1"></label>
+<label>Top weight (kg, optional) <input type="number" name="weight" min="0" max="600" step="0.5"></label>
+<label>Top reps (optional) <input type="number" name="reps" min="1" max="100" step="1"></label>
+<label>Actual RPE (1–10) <input type="number" name="rpe" min="1" max="10" step="0.5" required></label>
+</div><label>Notes (optional) <input type="text" name="notes" maxlength="300" style="max-width:100%;width:100%" placeholder="How did it feel?"></label>
+<button type="submit">Save genuine session</button></form>
+<p id="logMessage" role="status"></p><div id="logHistory"></div></section>
 <script src="./src/coaching-v2.js"></script>
 <script src="./src/prescriptions-v2.js"></script>
 <script src="./src/hybrid-v2.js"></script>
@@ -62,6 +74,34 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   catch(err){document.getElementById('saveStatus').textContent='Unable to save preview inputs on this device. Keep a copy of your baselines.';}
  });
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const logForm=document.getElementById('logForm'),logMessage=document.getElementById('logMessage'),logHistory=document.getElementById('logHistory');
+ const logKey='lhrf-v2-genuine-training-log';
+ const readLogs=()=>{try{const value=JSON.parse(localStorage.getItem(logKey)||'[]');return Array.isArray(value)?value:[]}catch(err){return []}};
+ const renderLogs=()=>{
+  const logs=readLogs();logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
+   (logs.length?logs.slice(-15).reverse().map(x=>'<p>'+esc(x.date+' · '+x.kind+' · RPE '+x.rpe+
+    (x.weight!=null?' · '+x.weight+' kg':'')+(x.reps!=null?' × '+x.reps+' reps':'')+
+    (x.minutes!=null?' · '+x.minutes+' min':'')+(x.notes?' · '+x.notes:''))+'</p>').join(''):'<p>No genuine workouts logged yet.</p>');
+ };
+ logForm.addEventListener('submit',e=>{
+  e.preventDefault();const v=new FormData(logForm);
+  const kind=String(v.get('kind')),date=String(v.get('date')),
+   rpe=Number(v.get('rpe')),weight=v.get('weight')===''?null:Number(v.get('weight')),
+   reps=v.get('reps')===''?null:Number(v.get('reps')),
+   minutes=v.get('minutes')===''?null:Number(v.get('minutes')),
+   notes=String(v.get('notes')||'').trim();
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!['bench','squat','deadlift','run'].includes(kind)||
+    !Number.isFinite(rpe)||rpe<1||rpe>10||
+    (weight!==null&&(!Number.isFinite(weight)||weight<0||weight>600))||
+    (reps!==null&&(!Number.isInteger(reps)||reps<1||reps>100))||
+    (minutes!==null&&(!Number.isInteger(minutes)||minutes<1||minutes>600))){logMessage.textContent='Please check the session date, RPE and optional values.';return;}
+  if(kind==='run'&&(weight!==null||reps!==null)){logMessage.textContent='For a run, leave weight and reps blank.';return;}
+  if(kind!=='run'&&minutes===null&&weight===null&&reps===null){logMessage.textContent='Enter at least weight, reps or duration for the lifting session.';return;}
+  const logs=readLogs();logs.push({date,kind,rpe,weight,reps,minutes,notes,recordedAt:new Date().toISOString(),source:'genuine-athlete-entry'});
+  try{localStorage.setItem(logKey,JSON.stringify(logs));logMessage.textContent='Genuine session saved on this device.';logForm.reset();renderLogs();}
+  catch(err){logMessage.textContent='Could not save the session. No entry was recorded.';}
+ });
+ renderLogs();
  form.addEventListener('submit',e=>{
   e.preventDefault();
   try{
