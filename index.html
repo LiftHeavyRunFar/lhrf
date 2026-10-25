@@ -207,7 +207,7 @@ button{border-radius:12px!important}button:not(.ghost):not(.secondary){backgroun
 .run-step-content small{font-size:12px;line-height:1.5;color:#a6bed0}
 .run-step-content strong{color:#55b6ff}
 .lhrf-run-prescription>p{color:#b4d4e9;font-size:13px}
-</style><meta name="theme-color" content="#07111e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="icon" type="image/png" href="./icon-192.png"><script src="./src/coach-engine.js"></script><style>
+</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/coach-engine.js"></script><style>
 /* A single, unboxed masthead; the original logo blends into the page surface. */
 body{background:#03070e!important}
 header#appHeader{position:sticky!important;top:0;z-index:20;max-width:none;min-height:0;margin:0!important;padding:calc(4px + env(safe-area-inset-top)) 16px 4px!important;background:#03070e;border:0;border-radius:0;box-shadow:none;text-align:center}
@@ -1272,4 +1272,19 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     } catch(err) {console.warn('Offline install unavailable:',err)}
   });
 }
-</script></body></html>
+</script><script src="./src/programme-install.js"></script>
+<script>
+(async function(){
+ if(new URLSearchParams(location.search).get('programme')!=='november-2026')return;
+ const card=document.createElement('aside');card.className='card';card.setAttribute('aria-label','Approved programme activation');card.innerHTML='<h2>Your approved November block</h2><p>27 October–29 November · Bench competition + 10K. Earlier workouts and onboarding settings are retained. Your previous programme and its coach decisions will be archived.</p><button type="button" disabled>Activate approved programme</button><p class="small muted" role="status"></p>';document.querySelector('main').prepend(card);
+ const button=card.querySelector('button'),status=card.querySelector('[role="status"]');
+ if(data.customRoadmap?.programmeId==='november-2026'){button.disabled=true;status.textContent='This programme is already active. Your new logs are retained.';return}
+ let config;try{const response=await fetch('./programmes/november-2026.json');if(!response.ok)throw Error('Download failed');config=await response.json()}catch(e){button.disabled=true;status.textContent='Could not load the approved programme. Your current plan is unchanged.';return}
+ button.disabled=false;button.onclick=()=>{
+  if(localStorage.getItem('lhrf_fresh_beta_live_v1114')){status.textContent='Finish or discard your active workout first, then activate this programme.';return}
+  const previous=data,previousSchedule=schedule;
+  try{const next=LHRFProgrammeInstall.install(data,config,LHRFCoach);data=next;schedule=next.activeSchedule;if(!save()){data=previous;schedule=previousSchedule;return}populate();refresh();renderPlanDashboard();go('today');document.getElementById('firstRun').hidden=true;document.body.style.overflow='';button.disabled=true;status.textContent='Your approved five-week programme is active. Earlier workout history has been preserved.';history.replaceState(null,'',location.pathname+location.hash)}catch(e){data=previous;schedule=previousSchedule;status.textContent='Activation failed. Your previous plan is retained: '+e.message}
+ };
+})();
+</script>
+</body></html>

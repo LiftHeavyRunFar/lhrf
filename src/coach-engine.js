@@ -638,6 +638,7 @@ function generatedSessions(c,w){
   out.push({id:'event-'+event.type+'-'+event.date,day,name:event.name,desc:'Target event · '+event.date,reason:'Competition replaces scheduled training.',hybridNotes:[],variationNotes:[],ex:[],runs:[],run:false,week:w,phase:'Competition',eventDate:event.date,eventType:event.type});
  }
  const dayOrder={Monday:0,Mon:0,Tuesday:1,Tue:1,Wednesday:2,Wed:2,Thursday:3,Thu:3,Friday:4,Fri:4,Saturday:5,Sat:5,Sunday:6,Sun:6};out.sort((a,b)=>(dayOrder[a.day]??7)-(dayOrder[b.day]??7));
+ if(c.sessionNamespace)for(const session of out){session.id=c.sessionNamespace+session.id;session.programmeId=c.programmeId;}
  return ensureKnownLiftLoads(out,c);
 }
 
