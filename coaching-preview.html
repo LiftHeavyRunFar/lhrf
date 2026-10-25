@@ -112,7 +112,30 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    const effort=Number.isFinite(gap)?gap>=1?'Top set felt harder than prescribed.':gap<=-1?'Top set felt easier than prescribed.':'Top-set effort was close to target.':'Top-set effort needs review.';
    return {label:x.date+' · '+x.kind,message:'Completed '+actual.length+'/'+targetSets+' planned sets. '+effort+' Consider readiness and repeat-session trends before changing loads.'};
   });
-  target.innerHTML='<h3>Coach review · observations only</h3><p class="muted">These comparisons do not alter your programme. Suggested changes will require your approval.</p>'+reviews.reverse().map(r=>'<p><strong>'+esc(r.label)+'</strong> · '+esc(r.message)+'</p>').join('');
+  // Recommendations require a sustained, comparable trend; isolated sessions remain observations.
+  const byLift={};
+  for(const x of logs){
+   if(x.source!=='genuine-athlete-entry'||!['bench','squat','deadlift'].includes(x.kind)||!x.plannedSession?.planned?.sets?.length||!x.sets?.length)continue;
+   const planned=x.plannedSession.planned.sets[0],actual=x.sets[0];
+   const delta=Number(actual.rpe)-Number(planned.rpe);
+   if(!Number.isFinite(delta)||!Number.isFinite(Number(actual.weight))||Number(actual.weight)<=0)continue;
+   (byLift[x.kind]??=[]).push({date:x.date,delta,weight:Number(actual.weight),plannedRpe:Number(planned.rpe),actualRpe:Number(actual.rpe)});
+  }
+  const proposals=[];
+  for(const [lift,entries] of Object.entries(byLift)){
+   const last=entries.slice(-3);
+   if(last.length<3)continue;
+   const high=last.every(x=>x.delta>=1),low=last.every(x=>x.delta<=-1);
+   if(!high&&!low)continue;
+   proposals.push({lift,direction:high?'harder':'easier',message:high?
+    'Three consecutive '+lift+' top sets were at least 1 RPE above target. Review readiness, technique and fatigue; consider trimming lower-priority accessories before reducing primary lift loading.':
+    'Three consecutive '+lift+' top sets were at least 1 RPE below target. Consider a modest load increase after checking technique and recovery.',
+    evidence:last.map(x=>x.date+' ('+(x.delta>0?'+':'')+x.delta+' RPE)').join(', ')});
+  }
+  const proposalsHtml=proposals.length?'<h3>Coach proposals · approval required</h3>'+proposals.map(p=>
+   '<p><strong>'+esc(p.lift)+' · '+esc(p.direction)+' than planned</strong> · '+esc(p.message)+'<br><small>Evidence: '+esc(p.evidence)+'</small><br><strong>Not applied.</strong> No changes until you approve a specific adjustment.</p>').join(''):
+   '<p class="muted">No sustained three-session RPE trend detected. The coach is observing, not adjusting.</p>';
+  target.innerHTML='<h3>Coach review · observations only</h3><p class="muted">These comparisons do not alter your programme. Suggested changes will require your approval.</p>'+reviews.reverse().map(r=>'<p><strong>'+esc(r.label)+'</strong> · '+esc(r.message)+'</p>').join('')+proposalsHtml;
  };
  const renderLogs=()=>{
   const logs=readLogs();reviewPerformance(logs);logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
