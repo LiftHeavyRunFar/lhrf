@@ -111,7 +111,7 @@ header{padding-top:16px;padding-bottom:4px}header h1{font-size:24px}header p{fon
 .run-workout-timeline{padding:3px 12px 5px!important}
 
 /* Compact, date-labelled upcoming workouts; tap opens the existing preview, not readiness. */
-#todaySessions{display:grid;gap:9px}#todaySessions .lhrf-compact-session{position:relative;display:grid;grid-template-columns:95px minmax(0,1fr) 14px;grid-template-rows:auto auto;align-items:center;column-gap:9px;text-align:left;width:100%;padding:13px 12px;background:#0c2031!important;border:1px solid #244861!important;border-radius:13px;box-shadow:none;color:#e9f4ff}
+#todaySessions{display:grid;gap:9px;margin:0 0 10px}#todaySessions .lhrf-compact-session{position:relative;display:grid;grid-template-columns:95px minmax(0,1fr) 14px;grid-template-rows:auto auto;align-items:center;column-gap:9px;text-align:left;width:100%;padding:13px 12px;background:#0c2031!important;border:1px solid #244861!important;border-radius:13px;box-shadow:none;color:#e9f4ff}
 .lhrf-compact-session .lhrf-session-date{grid-row:1/3;color:#69bfff;font-size:12px;font-weight:750}.lhrf-compact-session strong{font-size:14px;line-height:1.3}.lhrf-compact-session .lhrf-session-meta{grid-column:2;color:#9db8ca;font-size:11px;font-weight:400}.lhrf-compact-session .lhrf-session-arrow{grid-column:3;grid-row:1/3;color:#68bbf7;font-size:23px}
 </style><style>
 #train .live-head{display:flex;align-items:center;justify-content:space-between;gap:8px}#train .live-progress{height:6px;background:var(--border);border-radius:9px;overflow:hidden;margin:12px 0}#train .live-progress>div{height:100%;background:var(--accent);transition:width .2s}.live-ex{background:var(--card);border:1px solid var(--border);border-radius:14px;margin:8px 0;overflow:hidden}.live-ex summary{list-style:none;cursor:pointer;padding:15px;display:flex;align-items:center;gap:10px}.live-ex summary::-webkit-details-marker{display:none}.live-ex summary .ex-text{flex:1;min-width:0}.live-ex summary .ex-text strong{display:block;font-size:14px}.live-ex summary .ex-text small{display:block;color:var(--muted);margin-top:4px}.live-ex .ex-content{border-top:1px solid var(--border);padding:12px}.live-set{display:grid;grid-template-columns:34px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 36px;gap:5px;align-items:end;margin-bottom:10px}.live-set input{padding:8px 4px;text-align:center;font-size:14px}.live-set label{display:block;color:var(--muted);font-size:10px;margin-bottom:3px}.live-set .set-check{padding:0;height:39px;background:var(--card2);color:var(--fg);border:1px solid var(--border)}.live-set .set-check.checked{background:var(--accent);color:#16200e}.live-set .set-num{font-size:12px;align-self:center}.live-actions{display:flex;gap:8px;flex-wrap:wrap}.live-actions button{flex:1}.live-status{color:var(--muted);font-size:12px}.live-empty{text-align:center;padding:30px 16px}.live-pill{font-size:11px;border-radius:20px;background:#253d31;color:#b6f2c7;padding:5px 9px;white-space:nowrap}
@@ -212,7 +212,7 @@ button{border-radius:12px!important}button:not(.ghost):not(.secondary){backgroun
 <section class="screen active" id="today">
 <div class="card hero"><span class="tag">YOUR TRAINING · CURRENT BLOCK</span><h2 style="margin-top:10px">Bench first. Run strong.</h2><p>Preparing for your bench competition on 28 November and 10K PB attempt on 29 November.</p><button id="featuredSessionButton" onclick="openFeaturedSession()">Open Thursday session →</button></div>
 <div class="grid"><div class="stat"><b>160 kg</b><span>Bench baseline (approx.)</span></div><div class="stat"><b>1:05</b><span>10K PB</span></div></div>
-<div id="thisWeekCarousel"></div><h2>Coming up</h2><p class="muted small">Next scheduled sessions · tap to preview before starting.</p><div id="todaySessions"></div></section>
+<div id="thisWeekCarousel"></div><h2>Upcoming</h2><p class="muted small">Next scheduled sessions · tap to preview before starting.</p><div id="todaySessions"></div></section>
 <section class="screen" id="plan">
 <div class="card" id="planDashboard" style="padding:18px">
  <div class="row" style="align-items:center;justify-content:space-between;gap:12px"><div><div class="tag">YOUR TRAINING CYCLE</div><h2 id="planDashTitle" style="margin:8px 0 4px">Your programme</h2><div id="planDashSubtitle" class="muted small"></div></div><button class="secondary" style="width:auto;white-space:nowrap" onclick="togglePlanSettings()" id="planSettingsButton">Settings ⚙</button></div>
@@ -355,13 +355,25 @@ function renderPlanDashboard(){
 }
 function selectPlanDashWeek(w){planDashSelection=w;renderPlanDashboard();}
 function activatePlanDashWeek(){const week=planDashSelection;if(!data.customRoadmap){$('planAdvanced').open=true;$('planAdvanced').scrollIntoView({behavior:'smooth'});return;}$('customWeek').value=week;activateCustomWeek();renderPlanDashboard();}
+function scheduledDate(session){
+ const aliases={mon:0,monday:0,tue:1,tuesday:1,wed:2,wednesday:2,thu:3,thursday:3,fri:4,friday:4,sat:5,saturday:5,sun:6,sunday:6};
+ const index=aliases[String(session.day||'').trim().toLowerCase()]??session.dayIndex;
+ if(!Number.isInteger(index)||index<0||index>6)return null;
+ const start=data.customRoadmap?.startDate;
+ const base=start?new Date(start+'T12:00:00'):new Date();
+ if(!Number.isFinite(+base))return null;
+ base.setHours(12,0,0,0);base.setDate(base.getDate()-(base.getDay()+6)%7+(start?(Number(data.activeCustomWeek||1)-1)*7:0)+index);
+ return base;
+}
+function sessionCompleted(session){
+ return (data.completedWorkouts||[]).some(w=>w.id===session.id&&Number(w.week||1)===Number(data.activeCustomWeek||1));
+}
 function populate(){
- const weekday={mon:1,monday:1,tue:2,tuesday:2,wed:3,wednesday:3,thu:4,thursday:4,fri:5,friday:5,sat:6,saturday:6,sun:0,sunday:0};
  const now=new Date();now.setHours(12,0,0,0);
- const dateOf=s=>{const day=weekday[String(s.day||'').toLowerCase()];if(day===undefined)return null;const d=new Date(now);d.setDate(now.getDate()+(day-now.getDay()+7)%7);if(d.getTime()===now.getTime()&&(data.completedWorkouts||[]).some(w=>w.id===s.id&&new Date(w.date).toDateString()===now.toDateString()))d.setDate(d.getDate()+7);return d};
+ const dateOf=scheduledDate;
  for(const [container,filter] of [['todaySessions',()=>true],['planSessions',()=>true],['strengthSessions',x=>!!x.ex]]){
   const root=$(container);if(!root)continue;root.innerHTML='';
-  const entries=schedule.filter(filter).map(s=>({s,date:dateOf(s)}));
+  const entries=schedule.filter(filter).map(s=>({s,date:dateOf(s)})).filter(({s,date})=>container!=='todaySessions'||(date&&date>now&&!sessionCompleted(s)));
   if(container==='todaySessions'){entries.sort((a,b)=>(a.date?.getTime()||0)-(b.date?.getTime()||0));}
   entries.forEach(({s,date})=>{const b=document.createElement('button');b.type='button';b.className=container==='todaySessions'?'lhrf-compact-session':'session';
    const effective=effectiveSession(s.id);const sets=(effective?.ex||[]).filter(e=>!e[5]?.optional).reduce((n,e)=>n+Number(e[1]||0),0);
@@ -371,6 +383,7 @@ function populate(){
    b.onclick=()=>openWorkout(s.id);root.appendChild(b);
   });
  }
+ if(!$('todaySessions').children.length)$('todaySessions').innerHTML='<p class="muted small">No future sessions in the active week. View your training cycle in Plan.</p>';
  updateFeaturedSession();
 }
 
@@ -1306,13 +1319,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  const intro=(title,subtitle)=>{const d=document.createElement('div');d.className='ux-intro';d.innerHTML='<h2>'+title+'</h2><p>'+subtitle+'</p>';return d};
  const today=$id('today'),plan=$id('plan'),strength=$id('strength'),running=$id('running'),progress=$id('progress');
  // Keep all existing elements and IDs in the DOM: only reorganize them.
- const todayKids=Array.from(today.children);const hero=todayKids[0],recoveryTitle=todayKids[2],recoveryCard=todayKids[3],challenge=todayKids[4],upcomingTitle=todayKids[5],upcoming=$id('todaySessions');
- hero.querySelector('p')?.classList.add('ux-hero-note');
- today.insertBefore(intro('Your training, simplified.','One clear next step, with the detail there when you need it.'),hero);
- const todayAction=document.createElement('div');todayAction.className='ux-topline';todayAction.innerHTML='<h2>Upcoming sessions</h2><span class="ux-muted">Tap to open</span>';
- upcomingTitle?.remove();today.appendChild(todayAction);move(today,upcoming);
- const readiness=details('Readiness check-in',[recoveryCard]);recoveryTitle?.remove();today.insertBefore(readiness,todayAction);
- const challengeDetails=details('Request a harder session',[challenge]);today.insertBefore(challengeDetails,todayAction);
+ // Today already owns its weekly calendar and Upcoming list. Do not relocate
+ // children by position: onboarding and UI updates can change their order.
  // The training-cycle dashboard is the primary Plan view. Keep it OUTSIDE the editor.
  // Previous UX wiring accidentally moved the first Plan child (the dashboard) into
  // a second collapsed builder, making the charts invisible.
@@ -1341,8 +1349,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  if(dashboardRoot){dashboardRoot.style.removeProperty('display');progress.insertBefore(dashboardRoot,progress.firstChild);}
  const oldProgressDetails=$id('progressDetails');
  if(oldProgressDetails){oldProgressDetails.open=false;progress.appendChild(oldProgressDetails);}
- // Four clear tabs. Existing running screen remains a view within Train.
- const nav=document.querySelector('nav.nav');nav.innerHTML='<button data-screen="today" onclick="go('today')"><b>⌂</b>Today</button><button data-screen="train" onclick="go('train')"><b>↗</b>Train</button><button data-screen="plan" onclick="go('plan')"><b>▦</b>Plan</button><button data-screen="progress" onclick="go('progress')"><b>◷</b>Progress</button>';
+ // Keep the five existing bottom tabs, including Settings.
+ const nav=document.querySelector('nav.nav');
  const baseGo=go;
  go=function(id){baseGo(id);nav.querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.screen===id||(id==='running'&&b.dataset.screen==='strength')));$id('uxLift').classList.toggle('active',id!=='running');$id('uxRun').classList.toggle('active',id==='running')};
  $id('uxLift').onclick=()=>go('strength');$id('uxRun').onclick=()=>go('running');
@@ -1397,8 +1405,9 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    selectedDay=trainingDays.find(d=>d.date.getTime()===today.getTime())?.i??trainingDays.find(d=>d.date>=today)?.i??trainingDays[trainingDays.length-1]?.i??null;
    detailLevel=0;
   }
-  root.innerHTML='<div class="day-heading"><h2>Training days</h2><span>Today: '+today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · Swipe between workouts ↔</span></div><div class="day-carousel" id="dayCarousel" aria-label="Training days only"></div><div class="day-controls"><button type="button" id="dayPrev" aria-label="Previous training day">‹</button><div class="day-position" id="dayPosition"></div><button type="button" id="dayNext" aria-label="Next training day">›</button></div><div class="day-dots" id="dayDots" aria-hidden="true"></div>';
+  root.innerHTML='<div class="day-heading"><h2>'+ (currentWeekIncludesToday?'This week':'Active week') +'</h2><span>Today: '+today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · Swipe between workouts ↔</span></div><div class="day-carousel" id="dayCarousel" aria-label="Training days only"></div><div class="day-controls"><button type="button" id="dayPrev" aria-label="Previous training day">‹</button><div class="day-position" id="dayPosition"></div><button type="button" id="dayNext" aria-label="Next training day">›</button></div><div class="day-dots" id="dayDots" aria-hidden="true"></div>';
   const rail=document.getElementById('dayCarousel');
+  const range=document.createElement('p');range.className='muted small';range.style.margin='0 16px 12px';range.textContent='Active week '+activeWeek+' · '+formatDate(dateFor(0))+' – '+formatDate(dateFor(6));root.prepend(range);
   const todayTraining=trainingDays.some(d=>d.date.getTime()===today.getTime()&&d.sessions.length>0);
   const nextTraining=trainingDays.find(d=>d.date>=today&&d.sessions.length>0);
   if(!todayTraining){
@@ -1416,13 +1425,14 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   for(const {day,i,date,sessions} of trainingDays){
    const slide=document.createElement('article');slide.className='day-slide';slide.dataset.index=i;
    const isPast=date<today;
-   const allCompleted=sessions.length>0&&sessions.every(session=>(data.completedWorkouts||[]).some(w=>w.id===session.id&&new Date(w.date).toDateString()===date.toDateString()));
+   const allCompleted=sessions.length>0&&sessions.every(sessionCompleted);
    if(isPast)slide.classList.add('is-past');
    slide.innerHTML='<span class="day-label">'+(isPast?(allCompleted?'✓ Completed · ':'Past · '):date.getTime()===today.getTime()?'Today · ':'')+(sessions.length?'Training day':'Rest day')+'</span><h3>'+day+' <span style="font-size:15px;font-weight:600;color:var(--muted);white-space:nowrap">'+formatDate(date)+'</span></h3><p class="day-status">'+sessions.length+' session'+(sessions.length===1?'':'s')+'</p>';
    for(const s of sessions){
     const eff=source==='saved-preview'?s:(effectiveSession(s.id)||s);
     const exercises=Array.isArray(eff.ex)?eff.ex:[],runs=Array.isArray(eff.runs)?eff.runs:[];
-    const w=document.createElement('div');w.className='day-workout';
+    const done=sessionCompleted(s);
+    const w=document.createElement('div');w.className='day-workout';w.classList.toggle('is-complete',done);w.dataset.sessionId=s.id;
     const heading=document.createElement('strong');heading.textContent=s.name;
     const overview=document.createElement('div');overview.className='day-overview';
     const quick=document.createElement('div');quick.className='day-quick';
@@ -1434,8 +1444,9 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
     runs.forEach(run=>{const item=document.createElement('div');item.className='day-exercise-item';const name=document.createElement('span');name.textContent=run.name||'Run';const prescription=document.createElement('b');prescription.textContent=(run.distanceKm?distanceLabel(run.distanceKm):'—')+' · RPE '+(run.rpe??'—');item.append(name,prescription);list.appendChild(item);{const structure=document.createElement('div');structure.innerHTML=runStepsHtml(run);list.appendChild(structure)}});
     if(!exercises.length&&!runs.length){list.textContent='Open this session to see the full prescription.'}
     detailed.appendChild(list);overview.appendChild(detailed);
-    const btn=document.createElement('button');btn.type='button';btn.className='day-open';btn.textContent=source==='saved-preview'?'Activate week to train':allCompleted?'✓ Completed · View details':'Preview workout →';btn.disabled=source==='saved-preview';if(source!=='saved-preview')btn.onclick=e=>{e.stopPropagation();if(allCompleted){detailLevel=2;update();return}openWorkout(s.id)};
-    w.append(heading,overview,btn);slide.appendChild(w);
+    const btn=document.createElement('button');btn.type='button';btn.className='day-open';btn.textContent=source==='saved-preview'?'Activate week to train':done?'✓ Completed · View details':'Preview workout →';btn.disabled=source==='saved-preview';if(source!=='saved-preview')btn.onclick=e=>{e.stopPropagation();openWorkout(s.id)};
+    w.tabIndex=0;w.setAttribute('role','button');w.setAttribute('aria-label','Preview '+s.name);w.onclick=e=>{if(e.target.closest('button'))return;e.stopPropagation();if(source!=='saved-preview')openWorkout(s.id)};w.onkeydown=e=>{if(e.target!==w)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();if(source!=='saved-preview')openWorkout(s.id)}};
+    w.append(heading);if(done){const mark=document.createElement('span');mark.className='complete-mark';mark.textContent='✓ Completed';w.appendChild(mark)}w.append(overview,btn);slide.appendChild(w);
    }
    const hint=document.createElement('div');hint.className='day-hint';slide.appendChild(hint);
    slide.addEventListener('click',e=>{if(e.target.closest('button'))return;if(selectedDay!==i){selectDay(i,2);return}if(detailLevel===0){detailLevel=2;update()}else{detailLevel=0;update()}});
@@ -1450,10 +1461,11 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    document.getElementById('dayPrev').disabled=position===0;document.getElementById('dayNext').disabled=position===trainingDays.length-1;
    document.querySelector('.day-controls').style.display=trainingDays.length>1?'flex':'none';dots.style.display=trainingDays.length>1?'flex':'none';
   }
-  function selectDay(i,level=0,smooth=true){const index=trainingDays.findIndex(d=>d.i===i);if(index<0)return;selectedDay=i;detailLevel=level;update();const slide=slides[index];const railRect=rail.getBoundingClientRect(),cardRect=slide.getBoundingClientRect();const left=rail.scrollLeft+(cardRect.left+cardRect.width/2)-(railRect.left+railRect.width/2);rail.scrollTo({left:Math.max(0,left),behavior:smooth?'smooth':'instant'})}
+  function selectDay(i,level=0,smooth=true){const index=trainingDays.findIndex(d=>d.i===i);if(index<0)return;selectedDay=i;detailLevel=level;update();positioning=true;clearTimeout(positionTimer);positionTimer=setTimeout(()=>{positioning=false},800);const slide=slides[index];const railRect=rail.getBoundingClientRect(),cardRect=slide.getBoundingClientRect();const left=rail.scrollLeft+(cardRect.left+cardRect.width/2)-(railRect.left+railRect.width/2);rail.scrollTo({left:Math.max(0,left),behavior:smooth?'smooth':'instant'})}
   document.getElementById('dayPrev').onclick=()=>{const j=trainingDays.findIndex(d=>d.i===selectedDay);if(j>0)selectDay(trainingDays[j-1].i)};
   document.getElementById('dayNext').onclick=()=>{const j=trainingDays.findIndex(d=>d.i===selectedDay);if(j<trainingDays.length-1)selectDay(trainingDays[j+1].i)};
-  let raf=0,positioning=true;
+  let raf=0,positioning=true,positionTimer=0;
+  rail.addEventListener('scrollend',()=>{clearTimeout(positionTimer);positioning=false});
   rail.addEventListener('scroll',()=>{if(positioning)return;cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{const middle=rail.scrollLeft+rail.clientWidth/2;let best=0,dist=Infinity;slides.forEach((slide,j)=>{const railRect=rail.getBoundingClientRect(),cardRect=slide.getBoundingClientRect();const center=rail.scrollLeft+(cardRect.left+cardRect.width/2)-(railRect.left+railRect.width/2)+rail.clientWidth/2;const delta=Math.abs(center-middle);if(delta<dist){dist=delta;best=j}});if(trainingDays[best].i!==selectedDay){selectedDay=trainingDays[best].i;detailLevel=0;update()}})},{passive:true});
   // The initial selection must be positioned after the mobile carousel has laid out.
   // Ignore scroll events generated by our own initial positioning so they cannot
@@ -1494,8 +1506,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   });
   if(changed)persist();
  }
- function status(){reconcileLiveWeights();const el=document.getElementById('liveTrainRoot');if(!el)return;
-  if(!live){el.innerHTML='<div class="card live-empty"><h2>No workout in progress</h2><p class="muted">Choose a training day from Today, then start the session when you’re ready.</p><button onclick="go('today')">Choose workout →</button></div>';return}
+ function status(){const readiness=document.getElementById('preWorkoutReadiness');if(readiness){readiness.hidden=!live;if(!live)readiness.open=false}reconcileLiveWeights();const el=document.getElementById('liveTrainRoot');if(!el)return;
+  if(!live){el.innerHTML='<div class="card live-empty"><h2>No workout in progress</h2><p class="muted">Choose a training day from Today, then start the session when you’re ready.</p><button onclick="go(&quot;today&quot;)">Choose workout →</button></div>';return}
   const n=total(),done=count(),pct=n?Math.round(100*done/n):0;
   const hasRun=Array.isArray(live.runs)&&live.runs.length>0;const strengthReady=n===0||done===n;const runReady=!!live.runLogged;
   el.innerHTML=`<div class="card"><div class="live-head"><div><div class="tag">LIVE WORKOUT · ${esc(live.day)}</div><h2 style="margin:7px 0">${esc(live.name)}</h2></div><span class="live-pill">● Active</span></div><div class="row"><span class="live-status">${n?done+' of '+n+' sets completed':'Running session'}${hasRun?' · '+(runReady?'Run logged':'Run pending'):''}</span><span class="live-status">${pct}%</span></div><div class="live-progress"><div style="width:${pct}%"></div></div></div><div id="liveExercises"></div><div id="liveRunSection"></div><div class="card"><label class="muted small" for="liveNotes">Session notes (optional)</label><textarea id="liveNotes" rows="2" placeholder="How did the session feel?"></textarea><div class="live-actions" style="margin-top:12px"><button id="liveFinish" onclick="finishLiveWorkout()">Finish workout</button><button class="secondary" onclick="cancelLiveWorkout()">Discard</button></div><p id="liveError" class="live-status" aria-live="polite"></p></div>`;
@@ -1545,14 +1557,17 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  function updateHeader(){const n=total(),done=count();const t=document.querySelector('#train .live-status');if(t)t.textContent=done+' of '+n+' sets completed'}
  function previewSession(id){const raw=effectiveSession(id);const session=raw&&data.customRoadmap?ensureKnownLiftLoads([raw],data.customRoadmap)[0]:raw;if(!session){alert('Select an active workout from Today.');return}
   preview=session;
-  if(live&&live.id===id){reconcileLiveWeights();go('train');return}
   const old=document.getElementById('livePreview');if(old)old.remove();
   const dialog=document.createElement('div');dialog.id='livePreview';dialog.className='card';dialog.style.cssText='position:fixed;z-index:30;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));max-width:540px;margin:auto;box-shadow:0 0 0 200vmax #0009;max-height:75vh;overflow:auto';
   const exercises=(session.ex||[]).map(e=>`<div class="entry">${esc(e[0])} <span class="muted">· ${e[1]} sets · ${e[3]>0?e[3]+' kg':'load by RPE'}</span></div>`).join('')+(session.runs||[]).map(r=>`<div class="entry"><strong>THEN RUN · ${esc(r.name)}</strong><span class="muted"> · ${esc(r.minutes)} min · RPE ${esc(r.rpe)}</span></div>`).join('');
-  dialog.innerHTML=`<div class="row"><h2 style="margin:0">${esc(session.name)}</h2><button class="ghost" style="padding:7px" onclick="document.getElementById('livePreview').remove()">✕</button></div><p class="muted small">${esc(session.day)} · Preview only</p>${exercises||'<p class="muted">Running session</p>'}<div class="live-actions" style="margin-top:14px"><button id="previewStart">Start workout</button><button class="secondary" id="previewClose">Close</button></div>`;
+  dialog.innerHTML=`<div class="row"><h2 style="margin:0">${esc(session.name)}</h2><button class="ghost" style="padding:7px" onclick="document.getElementById('livePreview').remove()">✕</button></div><p class="muted small">${esc(session.day)} · ${esc(scheduledDate(session)?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})||'')} · ${sessionCompleted(session)?'✓ Completed':'Preview only'}</p>${exercises||'<p class="muted">Running session</p>'}<div class="live-actions" style="margin-top:14px"><button id="previewStart">Start workout</button><button class="secondary" id="previewClose">Close</button></div>`;
+  dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
   document.body.appendChild(dialog);
+  const startButton=dialog.querySelector('#previewStart');
+  if(sessionCompleted(session))startButton.remove();
+  else if(live&&live.id===id)startButton.textContent='Resume workout';
   dialog.querySelector('#previewClose').onclick=()=>dialog.remove();
-  dialog.querySelector('#previewStart').onclick=()=>{if(live&&!confirm('Another workout is active. Discard it and start this one?'))return;live={id:session.id,day:session.day,name:session.name,ex:session.ex||[],runs:session.runs||[],run:!!session.run,runLogged:false,runStage:false,runEntry:null,entries:{},notes:'',started:new Date().toISOString()};expanded=0;persist();dialog.remove();go('train');const readiness=document.getElementById('preWorkoutReadiness');if(readiness)readiness.open=true};
+  if(startButton.isConnected)startButton.onclick=()=>{if(live&&live.id===id){dialog.remove();go('train');return}if(live&&!confirm('Another workout is active. Discard it and start this one?'))return;live={id:session.id,day:session.day,name:session.name,ex:JSON.parse(JSON.stringify(session.ex||[])),runs:JSON.parse(JSON.stringify(session.runs||[])),run:!!session.run,runLogged:false,runStage:false,runEntry:null,entries:{},notes:'',started:new Date().toISOString()};expanded=0;persist();dialog.remove();go('train');const readiness=document.getElementById('preWorkoutReadiness');if(readiness)readiness.open=true};
  }
  function openV2LiveHandoff(){
   let trial;try{trial=JSON.parse(sessionStorage.getItem('lhrf-v2-live-handoff')||'null')}catch(e){return}
@@ -1583,7 +1598,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   if(live.runLogged&&live.runEntry){data.runs=data.runs||[];data.runs.push({date:stamp,km:live.runEntry.km,min:live.runEntry.min,rpe:live.runEntry.rpe,type:live.runs?.[0]?.role||'run',sessionId:live.id,session:live.name,week:Number(data.activeCustomWeek)||1,notes:note})}
   data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,name:live.name,day:live.day,date:stamp,week:data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged});
   const finishedSession={id:live.id,name:live.name,week:Number(data.activeCustomWeek)||1};
-  save();live=null;persist();status();refresh();go('train');showLiveFeedback(finishedSession);
+  save();live=null;persist();status();populate();refresh();go('train');showLiveFeedback(finishedSession);
 
  };
  function showLiveFeedback(session){
