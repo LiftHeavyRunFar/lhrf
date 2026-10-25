@@ -175,12 +175,21 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
      if(item.kind==='event')return '<p><strong>'+esc(item.day)+'</strong> · '+prescription(item)+'</p>';
      const id=selectable.length;selectable.push({item,week:w.week,phase:w.phase});
      return '<p><strong>'+esc(item.day)+'</strong> · '+prescription(item)+
-      ' <button type="button" class="startPrescribed" data-session="'+id+'">Log this session</button></p>';
+      ' <button type="button" class="startPrescribed" data-session="'+id+'">Log this session</button> <button type="button" class="trainPrescribed" data-session="'+id+'">Open in live Train</button></p>';
     }).join('')+
     (w.reviewRequired?'<small class="warn">Coach review required — inspect schedule conflicts and proposed changes.</small>':'')+
     '</div>';
    }).join('');
    out.innerHTML=header+'<div class="panel"><h2>Weekly schedule</h2>'+weeks+'</div>';
+   out.querySelectorAll('.trainPrescribed').forEach(button=>button.addEventListener('click',()=>{
+    const chosen=selectable[Number(button.dataset.session)];if(!chosen)return;
+    const item=chosen.item,kind=item.kind==='run'?'run':item.lift;
+    const prescription={week:chosen.week,phase:chosen.phase,kind,day:item.day,
+      planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace}:
+      {sets:item.weekStrengths.map(x=>({role:x.role,sets:x.sets,reps:x.reps,rpe:x.rpe,weight:x.suggestedWeight}))}};
+    try{sessionStorage.setItem('lhrf-v2-live-handoff',JSON.stringify(prescription));window.location.href='./index.html?trialTrain=1#train'}
+    catch(err){logMessage.textContent='Could not open live Train; use the trial logger instead.'}
+   }));
    out.querySelectorAll('.startPrescribed').forEach(button=>button.addEventListener('click',()=>{
     const chosen=selectable[Number(button.dataset.session)];if(!chosen)return;
     const item=chosen.item,kind=item.kind==='run'?'run':item.lift;
