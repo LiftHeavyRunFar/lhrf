@@ -1307,7 +1307,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
 (function(){
  const days=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
  const root=document.getElementById('todaySessions');
- let selectedDay=null, detailLevel=0;
+ let selectedDay=null, detailLevel=0, selectedOnDate=null;
  const safe=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const dayIndex=()=>{const n=new Date().getDay();return (n+6)%7};
  const dayAliases={monday:0,mon:0,tuesday:1,tue:1,wednesday:2,wed:2,thursday:3,thu:3,friday:4,fri:4,saturday:5,sat:5,sunday:6,sun:6};
@@ -1331,11 +1331,13 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const dateFor=i=>{const d=new Date(weekBase);d.setDate(weekBase.getDate()+i);return d};
   const formatDate=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
   const trainingDays=days.map((day,i)=>({day,i,date:dateFor(i),sessions:currentSessions.filter(s=>matchesDay(s,day,i))})).filter(d=>d.sessions.length&&(!startDate||d.date>=startDate));
+  const localDateKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+  if(selectedOnDate!==localDateKey){selectedDay=null;selectedOnDate=localDateKey;}
   if(selectedDay===null||!trainingDays.some(d=>d.i===selectedDay)){
    selectedDay=trainingDays.find(d=>d.date>=today)?.i??trainingDays[trainingDays.length-1]?.i??null;
    detailLevel=0;
   }
-  root.innerHTML='<div class="day-heading"><h2>Training days</h2><span>Swipe between workouts ↔</span></div><div class="day-carousel" id="dayCarousel" aria-label="Training days only"></div><div class="day-controls"><button type="button" id="dayPrev" aria-label="Previous training day">‹</button><div class="day-position" id="dayPosition"></div><button type="button" id="dayNext" aria-label="Next training day">›</button></div><div class="day-dots" id="dayDots" aria-hidden="true"></div>';
+  root.innerHTML='<div class="day-heading"><h2>Training days</h2><span>Today: '+today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · Swipe between workouts ↔</span></div><div class="day-carousel" id="dayCarousel" aria-label="Training days only"></div><div class="day-controls"><button type="button" id="dayPrev" aria-label="Previous training day">‹</button><div class="day-position" id="dayPosition"></div><button type="button" id="dayNext" aria-label="Next training day">›</button></div><div class="day-dots" id="dayDots" aria-hidden="true"></div>';
   const rail=document.getElementById('dayCarousel');
   const todayTraining=trainingDays.some(d=>d.date.getTime()===today.getTime());
   const nextTraining=trainingDays.find(d=>d.date>=today);
