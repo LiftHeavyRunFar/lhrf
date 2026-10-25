@@ -118,7 +118,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   const logs=readLogs();reviewPerformance(logs);logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
    (logs.length?logs.slice(-15).reverse().map(x=>'<p>'+esc(x.date+' · '+x.kind+' · RPE '+x.rpe+
     (x.weight!=null?' · '+x.weight+' kg':'')+(x.reps!=null?' × '+x.reps+' reps':'')+
-    (x.minutes!=null?' · '+x.minutes+' min':'')+(x.sets?.length?' · '+x.sets.length+' sets logged':'')+(x.notes?' · '+x.notes:''))+'</p>').join(''):'<p>No genuine workouts logged yet.</p>');
+    (x.minutes!=null?' · '+x.minutes+' min':'')+(x.sets?.length?' · '+x.sets.length+' sets logged':'')+(typeof x.notes==='string'&&x.notes.trim()?' · '+x.notes:''))+'</p>').join(''):'<p>No genuine workouts logged yet.</p>');
  };
  logForm.addEventListener('submit',e=>{
   e.preventDefault();const v=new FormData(logForm);
