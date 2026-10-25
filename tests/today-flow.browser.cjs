@@ -27,7 +27,7 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  const getData=()=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)),DATA);
  assert.equal(await page.locator('#firstRun').isVisible(),false);
  assert.equal(await page.locator('#thisWeekCarousel .day-slide').count(),5);
- assert.deepEqual(await page.locator('#todaySessions strong').allTextContents(),['Future run']);
+ assert.equal(await page.locator('#todaySessions').count(),0,'Weekly cards are the sole Today workout list');
  assert.equal(await page.locator('.day-workout.is-complete').count(),2);
  assert.deepEqual(await getData(),fixture,'initialisation preserves every athlete field');
  for(const tab of ['today','train','plan','progress','settings']){
@@ -35,6 +35,13 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
   assert.equal(await page.locator('.screen.active').getAttribute('id'),tab);
   assert.equal(await page.locator('nav button.active').count(),1);
  }
+ await page.locator('nav [data-screen="plan"]').click();
+ assert.equal(await page.locator('#planDashWeekDetails > .plan-session-rail').count(),1);
+ assert.equal(await page.locator('#planDashWeekDetails > *').count(),1,'Workout cards directly follow the week selector, without duplicate summaries or controls');
+ await page.evaluate(()=>window.scrollTo(0,600));
+ assert.equal(Math.round((await page.locator('#appHeader').boundingBox()).y),0,'Logo stays pinned while scrolling');
+ const masthead=await page.locator('#appHeader').evaluate(e=>({border:getComputedStyle(e).borderTopWidth,shadow:getComputedStyle(e).boxShadow,logoWidth:e.querySelector('img').getBoundingClientRect().width}));
+ assert.equal(masthead.border,'0px');assert.equal(masthead.shadow,'none');assert.ok(masthead.logoWidth>=220,'Logo is larger than the previous scaled wordmark');
  await page.locator('nav [data-screen="train"]').click();assert.equal(await page.locator('#preWorkoutReadiness').isVisible(),false);
  await page.getByRole('button',{name:'Choose workout →',exact:true}).click();assert.equal(await page.locator('.screen.active').getAttribute('id'),'today');
  // Arrow controls use the same scroll-snap rail as touch swiping.
@@ -59,9 +66,9 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  assert.equal(await page.locator('#liveFeedbackDialog').isVisible(),true);await page.locator('#liveFeedbackDifficulty').selectOption('expected');await page.locator('#liveFeedbackSave').click();
  let saved=await getData();assert.equal(saved.sets.length,4);assert.equal(saved.runs.length,1);assert.equal(saved.completedWorkouts.length,3);assert.equal(saved.sessionFeedback.length,1);assert.deepEqual(saved.activeSchedule,fixture.activeSchedule);assert.deepEqual(saved.customRoadmap,fixture.customRoadmap);assert.deepEqual(saved.sentinel,fixture.sentinel);assert.deepEqual(saved.sets[0],fixture.sets[0]);assert.deepEqual(saved.completedWorkouts.slice(0,2),fixture.completedWorkouts);
  assert.equal(await page.evaluate(key=>localStorage.getItem(key),LIVE),null);assert.equal(await page.locator('#preWorkoutReadiness').isVisible(),false);
- await page.locator('nav [data-screen="today"]').click();assert.equal(await page.locator('.day-workout.is-complete').count(),3);assert.deepEqual(await page.locator('#todaySessions strong').allTextContents(),['Future run']);
- await page.locator('#todaySessions button').click();await page.locator('#previewStart').click();await page.locator('#liveRunKm').fill('3');await page.locator('#liveRunMinutes').fill('20');await page.locator('#liveRunRpe').fill('4');await page.locator('#liveLogRun').click();await page.locator('#liveFinish').click();await page.locator('#liveFeedbackSkip').click();
- await page.locator('nav [data-screen="today"]').click();assert.equal(await page.locator('#todaySessions button').count(),0,'completed future session removed immediately');assert.equal(await page.locator('.day-workout.is-complete').count(),4);
+ await page.locator('nav [data-screen="today"]').click();assert.equal(await page.locator('.day-workout.is-complete').count(),3);assert.equal(await page.locator('#todaySessions').count(),0,'Weekly cards are the sole Today workout list');
+ await page.locator('[data-session-id="sat"]').click();await page.locator('#previewStart').click();await page.locator('#liveRunKm').fill('3');await page.locator('#liveRunMinutes').fill('20');await page.locator('#liveRunRpe').fill('4');await page.locator('#liveLogRun').click();await page.locator('#liveFinish').click();await page.locator('#liveFeedbackSkip').click();
+ await page.locator('nav [data-screen="today"]').click();assert.equal(await page.locator('#todaySessions button').count(),0,'No duplicate list appears after completion');assert.equal(await page.locator('.day-workout.is-complete').count(),4);
  await page.reload();assert.equal(await page.locator('#firstRun').isVisible(),false);assert.equal((await getData()).completedWorkouts.length,4);
  await page.locator('nav [data-screen="today"]').click();
  // Exercise touch-driven horizontal scrolling in Chromium, not just the arrow handlers.
@@ -78,7 +85,7 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  assert.match(await page.locator('#dayPosition').innerText(),/Saturday|Sunday/);
  if(process.env.LHRF_SCREENSHOT)await page.screenshot({path:process.env.LHRF_SCREENSHOT,fullPage:true});
  assert.deepEqual(errors,[]);
- console.log('PASS five tabs; weekly rail/controls; dated Upcoming; completion across changed training days; read-only previews; Start/readiness; top set/back-offs; validation; combined workout/run logging; reload/resume; finish/feedback; data preservation.');
+ console.log('PASS five tabs; weekly rail/controls; single weekly calendar; completion across changed training days; read-only previews; Start/readiness; top set/back-offs; validation; combined workout/run logging; reload/resume; finish/feedback; data preservation.');
  // Sunday completion and the Monday/DST boundary must not relabel old workouts as future.
  await page.clock.setSystemTime(new Date('2026-10-25T10:00:00Z'));
  await page.reload();await page.locator('nav [data-screen="today"]').click();
