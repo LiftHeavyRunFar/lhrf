@@ -17,7 +17,8 @@ function buildDatedProgramme(config){
   let phase=old.phase;
   if(eventWeeks.has(w))phase='event';
   else if(eventWeeks.has(w+1))phase='realisation';
-  else if(w>Math.max(...eventWeeks))phase='recovery';
+  else if(eventWeeks.has(w-1))phase='recovery';
+  else if(w>Math.max(...eventWeeks))phase='foundation';
   else if(w<Math.max(...eventWeeks)&&['event','realisation','assessment'].includes(phase))phase='development';
   const next=d.hybrid.coordinateWeek(c,d.prescribe.prescribeWeek(c,{week:w,phase}));
   const schedule=d.schedule.scheduleWeek(c,next);
