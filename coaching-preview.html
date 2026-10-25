@@ -126,14 +126,26 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    if(last.length<3)continue;
    const harder=last.every(x=>x.delta>=1),easier=last.every(x=>x.delta<=-1);
    if(!harder&&!easier)continue;
-   proposals.push({lift,direction:harder?'hard':'easy',date:last[2].date,message:harder?'Three comparable sessions were harder than prescribed. Review fatigue and recovery before considering a smaller accessory workload.':'Three comparable sessions were easier than prescribed. Consider a modest load progression after reviewing technique and recovery.',evidence:last.map(x=>x.date+' ('+(x.delta>0?'+':'')+x.delta+' RPE)').join(', ')});
+   proposals.push({lift,direction:harder?'hard':'easy',date:last[2].date,latest:entries.at(-1),message:harder?'Three comparable sessions were harder than prescribed. Review fatigue and recovery before considering a smaller accessory workload.':'Three comparable sessions were easier than prescribed. Consider a modest load progression after reviewing technique and recovery.',evidence:last.map(x=>x.date+' ('+(x.delta>0?'+':'')+x.delta+' RPE)').join(', ')});
+  }
+  // Conservative proposed loading is a preview only; do not alter current or future workouts.
+  for(const proposal of proposals){
+   const entries=logs.filter(x=>x.kind===proposal.lift&&x.plannedSession?.planned?.sets?.length&&x.sets?.length);
+   const last=entries.at(-1);
+   const planned=last?.plannedSession?.planned?.sets?.[0];
+   const current=Number(planned?.weight);
+   if(!(current>0))continue;
+   const step=proposal.direction==='easy'?2.5:-2.5;
+   const next=Math.max(0,Math.round((current+step)/2.5)*2.5);
+   proposal.loadSuggestion=proposal.direction==='easy'?{current,next,description:'Optional next top-set target: '+next+' kg (+'+step+' kg). Confirm recovery and bar speed before applying.'}:
+    {current,next,description:'Optional next top-set target: '+next+' kg ('+step+' kg), only if fatigue persists after reviewing recovery and accessories.'};
   }
   const decisionKey='lhrf-v2-coach-decisions';
   let decisions={};try{decisions=JSON.parse(localStorage.getItem(decisionKey)||'{}')||{}}catch(err){}
   const trendHtml=proposals.length?'<h3>Coach proposals · approval required</h3>'+proposals.map(x=>{
    const id=x.lift+'-'+x.direction+'-'+x.date;
    const state=decisions[id]?.status;
-   return '<div class="week"><p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small></p>'+
+   return '<div class="week"><p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small></p>'+(x.loadSuggestion?'<p><strong>Example adjustment (not applied):</strong> '+esc(x.loadSuggestion.description)+'</p>':'<p>Suggested weight unavailable; review load manually.</p>')+
     (state?'<p><strong>Decision: '+esc(state)+'.</strong> '+(state==='accepted'?'Recorded for a future plan review; no workout prescription has been changed.':'No change requested.')+'</p>':
     '<p><button type="button" class="coachDecision" data-decision="accepted" data-id="'+esc(id)+'">Approve for plan review</button> <button type="button" class="coachDecision" data-decision="rejected" data-id="'+esc(id)+'">Dismiss</button></p>')+'</div>';
   }).join(''):'<p class="muted">No sustained three-session RPE trend. No adjustment proposed.</p>';
