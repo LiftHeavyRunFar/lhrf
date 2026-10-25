@@ -23,7 +23,7 @@ assert.ok(html.includes('class="setCompleted"'),'Per-set completion confirmation
 assert.ok(html.includes("!row.querySelector('.setCompleted').checked"),'Unconfirmed prescribed sets cannot be saved as genuine');
 assert.ok(html.includes('function addSet(initial)'),'Set rows must support prescribed defaults');
 assert.ok(html.includes('for(let n=0;n<group.sets;n++)addSet('),'Each prescribed set must become editable row');
-assert.ok(html.includes('edit each set to reflect what you actually complete'),'Actual-vs-planned warning required');
+assert.ok(html.includes('tick Completed for each performed set'),'Actual-vs-planned warning required');
 assert.ok(html.includes('class="startPrescribed"'),'Programme sessions must open the trial logger');
 assert.ok(html.includes('plannedSession:activePrescription'),'Actual log must retain prescribed context');
 assert.ok(html.includes('setRows.children.length===0'),'Set-only lifting logs must be valid');
