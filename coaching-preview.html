@@ -46,7 +46,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <label>Top reps (optional) <input type="number" name="reps" min="1" max="100" step="1"></label>
 <label>Actual RPE (1–10) <input type="number" name="rpe" min="1" max="10" step="0.5" required></label>
 </div><label>Notes (optional) <input type="text" name="notes" maxlength="300" style="max-width:100%;width:100%" placeholder="How did it feel?"></label>
-<div id="setLogger"><h3>Working sets (optional)</h3><p class="muted">Add each completed set. For running, use duration and RPE above instead.</p><div id="setRows"></div><button type="button" id="addSet">+ Add set</button></div><p><button type="submit">Save genuine session</button></p></form>
+<div id="setLogger"><h3>Working sets (optional)</h3><p class="muted">Add each completed set and tick Completed. Suggested sets must be confirmed individually before saving. For running, use duration and RPE above instead.</p><div id="setRows"></div><button type="button" id="addSet">+ Add set</button></div><p><button type="submit">Save genuine session</button></p></form>
 <p id="logMessage" role="status"></p><div id="logHistory"></div></section>
 <script src="./src/coaching-v2.js"></script>
 <script src="./src/prescriptions-v2.js"></script>
@@ -82,6 +82,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   row.innerHTML='<label>Weight (kg) <input type="number" class="setWeight" min="0" max="600" step="0.5" required></label>'+
    '<label>Reps <input type="number" class="setReps" min="1" max="100" step="1" required></label>'+
    '<label>Set RPE <input type="number" class="setRpe" min="1" max="10" step="0.5" required></label>'+
+   '<label><input type="checkbox" class="setCompleted" style="width:auto"> Completed</label>'+
    '<button type="button" class="removeSet">Remove set</button>';
   row.querySelector('.removeSet').addEventListener('click',()=>row.remove());setRows.appendChild(row);
   if(initial){row.querySelector('.setWeight').value=initial.weight??'';
@@ -111,7 +112,11 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     (minutes!==null&&(!Number.isInteger(minutes)||minutes<1||minutes>600))){logMessage.textContent='Please check the session date, RPE and optional values.';return;}
   if(kind==='run'&&(weight!==null||reps!==null)){logMessage.textContent='For a run, leave weight and reps blank.';return;}
   if(kind!=='run'&&minutes===null&&weight===null&&reps===null&&setRows.children.length===0){logMessage.textContent='Enter working sets, top weight/reps or duration for the lifting session.';return;}
-  const sets=[...setRows.children].map(row=>({weight:Number(row.querySelector('.setWeight').value),reps:Number(row.querySelector('.setReps').value),rpe:Number(row.querySelector('.setRpe').value)}));
+  const rows=[...setRows.children];
+  if(rows.some(row=>!row.querySelector('.setCompleted').checked)){
+   logMessage.textContent='Mark every completed set, or remove sets you did not perform. No suggested sets are counted automatically.';return;
+  }
+  const sets=rows.map(row=>({weight:Number(row.querySelector('.setWeight').value),reps:Number(row.querySelector('.setReps').value),rpe:Number(row.querySelector('.setRpe').value)}));
   if(kind==='run'&&sets.length){logMessage.textContent='Remove lifting sets before logging a run.';return;}
   if(sets.some(x=>!Number.isFinite(x.weight)||x.weight<0||x.weight>600||!Number.isInteger(x.reps)||x.reps<1||x.reps>100||!Number.isFinite(x.rpe)||x.rpe<1||x.rpe>10)){logMessage.textContent='Check each set weight, reps and RPE.';return;}
   const logs=readLogs();logs.push({date,kind,rpe,weight,reps,minutes,sets,notes,plannedSession:activePrescription,recordedAt:new Date().toISOString(),source:'genuine-athlete-entry'});
@@ -191,7 +196,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     activePrescription={week:chosen.week,phase:chosen.phase,kind,day:item.day,
      planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace}:
       {sets:item.weekStrengths.map(x=>({role:x.role,sets:x.sets,reps:x.reps,rpe:x.rpe,weight:x.suggestedWeight}))}};
-    logMessage.textContent='Selected week '+chosen.week+' '+item.day+' '+kind+'. Suggested sets are prefilled; edit each set to reflect what you actually complete before saving.';
+    logMessage.textContent='Selected week '+chosen.week+' '+item.day+' '+kind+'. Suggested sets are prefilled; edit actual values, tick Completed for each performed set and remove skipped sets before saving.';
     document.getElementById('trialLog').scrollIntoView({behavior:'smooth',block:'start'});
    }));
   }catch(err){out.innerHTML='<p class="error">Could not generate preview: '+esc(err.message)+'</p>';}
