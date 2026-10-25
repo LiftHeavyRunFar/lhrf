@@ -149,7 +149,19 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    if(highRunLoad)proposal.cautions.push('Running duration increased from '+priorMinutes+' to '+runMinutes+' minutes across consecutive seven-day windows.');
    if(phaseCaution)proposal.cautions.push('Current phase ('+phase+') requires a manual coaching review.');
    if(!priorMinutes||!runMinutes)proposal.cautions.push('Running load history is incomplete; no assumption of full recovery.');
-   proposal.blockLoad=highRunLoad||phaseCaution;
+   // Use genuine session feedback only when a recognizable numeric score exists.
+   const recentLiftLogs=logs.filter(x=>x.kind===proposal.lift&&x.date<=proposal.date).slice(-3);
+   const feedback=recentLiftLogs.map(x=>x.postWorkout||x.recovery||x.feedback||x.notes).filter(x=>x&&typeof x==='object');
+   const fatigueScores=feedback.map(x=>Number(x.fatigue??x.fatigueScore??x.exertion)).filter(x=>Number.isFinite(x)&&x>=1&&x<=10);
+   const readinessScores=feedback.map(x=>Number(x.readiness??x.readinessScore)).filter(x=>Number.isFinite(x)&&x>=1&&x<=10);
+   const painFlag=feedback.some(x=>x.pain===true||x.injury===true||x.painReported===true);
+   const highFatigue=fatigueScores.length>=2&&fatigueScores.slice(-2).every(n=>n>=8);
+   const lowReadiness=readinessScores.length>=2&&readinessScores.slice(-2).every(n=>n<=3);
+   if(painFlag)proposal.cautions.push('Pain or injury was flagged in workout feedback. Seek appropriate assessment before progressing.');
+   if(highFatigue)proposal.cautions.push('Recent feedback reports sustained high fatigue. Review recovery and accessory volume first.');
+   if(lowReadiness)proposal.cautions.push('Recent feedback reports low readiness. Hold load progression until recovery improves.');
+   if(!feedback.length)proposal.cautions.push('No structured recovery feedback available; use RPE trends cautiously.');
+   proposal.blockLoad=highRunLoad||phaseCaution||painFlag||highFatigue||lowReadiness;
   }
   // Conservative proposed loading is a preview only; do not alter current or future workouts.
   for(const proposal of proposals){
