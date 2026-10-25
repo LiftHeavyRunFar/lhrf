@@ -1501,9 +1501,30 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   dialog.querySelector('#previewClose').onclick=()=>dialog.remove();
   dialog.querySelector('#previewStart').onclick=()=>{if(live&&!confirm('Another workout is active. Discard it and start this one?'))return;live={id:session.id,day:session.day,name:session.name,ex:session.ex||[],runs:session.runs||[],run:!!session.run,runLogged:false,runStage:false,runEntry:null,entries:{},notes:'',started:new Date().toISOString()};expanded=0;persist();dialog.remove();go('train')};
  }
+ function openV2LiveHandoff(){
+  let trial;try{trial=JSON.parse(sessionStorage.getItem('lhrf-v2-live-handoff')||'null')}catch(e){return}
+  if(!trial||!['bench','squat','deadlift','run'].includes(trial.kind)||!trial.planned)return;
+  if(live){alert('Finish or discard your active workout before starting a v2 trial.');return}
+  const groups=trial.kind==='run'?[]:(trial.planned.sets||[]).filter(x=>Number.isInteger(x.sets)&&x.sets>0&&x.sets<=10&&Number(x.reps)>0&&Number(x.rpe)>=1&&Number(x.rpe)<=10);
+  if(trial.kind!=='run'&&!groups.length)return;
+  const ex=groups.map(x=>[trial.kind[0].toUpperCase()+trial.kind.slice(1),x.sets,x.reps,Number(x.weight)||0,x.rpe,{role:x.role,topIndex:0}]);
+  const runs=trial.kind==='run'?[{name:trial.planned.type||'Run',minutes:trial.planned.minutes||0,rpe:7,role:trial.planned.type||'run'}]:[];
+  live={id:'v2-trial-'+trial.week+'-'+trial.kind,day:trial.day,name:'V2 trial · '+trial.kind,ex,runs,runLogged:false,runEntry:null,entries:{},notes:'',started:new Date().toISOString(),v2Trial:trial};
+  sessionStorage.removeItem('lhrf-v2-live-handoff');expanded=0;persist();go('train');status();
+ }
+ if(new URLSearchParams(location.search).get('trialTrain')==='1')requestAnimationFrame(openV2LiveHandoff);
  window.openWorkout=previewSession;
  window.finishLiveWorkout=function(){if(!live)return;const done=Object.values(live.entries).filter(v=>v.done);if(live.runs?.length&&!live.runLogged){live.runStage=true;persist();status();document.getElementById('liveRunSection')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('liveRunError').textContent='Log your completed run above before finishing.';return}if(!done.length&&!live.runLogged){document.getElementById('liveError').textContent='Log at least one set or a completed run before finishing.';return}if(!confirm('Finish this workout and save '+done.length+' completed sets'+(live.runLogged?' and the completed run':'')+'?'))return;
   const stamp=new Date().toISOString();const note=live.notes||'';
+  if(live.v2Trial){
+   const trial=live.v2Trial,sets=[];
+   live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)sets.push({weight:+v.weight,reps:+v.reps,rpe:+v.rpe,role:e[5]?.role||null})}});
+   try{const key='lhrf-v2-genuine-training-log',old=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(old))throw Error('Invalid log');
+    old.push({date:stamp.slice(0,10),kind:trial.kind,rpe:live.runEntry?.rpe||sets.at(-1)?.rpe||7,weight:sets[0]?.weight||null,reps:sets[0]?.reps||null,minutes:live.runEntry?.min||null,sets,notes,plannedSession:trial,recordedAt:stamp,source:'genuine-athlete-entry',via:'original-live-train'});
+    localStorage.setItem(key,JSON.stringify(old));
+   }catch(err){document.getElementById('liveError').textContent='Could not save trial session; workout remains open.';return}
+   live=null;persist();status();go('train');return;
+  }
   live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,week:Number(data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
   if(live.runLogged&&live.runEntry){data.runs=data.runs||[];data.runs.push({date:stamp,km:live.runEntry.km,min:live.runEntry.min,rpe:live.runEntry.rpe,type:live.runs?.[0]?.role||'run',sessionId:live.id,session:live.name,week:Number(data.activeCustomWeek)||1,notes:note})}
   data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,name:live.name,day:live.day,date:stamp,week:data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged});
