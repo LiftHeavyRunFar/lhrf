@@ -55,7 +55,7 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  assert.equal(await page.locator('#dayCarousel').evaluate(e=>e.scrollWidth>e.clientWidth),true);
  await page.locator('[data-session-id="tue"]').click();assert.match(await page.locator('#livePreview').innerText(),/Completed/);assert.equal(await page.locator('#previewStart').count(),0);await page.locator('#previewClose').click();
  let previewText;
- for(const target of ['.day-label','h3','h3 span','.day-hint','.day-workout strong']){
+ for(const target of ['.day-label','h3','h3 span','.day-hint','.day-workout > strong']){
   await page.locator('.day-slide[data-index="4"] '+target).click();
   const text=await page.locator('#livePreview').innerText();if(previewText)assert.equal(text,previewText,'Every part of a day card opens the same preview');previewText=text;
   assert.equal(await page.locator('#livePreview .run-workout-flow').count(),1);assert.doesNotMatch(await page.locator('#livePreview .run-workout-flow').innerText(),/RPE/);await page.locator('#previewClose').click();
