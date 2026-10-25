@@ -15,25 +15,22 @@
   const long=runs.filter(r=>r.type==='long');
   const highLower=lower.filter(s=>s.top&&s.top.rpe>=8);
   const conflict=highLower.length>0&&(quality.length>0||long.length>0);
+  // Fatigue coordination must never silently rewrite either training template.
+  // Return proposed adjustments separately; the athlete decides what to apply.
   if(conflict){
    if(runFirst){
-    // Protect running priority: trim lower-body backoffs, not the primary run.
-    for(const s of lower){
-     if(s.backoff&&s.backoff.sets>1){
-      const previous=s.backoff.sets;
-      s.backoff.sets=Math.max(1,previous-1);
-      s.backoff.stress=Math.round(s.backoff.sets*s.backoff.reps*s.backoff.rpe)/10;
-      s.totalStress=(s.top?.stress||0)+s.backoff.stress;
-      s.totalReps=(s.top?.sets||0)*(s.top?.reps||0)+s.backoff.sets*s.backoff.reps;
-      changes.push({kind:'trim-lower-backoffs',lift:s.lift,from:previous,to:s.backoff.sets,reason:'Protect quality running and long-run recovery.'});
+    for(const session of lower){
+     if(session.backoff?.sets>1){
+      changes.push({kind:'trim-lower-backoffs',lift:session.lift,exposure:session.exposure,
+       from:session.backoff.sets,to:session.backoff.sets-1,
+       reason:'Optional: reduce lower-body backoffs to protect key runs. Athlete approval required.'});
      }
     }
    }else{
-    // Protect strength priority; trim secondary run duration, preserve long run.
-    for(const r of quality){
-     const before=r.minutes;
-     r.minutes=Math.max(15,round5(before*.8));
-     if(r.minutes<before)changes.push({kind:'trim-quality-run',from:before,to:r.minutes,reason:'Protect heavy lower-body lifting and recovery.'});
+    for(const run of quality){
+     const suggested=Math.max(15,round5(run.minutes*.8));
+     if(suggested<run.minutes)changes.push({kind:'trim-quality-run',from:run.minutes,to:suggested,
+      reason:'Optional: shorten quality running to protect strength recovery. Athlete approval required.'});
     }
    }
   }
@@ -43,7 +40,7 @@
    hybrid:{conflict,priority:runFirst?'running':strengthFirst?'strength':'balanced',changes,
     approvalRequired:changes.length>0,
     limitations:['Session-day spacing and individual fatigue data are not available in this prototype.',
-     'Load changes are proposals for athlete approval, not automatic edits to the live plan.']}};
+     'Conflict adjustments are proposals only; no running or lifting prescription is changed without athlete approval.']}};
  }
  const api={coordinateWeek};
  if(typeof module==='object'&&module.exports)module.exports=api;
