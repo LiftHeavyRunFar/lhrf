@@ -126,10 +126,26 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    if(last.length<3)continue;
    const harder=last.every(x=>x.delta>=1),easier=last.every(x=>x.delta<=-1);
    if(!harder&&!easier)continue;
-   proposals.push({lift,message:harder?'Three comparable sessions were harder than prescribed. Review fatigue and recovery before considering a smaller accessory workload.':'Three comparable sessions were easier than prescribed. Consider a modest load progression after reviewing technique and recovery.',evidence:last.map(x=>x.date+' ('+(x.delta>0?'+':'')+x.delta+' RPE)').join(', ')});
+   proposals.push({lift,direction:harder?'hard':'easy',date:last[2].date,message:harder?'Three comparable sessions were harder than prescribed. Review fatigue and recovery before considering a smaller accessory workload.':'Three comparable sessions were easier than prescribed. Consider a modest load progression after reviewing technique and recovery.',evidence:last.map(x=>x.date+' ('+(x.delta>0?'+':'')+x.delta+' RPE)').join(', ')});
   }
-  const trendHtml=proposals.length?'<h3>Coach proposals · not applied</h3>'+proposals.map(x=>'<p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small><br>Approval is required before any programme change.</p>').join(''):'<p class="muted">No sustained three-session RPE trend. No adjustment proposed.</p>';
+  const decisionKey='lhrf-v2-coach-decisions';
+  let decisions={};try{decisions=JSON.parse(localStorage.getItem(decisionKey)||'{}')||{}}catch(err){}
+  const trendHtml=proposals.length?'<h3>Coach proposals · approval required</h3>'+proposals.map(x=>{
+   const id=x.lift+'-'+x.direction+'-'+x.date;
+   const state=decisions[id]?.status;
+   return '<div class="week"><p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small></p>'+
+    (state?'<p><strong>Decision: '+esc(state)+'.</strong> '+(state==='accepted'?'Recorded for a future plan review; no workout prescription has been changed.':'No change requested.')+'</p>':
+    '<p><button type="button" class="coachDecision" data-decision="accepted" data-id="'+esc(id)+'">Approve for plan review</button> <button type="button" class="coachDecision" data-decision="rejected" data-id="'+esc(id)+'">Dismiss</button></p>')+'</div>';
+  }).join(''):'<p class="muted">No sustained three-session RPE trend. No adjustment proposed.</p>';
   target.innerHTML='<h3>Coach review · observations only</h3><p class="muted">These comparisons do not alter your programme. Suggested changes will require your approval.</p>'+reviews.reverse().map(r=>'<p><strong>'+esc(r.label)+'</strong> · '+esc(r.message)+'</p>').join('')+trendHtml;
+  target.querySelectorAll('.coachDecision').forEach(button=>button.addEventListener('click',()=>{
+   const id=button.dataset.id,status=button.dataset.decision;
+   if(!proposals.some(x=>x.lift+'-'+x.direction+'-'+x.date===id)||!['accepted','rejected'].includes(status))return;
+   if(status==='accepted'&&!confirm('Record approval for a future plan review? This does NOT change any workouts yet.'))return;
+   let saved={};try{saved=JSON.parse(localStorage.getItem(decisionKey)||'{}')||{}}catch(err){}
+   saved[id]={status,at:new Date().toISOString()};
+   try{localStorage.setItem(decisionKey,JSON.stringify(saved));reviewPerformance(readLogs())}catch(err){alert('Could not save your decision. No change was made.')}
+  }));
  };
  const renderLogs=()=>{
   const logs=readLogs();reviewPerformance(logs);logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
