@@ -1,0 +1,160 @@
+{
+  "source": "Existing live coaching functions at 7fa1977132f212997ca29fbda73b9b3e551f58a8",
+  "timestamp": 1792929600000,
+  "cases": [
+    {
+      "profile": "bench-dual-event",
+      "week": 1,
+      "sha256": "29187acec5abf2546df6650d718b334c92d94414dec70f779dc7e94c70b7ce7b"
+    },
+    {
+      "profile": "bench-dual-event",
+      "week": 3,
+      "sha256": "eba87d5b883f528a1f3449b658ffcbfb6597c110cb70d6fa2ab419968130b2f5"
+    },
+    {
+      "profile": "bench-dual-event",
+      "week": 5,
+      "sha256": "d532b6bf7dc3142e126aa9b9c5c393a18308275e05a4e26edad636960bb36042"
+    },
+    {
+      "profile": "bench-dual-event",
+      "week": 6,
+      "sha256": "2ac9bd1302beb5acb76d800c7773409b12b2c66b53dea9ddca9eb4226a5b815d"
+    },
+    {
+      "profile": "novice",
+      "week": 1,
+      "sha256": "4284ec732d31768085658eb35faaf1af9077dda1ba0e456b93c38a71af45a123"
+    },
+    {
+      "profile": "novice",
+      "week": 3,
+      "sha256": "38b53dd84c5bd2adc96642ad2ee15419cd09cafb1c1eb48331e7d690a6c25e08"
+    },
+    {
+      "profile": "novice",
+      "week": 5,
+      "sha256": "9b15dd7069d5a8d05ce71fcf147bb4b0d2f5e73444de7ea262e46904fe0b8582"
+    },
+    {
+      "profile": "novice",
+      "week": 8,
+      "sha256": "7af61ffac13cf870c648920c99e2c57db03ba7094af00c133124c08020d78b98"
+    },
+    {
+      "profile": "powerlifter",
+      "week": 1,
+      "sha256": "6131b058f730b6586b74064ccda8cfb50f36b9f10d2c2ba67a7805268487401a"
+    },
+    {
+      "profile": "powerlifter",
+      "week": 3,
+      "sha256": "40f13e3bbd4c9e1ea84696c0c0bba94be27ea6f253065b6c90cc80d0b3d635ee"
+    },
+    {
+      "profile": "powerlifter",
+      "week": 5,
+      "sha256": "2ac136b39704cfd79db140fb174ce27d0a380e6482253e8e35aaba6cef1a16a3"
+    },
+    {
+      "profile": "powerlifter",
+      "week": 20,
+      "sha256": "5fd6e3e74441e32dca92120fd9caae0ead69a81e520ff0ba5b50d94c9cd42082"
+    },
+    {
+      "profile": "runner",
+      "week": 1,
+      "sha256": "b155071c0b368fad3e7b6cc47eda037326489551601fe68b2c4b1e503d2ec54e"
+    },
+    {
+      "profile": "runner",
+      "week": 3,
+      "sha256": "49d3b33cf3130f805f4846daaf9dca24acb745e5b52744bef817c035295d3a63"
+    },
+    {
+      "profile": "runner",
+      "week": 5,
+      "sha256": "816d90594cc428080a6381663d8ebedf6a804de3d8aa3062b577f88ba17dbc8a"
+    },
+    {
+      "profile": "runner",
+      "week": 12,
+      "sha256": "b421004a4d9aba91ebed7c06fb95fa3659db85263ccb329ab1ea80be5c7f2906"
+    },
+    {
+      "profile": "restricted",
+      "week": 1,
+      "sha256": "94637dac04cba59362c2721562f9aa59c5a3f2d5a07feea74533c01e0fa57354"
+    },
+    {
+      "profile": "restricted",
+      "week": 3,
+      "sha256": "8d3bd55f9400faefe7ef1c8e2bb697613aa459b1e5dbc30658fffc4ee8f98be8"
+    },
+    {
+      "profile": "restricted",
+      "week": 5,
+      "sha256": "ebaf07abcc8f17bfa638b9e1b0bf68642683efae17c76f83cc73dfc28025371d"
+    },
+    {
+      "profile": "restricted",
+      "week": 8,
+      "sha256": "937adec07eaf5c0e38fe6a1e2ce666908983ce2d315f627eedb2e20a8aecb098"
+    },
+    {
+      "profile": "fatigue",
+      "week": 1,
+      "sha256": "711c0b0922446068d82edd32071e02c0f183a3bbae854e37228bd971f9825918"
+    },
+    {
+      "profile": "fatigue",
+      "week": 3,
+      "sha256": "6a77150da4af85f24f55f7481604170f737eb47c9a4641d66bcdf317b04822c2"
+    },
+    {
+      "profile": "fatigue",
+      "week": 5,
+      "sha256": "fade6faa52e4e34ddb74f105f8fc4d1c272d308c30e8ff351a80a86e82de947f"
+    },
+    {
+      "profile": "fatigue",
+      "week": 12,
+      "sha256": "54825f20b4cbe2fc381d5b26e6a63ddef29755228ce669d6ddd1e1e78570f11e"
+    },
+    {
+      "profile": "fast",
+      "week": 1,
+      "sha256": "711c0b0922446068d82edd32071e02c0f183a3bbae854e37228bd971f9825918"
+    },
+    {
+      "profile": "fast",
+      "week": 3,
+      "sha256": "6a77150da4af85f24f55f7481604170f737eb47c9a4641d66bcdf317b04822c2"
+    },
+    {
+      "profile": "fast",
+      "week": 5,
+      "sha256": "fade6faa52e4e34ddb74f105f8fc4d1c272d308c30e8ff351a80a86e82de947f"
+    },
+    {
+      "profile": "fast",
+      "week": 12,
+      "sha256": "54825f20b4cbe2fc381d5b26e6a63ddef29755228ce669d6ddd1e1e78570f11e"
+    }
+  ],
+  "reviews": [
+    {
+      "mode": "on-target",
+      "sha256": "de29cd1d5d451512fc6b9b259d3fcc5b01ee084a10abdd56258fa0efccabf68c"
+    },
+    {
+      "mode": "strong",
+      "sha256": "26f54f81eda6ea7ee5b1a11220aa0559498802154ec507b9f569a2b82e3b5f54"
+    },
+    {
+      "mode": "fatigue",
+      "sha256": "e7e25f9510399770ac93b98138b3dea8b6ef90bfb32280274bb9267ac41a4e20"
+    }
+  ]
+}

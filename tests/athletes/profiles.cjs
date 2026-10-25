@@ -3,7 +3,7 @@ const common={startDate:'2026-10-19',runGoal:'fitness',maxes:{squat:140,bench:10
 const profile=(id,name,config,expectations)=>({id,name,config:{...common,...config},expectations});
 module.exports=[
  profile('bench-dual-event','Bench-first adjacent events',{
-  weeks:6,priority:'Bench',bench:3,squat:1,deadlift:1,runs:2,maxes:{bench:160},tenKTime:'1:05:00',
+  weeks:6,event:'bench',priority:'Bench',bench:3,squat:1,deadlift:1,runs:2,maxes:{bench:160},tenKTime:'1:05:00',
   strengthTargetDate:'2026-11-28',runningTargetDate:'2026-11-29',
   availableDays:['Tue','Thu','Fri','Sat','Sun'],
   fixedSessions:[{kind:'strength',lift:'bench',exposure:1,day:'Tue'},{kind:'run',runType:'quality',day:'Tue'},

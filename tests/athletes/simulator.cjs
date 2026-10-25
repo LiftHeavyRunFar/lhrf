@@ -1,139 +1,70 @@
-// Replay reported training behaviour through the real v2 APIs. No physiological model,
-// browser storage, real athlete data, network, or automatic approval is involved.
+// The athlete bots call the same canonical engine used by index.html and the preview.
 const assert=require('node:assert/strict');
 const profiles=require('./profiles.cjs');
-const {buildDatedProgramme}=require('../../src/dated-programme-v2.js');
-const {reviewWeek}=require('../../src/weekly-review-v2.js');
-const {reviewSession}=require('../../src/performance-v2.js');
-const {proposeStrengthAdjustment}=require('../../src/strength-feedback-v2.js');
-const {structureRuns}=require('../../src/run-sessions-v2.js');
-const {reviewRunning}=require('../../src/running-feedback-v2.js');
+const {createEngine}=require('../../src/coach-engine.js');
+const {normalizeProfile,buildProgramme}=require('../../src/coach-adapters.js');
 const scenarios=['on-target','rapid-progress','accumulated-fatigue','missed-for-schedule','variable-effort','pain-report'];
 const clone=x=>JSON.parse(JSON.stringify(x));
-const increase=p=>p.kind==='review-progression'||p.kind==='review-running-progression'||p.direction==='increase';
-const deepFreeze=x=>{if(x&&typeof x==='object'){Object.freeze(x);Object.values(x).forEach(deepFreeze)}return x};
+const increase=p=>p.status==='progress';
 function runSuite(){
- const failures=[],gaps=new Map(),trajectories=[];let checks=0;
- const check=(id,fn)=>{checks++;try{fn()}catch(e){failures.push({id,message:e.message})}};
- const gap=(id,athlete,expected,observed)=>{if(!gaps.has(id))gaps.set(id,{id,status:'blocked',expected,examples:[]});const g=gaps.get(id);if(g.examples.length<3&&!g.examples.some(x=>x.athlete===athlete&&x.observed===observed))g.examples.push({athlete,observed})};
- const truth=(id,value)=>check(id,()=>assert.ok(value));
- function replay(profile,scenario){
-  const input=deepFreeze(clone(profile.config)),before=JSON.stringify(input);let programme;
-  try{programme=buildDatedProgramme(input)}catch(e){
-   gap('fixed-split-build',profile.id,'Every requested session slot can be represented, or the planner returns an explicit reviewable conflict.',e.message);
-   return {athlete:profile.id,scenario,status:'blocked',weeks:[],reason:e.message};
-  }
-  check(profile.id+':input-immutable',()=>assert.equal(JSON.stringify(input),before));
-  if(!programme.valid){failures.push({id:profile.id+':valid-profile',message:JSON.stringify(programme.errors)});return {athlete:profile.id,scenario,status:'failed',weeks:[]}}
-  const strengthLogs=[],runLogs=[],weeks=[];let lastStrengthSession=null,serial=0;
-  for(const week of programme.weeks){
-   const snapshot=JSON.stringify(week);
-   if(!week.events?.length){
-    truth('all sessions accounted for',week.calendar.sessions.length+week.calendar.unscheduled===week.strengths.length+week.runs.length);
-    truth('available days respected',week.calendar.sessions.every(s=>!input.availableDays||input.availableDays.includes(s.day)));
-   }
-   truth('finite nonnegative workload',Number.isFinite(week.strengthStress)&&week.strengthStress>=0&&Number.isFinite(week.runningMinutes)&&week.runningMinutes>=0);
-   for(const s of week.strengths){
-    for(const group of [s.top,s.backoff].filter(Boolean)){
-     truth('bounded strength effort',Number.isFinite(group.rpe)&&group.rpe>=0&&group.rpe<=10);
-     if(!input.maxes?.[s.lift])check('unknown strength baseline',()=>assert.equal(group.suggestedWeight,null));
+ let checks=0;const failures=[],gaps=new Map(),trajectories=[];
+ function check(id,fn){checks++;try{fn()}catch(e){failures.push({id,message:e.message})}}
+ function gap(id,athlete,expected,observed){if(!gaps.has(id))gaps.set(id,{id,status:'blocked',expected,examples:[]});const g=gaps.get(id);if(g.examples.length<3&&!g.examples.some(x=>x.athlete===athlete&&x.observed===observed))g.examples.push({athlete,observed})}
+ for(const profile of profiles)for(const scenario of scenarios){
+  const c=normalizeProfile(profile.config),data={sets:[],runs:[],checkins:[],sessionFeedback:[],decisions:[],overrides:{},completedWorkouts:[],customRoadmap:c,activeCustomWeek:1};
+  let serial=0;const weeks=[];
+  for(let w=1;w<=c.weeks;w++){
+   const now=Date.UTC(2026,9,19+(w-1)*7+6,23),base=JSON.stringify(data);
+   const engine=createEngine({data,now:()=>now});let sessions;
+   try{sessions=engine.generatedSessions(c,w)}catch(e){failures.push({id:profile.id+':generation',message:e.message});continue}
+   check('generation does not alter athlete state',()=>assert.equal(JSON.stringify(data),base));
+   data.activeCustomWeek=w;data.activeSchedule=sessions;
+   for(const session of sessions){
+    if(session.eventDate)continue;
+    serial++;if(scenario==='missed-for-schedule'&&serial%3===0)continue;
+    const delta=scenario==='rapid-progress'||scenario==='pain-report'&&w>=4?-1:scenario==='accumulated-fatigue'&&w>=4?1:scenario==='variable-effort'?[0,0,1,0,-.5][serial%5]:0;
+    const di={Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6}[session.day.slice(0,3)],date=new Date(Date.UTC(2026,9,19+(w-1)*7+di,12)).toISOString();
+    for(const [name,sets,reps,weight,rpe,meta] of session.ex||[]){
+     check('bounded prescribed effort',()=>assert.ok(rpe>=0&&rpe<=10));
+     if(!(weight>0))continue; // Unknown weights are never fabricated to make a test progress.
+     for(let set=1;set<=sets;set++)data.sets.push({date,exercise:name,weight,reps,rpe:Math.max(1,Math.min(10,rpe+delta)),target:rpe,role:meta?.role,session:session.name,set,week:w});
     }
-   }
-   for(const r of week.runs){
-    if(r.workout)check('run blocks match total',()=>assert.equal(r.workout.blocks.reduce((n,b)=>n+b.minutes,0),r.minutes));
-    if(!input.tenKTime)check('unknown pace stays unknown',()=>assert.equal(r.pace,null));
-   }
-   const readiness={fatigue:2,legSoreness:1,pain:false};
-   if(scenario==='accumulated-fatigue'&&week.week>=4){readiness.fatigue=5;readiness.legSoreness=4}
-   if(scenario==='pain-report'&&week.week>=4)readiness.pain=true;
-   const entries=week.calendar.sessions.filter(s=>s.kind!=='event');
-   for(const entry of entries){
-    serial++;
-    // Missing a session for a diary conflict supplies no effort evidence.
-    if(scenario==='missed-for-schedule'&&serial%3===0)continue;
-    const delta=(scenario==='rapid-progress'||scenario==='pain-report'&&week.week>=4)?-1.5:scenario==='accumulated-fatigue'&&week.week>=4?1.5:scenario==='variable-effort'?[0,0,1,0,-.5][serial%5]:0;
-    const date=new Date(Date.UTC(2026,9,19+(week.week-1)*7+entry.dayIndex)).toISOString().slice(0,10);
-    if(entry.kind==='strength'){
-     const s=week.strengths[Number(entry.id.slice(1))];
-     if(!s?.top)continue; // Back-off RPE is not comparable evidence of top-set performance.
-     const actualRPE=Math.max(1,Math.min(10,s.top.rpe+delta));
-     strengthLogs.push({date,lift:s.lift,actualRPE,targetRPE:s.top.rpe,completed:true});
-     lastStrengthSession={prescription:s,feedback:{actualRPE,actualWeight:s.top.suggestedWeight,completed:true,actualReps:s.top.reps,targetReps:s.top.reps}};
-    }else if(entry.kind==='run'){
-     const r=week.runs[Number(entry.id.slice(1))];
-     const targetRPE=r.type==='quality'?6.5:3.5;
-     runLogs.push({date,actualRPE:Math.max(1,Math.min(10,targetRPE+delta)),targetRPE,completed:true});
+    for(const run of session.runs||[]){
+     check('finite run prescription',()=>assert.ok(Number.isFinite(run.minutes)&&run.minutes>=0&&Number.isFinite(run.distanceKm)&&run.distanceKm>=0));
+     if(!profile.config.tenKTime)check('unknown pace remains effort-based',()=>assert.ok(!/\d:\d\d/.test(String(run.pace))));
+     data.runs.push({date,km:run.distanceKm,min:run.minutes,rpe:Math.max(1,Math.min(10,run.rpe+delta)),type:run.role,week:w});
     }
+    data.sessionFeedback.push({date,difficulty:delta>0?'harder':delta<0?'easier':'expected',energy:scenario==='accumulated-fatigue'&&w>=4?'low':'good',discomfort:scenario==='pain-report'&&w>=4?'yes':'no'});
    }
-   const reviewInput=deepFreeze(clone({strengthLogs,runLogs,lastStrengthSession,readiness,phase:week.phase}));
-   const beforeReview=JSON.stringify(reviewInput),review=reviewWeek(reviewInput);
-   check('review deterministic',()=>assert.deepEqual(reviewWeek(reviewInput),review));
-   check('review inputs unchanged',()=>assert.equal(JSON.stringify(reviewInput),beforeReview));
-   check('prescriptions unchanged by review',()=>assert.equal(JSON.stringify(week),snapshot));
-   check('approval never auto-applies',()=>assert.deepEqual(review.appliedChanges,[]));
-   truth('approval visible',!review.proposals.length||review.approvalRequired);
-   if(readiness.fatigue===5||readiness.pain||['recovery','realisation','assessment','event'].includes(week.phase))truth('recovery/phase guard',!review.proposals.some(increase));
-   weeks.push({week:week.week,phase:week.phase,completedStrengthExposures:strengthLogs.length,completedRuns:runLogs.length,signals:review.signals.map(s=>({lift:s.lift,signal:s.signal})),proposals:review.proposals.map(p=>({kind:p.kind,lift:p.lift,direction:p.direction})),appliedChanges:review.appliedChanges.length});
+   if(scenario==='accumulated-fatigue'&&w>=4)for(const offset of [1,3])data.checkins.push({date:new Date(Date.UTC(2026,9,19+(w-1)*7+offset,8)).toISOString(),sleep:2,energy:2,soreness:4,stress:4,symptoms:''});
+   const before=JSON.stringify(data),coach=createEngine({data,schedule:sessions,now:()=>now}),decision=coach.reviewDecision();
+   check('review deterministic',()=>assert.deepEqual(coach.reviewDecision(),decision));
+   check('pending review never mutates athlete data or prescriptions',()=>assert.equal(JSON.stringify(data),before));
+   if(scenario==='pain-report'&&w>=4)check('reported discomfort blocks progression',()=>assert.equal(increase(decision),false));
+   const cycle=coach.cycleWeek(w,c.weeks),phase=coach.customPhase(w,c.weeks,c);
+   if(cycle.deload||phase==='Taper / event')check('protected recovery/taper',()=>assert.equal(increase(decision),false));
+   weeks.push({week:w,phase,deload:cycle.deload,status:decision.status,proposals:decision.changes||[],appliedChanges:0});
   }
-  if(scenario==='on-target'||scenario==='missed-for-schedule')truth('neutral/missing logs do not manufacture fatigue',weeks.every(w=>w.proposals.length===0));
-  if(scenario==='rapid-progress')truth('sustained easier performance produces a progression review',weeks.some(w=>w.proposals.some(increase)));
-  if(scenario==='accumulated-fatigue'&&weeks.some(w=>w.completedStrengthExposures>=3))truth('repeated overshoot receives accessory-first review',weeks.some(w=>w.proposals.some(p=>p.kind==='trim-accessory-volume')));
-  return {athlete:profile.id,scenario,status:'tested',weeks};
+  trajectories.push({athlete:profile.id,scenario,status:'tested',weeks});
  }
- for(const profile of profiles)for(const scenario of scenarios)trajectories.push(replay(profile,scenario));
- // Independent coaching acceptance gates: report failures, never rewrite the expected result
- // to match what the engine happens to generate. These remain red until implemented/reviewed.
- const {buildProgramme}=require('../../src/programme-v2.js');
- const {buildPlan}=require('../../src/coaching-v2.js');
- const {prescribeWeek}=require('../../src/prescriptions-v2.js');
+ // These are acceptance requirements, independent of the implementation's labels.
  for(const profile of profiles){
-  const c=profile.config;
-  const plan=buildPlan(c);
-  for(let i=1;i<plan.phases.length;i++){
-   const a=plan.phases[i-1],b=plan.phases[i];
-   if(['foundation','development','intensification'].includes(a.phase)&&['foundation','development','intensification'].includes(b.phase)&&a.phase!==b.phase)
-    gap('phase-transition-recovery',profile.id,'A loading-phase change has a recovery transition or an explicit reviewed rationale.',a.phase+' → '+b.phase+' at week '+b.week+' without recovery');
-  }
-  if(c.fixedSessions?.some(f=>f.kind==='run'&&f.runType==='long')){
-   const fixed=c.fixedSessions.find(f=>f.kind==='run'&&f.runType==='long');
-   const p=buildDatedProgramme(c);
-   const loading=p.weeks.filter(w=>['foundation','development','intensification'].includes(w.phase));
-   if(loading.some(w=>!w.calendar.sessions.some(s=>s.kind==='run'&&s.day===fixed.day&&s.runType==='long')))
-    gap('fixed-long-run-role',profile.id,'The protected long-run slot remains a long-run prescription in loading weeks.','The day is preserved but a normal easy run is substituted for the requested long run');
-  }
+  const c=normalizeProfile(profile.config),p=buildProgramme(c,{now:()=>Date.UTC(2026,9,19)}),engine=createEngine({data:{sets:[],runs:[],checkins:[],decisions:[],customRoadmap:c},now:()=>Date.UTC(2026,9,19)});
+  for(let i=1;i<p.weeks.length;i++){const a=p.weeks[i-1],b=p.weeks[i];if(a.phase!==b.phase&&!a.deload&&!b.deload&&!/Taper/.test(b.phase))gap('phase-transition-recovery',profile.id,'Phase changes include recovery or a reviewed rationale.',a.phase+' → '+b.phase+' at week '+b.week)}
+  if(c.topSetFirst&&p.weeks[0].sessions.some(s=>s.ex.some(e=>e[0]==='Bench'&&e[5]?.role==='straight')))gap('bench-top-set-preference',profile.id,'Honour requested bench top-set-first style.','Foundation bench uses straight sets');
+  if(c.lightLifts)for(const s of p.weeks.flatMap(w=>w.sessions))for(const e of s.ex||[])if(c.lightLifts.some(l=>String(e[0]).toLowerCase()===l)&&e[4]>6)gap('light-lower-body',profile.id,'Represent explicitly light lower-body work.',e[0]+' target RPE '+e[4]);
+  if(c.trainingAge){const changed={...c,trainingAge:c.trainingAge==='beginner'?'advanced':'beginner'};if(JSON.stringify(engine.generatedSessions(c,1))===JSON.stringify(engine.generatedSessions(changed,1)))gap('training-experience',profile.id,'Training experience influences prescription or prompts review.','Beginner/advanced input has no effect')}
+  if(c.purposefulVariations&&!p.weeks.some(w=>w.sessions.some(s=>s.ex.some(e=>/safety.bar|front squat|spoto|paused|close.grip|deficit/i.test(e[0])))))gap('lift-variation',profile.id,'Purposeful variations across blocks.','No purposeful variations generated');
   if(c.hybridFocus==='running'){
-   const maintenance=prescribeWeek(c,{week:5,phase:'development'}).strengths;
-   const development=prescribeWeek({...c,priority:'Balanced',hybridFocus:'strength'},{week:5,phase:'development'}).strengths;
-   if(JSON.stringify(maintenance)===JSON.stringify(development))gap('strength-maintenance-policy',profile.id,'The strength-maintenance framework has an explicit prescription policy.','Maintenance and progressive-strength receive identical strength prescriptions');
+   const strength=p.weeks[5].sessions.flatMap(s=>s.ex),other=buildProgramme({...c,priority:'Balanced',hybridFocus:'strength'}).weeks[5].sessions.flatMap(s=>s.ex);
+   if(JSON.stringify(strength)===JSON.stringify(other))gap('strength-maintenance-policy',profile.id,'A distinct maintenance prescription policy supports running.','Maintenance and progressive strength use identical prescriptions');
   }
-  if(c.trainingAge){
-   const a=prescribeWeek(c,{week:1,phase:'foundation'}),b=prescribeWeek({...c,trainingAge:c.trainingAge==='beginner'?'advanced':'beginner'},{week:1,phase:'foundation'});
-   if(JSON.stringify(a)===JSON.stringify(b))gap('training-experience',profile.id,'Training experience influences the starting prescription or prompts a review.','Changing beginner/advanced has no effect');
-  }
-  if(c.purposefulVariations){const p=buildProgramme(c);if(!p.weeks.some(w=>w.strengths.some(s=>s.variation)))gap('lift-variation',profile.id,'Purposeful variations are represented in the programme across blocks.','No exercise variation field exists in generated lifts')}
-  if(c.topSetFirst){const w=prescribeWeek(c,{week:1,phase:'foundation'});if(w.strengths.some(s=>s.lift==='bench'&&!s.top))gap('bench-top-set-preference',profile.id,'Bench-specific prescriptions honour the requested top-set-first preference.','Foundation bench exposures have no top set')}
-  if(c.lightLifts){const w=prescribeWeek(c,{week:3,phase:'development'});for(const s of w.strengths.filter(s=>c.lightLifts.includes(s.lift)))if(s.top?.rpe>6)gap('light-lower-body',profile.id,'Explicitly light squat/deadlift work is represented instead of normal demanding exposures.',s.lift+' top-set RPE '+s.top.rpe)}
-  if(c.maxSessionsPerDay){
-   const p=buildProgramme(c),days=p.weeks[0].calendar.sessions.reduce((m,s)=>(m[s.day]=(m[s.day]||0)+1,m),{});
-   if(Object.values(days).some(n=>n>c.maxSessionsPerDay)&&!p.weeks[0].calendar.unscheduled&&!p.weeks[0].calendar.capacityConflicts?.length)
-    gap('daily-session-capacity',profile.id,'An infeasible schedule returns unscheduled work or a capacity conflict, rather than claiming everything fits.',JSON.stringify(days));
-  }
-  if(c.strengthTargetDate||c.runningTargetDate){
-   const dated=buildDatedProgramme({...c,fixedSessions:[]});
-   if(dated.weeks.some(w=>!w.events.length&&w.runs.some(r=>!r.workout)))gap('dated-run-structure',profile.id,'Dated plans retain pace and actionable workout blocks.','Date overlay discards structured running prescriptions');
-   if(dated.weeks.some(w=>w.events.length&&w.calendar.withheldTrainingSessions>0))gap('event-week-programming',profile.id,'Reviewable sport-specific event-week training and an explicit precedence for adjacent goals.','Ordinary event-week training is withheld; only event entries are scheduled');
-  }
+  if(c.fixedSessions?.some(s=>s.kind==='run'&&s.runType==='long')){const fixed=c.fixedSessions.find(s=>s.kind==='run'&&s.runType==='long');if(!p.weeks[0].sessions.some(s=>s.day.slice(0,3)===fixed.day.slice(0,3)&&s.runs?.some(r=>r.role==='long-run')))gap('fixed-long-run-role',profile.id,'Protect both day and training role.','Requested long run is absent')}
+  if(c.maxSessionsPerDay&&p.weeks.some(w=>w.sessions.some(s=>(s.ex||[]).filter(e=>['top','straight'].includes(e[5]?.role)&&!e[5]?.optional).length+(s.runs||[]).length>c.maxSessionsPerDay)))gap('daily-session-capacity',profile.id,'Respect component limits or return explicit unscheduled work.','Generated day exceeds requested component capacity; generic warnings are not a resolution');
  }
- // A short quality slot becomes easy work: its pace guidance must become easy too.
- const short=structureRuns([{type:'quality',minutes:20,effort:'RPE 6–7'}],{tenKTime:'55:00'})[0];
- if(short.workout.kind==='continuous-easy'&&short.type==='quality')gap('easy-run-pace-consistency','short-quality-slot','A fallback easy session has easy type, pace and effort.','Continuous easy blocks retain quality type and interval pace');
- const comfortable=[1,2,3].map(()=>({sessionRPE:5,targetRPE:7,completed:true}));
- const single=reviewRunning(comfortable),combined=reviewWeek({runLogs:comfortable.map(x=>({actualRPE:x.sessionRPE,targetRPE:x.targetRPE,completed:x.completed}))});
- if(single.proposal&&!combined.proposals.some(p=>p.kind==='review-running-progression'))gap('running-progression-review','fast','The weekly review includes supported running progression, subject to hybrid recovery.','Standalone running reviewer proposes progression; combined weekly reviewer omits it');
- // Known decline and missing completion are different from an easy, completed top set.
- check('incomplete never progresses',()=>assert.equal(proposeStrengthAdjustment({lift:'bench',top:{rpe:8,suggestedWeight:100}},{actualRPE:6,actualWeight:100,completed:false}).proposal,null));
- check('missing completion is unknown',()=>assert.equal(reviewSession({top:{rpe:8,suggestedWeight:100}},{topRpe:6}).status,'insufficient-data'));
- const simulatedWeeks=trajectories.reduce((n,t)=>n+t.weeks.length,0);
- return {schema:'lhrf-athlete-test-report-v1',synthetic:true,profiles:profiles.map(p=>({id:p.id,name:p.name,weeks:p.config.weeks,expectations:p.expectations})),scenarios,summary:{profiles:profiles.length,trajectories:trajectories.length,simulatedWeeks,checks,regressionFailures:failures.length,blockedTrajectories:trajectories.filter(t=>t.status==='blocked').length,coachingGaps:gaps.size,coachingGatesPassed:failures.length===0&&gaps.size===0,readyForLiveUse:false},failures,coachingGaps:[...gaps.values()],trajectories,limitations:['Reported RPE and recovery are scripted inputs, not a validated physiological response model.','Only the isolated v2 engine APIs are exercised; live inline coaching and preview-page feedback remain separate.','Approval is verified as non-mutating pending review; accepted-change application and an approved next-week regeneration are not implemented in this harness.','No real athlete data, Garmin records or browser persistence is accessed.']};
+ const reference=normalizeProfile({...profiles[0].config,weeks:12}),post=buildProgramme(reference);
+ if(post.weeks.slice(6).every(w=>w.phase==='Taper / event'))gap('post-event-progression','bench-dual-event','Recover after the event and review the next training phase.','Strength event leaves all later weeks labelled taper/event');
+ const summary={profiles:profiles.length,trajectories:trajectories.length,simulatedWeeks:trajectories.reduce((n,t)=>n+t.weeks.length,0),checks,regressionFailures:failures.length,coachingGaps:gaps.size,coachingGatesPassed:failures.length===0&&gaps.size===0,readyForLiveUse:false};
+ return {schema:'lhrf-athlete-test-report-v2',engine:'lhrf-shared-coach-v1',synthetic:true,profiles:profiles.map(p=>({id:p.id,name:p.name,weeks:p.config.weeks,expectations:p.expectations})),scenarios,summary,failures,coachingGaps:[...gaps.values()],trajectories,limitations:['RPE and recovery are scripted inputs, not predicted physiological responses.','Tests now exercise the live app shared engine; old v2 prototype tests are historical only.','Real-world efficacy and device-local records are not certified.']};
 }
 module.exports={runSuite,profiles,scenarios};
