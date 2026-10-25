@@ -85,6 +85,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    '<button type="button" class="removeSet">Remove set</button>';
   row.querySelector('.removeSet').addEventListener('click',()=>row.remove());setRows.appendChild(row);
  });
+ let activePrescription=null;
  const readLogs=()=>{try{const value=JSON.parse(localStorage.getItem(logKey)||'[]');return Array.isArray(value)?value:[]}catch(err){return []}};
  const renderLogs=()=>{
   const logs=readLogs();logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
@@ -105,12 +106,12 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     (reps!==null&&(!Number.isInteger(reps)||reps<1||reps>100))||
     (minutes!==null&&(!Number.isInteger(minutes)||minutes<1||minutes>600))){logMessage.textContent='Please check the session date, RPE and optional values.';return;}
   if(kind==='run'&&(weight!==null||reps!==null)){logMessage.textContent='For a run, leave weight and reps blank.';return;}
-  if(kind!=='run'&&minutes===null&&weight===null&&reps===null){logMessage.textContent='Enter at least weight, reps or duration for the lifting session.';return;}
+  if(kind!=='run'&&minutes===null&&weight===null&&reps===null&&setRows.children.length===0){logMessage.textContent='Enter working sets, top weight/reps or duration for the lifting session.';return;}
   const sets=[...setRows.children].map(row=>({weight:Number(row.querySelector('.setWeight').value),reps:Number(row.querySelector('.setReps').value),rpe:Number(row.querySelector('.setRpe').value)}));
   if(kind==='run'&&sets.length){logMessage.textContent='Remove lifting sets before logging a run.';return;}
   if(sets.some(x=>!Number.isFinite(x.weight)||x.weight<0||x.weight>600||!Number.isInteger(x.reps)||x.reps<1||x.reps>100||!Number.isFinite(x.rpe)||x.rpe<1||x.rpe>10)){logMessage.textContent='Check each set weight, reps and RPE.';return;}
-  const logs=readLogs();logs.push({date,kind,rpe,weight,reps,minutes,sets,notes,recordedAt:new Date().toISOString(),source:'genuine-athlete-entry'});
-  try{localStorage.setItem(logKey,JSON.stringify(logs));logMessage.textContent='Genuine session saved on this device.';logForm.reset();setRows.replaceChildren();renderLogs();}
+  const logs=readLogs();logs.push({date,kind,rpe,weight,reps,minutes,sets,notes,plannedSession:activePrescription,recordedAt:new Date().toISOString(),source:'genuine-athlete-entry'});
+  try{localStorage.setItem(logKey,JSON.stringify(logs));logMessage.textContent='Genuine session saved on this device.';logForm.reset();setRows.replaceChildren();activePrescription=null;renderLogs();}
   catch(err){logMessage.textContent='Could not save the session. No entry was recorded.';}
  });
  renderLogs();
@@ -148,6 +149,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
       (entry.runEffort?' · '+entry.runEffort:'')+
       (entry.runPace?' · suggested pace '+entry.runPace:''));
    };
+   const selectable=[];
    const weeks=p.weeks.map(w=>{
     const schedule=w.calendar.sessions.map(item=>{
      if(item.kind==='event')return item;
@@ -160,11 +162,31 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     });
     return '<div class="week"><h3>Week '+w.week+' — '+esc(w.phase)+'</h3>'+
     '<p>'+esc(w.objective)+'</p>'+
-    schedule.map(item=>'<p><strong>'+esc(item.day)+'</strong> · '+prescription(item)+'</p>').join('')+
+    schedule.map(item=>{
+     if(item.kind==='event')return '<p><strong>'+esc(item.day)+'</strong> · '+prescription(item)+'</p>';
+     const id=selectable.length;selectable.push({item,week:w.week,phase:w.phase});
+     return '<p><strong>'+esc(item.day)+'</strong> · '+prescription(item)+
+      ' <button type="button" class="startPrescribed" data-session="'+id+'">Log this session</button></p>';
+    }).join('')+
     (w.reviewRequired?'<small class="warn">Coach review required — inspect schedule conflicts and proposed changes.</small>':'')+
     '</div>';
    }).join('');
    out.innerHTML=header+'<div class="panel"><h2>Weekly schedule</h2>'+weeks+'</div>';
+   out.querySelectorAll('.startPrescribed').forEach(button=>button.addEventListener('click',()=>{
+    const chosen=selectable[Number(button.dataset.session)];if(!chosen)return;
+    const item=chosen.item,kind=item.kind==='run'?'run':item.lift;
+    logForm.elements.namedItem('kind').value=kind;
+    logForm.elements.namedItem('date').value=new Date().toLocaleDateString('en-CA');
+    logForm.elements.namedItem('rpe').value='7';
+    logForm.elements.namedItem('minutes').value=item.kind==='run'?(item.runMinutes||''):'';
+    logForm.elements.namedItem('weight').value='';logForm.elements.namedItem('reps').value='';
+    setRows.replaceChildren();
+    activePrescription={week:chosen.week,phase:chosen.phase,kind,day:item.day,
+     planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace}:
+      {sets:item.weekStrengths.map(x=>({role:x.role,sets:x.sets,reps:x.reps,rpe:x.rpe,weight:x.suggestedWeight}))}};
+    logMessage.textContent='Selected week '+chosen.week+' '+item.day+' '+kind+'. Log actual work completed, not the suggested values.';
+    document.getElementById('trialLog').scrollIntoView({behavior:'smooth',block:'start'});
+   }));
   }catch(err){out.innerHTML='<p class="error">Could not generate preview: '+esc(err.message)+'</p>';}
  });
 })();
