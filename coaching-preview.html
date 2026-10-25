@@ -47,7 +47,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <label>Actual RPE (1–10) <input type="number" name="rpe" min="1" max="10" step="0.5" required></label>
 </div><label>Notes (optional) <input type="text" name="notes" maxlength="300" style="max-width:100%;width:100%" placeholder="How did it feel?"></label>
 <div id="setLogger"><h3>Working sets (optional)</h3><p class="muted">Add each completed set and tick Completed. Suggested sets must be confirmed individually before saving. For running, use duration and RPE above instead.</p><div id="setRows"></div><button type="button" id="addSet">+ Add set</button></div><p><button type="submit">Save genuine session</button></p></form>
-<p id="logMessage" role="status"></p><div id="logHistory"></div></section>
+<p id="logMessage" role="status"></p><div id="logHistory"></div><div id="performanceReview" aria-live="polite"></div></section>
 <script src="./src/coaching-v2.js"></script>
 <script src="./src/prescriptions-v2.js"></script>
 <script src="./src/hybrid-v2.js"></script>
@@ -92,8 +92,30 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
  document.getElementById('addSet').addEventListener('click',()=>addSet());
  let activePrescription=null;
  const readLogs=()=>{try{const value=JSON.parse(localStorage.getItem(logKey)||'[]');return Array.isArray(value)?value:[]}catch(err){return []}};
+ const reviewPerformance=logs=>{
+  const target=document.getElementById('performanceReview');
+  const recent=logs.filter(x=>x.source==='genuine-athlete-entry'&&x.plannedSession).slice(-8);
+  if(!recent.length){target.innerHTML='<p class="muted">Coaching review appears after a prescribed session is logged.</p>';return}
+  const reviews=recent.map(x=>{
+   const planned=x.plannedSession?.planned||{};
+   if(x.kind==='run'){
+    const delta=Number(x.minutes)-Number(planned.minutes);
+    if(!(Number(x.minutes)>0&&Number(planned.minutes)>0))return {label:x.date+' · Run',message:'Actual duration or target is missing; no duration comparison yet.'};
+    return {label:x.date+' · Run',message:'Actual '+x.minutes+' min versus planned '+planned.minutes+' min ('+(delta>0?'+':'')+delta+' min). Review effort and recovery before changing the next run.'};
+   }
+   const targets=planned.sets||[],actual=x.sets||[];
+   if(!targets.length||!actual.length)return {label:x.date+' · '+x.kind,message:'Not enough paired planned and completed sets to assess the prescription.'};
+   const targetSets=targets.reduce((n,g)=>n+Number(g.sets||0),0);
+   const targetRpe=Number(targets[0]?.rpe);
+   const actualRpe=Number(actual[0]?.rpe);
+   const gap=actualRpe-targetRpe;
+   const effort=Number.isFinite(gap)?gap>=1?'Top set felt harder than prescribed.':gap<=-1?'Top set felt easier than prescribed.':'Top-set effort was close to target.':'Top-set effort needs review.';
+   return {label:x.date+' · '+x.kind,message:'Completed '+actual.length+'/'+targetSets+' planned sets. '+effort+' Consider readiness and repeat-session trends before changing loads.'};
+  });
+  target.innerHTML='<h3>Coach review · observations only</h3><p class="muted">These comparisons do not alter your programme. Suggested changes will require your approval.</p>'+reviews.reverse().map(r=>'<p><strong>'+esc(r.label)+'</strong> · '+esc(r.message)+'</p>').join('');
+ };
  const renderLogs=()=>{
-  const logs=readLogs();logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
+  const logs=readLogs();reviewPerformance(logs);logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
    (logs.length?logs.slice(-15).reverse().map(x=>'<p>'+esc(x.date+' · '+x.kind+' · RPE '+x.rpe+
     (x.weight!=null?' · '+x.weight+' kg':'')+(x.reps!=null?' × '+x.reps+' reps':'')+
     (x.minutes!=null?' · '+x.minutes+' min':'')+(x.sets?.length?' · '+x.sets.length+' sets logged':'')+(x.notes?' · '+x.notes:''))+'</p>').join(''):'<p>No genuine workouts logged yet.</p>');
