@@ -1276,6 +1276,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 <script>
 (async function(){
  if(new URLSearchParams(location.search).get('programme')!=='november-2026')return;
+ // An explicit approved-programme link uses this activation flow instead of fresh onboarding.
+ document.getElementById('firstRun').hidden=true;document.body.style.overflow='';
  const card=document.createElement('aside');card.className='card';card.setAttribute('aria-label','Approved programme activation');card.innerHTML='<h2>Your approved November block</h2><p>27 October–29 November · Bench competition + 10K. Earlier workouts and onboarding settings are retained. Your previous programme and its coach decisions will be archived.</p><button type="button" disabled>Activate approved programme</button><p class="small muted" role="status"></p>';document.querySelector('main').prepend(card);
  const button=card.querySelector('button'),status=card.querySelector('[role="status"]');
  if(data.customRoadmap?.programmeId==='november-2026'){button.disabled=true;status.textContent='This programme is already active. Your new logs are retained.';return}
