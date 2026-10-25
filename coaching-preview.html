@@ -36,8 +36,8 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <button type="submit">Generate preview</button></form>
 <p class="muted" id="saveStatus" role="status">Your preview inputs are stored only on this device, separately from the existing LHRF app.</p>
 <section id="output" aria-live="polite"></section>
-<section class="panel" id="trialLog"><h2>Genuine training log · trial</h2>
-<p>Only record workouts you actually complete. This log is separate from all previous test data. Recording a session does not yet change the programme.</p>
+<section class="panel" id="trialLog"><h2>Training log · trial</h2><p><button type="button" id="clearTrialData" class="secondary">Clear test workouts and coach decisions</button></p><p class="muted" id="clearTrialStatus" role="status">Use this before your first real session. Programme builder inputs stay in place.</p>
+<p>Workouts logged here are trial data until you explicitly clear them before your real training start.</p>
 <form id="logForm"><div class="grid">
 <label>Session date <input type="date" name="date" required></label>
 <label>Discipline <select name="kind"><option value="bench">Bench</option><option value="squat">Squat</option><option value="deadlift">Deadlift</option><option value="run">Run</option></select></label>
@@ -61,6 +61,12 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 (function(){
  const form=document.getElementById('builder'),out=document.getElementById('output');
  const storageKey='lhrf-v2-preview-athlete-inputs';
+ document.getElementById('clearTrialData').addEventListener('click',()=>{
+  if(!confirm('Delete all v2 trial workout logs, coach decisions and trial load overrides from this device? This cannot be undone. Your programme builder inputs and original app data will remain.'))return;
+  const keys=['lhrf-v2-genuine-training-log','lhrf-v2-coach-decisions','lhrf-v2-approved-load-overrides'];
+  try{keys.forEach(k=>localStorage.removeItem(k));document.getElementById('clearTrialStatus').textContent='Trial workouts and coach decisions cleared. Ready for your first real session.';renderLogs()}
+  catch(err){document.getElementById('clearTrialStatus').textContent='Could not clear all trial data. Please retry.'}
+ });
  const fields=['startDate','strengthTargetDate','runningTargetDate','weeks','bench','squat','deadlift','runs','priority','benchMax','squatMax','deadliftMax','tenKTime','runningBaselineMinutes'];
  try{
   const saved=JSON.parse(localStorage.getItem(storageKey)||'null');
