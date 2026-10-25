@@ -31,7 +31,7 @@ function buildProgramme(input){
  const checks={
   outcomeDefined:!!outline.outcome.description,
   finalWeekAligned:outcomeOk,
-  allSessionsScheduled:weeks.every(w=>w.calendar.unscheduled===0),
+  allSessionsScheduled:weeks.every(w=>w.calendar.unscheduled===0&&!w.calendar.capacityConflicts?.length),
   workloadBudgetRespected:weeks.every(w=>w.strengths.every(s=>s.totalStress<=s.stressBudget+0.001)),
   chartsUsePlanPhases:weeks.every((w,i)=>w.phase===outline.phases[i].phase),
   approvalsExplicit:weeks.every(w=>!w.hybrid.changes.length||w.hybrid.approvalRequired),

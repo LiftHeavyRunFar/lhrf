@@ -31,6 +31,6 @@ assert.ok(html.includes('id="addSet"'),'Must support adding actual lifting sets'
 assert.ok(html.includes('sets,notes,plannedSession:activePrescription,recordedAt'),'Set-by-set data must be persisted');
 assert.ok(html.includes('setRows.replaceChildren()'),'Set rows must reset only after successful save');
 assert.ok(html.includes("source:'genuine-athlete-entry'"),'Real logs must be explicitly marked');
-assert.ok(html.includes('Recording a session does not yet change the programme.'),'Do not imply live adaptation');
+assert.ok(html.includes('Recording a session alone does not apply coaching changes; load overrides require explicit approval.'),'Do not imply live adaptation');
 assert.ok(!html.includes('localStorage.clear('),'Preview must not clear app storage');
 console.log('PASS read-only browser preview dependency and safety checks');

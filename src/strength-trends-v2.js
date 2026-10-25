@@ -2,7 +2,7 @@
 (function(root){
 'use strict';
 function reviewStrengthTrend(logs,lift){
- const selected=(Array.isArray(logs)?logs:[]).filter(x=>x&&x.lift===lift&&
+ const selected=(Array.isArray(logs)?logs:[]).filter(x=>x&&x.completed!==false&&x.lift===lift&&
   Number.isFinite(x.actualRPE)&&x.actualRPE>=1&&x.actualRPE<=10&&
   Number.isFinite(x.targetRPE)&&x.targetRPE>=1&&x.targetRPE<=10);
  const recent=selected.slice(-3),deltas=recent.map(x=>x.actualRPE-x.targetRPE);

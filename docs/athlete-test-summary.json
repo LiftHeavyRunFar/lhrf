@@ -1,0 +1,212 @@
+{
+  "schema": "lhrf-athlete-test-report-v1",
+  "synthetic": true,
+  "summary": {
+    "profiles": 7,
+    "trajectories": 42,
+    "simulatedWeeks": 468,
+    "checks": 8940,
+    "regressionFailures": 0,
+    "blockedTrajectories": 0,
+    "coachingGaps": 8,
+    "coachingGatesPassed": false,
+    "readyForLiveUse": false
+  },
+  "profiles": [
+    {
+      "id": "bench-dual-event",
+      "name": "Bench-first adjacent events",
+      "weeks": 6,
+      "expectations": [
+        "fixed split",
+        "bench top set first",
+        "light lower body",
+        "event precedence and taper"
+      ]
+    },
+    {
+      "id": "novice",
+      "name": "Beginner with unknown strength baselines",
+      "weeks": 8,
+      "expectations": [
+        "unknown loads remain unknown",
+        "experience-aware entry",
+        "no invented pace"
+      ]
+    },
+    {
+      "id": "powerlifter",
+      "name": "Experienced strength-priority hybrid",
+      "weeks": 20,
+      "expectations": [
+        "priority workload",
+        "purposeful variations",
+        "phase transition recovery"
+      ]
+    },
+    {
+      "id": "runner",
+      "name": "10K race with maintenance lifting",
+      "weeks": 12,
+      "expectations": [
+        "running priority",
+        "maintenance lifting",
+        "structured runs after dated overlay"
+      ]
+    },
+    {
+      "id": "restricted",
+      "name": "Restricted three-day schedule",
+      "weeks": 8,
+      "expectations": [
+        "capacity conflicts must be explicit",
+        "fixed long-run day",
+        "schedule change"
+      ]
+    },
+    {
+      "id": "fatigue",
+      "name": "Repeated overshoot with recovery signals",
+      "weeks": 12,
+      "expectations": [
+        "accessory-first proposal",
+        "suppress progression with fatigue",
+        "no automatic deload"
+      ]
+    },
+    {
+      "id": "fast",
+      "name": "Consistently improving athlete",
+      "weeks": 12,
+      "expectations": [
+        "ambitious optional progression",
+        "no increase with pain or incomplete training"
+      ]
+    }
+  ],
+  "scenarios": [
+    "on-target",
+    "rapid-progress",
+    "accumulated-fatigue",
+    "missed-for-schedule",
+    "variable-effort",
+    "pain-report"
+  ],
+  "failures": [],
+  "coachingGaps": [
+    {
+      "id": "phase-transition-recovery",
+      "status": "blocked",
+      "expected": "A loading-phase change has a recovery transition or an explicit reviewed rationale.",
+      "examples": [
+        {
+          "athlete": "bench-dual-event",
+          "observed": "foundation → development at week 3 without recovery"
+        },
+        {
+          "athlete": "novice",
+          "observed": "foundation → development at week 3 without recovery"
+        },
+        {
+          "athlete": "novice",
+          "observed": "development → intensification at week 6 without recovery"
+        }
+      ]
+    },
+    {
+      "id": "fixed-long-run-role",
+      "status": "blocked",
+      "expected": "The protected long-run slot remains a long-run prescription in loading weeks.",
+      "examples": [
+        {
+          "athlete": "bench-dual-event",
+          "observed": "The day is preserved but a normal easy run is substituted for the requested long run"
+        }
+      ]
+    },
+    {
+      "id": "bench-top-set-preference",
+      "status": "blocked",
+      "expected": "Bench-specific prescriptions honour the requested top-set-first preference.",
+      "examples": [
+        {
+          "athlete": "bench-dual-event",
+          "observed": "Foundation bench exposures have no top set"
+        }
+      ]
+    },
+    {
+      "id": "light-lower-body",
+      "status": "blocked",
+      "expected": "Explicitly light squat/deadlift work is represented instead of normal demanding exposures.",
+      "examples": [
+        {
+          "athlete": "bench-dual-event",
+          "observed": "squat top-set RPE 8"
+        },
+        {
+          "athlete": "bench-dual-event",
+          "observed": "deadlift top-set RPE 8"
+        }
+      ]
+    },
+    {
+      "id": "event-week-programming",
+      "status": "blocked",
+      "expected": "Reviewable sport-specific event-week training and an explicit precedence for adjacent goals.",
+      "examples": [
+        {
+          "athlete": "bench-dual-event",
+          "observed": "Ordinary event-week training is withheld; only event entries are scheduled"
+        },
+        {
+          "athlete": "runner",
+          "observed": "Ordinary event-week training is withheld; only event entries are scheduled"
+        }
+      ]
+    },
+    {
+      "id": "training-experience",
+      "status": "blocked",
+      "expected": "Training experience influences the starting prescription or prompts a review.",
+      "examples": [
+        {
+          "athlete": "novice",
+          "observed": "Changing beginner/advanced has no effect"
+        },
+        {
+          "athlete": "powerlifter",
+          "observed": "Changing beginner/advanced has no effect"
+        }
+      ]
+    },
+    {
+      "id": "lift-variation",
+      "status": "blocked",
+      "expected": "Purposeful variations are represented in the programme across blocks.",
+      "examples": [
+        {
+          "athlete": "powerlifter",
+          "observed": "No exercise variation field exists in generated lifts"
+        }
+      ]
+    },
+    {
+      "id": "strength-maintenance-policy",
+      "status": "blocked",
+      "expected": "The strength-maintenance framework has an explicit prescription policy.",
+      "examples": [
+        {
+          "athlete": "runner",
+          "observed": "Maintenance and progressive-strength receive identical strength prescriptions"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Reported RPE and recovery are scripted inputs, not a validated physiological response model.",
+    "Only the isolated v2 engine APIs are exercised; live inline coaching and preview-page feedback remain separate.",
+    "Approval is verified as non-mutating pending review; accepted-change application and an approved next-week regeneration are not implemented in this harness.",
+    "No real athlete data, Garmin records or browser persistence is accessed."
+  ]
+}

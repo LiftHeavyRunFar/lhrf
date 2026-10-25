@@ -7,7 +7,7 @@ function reviewSession(prescription,feedback){
  const prescribed=Number(s.top?.rpe??s.backoff?.rpe);
  const observed=Number(f.topRpe??f.actualRpe);
  const completed=f.completed===true;
- const valid=Number.isFinite(prescribed)&&prescribed>0&&Number.isFinite(observed)&&observed>=1&&observed<=10;
+ const valid=typeof f.completed==='boolean'&&Number.isFinite(prescribed)&&prescribed>0&&Number.isFinite(observed)&&observed>=1&&observed<=10;
  const changes=[];
  if(!valid)return {status:'insufficient-data',changes,approvalRequired:false,reason:'Record completed status and actual RPE before recommending load changes.'};
  if(!completed){

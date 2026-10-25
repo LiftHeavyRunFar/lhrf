@@ -4,12 +4,14 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'scripts/**'
       - 'tests/**'
       - 'package.json'
       - '.github/workflows/coaching-v2.yml'
   pull_request:
     paths:
       - 'src/**'
+      - 'scripts/**'
       - 'tests/**'
       - 'package.json'
       - '.github/workflows/coaching-v2.yml'
@@ -26,3 +28,22 @@ jobs:
           node-version: '22'
       - name: Run coaching v2 tests
         run: npm test
+
+  athlete-coaching-gates:
+    name: Athlete bots — coaching acceptance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Replay synthetic athletes and check coaching gates
+        run: node scripts/test-athletes.cjs --json > athlete-report.json
+      - name: Retain the full report, including blocked gates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-athlete-report
+          path: athlete-report.json

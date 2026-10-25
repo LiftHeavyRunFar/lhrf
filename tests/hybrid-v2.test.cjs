@@ -16,13 +16,11 @@ for(const priority of ['Running','Squat','Balanced']){
  assert.equal(output.hybrid.approvalRequired,true);
  assert.equal(output.runs.find(r=>r.type==='long').minutes,70,'Long run protected');
  assert.ok(output.hybrid.changes.length>0);
- if(priority==='Running'){
-  assert.ok(output.strengthStress<week.strengthStress);
-  assert.equal(output.runningMinutes,week.runningMinutes);
- }else{
-  assert.ok(output.runningMinutes<week.runningMinutes);
-  assert.ok(Math.abs(output.strengthStress-week.strengthStress)<1e-9,'Strength workload unchanged within rounding tolerance');
- }
+ assert.equal(JSON.stringify(output.strengths),JSON.stringify(week.strengths),'Pending proposals never edit strength prescriptions');
+ assert.equal(JSON.stringify(output.runs),JSON.stringify(week.runs),'Pending proposals never edit running prescriptions');
+ assert.equal(output.strengthStress,Math.round(week.strengthStress*10)/10);
+ assert.equal(output.runningMinutes,week.runningMinutes);
+ assert.ok(output.hybrid.changes.every(change=>priority==='Running'?change.kind==='trim-lower-backoffs':change.kind==='trim-quality-run'));
  assert.equal(output.strengthStress,Math.round(output.strengths.reduce((n,s)=>n+s.totalStress,0)*10)/10);
  assert.equal(output.runningMinutes,output.runs.reduce((n,r)=>n+r.minutes,0));
  console.log('PASS',priority,'priority');
