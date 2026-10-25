@@ -44,7 +44,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   try{
    const f=new FormData(form),num=k=>Number(f.get(k)),c={
     weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),
-    runs:num('runs'),priority:String(f.get('priority')),benchMax:num('benchMax')
+    runs:num('runs'),priority:String(f.get('priority')),maxes:{bench:num('benchMax')||null}
    };
    if(!Number.isInteger(c.weeks)||c.weeks<4||c.weeks>52||
       ['bench','squat','deadlift','runs'].some(k=>!Number.isInteger(c[k])||c[k]<0||c[k]>6)||
@@ -53,9 +53,33 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    const header='<div class="panel"><h2>Programme preview</h2><p>'+esc(p.outcome.description)+'</p>'+
     '<p>Structural checks: <strong>'+esc(p.passesStructuralChecks?'passed':'review needed')+'</strong>. These do not establish coaching safety.</p>'+
     '<p class="warn">'+esc(p.issues.length)+' scheduling or approval flags across the programme.</p></div>';
-   const weeks=p.weeks.map(w=>'<div class="week"><h3>Week '+w.week+' — '+esc(w.phase)+'</h3>'+
-    '<p>'+esc(w.objective)+'</p><p>'+w.calendar.sessions.map(s=>esc(s.day+': '+(s.kind==='strength'?s.lift:'run '+s.runType))).join(' · ')+'</p>'+
-    (w.reviewRequired?'<small class="warn">Coach review required</small>':'')+'</div>').join('');
+   const prescription=entry=>{
+    if(entry.kind==='strength'){
+     const lift=entry.lift,items=entry.weekStrengths||[];
+     return esc(lift)+': '+items.map(x=>{
+      const label=x.role==='top'?'top set':'back-off';
+      return esc(label+' '+x.sets+'×'+x.reps+' @ RPE '+x.rpe+
+       (x.suggestedWeight!=null?' ('+x.suggestedWeight+' kg suggested)':''));
+     }).join(' · ');
+    }
+    return esc(entry.runType+' run'+(entry.runMinutes!=null?' — '+entry.runMinutes+' min':'')+
+      (entry.runEffort?' · '+entry.runEffort:''));
+   };
+   const weeks=p.weeks.map(w=>{
+    const schedule=w.calendar.sessions.map(item=>{
+     if(item.kind==='strength'){
+      const lift=w.strengths.find(x=>x.lift===item.lift&&x.exposure===item.exposure);
+      return {...item,weekStrengths:[lift?.top,lift?.backoff].filter(x=>x&&x.sets>0)};
+     }
+     const run=w.runs[Number(item.id.slice(1))];
+     return {...item,runMinutes:run?.minutes,runEffort:run?.effort};
+    });
+    return '<div class="week"><h3>Week '+w.week+' — '+esc(w.phase)+'</h3>'+
+    '<p>'+esc(w.objective)+'</p>'+
+    schedule.map(item=>'<p><strong>'+esc(item.day)+'</strong> · '+prescription(item)+'</p>').join('')+
+    (w.reviewRequired?'<small class="warn">Coach review required — inspect schedule conflicts and proposed changes.</small>':'')+
+    '</div>';
+   }).join('');
    out.innerHTML=header+'<div class="panel"><h2>Weekly schedule</h2>'+weeks+'</div>';
   }catch(err){out.innerHTML='<p class="error">Could not generate preview: '+esc(err.message)+'</p>';}
  });
