@@ -134,13 +134,30 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    if(!harder&&!easier)continue;
    proposals.push({lift,direction:harder?'hard':'easy',date:last[2].date,latest:entries.at(-1),message:harder?'Three comparable sessions were harder than prescribed. Review fatigue and recovery before considering a smaller accessory workload.':'Three comparable sessions were easier than prescribed. Consider a modest load progression after reviewing technique and recovery.',evidence:last.map(x=>x.date+' ('+(x.delta>0?'+':'')+x.delta+' RPE)').join(', ')});
   }
+  // Hybrid fatigue guard: run load and reduced-volume phases require a manual review.
+  for(const proposal of proposals){
+   const last=logs.filter(x=>x.kind===proposal.lift&&x.plannedSession?.planned?.sets?.length).at(-1);
+   const phase=String(last?.plannedSession?.phase||'').toLowerCase();
+   const anchor=Date.parse(proposal.date+'T12:00:00Z');
+   const recentRuns=logs.filter(x=>x.kind==='run'&&Number(x.minutes)>0&&Number.isFinite(Date.parse(x.date+'T12:00:00Z'))&&anchor-Date.parse(x.date+'T12:00:00Z')>=0&&anchor-Date.parse(x.date+'T12:00:00Z')<=7*86400000);
+   const runMinutes=recentRuns.reduce((n,x)=>n+Number(x.minutes),0);
+   const earlierRuns=logs.filter(x=>x.kind==='run'&&Number(x.minutes)>0&&anchor-Date.parse(x.date+'T12:00:00Z')>7*86400000&&anchor-Date.parse(x.date+'T12:00:00Z')<=14*86400000);
+   const priorMinutes=earlierRuns.reduce((n,x)=>n+Number(x.minutes),0);
+   const highRunLoad=priorMinutes>0&&runMinutes>priorMinutes*1.3&&runMinutes-priorMinutes>=20;
+   const phaseCaution=/deload|taper|recovery|peak|competition/.test(phase);
+   proposal.cautions=[];
+   if(highRunLoad)proposal.cautions.push('Running duration increased from '+priorMinutes+' to '+runMinutes+' minutes across consecutive seven-day windows.');
+   if(phaseCaution)proposal.cautions.push('Current phase ('+phase+') requires a manual coaching review.');
+   if(!priorMinutes||!runMinutes)proposal.cautions.push('Running load history is incomplete; no assumption of full recovery.');
+   proposal.blockLoad=highRunLoad||phaseCaution;
+  }
   // Conservative proposed loading is a preview only; do not alter current or future workouts.
   for(const proposal of proposals){
    const entries=logs.filter(x=>x.kind===proposal.lift&&x.plannedSession?.planned?.sets?.length&&x.sets?.length);
    const last=entries.at(-1);
    const planned=last?.plannedSession?.planned?.sets?.[0];
    const current=Number(planned?.weight);
-   if(!(current>0))continue;
+   if(!(current>0)||proposal.blockLoad)continue;
    const step=proposal.direction==='easy'?2.5:-2.5;
    const next=Math.max(0,Math.round((current+step)/2.5)*2.5);
    proposal.loadSuggestion=proposal.direction==='easy'?{current,next,description:'Optional next top-set target: '+next+' kg (+'+step+' kg). Confirm recovery and bar speed before applying.'}:
@@ -151,7 +168,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   const trendHtml=proposals.length?'<h3>Coach proposals · approval required</h3>'+proposals.map(x=>{
    const id=x.lift+'-'+x.direction+'-'+x.date;
    const state=decisions[id]?.status;
-   return '<div class="week"><p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small></p>'+(x.loadSuggestion?'<p><strong>Example adjustment (not applied):</strong> '+esc(x.loadSuggestion.description)+'</p>':'<p>Suggested weight unavailable; review load manually.</p>')+
+   return '<div class="week"><p><strong>'+esc(x.lift)+'</strong> · '+esc(x.message)+'<br><small>Evidence: '+esc(x.evidence)+'</small></p>'+(x.cautions.length?'<p><strong>Hybrid context:</strong> '+esc(x.cautions.join(' '))+'</p>':'')+(x.loadSuggestion?'<p><strong>Example adjustment (not applied):</strong> '+esc(x.loadSuggestion.description)+'</p>':'<p>Suggested weight unavailable; review load manually.</p>')+
     (state?'<p><strong>Decision: '+esc(state)+'.</strong> '+(state==='accepted'?(decisions[id]?.appliedTrialOverride?'Approved relative trial load override saved; original programme unchanged.':'Recorded for plan review; no prescription changed.'):'No change requested.')+'</p>':
     '<p><button type="button" class="coachDecision" data-decision="accepted" data-id="'+esc(id)+'">Approve for plan review</button> <button type="button" class="coachDecision" data-decision="rejected" data-id="'+esc(id)+'">Dismiss</button></p>')+'</div>';
   }).join(''):'<p class="muted">No sustained three-session RPE trend. No adjustment proposed.</p>';
@@ -165,6 +182,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    let saved={};try{saved=JSON.parse(localStorage.getItem(decisionKey)||'{}')||{}}catch(err){}
    const proposal=proposals.find(x=>x.lift+'-'+x.direction+'-'+x.date===id);
    saved[id]={status,at:new Date().toISOString()};
+   if(status==='accepted'&&proposal?.blockLoad){alert('Load adjustment held for recovery / phase review. No override saved.');return}
    if(status==='accepted'&&proposal?.loadSuggestion){
     if(!confirm('Apply '+proposal.loadSuggestion.next+' kg to future opt-in v2 live Train top sets? Your original programme will not change.'))return;
     if(!updateOverride(proposal.lift,proposal.loadSuggestion.next-proposal.loadSuggestion.current)){alert('Could not save override.');return}
