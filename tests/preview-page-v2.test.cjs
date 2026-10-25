@@ -19,6 +19,8 @@ assert.ok(html.includes("storageKey='lhrf-v2-preview-athlete-inputs'"),'Trial in
 assert.ok(html.includes('localStorage.getItem(storageKey)'));
 assert.ok(html.includes('localStorage.setItem(storageKey'));
 assert.ok(html.includes("logKey='lhrf-v2-genuine-training-log'"),'Real sessions must have isolated storage');
+assert.ok(html.includes('class="setCompleted"'),'Per-set completion confirmation required');
+assert.ok(html.includes("!row.querySelector('.setCompleted').checked"),'Unconfirmed prescribed sets cannot be saved as genuine');
 assert.ok(html.includes('function addSet(initial)'),'Set rows must support prescribed defaults');
 assert.ok(html.includes('for(let n=0;n<group.sets;n++)addSet('),'Each prescribed set must become editable row');
 assert.ok(html.includes('edit each set to reflect what you actually complete'),'Actual-vs-planned warning required');
