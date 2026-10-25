@@ -44,9 +44,10 @@ header{padding-top:16px;padding-bottom:4px}header h1{font-size:24px}header p{fon
 /* v1.6.1 Today: focused swipeable day cards */
 #today>.hero,#today>.ux-intro,#today>.ux-topline{display:none}
 #todaySessions{margin:0 -16px 10px}
-.day-heading{padding:2px 16px 13px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.day-heading{padding:2px 16px 13px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px}
 .day-heading h2{font-size:22px;margin:0;letter-spacing:-.03em}
-.day-heading span{font-size:12px;color:var(--muted)}
+.day-heading span{font-size:12px;color:var(--muted);width:100%}
+#thisWeekCarousel > p:first-child{text-align:center}
 .day-carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:36px;padding:4px 36px 15px;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
 .day-carousel::-webkit-scrollbar{display:none}
 /* Ensure edge cards have enough scrollable trailing/leading room to centre. */

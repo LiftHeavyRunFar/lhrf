@@ -1,4 +1,4 @@
-const CACHE = 'lhrf-shell-v1.13.3';
+const CACHE = 'lhrf-shell-v1.13.4';
 const SHELL = ['./','./index.html','./manifest.webmanifest','./icon-lhrf.svg','./src/coach-engine.js','./src/coach-adapters.js'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
 self.addEventListener('activate', event => event.waitUntil((async () => {
