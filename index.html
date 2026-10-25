@@ -852,7 +852,11 @@ function generatedSessions(c,w){
    const reps=settings.reps+(secondary&&!taper?1:0);
    const factor=settings.intensity*(secondary?.9:1)*(lift===c.priority?1.015:1);
    const vb=variationBlock(w,c.weeks),selectedVariation=variationChoice(c,lift,w);
-   const useVariation=secondary&&!taper&&!(strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench');const exerciseName=useVariation?selectedVariation.name:lift;
+   const nearBenchMeet=lift==='Bench'&&strengthEventWeek&&weeksToStrengthEvent!==null&&weeksToStrengthEvent>=0&&weeksToStrengthEvent<=6;
+   // Within six weeks of a bench meet, the first two weekly exposures must
+   // practise the competition lift; only the third may use a variation.
+   const competitionBenchExposure=nearBenchMeet&&occurrence<2;
+   const useVariation=secondary&&!taper&&!competitionBenchExposure&&!(strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench');const exerciseName=useVariation?selectedVariation.name:lift;
    const variationSets=useVariation?Math.max(1,sets-(phase==='Specificity'?1:0)):sets;
    const variationReps=useVariation?(phase==='Foundation'?6:phase==='Development'?5:phase==='Specificity'?3:reps):reps;
    const variationRpe=useVariation?(phase==='Foundation'?7:phase==='Development'?7.5:8):Math.max(5,settings.rpe-(secondary?.5:0));
