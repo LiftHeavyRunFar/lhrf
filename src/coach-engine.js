@@ -45,10 +45,13 @@ function candidateWeek(c,w){
  };
  const phase=phaseAt(w),transition=w<n&&phaseAt(w+1)!==phase&&phaseAt(w+1)!=='Taper / event';
  const postEvent=!!event&&w===event+1;
- const deload=postEvent||transition||(w%5===0&&(!event||event-w>2));
+ // A phase change alone does not justify a deload in a short event preparation.
+ const shortPrep=!!event&&n<=8;
+ const deload=postEvent||(!shortPrep&&(transition||(w%5===0&&(!event||event-w>2))));
  return {phase,deload,block:Math.floor((w-1)/5)+1,position:(w-1)%5+1,
-  label:postEvent?'Post-event recovery':transition?'Recovery before '+phaseAt(w+1):deload?'Recovery week':'Training block '+(Math.floor((w-1)/5)+1),
-  rationale:postEvent?'Reduce load after the event; review recovery before starting the next phase.':transition?'Reduced volume separates '+phase+' from '+phaseAt(w+1)+'.':deload?'Planned recovery within the training block.':event&&n<=8?'Short event preparation uses a compressed development/specificity sequence.':'Build within the current training block.'};
+  label:postEvent?'Post-event recovery':transition&&deload?'Recovery before '+phaseAt(w+1):deload?'Recovery week':'Training block '+(Math.floor((w-1)/5)+1),
+  transitionReviewed:!!(shortPrep&&transition),
+  rationale:postEvent?'Reduce load after the event; review recovery before starting the next phase.':transition&&deload?'Reduced volume separates '+phase+' from '+phaseAt(w+1)+'.':deload?'Planned recovery within the training block.':event&&n<=8?'Short event preparation: no automatic deload at phase changes; review actual recovery before proposing a reduction.':'Build within the current training block.'};
 }
 
 function customPhase(w,n,c=data.customRoadmap){
@@ -370,14 +373,16 @@ function hybridRunWeek(c,w){
  const focus=c.hybridFocus||(c.priority==='Running'?'running':'balanced');
  const target=c.runningTargetDate?new Date(c.runningTargetDate+'T12:00:00'):null;
  const origin=c.startDate?new Date(c.startDate+'T12:00:00'):new Date();
- const raceWeek=target&&Number.isFinite(+target)?Math.max(1,Math.ceil((target-origin+86400000)/604800000)):null;
+ const monday=d=>{const m=new Date(+d);m.setDate(m.getDate()-((m.getDay()+6)%7));return m};
+ const raceWeek=target&&Number.isFinite(+target)?c.coachingPolicy==='review-v1'?Math.max(1,Math.round((monday(target)-monday(origin))/604800000)+1):Math.max(1,Math.ceil((target-origin+86400000)/604800000)):null;
  const remaining=raceWeek!==null?raceWeek-w+1:n-w+1;
- const taper=race&&remaining>=0&&remaining<=2;
+ const template=c.coachingPolicy==='review-v1'&&c.runTemplate==='easy-one-quality-10k'&&goal==='10k';
+ const taper=race&&(template?remaining===1:remaining>=0&&remaining<=2);
  const deload=c.coachingPolicy==='review-v1'?candidateWeek(c,w).deload&&!taper:w>1&&w%4===0&&!taper;
  const maxBuild=focus==='strength'?1.45:focus==='running'?2.3:1.85;
  // Modest gradual growth, recovery every fourth week; no forced end-of-year taper for fitness.
  const growth=Math.min(maxBuild,Math.pow(1.035,Math.max(0,w-1)));
- const factor=taper?(remaining<=1?.62:.82):deload?.82:growth;
+ const factor=taper?(remaining<=1?.62:.82):deload?.82:template?Math.min(1.20,1+.035*Math.max(0,w-1)):growth;
  const signals=hybridRecoverySignals();
  // Only use logged volume when there is a recent, meaningful history; missing logs are not evidence of detraining.
  const observed=signals.recentKm>=3&&signals.priorKm>=3;
@@ -518,7 +523,8 @@ function generatedSessions(c,w){
    for(const acc of accessories){if(ex.some(e=>e[0]===acc.name))continue;ex.push([acc.name,acc.sets,acc.reps,acc.weight,acc.rpe]);variationNotes.push(acc.name+' ('+acc.range+' reps): '+acc.why)}
   }else{
    const isLongRun=/Long run|Longer easy aerobic/.test(item.detail);
-   const quality=!isLongRun&&c.runGoal!=='fitness'&&/Quality/.test(item.detail)&&!(strengthEventWeek&&w===strengthEventWeek);
+   const template=c.coachingPolicy==='review-v1'&&c.runTemplate==='easy-one-quality-10k'&&c.runGoal==='10k';
+   const quality=!isLongRun&&c.runGoal!=='fitness'&&/Quality/.test(item.detail)&&!(strengthEventWeek&&w===strengthEventWeek)&&(!template||(!hybridRunWeek(c,w).taper&&!out.some(s=>s.runs.some(r=>r.role==='quality-run'))));
    const rp=runningPaces(c),runWeek=hybridRunWeek(c,w),weekly=runWeek.km;
    const longKm=weekly*runWeek.longShare,otherKm=Math.max(0,weekly-longKm)/Math.max(1,c.runs-1);
    const perRun=isLongRun?longKm:otherKm;
@@ -526,24 +532,27 @@ function generatedSessions(c,w){
    const estimated=Math.round(perRun*easyPace/60);
    // Running fitness maintenance stays easy; quality running has explicit capped work intervals.
    if(quality){
-    const baseReps=runWeek.taper?3:phase==='Foundation'?4:phase==='Development'?5:4;
+    const baseReps=template?Math.min(5,3+Math.floor(Math.max(0,w-1)/2)):runWeek.taper?3:phase==='Foundation'?4:phase==='Development'?5:4;
     const reps=c.coachingPolicy==='review-v1'&&runWeek.deload?Math.max(2,Math.ceil(baseReps*.5)):baseReps;
-    const warmKm=1.5,coolKm=1.25,workKm=runWeek.taper?.4:phase==='Foundation'?.5:.6,recoveryKm=.25;
+    const workKm=template?.8:runWeek.taper?.4:phase==='Foundation'?.5:.6,recoveryKm=.25;
+    const warmKm=template?2:1.5;
+    // Allocate the remaining easy distance here so weekly targets match actual sessions.
+    const coolKm=template?Math.max(1,Math.round((perRun-warmKm-reps*workKm-(reps-1)*recoveryKm)*4)/4):1.25;
     const easy=rp?paceText(rp.easyLow)+' to '+paceText(rp.easyHigh):'Easy · RPE 3–4';
     const threshold=rp?paceText(rp.threshold):'RPE 7 · pace to be established';
-    const steps=[{label:'Warm-up',distanceKm:warmKm,detail:'Easy running · RPE 3–4',pace:easy}];
+    const steps=[{label:'Warm-up',distanceKm:warmKm,detail:template?'Zone 2 / conversational · RPE 3–4':'Easy running · RPE 3–4',pace:easy}];
     for(let i=0;i<reps;i++){
       steps.push({label:'Threshold interval '+(i+1)+' of '+reps,distanceKm:workKm,detail:'RPE 7 · controlled',pace:threshold});
       if(i<reps-1)steps.push({label:'Easy recovery',distanceKm:recoveryKm,detail:'Jog or walk · RPE 2–3',pace:'Easy'});
     }
-    steps.push({label:'Cool-down',distanceKm:coolKm,detail:'Easy running · RPE 3–4',pace:easy});
+    steps.push({label:'Cool-down',distanceKm:coolKm,detail:template?'Zone 2 / conversational · RPE 3–4':'Easy running · RPE 3–4',pace:easy});
     const distanceKm=steps.reduce((n,x)=>n+x.distanceKm,0);
     const minutes=Math.round((warmKm+coolKm+(reps-1)*recoveryKm)*(rp?.easyLow||480)/60+reps*workKm*(rp?.threshold||420)/60);
-    runs.push({role:'quality-run',name:'Controlled threshold intervals',distanceKm,minutes,rpe:7,pace:threshold,paceRole:'threshold intervals only',steps,structure:`${distanceLabel(warmKm)} easy + ${reps} × ${distanceLabel(workKm)} threshold / ${distanceLabel(recoveryKm)} recovery + ${distanceLabel(coolKm)} easy`,workMinutes:Math.round(reps*workKm*(rp?.threshold||420)/60),reason:'Distances are the targets. Pace guides threshold efforts; adjust using RPE.'});
+    runs.push({role:'quality-run',name:'Controlled threshold intervals',distanceKm,minutes,rpe:7,pace:threshold,paceRole:'threshold intervals only',steps,structure:`${distanceLabel(warmKm)} easy + ${reps} × ${distanceLabel(workKm)} threshold / ${distanceLabel(recoveryKm)} recovery + ${distanceLabel(coolKm)} easy`,workMinutes:Math.round(reps*workKm*(rp?.threshold||420)/60),reason:template?'One controlled intensity session this week. Warm-up, recoveries and remaining distance stay conversational / Zone 2; pace is secondary to effort.':'Distances are the targets. Pace guides threshold efforts; adjust using RPE.'});
    }else{
     const distanceKm=Math.round(perRun*4)/4;
     const duration=Math.round(distanceKm*(rp?.easyLow||480)/60);
-    runs.push({role:isLongRun?'long-run':'easy-run',name:isLongRun?'Long easy run':'Easy aerobic run',distanceKm,minutes:duration,rpe:3.5,pace:rp?paceText(rp.easyLow)+' to '+paceText(rp.easyHigh):'RPE 3–4',steps:[{label:isLongRun?'Long easy run':'Easy run',distanceKm,detail:'RPE 3–4 · conversational',pace:rp?paceText(rp.easyLow)+' to '+paceText(rp.easyHigh):'Easy'}],structure:`${distanceLabel(distanceKm)} conversational easy running`,workMinutes:0,reason:isLongRun?'Protected endurance distance; adjust for recovery.':'Aerobic distance at conversational effort.'});
+    runs.push({role:isLongRun?'long-run':'easy-run',name:isLongRun?'Long easy run':'Easy aerobic run',distanceKm,minutes:duration,rpe:3.5,pace:rp?paceText(rp.easyLow)+' to '+paceText(rp.easyHigh):'RPE 3–4',steps:[{label:isLongRun?'Long easy run':'Easy run',distanceKm,detail:template?'Zone 2 / conversational · RPE 3–4':'RPE 3–4 · conversational',pace:rp?paceText(rp.easyLow)+' to '+paceText(rp.easyHigh):'Easy'}],structure:`${distanceLabel(distanceKm)} conversational easy running`,workMinutes:0,reason:isLongRun?'Protected endurance distance; adjust for recovery.':'Aerobic distance at conversational effort.'});
    }
   }}
   const id='custom-'+slot.day.toLowerCase();const name=[...slot.items.filter(x=>x.type==='strength').map(x=>x.name),...runs.map(x=>x.name)].join(' + ');

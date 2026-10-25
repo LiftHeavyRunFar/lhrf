@@ -2,11 +2,11 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {createProfileEngine,buildProgramme,normalizeProfile}=require('../src/coach-adapters.js');
 const profiles=require('./athletes/profiles.cjs');
 const candidate={...profiles[0].config,coachingPolicy:'review-v1'};
-test('short event candidate has one recovery transition, two specific weeks and event taper',()=>{
+test('short event candidate has no automatic early deload and retains event taper',()=>{
  const p=buildProgramme(candidate);assert.deepEqual(p.weeks.map(w=>w.phase),['Development','Development','Development','Specificity','Specificity','Taper / event']);
- assert.deepEqual(p.weeks.map(w=>w.deload),[false,false,true,false,false,false]);
- assert.ok(p.weeks[2].sessions.some(s=>s.reason.includes('Reduced volume separates')));
- const {engine,config}=createProfileEngine(candidate);assert.equal(engine.hybridRunWeek(config,3).deload,true);
+ assert.deepEqual(p.weeks.map(w=>w.deload),[false,false,false,false,false,false]);
+ assert.ok(p.weeks[2].sessions.every(s=>!s.reason.includes('Reduced volume separates')));
+ const {engine,config}=createProfileEngine(candidate);assert.equal(engine.hybridRunWeek(config,3).deload,false);
 });
 test('requested bench top set replaces straight-set work and back-offs reference that top set',()=>{
  const {engine,config}=createProfileEngine({...candidate,strengthTargetDate:null,runningTargetDate:null,weeks:12});
@@ -23,7 +23,7 @@ test('candidate phase changes have recovery and retain fixed days across support
  for(let n=4;n<=52;n++){
   const date=new Date(Date.UTC(2026,9,19+(n-1)*7+5)).toISOString().slice(0,10);
   const {engine,config}=createProfileEngine({...candidate,weeks:n,strengthTargetDate:date,runningTargetDate:null});
-  for(let w=1;w<n;w++){const a=engine.candidateWeek(config,w),b=engine.candidateWeek(config,w+1);if(a.phase!==b.phase&&b.phase!=='Taper / event')assert.ok(a.deload||b.deload,'Recovery transition: '+n+' weeks, W'+w)}
+  for(let w=1;w<n;w++){const a=engine.candidateWeek(config,w),b=engine.candidateWeek(config,w+1);if(n>8&&a.phase!==b.phase&&b.phase!=='Taper / event')assert.ok(a.deload||b.deload,'Recovery transition: '+n+' weeks, W'+w)}
  }
  const p=buildProgramme(candidate);for(const w of p.weeks.slice(0,-1)){assert.deepEqual(w.sessions.map(s=>s.day),['Tue','Thu','Fri','Sat','Sun']);assert.ok(w.sessions.find(s=>s.day==='Sat').runs.some(r=>r.role==='long-run'))}
 });
@@ -32,10 +32,25 @@ test('candidate policy is opt-in and legacy programme output remains unchanged',
  const snapshot=JSON.stringify(original);buildProgramme(candidate);assert.equal(JSON.stringify(original),snapshot);
 });
 
-test('recovery week reduces interval work and removes optional isolation work',()=>{
- const p=buildProgramme(candidate),loading=p.weeks[1],recovery=p.weeks[2];
+test('longer blocks retain reduced running and lifting in planned recovery weeks',()=>{
+ const p=buildProgramme({...candidate,weeks:12,strengthTargetDate:'2027-01-09',runningTargetDate:'2027-01-10'}),loading=p.weeks[3],recovery=p.weeks[4];
  const intervals=w=>w.sessions.flatMap(s=>s.runs).find(r=>r.role==='quality-run');
- assert.ok(intervals(recovery).workMinutes<intervals(loading).workMinutes);
- assert.ok(recovery.sessions.flatMap(s=>s.runs).reduce((n,r)=>n+r.distanceKm,0)<loading.sessions.flatMap(s=>s.runs).reduce((n,r)=>n+r.distanceKm,0)*.85);
+ assert.ok(recovery.deload);assert.ok(intervals(recovery).workMinutes<intervals(loading).workMinutes);
  assert.ok(recovery.sessions.flatMap(s=>s.ex).every(e=>!e[5]?.optional));
+});
+test('Tuesday-start five-week 10K plan builds actual mileage, mostly easy, then tapers to exact events',()=>{
+ const c=normalizeProfile({...candidate,startDate:'2026-10-27',weeks:5,runTemplate:'easy-one-quality-10k'});c.runProfile.weeklyKm=20;
+ const p=buildProgramme(c),totals=[];
+ for(const w of p.weeks.slice(0,4)){
+  assert.equal(w.deload,false);const runs=w.sessions.flatMap(s=>s.runs);
+  assert.equal(runs.filter(r=>r.role==='quality-run').length,1);
+  const total=runs.reduce((n,r)=>n+r.distanceKm,0),hard=runs.flatMap(r=>r.steps).filter(s=>s.label.startsWith('Threshold interval')).reduce((n,s)=>n+s.distanceKm,0);
+  assert.ok(hard/total<=.20);totals.push(total);
+  assert.ok(w.sessions.find(s=>s.day==='Sat').runs.every(r=>r.rpe<4));
+ }
+ assert.ok(Math.abs(totals[0]-20)<.3);for(let i=1;i<4;i++){assert.ok(totals[i]>totals[i-1]);assert.ok(totals[i]/totals[i-1]<1.06)}
+ const events=p.weeks[4].sessions.filter(s=>s.eventDate);assert.deepEqual(events.map(s=>s.eventDate),['2026-11-28','2026-11-29']);
+ assert.equal(p.weeks[4].phase,'Taper / event');assert.ok(p.weeks[4].sessions.flatMap(s=>s.runs).every(r=>r.rpe<4));
+ assert.ok(p.weeks[4].sessions.flatMap(s=>s.runs).reduce((n,r)=>n+r.distanceKm,0)<totals[3]*.7);
+ const {engine}=createProfileEngine(c);assert.equal(engine.hybridRunWeek(c,4).taper,false);assert.equal(engine.hybridRunWeek(c,5).taper,true);
 });

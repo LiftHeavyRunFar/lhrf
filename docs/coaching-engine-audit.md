@@ -40,15 +40,15 @@ Browser tests use synthetic records, not the user's device-local data. Physical 
 
 The private review build selects `coachingPolicy: review-v1`. Existing programmes without that flag keep their original prescriptions; there is no automatic migration or activation.
 
-The candidate implements the requested bench top-set-first preference, caps explicitly light squat/deadlift work at RPE 5.5, and puts recovery before loading-phase changes. Short event preparations use a compressed development/specificity sequence rather than imposing several tiny blocks. Recovery weeks also reduce interval repetitions and omit optional isolation work. Later weeks beyond an event return through a recovery week instead of remaining in taper indefinitely.
+The candidate implements the requested bench top-set-first preference, caps explicitly light squat/deadlift work at RPE 5.5, and retains planned recovery in longer blocks. Short event preparations use a compressed development/specificity sequence rather than imposing several tiny blocks. Recovery weeks also reduce interval repetitions and omit optional isolation work. Later weeks beyond an event return through a recovery week instead of remaining in taper indefinitely.
 
-The current candidate suite covers 42 trajectories / 468 synthetic weeks, with 11,790 invariant checks and zero regression failures. Three wider coaching requirements remain blocked: training experience, maintenance-strength policy, and resolution of restricted-day capacity. The candidate is for programme review, not certified training efficacy.
+The current candidate suite covers 42 trajectories / 468 synthetic weeks, with 11,835 invariant checks and zero regression failures. Three wider coaching requirements remain blocked: training experience, maintenance-strength policy, and resolution of restricted-day capacity. The candidate is for programme review, not certified training efficacy.
 
-38 Node tests pass, including candidate rules, phase boundaries across 4–52-week horizons, event/settings preservation and the unchanged legacy parity cases. The private review copy also passed a complete browser walkthrough of all five tabs, preview/Start/readiness, required-set logging, feedback and completion marking.
+40 Node tests pass, including candidate rules, phase boundaries across 4–52-week horizons, event/settings preservation and the unchanged legacy parity cases. The private review copy also passed a complete browser walkthrough of all five tabs, preview/Start/readiness, required-set logging, feedback and completion marking.
 
 The reference bot now explicitly requests the 10K goal rather than inheriting fitness maintenance. Historical parity fixture inputs are frozen in the fixture JSON, so changing a future bot profile cannot silently change the baseline inputs being compared.
 
-`build-review.cjs` produces the hosted review snapshot from the existing app and the same shared module. It uses a separate origin and namespaced test storage, preloads the November goals and fixed split, and skips onboarding. Its 25 km/week baseline is labelled as a review assumption within the reported 20–30 km/week range. Unknown squat/deadlift loads remain unknown. Generated files are deployment output, not a separately maintained coaching implementation.
+`build-review.cjs` produces the hosted review snapshot from the existing app and the same shared module. It uses a separate origin and namespaced test storage, preloads the November goals and fixed split, and skips onboarding. The revised copy starts Tuesday 27 October with five calendar weeks through 29 November, empty logs, and a provisional 20 km/week baseline at the lower end of the reported range. A one-time namespaced reset discards only the previous review entries; subsequent new-block logs survive reload. Unknown squat/deadlift loads remain unknown. Generated files are deployment output, not a separately maintained coaching implementation.
 
 The acceptance job remains red for the three wider requirements. The compact report is in `docs/athlete-test-summary.json`; full traces are retained by CI. Your live programme, real logs and onboarding have not been changed.
 
@@ -68,3 +68,13 @@ The browser tests require Playwright/Chromium, with optional `PLAYWRIGHT_MODULE`
 `test:athletes` returns 1 while coaching acceptance is blocked, even though regression tests pass. `readyForLiveUse` remains false; a candidate programme still needs athlete review.
 
 The historical first inspection is retained in `docs/coaching-engine-audit-v2-prototype.md`. Its implementation/status statements apply only to that earlier prototype branch.
+
+## Review feedback, 25 October
+
+The athlete rejected the early deload in short event preparation. For dated preparations of eight weeks or fewer, phase changes no longer force a scheduled deload. Post-event recovery remains. Recovery-led changes still require athlete approval. The bot gate explicitly accepts this short-preparation rationale; longer blocks continue to require recovery transitions.
+
+The opt-in `easy-one-quality-10k` running template keeps one controlled session and all other distance conversational (Zone 2 by effort, without invented heart-rate boundaries). Actual generated mileage, including warm-up, jog recoveries and easy distance, now matches weekly targets to rounding. Four training weeks build approximately 19.9, 20.65, 21.45 and 21.95 km, with at least 80% easy distance. The fifth week contains 6.5 km easy preparation plus the separate 10K event; race distance is not labelled easy or included in the preparation-volume reduction. Tuesday and Saturday remain the only running days.
+
+Guide: British Heart Foundation / Full Potential 10K beginner template, https://www.bhf.org.uk/-/media/files/how-you-can-help/events/events-rebranded-training-plans/10k-run-beginners.pdf . Its easy running, controlled threshold work and reduced event week inform the structure. This is an original adaptation for two running days and bench competition the day before the race, not a copied full plan or a claim of template validation. The 3.5% weekly baseline increment is a configurable programme choice, not a universal safety rule.
+
+This revision passed 40 Node tests and the 42-trajectory bot replay (zero regression failures; three wider blocked gates retained). Connected-browser checks cover all five tabs, preview before Start/readiness, top/back-off logging, combined run, feedback, completion and reload. Local automated browser/PWA reruns could not launch because Chromium was absent and its download failed; CI runs remain the repeatable verification route. The hosted review omits service workers by design.
