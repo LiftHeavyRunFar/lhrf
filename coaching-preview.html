@@ -25,6 +25,10 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <label>Runs/week <input name="runs" type="number" min="0" max="6" value="3" required></label>
 <label>Priority <select name="priority"><option>Bench</option><option>Running</option><option>Squat</option><option>Deadlift</option><option>Balanced</option></select></label>
 <label>Bench 1RM (kg, optional) <input name="benchMax" type="number" min="0" max="500" step="2.5" value="160"></label>
+<label>Squat 1RM (kg, optional) <input name="squatMax" type="number" min="0" max="600" step="2.5" placeholder="Unknown"></label>
+<label>Deadlift 1RM (kg, optional) <input name="deadliftMax" type="number" min="0" max="600" step="2.5" placeholder="Unknown"></label>
+<label>10K PB (optional) <input name="tenKTime" type="text" inputmode="text" placeholder="1:05:00"></label>
+<label>Recent running minutes/week (optional) <input name="runningBaselineMinutes" type="number" min="0" max="1200" step="5" placeholder="e.g. 150"></label>
 </div><p class="muted">Suggested loads are provisional estimates; adjust to prescribed RPE. The final assessment is optional.</p>
 <button type="submit">Generate preview</button></form>
 <section id="output" aria-live="polite"></section>
@@ -44,11 +48,13 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   try{
    const f=new FormData(form),num=k=>Number(f.get(k)),c={
     weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),
-    runs:num('runs'),priority:String(f.get('priority')),maxes:{bench:num('benchMax')||null}
+    runs:num('runs'),priority:String(f.get('priority')),maxes:{bench:num('benchMax')||null,squat:num('squatMax')||null,deadlift:num('deadliftMax')||null},
+    tenKTime:String(f.get('tenKTime')||'').trim(),runningBaselineMinutes:num('runningBaselineMinutes')||null
    };
    if(!Number.isInteger(c.weeks)||c.weeks<4||c.weeks>52||
       ['bench','squat','deadlift','runs'].some(k=>!Number.isInteger(c[k])||c[k]<0||c[k]>6)||
       c.bench+c.squat+c.deadlift+c.runs===0)throw Error('Enter a valid programme with at least one session.');
+   if(c.tenKTime&&!window.LHRFRunningPacesV2.calibrate10K(c).available)throw Error('Enter a plausible 10K PB as mm:ss or h:mm:ss, or leave it blank.');
    const p=window.LHRFProgrammeV2.buildProgramme(c);
    const header='<div class="panel"><h2>Programme preview</h2><p>'+esc(p.outcome.description)+'</p>'+
     '<p>Structural checks: <strong>'+esc(p.passesStructuralChecks?'passed':'review needed')+'</strong>. These do not establish coaching safety.</p>'+
@@ -63,7 +69,8 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
      }).join(' · ');
     }
     return esc(entry.runType+' run'+(entry.runMinutes!=null?' — '+entry.runMinutes+' min':'')+
-      (entry.runEffort?' · '+entry.runEffort:''));
+      (entry.runEffort?' · '+entry.runEffort:'')+
+      (entry.runPace?' · suggested pace '+entry.runPace:''));
    };
    const weeks=p.weeks.map(w=>{
     const schedule=w.calendar.sessions.map(item=>{
@@ -72,7 +79,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
       return {...item,weekStrengths:[lift?.top,lift?.backoff].filter(x=>x&&x.sets>0)};
      }
      const run=w.runs[Number(item.id.slice(1))];
-     return {...item,runMinutes:run?.minutes,runEffort:run?.effort};
+     return {...item,runMinutes:run?.minutes,runEffort:run?.effort,runPace:run?.pace?.label};
     });
     return '<div class="week"><h3>Week '+w.week+' — '+esc(w.phase)+'</h3>'+
     '<p>'+esc(w.objective)+'</p>'+
