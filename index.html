@@ -1523,7 +1523,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
     old.push({date:stamp.slice(0,10),kind:trial.kind,rpe:live.runEntry?.rpe||sets.at(-1)?.rpe||7,weight:sets[0]?.weight||null,reps:sets[0]?.reps||null,minutes:live.runEntry?.min||null,sets,notes,plannedSession:trial,recordedAt:stamp,source:'genuine-athlete-entry',via:'original-live-train'});
     localStorage.setItem(key,JSON.stringify(old));
    }catch(err){document.getElementById('liveError').textContent='Could not save trial session; workout remains open.';return}
-   live=null;persist();status();go('train');return;
+   const trialFeedbackSession={id:live.id,name:live.name,week:trial.week,trialRecordAt:stamp};
+   live=null;persist();status();go('train');showLiveFeedback(trialFeedbackSession);return;
   }
   live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,week:Number(data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
   if(live.runLogged&&live.runEntry){data.runs=data.runs||[];data.runs.push({date:stamp,km:live.runEntry.km,min:live.runEntry.min,rpe:live.runEntry.rpe,type:live.runs?.[0]?.role||'run',sessionId:live.id,session:live.name,week:Number(data.activeCustomWeek)||1,notes:note})}
@@ -1542,6 +1543,18 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   overlay.querySelector('#liveFeedbackSave').onclick=()=>{
    const difficulty=overlay.querySelector('#liveFeedbackDifficulty').value,energy=overlay.querySelector('#liveFeedbackEnergy').value,discomfort=overlay.querySelector('#liveFeedbackDiscomfort').value;
    if(!difficulty&&!energy&&!discomfort){overlay.querySelector('#liveFeedbackError').textContent='Choose at least one answer, or tap Skip.';return}
+   if(session.trialRecordAt){
+    try{
+     const key='lhrf-v2-genuine-training-log',logs=JSON.parse(localStorage.getItem(key)||'[]');
+     if(!Array.isArray(logs))throw Error('Invalid trial logs');
+     const entry=logs.find(x=>x.recordedAt===session.trialRecordAt&&x.via==='original-live-train');
+     if(!entry)throw Error('Trial session missing');
+     entry.postWorkout={difficulty,energy,discomfort,pain:discomfort==='yes',lowEnergy:energy==='low',reportedAt:new Date().toISOString()};
+     localStorage.setItem(key,JSON.stringify(logs));
+     overlay.remove();
+    }catch(err){overlay.querySelector('#liveFeedbackError').textContent='Feedback could not be saved. Your workout is still safely logged.'}
+    return;
+   }
    data.sessionFeedback=data.sessionFeedback||[];
    data.sessionFeedback.push({date:new Date().toISOString(),week:session.week,sessionId:session.id,session:session.name,difficulty,energy,discomfort});
    save();refresh();overlay.remove();
