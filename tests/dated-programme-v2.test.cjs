@@ -8,6 +8,8 @@ assert.equal(p.weeks.length,12);
 assert.equal(p.weeks[5].phase,'event');
 assert.equal(p.weeks[4].phase,'realisation');
 assert.equal(p.weeks[6].phase,'recovery');
+assert.equal(p.weeks[7].phase,'foundation','Training must resume after post-event recovery');
+assert.equal(p.weeks[11].phase,'foundation','Event must not force perpetual recovery');
 assert.equal(p.weeks[5].events.length,2);
 assert.equal(p.checks.eventWeeksMatchDates,true);
 assert.equal(p.passesStructuralChecks,false,'Do not certify provisional event integration');
