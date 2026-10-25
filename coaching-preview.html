@@ -46,7 +46,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <label>Top reps (optional) <input type="number" name="reps" min="1" max="100" step="1"></label>
 <label>Actual RPE (1–10) <input type="number" name="rpe" min="1" max="10" step="0.5" required></label>
 </div><label>Notes (optional) <input type="text" name="notes" maxlength="300" style="max-width:100%;width:100%" placeholder="How did it feel?"></label>
-<button type="submit">Save genuine session</button></form>
+<div id="setLogger"><h3>Working sets (optional)</h3><p class="muted">Add each completed set. For running, use duration and RPE above instead.</p><div id="setRows"></div><button type="button" id="addSet">+ Add set</button></div><p><button type="submit">Save genuine session</button></p></form>
 <p id="logMessage" role="status"></p><div id="logHistory"></div></section>
 <script src="./src/coaching-v2.js"></script>
 <script src="./src/prescriptions-v2.js"></script>
@@ -76,12 +76,21 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const logForm=document.getElementById('logForm'),logMessage=document.getElementById('logMessage'),logHistory=document.getElementById('logHistory');
  const logKey='lhrf-v2-genuine-training-log';
+ const setRows=document.getElementById('setRows');
+ document.getElementById('addSet').addEventListener('click',()=>{
+  const row=document.createElement('div');row.className='grid';
+  row.innerHTML='<label>Weight (kg) <input type="number" class="setWeight" min="0" max="600" step="0.5" required></label>'+
+   '<label>Reps <input type="number" class="setReps" min="1" max="100" step="1" required></label>'+
+   '<label>Set RPE <input type="number" class="setRpe" min="1" max="10" step="0.5" required></label>'+
+   '<button type="button" class="removeSet">Remove set</button>';
+  row.querySelector('.removeSet').addEventListener('click',()=>row.remove());setRows.appendChild(row);
+ });
  const readLogs=()=>{try{const value=JSON.parse(localStorage.getItem(logKey)||'[]');return Array.isArray(value)?value:[]}catch(err){return []}};
  const renderLogs=()=>{
   const logs=readLogs();logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
    (logs.length?logs.slice(-15).reverse().map(x=>'<p>'+esc(x.date+' · '+x.kind+' · RPE '+x.rpe+
     (x.weight!=null?' · '+x.weight+' kg':'')+(x.reps!=null?' × '+x.reps+' reps':'')+
-    (x.minutes!=null?' · '+x.minutes+' min':'')+(x.notes?' · '+x.notes:''))+'</p>').join(''):'<p>No genuine workouts logged yet.</p>');
+    (x.minutes!=null?' · '+x.minutes+' min':'')+(x.sets?.length?' · '+x.sets.length+' sets logged':'')+(x.notes?' · '+x.notes:''))+'</p>').join(''):'<p>No genuine workouts logged yet.</p>');
  };
  logForm.addEventListener('submit',e=>{
   e.preventDefault();const v=new FormData(logForm);
@@ -97,8 +106,11 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     (minutes!==null&&(!Number.isInteger(minutes)||minutes<1||minutes>600))){logMessage.textContent='Please check the session date, RPE and optional values.';return;}
   if(kind==='run'&&(weight!==null||reps!==null)){logMessage.textContent='For a run, leave weight and reps blank.';return;}
   if(kind!=='run'&&minutes===null&&weight===null&&reps===null){logMessage.textContent='Enter at least weight, reps or duration for the lifting session.';return;}
-  const logs=readLogs();logs.push({date,kind,rpe,weight,reps,minutes,notes,recordedAt:new Date().toISOString(),source:'genuine-athlete-entry'});
-  try{localStorage.setItem(logKey,JSON.stringify(logs));logMessage.textContent='Genuine session saved on this device.';logForm.reset();renderLogs();}
+  const sets=[...setRows.children].map(row=>({weight:Number(row.querySelector('.setWeight').value),reps:Number(row.querySelector('.setReps').value),rpe:Number(row.querySelector('.setRpe').value)}));
+  if(kind==='run'&&sets.length){logMessage.textContent='Remove lifting sets before logging a run.';return;}
+  if(sets.some(x=>!Number.isFinite(x.weight)||x.weight<0||x.weight>600||!Number.isInteger(x.reps)||x.reps<1||x.reps>100||!Number.isFinite(x.rpe)||x.rpe<1||x.rpe>10)){logMessage.textContent='Check each set weight, reps and RPE.';return;}
+  const logs=readLogs();logs.push({date,kind,rpe,weight,reps,minutes,sets,notes,recordedAt:new Date().toISOString(),source:'genuine-athlete-entry'});
+  try{localStorage.setItem(logKey,JSON.stringify(logs));logMessage.textContent='Genuine session saved on this device.';logForm.reset();setRows.replaceChildren();renderLogs();}
   catch(err){logMessage.textContent='Could not save the session. No entry was recorded.';}
  });
  renderLogs();
