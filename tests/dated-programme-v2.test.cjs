@@ -11,6 +11,11 @@ assert.equal(p.weeks[6].phase,'recovery');
 assert.equal(p.weeks[7].phase,'foundation','Training must resume after post-event recovery');
 assert.equal(p.weeks[11].phase,'foundation','Event must not force perpetual recovery');
 assert.equal(p.weeks[5].events.length,2);
+assert.deepEqual(p.weeks[5].calendar.sessions.map(s=>[s.kind,s.sport,s.day,s.date]),[
+ ['event','strength','Sat','2026-11-28'],['event','running','Sun','2026-11-29']]);
+assert.equal(p.weeks[5].calendar.withheldTrainingSessions>0,true);
+assert.equal(p.weeks[5].reviewRequired,true);
+assert.ok(p.weeks[5].calendar.sessions.every(s=>s.kind==='event'),'No unvalidated event-week workouts');
 assert.equal(p.checks.eventWeeksMatchDates,true);
 assert.equal(p.passesStructuralChecks,false,'Do not certify provisional event integration');
 const bad=buildDatedProgramme({weeks:12,strengthTargetDate:'2026-11-28'});
