@@ -764,6 +764,30 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    const notice=document.createElement('div');notice.className='card';notice.style.margin='0 16px 12px';notice.innerHTML='<strong>Saved programme · not yet activated</strong><p class="muted small">These are proposed sessions. Activate the week before training.</p>';
    const button=document.createElement('button');button.textContent='Activate this week →';button.onclick=()=>{if(!confirm('Activate week '+roadmapWeek+'? Existing logs will be kept.'))return;data.activeCustomWeek=roadmapWeek;data.activeSchedule=currentSessions;data.overrides={};schedule=currentSessions;save();populate();refresh()};notice.appendChild(button);root.insertBefore(notice,rail);
   }
+  // Look ahead beyond the displayed week, without duplicating its calendar cards.
+  const upcoming=document.createElement('section');upcoming.id='upcomingWeeks';upcoming.style.cssText='margin:24px 16px';
+  upcoming.innerHTML='<h2>Upcoming</h2><p class="muted small">Beyond the week above · Preview only. Your active programme stays unchanged.</p><div id="upcomingSessions" style="display:grid;gap:10px"></div>';
+  root.appendChild(upcoming);
+  const future=[];
+  if(startDate&&hasRoadmap){
+   for(let week=activeWeek+1;week<=Math.min(52,Number(data.customRoadmap.weeks)||1)&&future.length<5;week++){
+    const base=new Date(startDate);base.setDate(base.getDate()-(base.getDay()+6)%7+(week-1)*7);
+    for(const session of generatedSessions(data.customRoadmap,week)){
+     const offset=dayAliases[String(session.day??session.weekday??'').trim().toLowerCase()]??Number(session.dayIndex);
+     if(!Number.isInteger(offset)||offset<0||offset>6)continue;
+     const date=new Date(base);date.setDate(base.getDate()+offset);
+     const done=(data.completedWorkouts||[]).some(w=>w.id===session.id&&Number(w.week||1)===week);
+     if(date>today&&!done)future.push({session,date,week});
+    }
+   }
+  }
+  future.sort((a,b)=>a.date-b.date);
+  for(const {session,date,week} of future.slice(0,5)){
+   const button=document.createElement('button');button.type='button';button.className='secondary';button.style.cssText='text-align:left;padding:15px';button.dataset.date=[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');button.dataset.week=week;
+   button.innerHTML='<span class="small" style="color:var(--accent)">'+safe(date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}))+' · Week '+week+'</span><strong style="display:block;margin-top:5px">'+safe(session.name)+'</strong><span class="muted small">Preview session →</span>';
+   button.onclick=()=>window.previewPlannedWorkout(session,date,week);document.getElementById('upcomingSessions').appendChild(button);
+  }
+  if(!future.length){const message=document.createElement('p');message.className='muted small';message.textContent=startDate?'No future sessions beyond the displayed week.':'Add a programme start date in Plan to see dated upcoming sessions.';upcoming.appendChild(message)}
   if(!trainingDays.length){const notice=document.createElement('div');notice.className='card';notice.style.margin='0 16px 12px';notice.innerHTML='<strong>No scheduled workouts</strong><p class="muted small">Activate a training week in Plan to see your sessions here.</p>';const button=document.createElement('button');button.textContent='Go to Plan →';button.onclick=()=>go('plan');notice.appendChild(button);root.insertBefore(notice,rail);document.querySelector('.day-controls').style.display='none';document.getElementById('dayDots').style.display='none';return}
   const slides=[];
   for(const {day,i,date,sessions} of trainingDays){
@@ -900,16 +924,16 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   });
  }
  function updateHeader(){const n=total(),done=count();const t=document.querySelector('#train .live-status');if(t)t.textContent=done+' of '+n+' sets completed'}
- function previewSession(id){const raw=effectiveSession(id);const session=raw&&data.customRoadmap?ensureKnownLiftLoads([raw],data.customRoadmap)[0]:raw;if(!session){alert('Select an active workout from Today.');return}
+ function previewSession(id,planned){const raw=planned?.session||effectiveSession(id);const session=raw&&data.customRoadmap?ensureKnownLiftLoads([raw],data.customRoadmap)[0]:raw;if(!session){alert('Select an active workout from Today.');return}
   preview=session;
   const old=document.getElementById('livePreview');if(old)old.remove();
   const dialog=document.createElement('div');dialog.id='livePreview';dialog.className='card';dialog.style.cssText='position:fixed;z-index:30;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));max-width:540px;margin:auto;box-shadow:0 0 0 200vmax #0009;max-height:75vh;overflow:auto';
   const exercises=(session.ex||[]).map(e=>`<div class="entry">${esc(e[5]?.role==='top'?'TOP SET · ':e[5]?.role==='backoff'?'BACK-OFF · ':'')}${esc(e[0])} <span class="muted">· ${e[1]} × ${esc(e[2])} · RPE ${esc(e[4])} · ${e[3]>0?e[3]+' kg':'load by RPE'}</span></div>`).join('')+(session.runs||[]).map(r=>`<div class="entry"><strong>THEN RUN · ${esc(r.name)}</strong><span class="muted"> · ${esc(r.minutes)} min · RPE ${esc(r.rpe)}</span></div>`).join('');
-  dialog.innerHTML=`<div class="row"><h2 style="margin:0">${esc(session.name)}</h2><button class="ghost" style="padding:7px" onclick="document.getElementById('livePreview').remove()">✕</button></div><p class="muted small">${esc(session.day)} · ${esc(scheduledDate(session)?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})||'')} · ${sessionCompleted(session)?'✓ Completed':'Preview only'}</p>${exercises||'<p class="muted">Running session</p>'}<div class="live-actions" style="margin-top:14px"><button id="previewStart">Start workout</button><button class="secondary" id="previewClose">Close</button></div>`;
+  dialog.innerHTML=`<div class="row"><h2 style="margin:0">${esc(session.name)}</h2><button class="ghost" style="padding:7px" onclick="document.getElementById('livePreview').remove()">✕</button></div><p class="muted small">${esc(session.day)} · ${esc((planned?.date||scheduledDate(session))?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})||'')} · ${planned?'Week '+planned.week+' · Future preview':sessionCompleted(session)?'✓ Completed':'Preview only'}</p>${exercises||'<p class="muted">Running session</p>'}<div class="live-actions" style="margin-top:14px"><button id="previewStart">Start workout</button><button class="secondary" id="previewClose">Close</button></div>`;
   dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
   document.body.appendChild(dialog);
   const startButton=dialog.querySelector('#previewStart');
-  if(sessionCompleted(session))startButton.remove();
+  if(planned||sessionCompleted(session))startButton.remove();
   else if(live&&live.id===id)startButton.textContent='Resume workout';
   dialog.querySelector('#previewClose').onclick=()=>dialog.remove();
   if(startButton.isConnected)startButton.onclick=()=>{if(live&&live.id===id){dialog.remove();go('train');return}if(live&&!confirm('Another workout is active. Discard it and start this one?'))return;live={id:session.id,day:session.day,name:session.name,ex:JSON.parse(JSON.stringify(session.ex||[])),runs:JSON.parse(JSON.stringify(session.runs||[])),run:!!session.run,runLogged:false,runStage:false,runEntry:null,entries:{},notes:'',started:new Date().toISOString()};expanded=0;persist();dialog.remove();go('train');const readiness=document.getElementById('preWorkoutReadiness');if(readiness)readiness.open=true};
@@ -927,6 +951,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  }
  if(new URLSearchParams(location.search).get('trialTrain')==='1')requestAnimationFrame(openV2LiveHandoff);
  window.openWorkout=previewSession;
+ window.previewPlannedWorkout=(session,date,week)=>previewSession(session.id,{session,date,week});
  window.finishLiveWorkout=function(){if(!live)return;const done=Object.values(live.entries).filter(v=>v.done);if(live.runs?.length&&!live.runLogged){live.runStage=true;persist();status();document.getElementById('liveRunSection')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('liveRunError').textContent='Log your completed run above before finishing.';return}if(!done.length&&!live.runLogged){document.getElementById('liveError').textContent='Log at least one set or a completed run before finishing.';return}if(!confirm('Finish this workout and save '+done.length+' completed sets'+(live.runLogged?' and the completed run':'')+'?'))return;
   const stamp=new Date().toISOString();const note=live.notes||'';
   if(live.v2Trial){
@@ -1276,7 +1301,11 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 </script><script src="./src/programme-install.js"></script>
 <script>
 (async function(){
- if(new URLSearchParams(location.search).get('programme')!=='november-2026')return;
+ const requested=new URLSearchParams(location.search).get('programme');
+ let pending;try{pending=localStorage.getItem('lhrf_pending_programme')}catch(e){}
+ if(requested!=='november-2026'&&pending!=='november-2026')return;
+ if(requested==='november-2026'){try{localStorage.setItem('lhrf_pending_programme',requested)}catch(e){}}
+ if(!requested&&data.customRoadmap?.programmeId==='november-2026')return;
  // An explicit approved-programme link uses this activation flow instead of fresh onboarding.
  document.getElementById('firstRun').hidden=true;document.body.style.overflow='';
  const card=document.createElement('aside');card.className='card';card.setAttribute('aria-label','Approved programme activation');card.innerHTML='<h2>Your approved November block</h2><p>27 October–29 November · Bench competition + 10K. Earlier workouts and onboarding settings are retained. Your previous programme and its coach decisions will be archived.</p><button type="button" disabled>Activate approved programme</button><p class="small muted" role="status"></p>';document.querySelector('main').prepend(card);
@@ -1286,7 +1315,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  button.disabled=false;button.onclick=()=>{
   if(localStorage.getItem('lhrf_fresh_beta_live_v1114')){status.textContent='Finish or discard your active workout first, then activate this programme.';return}
   const previous=data,previousSchedule=schedule;
-  try{const next=LHRFProgrammeInstall.install(data,config,LHRFCoach);data=next;schedule=next.activeSchedule;if(!save()){data=previous;schedule=previousSchedule;return}populate();refresh();renderPlanDashboard();go('today');document.getElementById('firstRun').hidden=true;document.body.style.overflow='';button.disabled=true;status.textContent='Your approved five-week programme is active. Earlier workout history has been preserved.';history.replaceState(null,'',location.pathname+location.hash)}catch(e){data=previous;schedule=previousSchedule;status.textContent='Activation failed. Your previous plan is retained: '+e.message}
+  try{const next=LHRFProgrammeInstall.install(data,config,LHRFCoach);data=next;schedule=next.activeSchedule;if(!save()){data=previous;schedule=previousSchedule;return}populate();refresh();renderPlanDashboard();go('today');document.getElementById('firstRun').hidden=true;document.body.style.overflow='';button.disabled=true;status.textContent='Your approved five-week programme is active. Earlier workout history has been preserved.';try{localStorage.removeItem('lhrf_pending_programme')}catch(e){};history.replaceState(null,'',location.pathname+location.hash)}catch(e){data=previous;schedule=previousSchedule;status.textContent='Activation failed. Your previous plan is retained: '+e.message}
  };
 })();
 </script>
