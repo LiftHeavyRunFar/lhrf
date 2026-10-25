@@ -77,14 +77,18 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
  const logForm=document.getElementById('logForm'),logMessage=document.getElementById('logMessage'),logHistory=document.getElementById('logHistory');
  const logKey='lhrf-v2-genuine-training-log';
  const setRows=document.getElementById('setRows');
- document.getElementById('addSet').addEventListener('click',()=>{
+ function addSet(initial){
   const row=document.createElement('div');row.className='grid';
   row.innerHTML='<label>Weight (kg) <input type="number" class="setWeight" min="0" max="600" step="0.5" required></label>'+
    '<label>Reps <input type="number" class="setReps" min="1" max="100" step="1" required></label>'+
    '<label>Set RPE <input type="number" class="setRpe" min="1" max="10" step="0.5" required></label>'+
    '<button type="button" class="removeSet">Remove set</button>';
   row.querySelector('.removeSet').addEventListener('click',()=>row.remove());setRows.appendChild(row);
- });
+  if(initial){row.querySelector('.setWeight').value=initial.weight??'';
+   row.querySelector('.setReps').value=initial.reps??'';
+   row.querySelector('.setRpe').value=initial.rpe??'';}
+ }
+ document.getElementById('addSet').addEventListener('click',()=>addSet());
  let activePrescription=null;
  const readLogs=()=>{try{const value=JSON.parse(localStorage.getItem(logKey)||'[]');return Array.isArray(value)?value:[]}catch(err){return []}};
  const renderLogs=()=>{
@@ -181,10 +185,13 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     logForm.elements.namedItem('minutes').value=item.kind==='run'?(item.runMinutes||''):'';
     logForm.elements.namedItem('weight').value='';logForm.elements.namedItem('reps').value='';
     setRows.replaceChildren();
+    if(item.kind==='strength')for(const group of item.weekStrengths){
+     for(let n=0;n<group.sets;n++)addSet({weight:group.suggestedWeight,reps:group.reps,rpe:group.rpe});
+    }
     activePrescription={week:chosen.week,phase:chosen.phase,kind,day:item.day,
      planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace}:
       {sets:item.weekStrengths.map(x=>({role:x.role,sets:x.sets,reps:x.reps,rpe:x.rpe,weight:x.suggestedWeight}))}};
-    logMessage.textContent='Selected week '+chosen.week+' '+item.day+' '+kind+'. Log actual work completed, not the suggested values.';
+    logMessage.textContent='Selected week '+chosen.week+' '+item.day+' '+kind+'. Suggested sets are prefilled; edit each set to reflect what you actually complete before saving.';
     document.getElementById('trialLog').scrollIntoView({behavior:'smooth',block:'start'});
    }));
   }catch(err){out.innerHTML='<p class="error">Could not generate preview: '+esc(err.message)+'</p>';}
