@@ -15,5 +15,8 @@ assert.ok(html.includes('runPace:run?.pace?.label'),'Pace band must be visible')
 for(const key of ['startDate','strengthTargetDate','runningTargetDate'])assert.ok(html.includes('name="'+key+'"'),'Missing date field '+key);
 assert.ok(html.includes('LHRFDatedProgrammeV2.buildDatedProgramme'));
 assert.ok(html.includes("entry.kind==='event'"),'Event entries must render separately');
-assert.ok(!html.includes('localStorage'),'Preview must not mutate app storage');
+assert.ok(html.includes("storageKey='lhrf-v2-preview-athlete-inputs'"),'Trial inputs must use separate storage key');
+assert.ok(html.includes('localStorage.getItem(storageKey)'));
+assert.ok(html.includes('localStorage.setItem(storageKey'));
+assert.ok(!html.includes('localStorage.clear('),'Preview must not clear app storage');
 console.log('PASS read-only browser preview dependency and safety checks');

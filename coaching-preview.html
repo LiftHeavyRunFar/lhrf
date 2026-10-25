@@ -13,7 +13,7 @@ button{background:#295a93;border-color:#467bb6;cursor:pointer;padding:12px 20px}
 small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 </style></head><body>
 <a href="./index.html">← Existing LHRF app</a>
-<h1>Coaching engine v2</h1><p>Read-only programme preview — no onboarding, training logs or existing app data are changed.</p>
+<h1>Coaching engine v2</h1><p>Programme preview — your inputs are saved locally under a separate trial key. Existing onboarding and training logs are not changed.</p>
 <div class="panel"><strong class="warn">Prototype, not yet approved for athlete use.</strong>
 <p>Dated competition plans are shown for inspection only: event-week workouts are withheld until sport-specific tapers are validated. Individualised recovery and live workout logging are still being validated.</p></div>
 <form id="builder" class="panel"><h2>Explore an undated training block</h2>
@@ -34,6 +34,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <label>Recent running minutes/week (optional) <input name="runningBaselineMinutes" type="number" min="0" max="1200" step="5" placeholder="e.g. 150"></label>
 </div><p class="muted">Suggested loads are provisional estimates; adjust to prescribed RPE. The final assessment is optional.</p>
 <button type="submit">Generate preview</button></form>
+<p class="muted" id="saveStatus" role="status">Your preview inputs are stored only on this device, separately from the existing LHRF app.</p>
 <section id="output" aria-live="polite"></section>
 <script src="./src/coaching-v2.js"></script>
 <script src="./src/prescriptions-v2.js"></script>
@@ -47,6 +48,19 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <script>
 (function(){
  const form=document.getElementById('builder'),out=document.getElementById('output');
+ const storageKey='lhrf-v2-preview-athlete-inputs';
+ const fields=['startDate','strengthTargetDate','runningTargetDate','weeks','bench','squat','deadlift','runs','priority','benchMax','squatMax','deadliftMax','tenKTime','runningBaselineMinutes'];
+ try{
+  const saved=JSON.parse(localStorage.getItem(storageKey)||'null');
+  if(saved&&typeof saved==='object')for(const name of fields){
+   if(typeof saved[name]==='string'&&form.elements.namedItem(name))form.elements.namedItem(name).value=saved[name];
+  }
+ }catch(err){document.getElementById('saveStatus').textContent='This browser could not restore saved preview inputs; you can still generate a programme.';}
+ form.addEventListener('input',()=>{
+  const values={};for(const name of fields)values[name]=String(form.elements.namedItem(name)?.value??'');
+  try{localStorage.setItem(storageKey,JSON.stringify(values));}
+  catch(err){document.getElementById('saveStatus').textContent='Unable to save preview inputs on this device. Keep a copy of your baselines.';}
+ });
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  form.addEventListener('submit',e=>{
   e.preventDefault();
