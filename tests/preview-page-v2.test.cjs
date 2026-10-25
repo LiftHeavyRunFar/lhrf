@@ -10,5 +10,7 @@ assert.ok(html.includes('LHRFProgrammeV2.buildProgramme'));
 assert.ok(html.includes("maxes:{bench:num('benchMax')"),'Bench baseline must reach prescription engine');
 assert.ok(html.includes('suggestedWeight'),'Strength prescriptions must be visible');
 assert.ok(html.includes('runMinutes'),'Running durations must be visible');
+for(const key of ['squatMax','deadliftMax','tenKTime','runningBaselineMinutes'])assert.ok(html.includes('name="'+key+'"'),'Missing athlete input '+key);
+assert.ok(html.includes('runPace:run?.pace?.label'),'Pace band must be visible');
 assert.ok(!html.includes('localStorage'),'Preview must not mutate app storage');
 console.log('PASS read-only browser preview dependency and safety checks');
