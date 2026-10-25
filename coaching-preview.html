@@ -15,9 +15,12 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <a href="./index.html">← Existing LHRF app</a>
 <h1>Coaching engine v2</h1><p>Read-only programme preview — no onboarding, training logs or existing app data are changed.</p>
 <div class="panel"><strong class="warn">Prototype, not yet approved for athlete use.</strong>
-<p>Competition-date scheduling, individualised recovery and live workout logging are still being validated. This preview deliberately excludes dated competition plans.</p></div>
+<p>Dated competition plans are shown for inspection only: event-week workouts are withheld until sport-specific tapers are validated. Individualised recovery and live workout logging are still being validated.</p></div>
 <form id="builder" class="panel"><h2>Explore an undated training block</h2>
 <div class="grid">
+<label>Programme start date (optional) <input name="startDate" type="date"></label>
+<label>Strength competition date (optional) <input name="strengthTargetDate" type="date"></label>
+<label>Running race date (optional) <input name="runningTargetDate" type="date"></label>
 <label>Weeks <input name="weeks" type="number" min="4" max="52" value="12" required></label>
 <label>Bench sessions/week <input name="bench" type="number" min="0" max="5" value="3" required></label>
 <label>Squat sessions/week <input name="squat" type="number" min="0" max="4" value="1" required></label>
@@ -39,6 +42,8 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <script src="./src/running-paces-v2.js"></script>
 <script src="./src/run-sessions-v2.js"></script>
 <script src="./src/programme-v2.js"></script>
+<script src="./src/event-calendar-v2.js"></script>
+<script src="./src/dated-programme-v2.js"></script>
 <script>
 (function(){
  const form=document.getElementById('builder'),out=document.getElementById('output');
@@ -47,6 +52,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   e.preventDefault();
   try{
    const f=new FormData(form),num=k=>Number(f.get(k)),c={
+    startDate:String(f.get('startDate')||''),strengthTargetDate:String(f.get('strengthTargetDate')||''),runningTargetDate:String(f.get('runningTargetDate')||''),
     weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),
     runs:num('runs'),priority:String(f.get('priority')),maxes:{bench:num('benchMax')||null,squat:num('squatMax')||null,deadlift:num('deadliftMax')||null},
     tenKTime:String(f.get('tenKTime')||'').trim(),runningBaselineMinutes:num('runningBaselineMinutes')||null
@@ -55,11 +61,15 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
       ['bench','squat','deadlift','runs'].some(k=>!Number.isInteger(c[k])||c[k]<0||c[k]>6)||
       c.bench+c.squat+c.deadlift+c.runs===0)throw Error('Enter a valid programme with at least one session.');
    if(c.tenKTime&&!window.LHRFRunningPacesV2.calibrate10K(c).available)throw Error('Enter a plausible 10K PB as mm:ss or h:mm:ss, or leave it blank.');
-   const p=window.LHRFProgrammeV2.buildProgramme(c);
+   if((c.strengthTargetDate||c.runningTargetDate)&&!c.startDate)throw Error('Set a programme start date when entering an event.');
+   const dated=!!(c.strengthTargetDate||c.runningTargetDate);
+   const p=dated?window.LHRFDatedProgrammeV2.buildDatedProgramme(c):window.LHRFProgrammeV2.buildProgramme(c);
+   if(p.valid===false)throw Error(p.errors.join(' '));
    const header='<div class="panel"><h2>Programme preview</h2><p>'+esc(p.outcome.description)+'</p>'+
     '<p>Structural checks: <strong>'+esc(p.passesStructuralChecks?'passed':'review needed')+'</strong>. These do not establish coaching safety.</p>'+
     '<p class="warn">'+esc(p.issues.length)+' scheduling or approval flags across the programme.</p></div>';
    const prescription=entry=>{
+    if(entry.kind==='event')return esc(entry.sport+' EVENT — '+entry.date+' (training withheld pending review)');
     if(entry.kind==='strength'){
      const lift=entry.lift,items=entry.weekStrengths||[];
      return esc(lift)+': '+items.map(x=>{
@@ -74,6 +84,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    };
    const weeks=p.weeks.map(w=>{
     const schedule=w.calendar.sessions.map(item=>{
+     if(item.kind==='event')return item;
      if(item.kind==='strength'){
       const lift=w.strengths.find(x=>x.lift===item.lift&&x.exposure===item.exposure);
       return {...item,weekStrengths:[lift?.top,lift?.backoff].filter(x=>x&&x.sets>0)};
