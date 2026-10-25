@@ -12,5 +12,8 @@ assert.ok(html.includes('suggestedWeight'),'Strength prescriptions must be visib
 assert.ok(html.includes('runMinutes'),'Running durations must be visible');
 for(const key of ['squatMax','deadliftMax','tenKTime','runningBaselineMinutes'])assert.ok(html.includes('name="'+key+'"'),'Missing athlete input '+key);
 assert.ok(html.includes('runPace:run?.pace?.label'),'Pace band must be visible');
+for(const key of ['startDate','strengthTargetDate','runningTargetDate'])assert.ok(html.includes('name="'+key+'"'),'Missing date field '+key);
+assert.ok(html.includes('LHRFDatedProgrammeV2.buildDatedProgramme'));
+assert.ok(html.includes("entry.kind==='event'"),'Event entries must render separately');
 assert.ok(!html.includes('localStorage'),'Preview must not mutate app storage');
 console.log('PASS read-only browser preview dependency and safety checks');
