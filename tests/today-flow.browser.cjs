@@ -93,6 +93,11 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  assert.equal(await page.locator('#todaySessions button').count(),0);
  assert.equal(await page.locator('.day-workout.is-complete').count(),4);
  assert.match(await page.locator('#dayPosition').innerText(),/Sunday 25 Oct/);
+ for(let repeat=0;repeat<3;repeat++){
+  await page.reload();await page.locator('nav [data-screen="today"]').click();await page.clock.runFor(150);
+  assert.match(await page.locator('#dayPosition').innerText(),/Sunday 25 Oct/,'Detached or hidden calendar callbacks cannot reset the current day');
+ }
+
  await page.clock.setSystemTime(new Date('2026-10-26T10:00:00Z'));
  await page.reload();await page.locator('nav [data-screen="today"]').click();
  await page.clock.runFor(100); // Flush the two animation frames used to select the calendar day.
