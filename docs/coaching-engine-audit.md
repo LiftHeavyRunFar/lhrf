@@ -36,21 +36,21 @@ This draft incorporates the Today fixes from PR #82 and is built on the bot/audi
 
 Browser tests use synthetic records, not the user's device-local data. Physical Android/Garmin behaviour and real-world coaching efficacy are not certified.
 
-## Current athlete results
+## Opt-in candidate policy and current athlete results
 
-Seven profiles × six behaviours = **42 trajectories / 468 simulated weeks**, now through the actual shared engine. The latest report records **12,329 invariant checks**, zero regression failures and **seven blocked coaching requirements**:
+The private review build selects `coachingPolicy: review-v1`. Existing programmes without that flag keep their original prescriptions; there is no automatic migration or activation.
 
-1. Recovery/rationale at all phase transitions.
-2. Bench top-set-first preference in foundation work.
-3. Explicitly light squat/deadlift constraints.
-4. Experience-aware prescriptions.
-5. A distinct maintenance-strength policy for running priority.
-6. Resolution of per-day component capacity, beyond generic scheduling warnings.
-7. Post-event recovery/progression when the saved horizon continues beyond the event. The bots exposed later weeks remaining in a strength-event taper.
+The candidate implements the requested bench top-set-first preference, caps explicitly light squat/deadlift work at RPE 5.5, and puts recovery before loading-phase changes. Short event preparations use a compressed development/specificity sequence rather than imposing several tiny blocks. Recovery weeks also reduce interval repetitions and omit optional isolation work. Later weeks beyond an event return through a recovery week instead of remaining in taper indefinitely.
 
-Some old prototype failures, such as losing dated running structure or failing to generate a protected long-run role, are absent in the existing live generator. This is why the old prototype counts cannot be substituted for results from the actual engine. Consolidation has not established the correctness of every event-week prescription.
+The current candidate suite covers 42 trajectories / 468 synthetic weeks, with 11,790 invariant checks and zero regression failures. Three wider coaching requirements remain blocked: training experience, maintenance-strength policy, and resolution of restricted-day capacity. The candidate is for programme review, not certified training efficacy.
 
-The acceptance job deliberately remains red while these requirements are blocked. Extraction parity proves behaviour preservation, not programme quality. The compact snapshot is in `docs/athlete-test-summary.json`; full per-week traces are retained by CI.
+38 Node tests pass, including candidate rules, phase boundaries across 4–52-week horizons, event/settings preservation and the unchanged legacy parity cases. The private review copy also passed a complete browser walkthrough of all five tabs, preview/Start/readiness, required-set logging, feedback and completion marking.
+
+The reference bot now explicitly requests the 10K goal rather than inheriting fitness maintenance. Historical parity fixture inputs are frozen in the fixture JSON, so changing a future bot profile cannot silently change the baseline inputs being compared.
+
+`build-review.cjs` produces the hosted review snapshot from the existing app and the same shared module. It uses a separate origin and namespaced test storage, preloads the November goals and fixed split, and skips onboarding. Its 25 km/week baseline is labelled as a review assumption within the reported 20–30 km/week range. Unknown squat/deadlift loads remain unknown. Generated files are deployment output, not a separately maintained coaching implementation.
+
+The acceptance job remains red for the three wider requirements. The compact report is in `docs/athlete-test-summary.json`; full traces are retained by CI. Your live programme, real logs and onboarding have not been changed.
 
 ## Repeatable checks
 

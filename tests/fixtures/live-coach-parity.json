@@ -156,5 +156,478 @@
       "mode": "fatigue",
       "sha256": "e7e25f9510399770ac93b98138b3dea8b6ef90bfb32280274bb9267ac41a4e20"
     }
+  ],
+  "profiles": [
+    {
+      "id": "bench-dual-event",
+      "config": {
+        "startDate": "2026-10-19",
+        "runGoal": "fitness",
+        "maxes": {
+          "bench": 160
+        },
+        "tenKTime": "1:05:00",
+        "runningBaselineMinutes": 120,
+        "weeks": 6,
+        "event": "bench",
+        "priority": "Bench",
+        "bench": 3,
+        "squat": 1,
+        "deadlift": 1,
+        "runs": 2,
+        "strengthTargetDate": "2026-11-28",
+        "runningTargetDate": "2026-11-29",
+        "availableDays": [
+          "Tue",
+          "Thu",
+          "Fri",
+          "Sat",
+          "Sun"
+        ],
+        "fixedSessions": [
+          {
+            "kind": "strength",
+            "lift": "bench",
+            "exposure": 1,
+            "day": "Tue"
+          },
+          {
+            "kind": "run",
+            "runType": "quality",
+            "day": "Tue"
+          },
+          {
+            "kind": "strength",
+            "lift": "squat",
+            "day": "Thu"
+          },
+          {
+            "kind": "strength",
+            "lift": "deadlift",
+            "day": "Thu"
+          },
+          {
+            "kind": "strength",
+            "lift": "bench",
+            "exposure": 2,
+            "day": "Fri"
+          },
+          {
+            "kind": "run",
+            "runType": "long",
+            "day": "Sat"
+          },
+          {
+            "kind": "strength",
+            "lift": "bench",
+            "exposure": 3,
+            "day": "Sun"
+          }
+        ],
+        "topSetFirst": true,
+        "lightLifts": [
+          "squat",
+          "deadlift"
+        ],
+        "days": 5,
+        "noDate": false,
+        "date": "2026-11-28",
+        "liftProfiles": {
+          "Bench": {
+            "kg": 160,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Squat": {
+            "kg": 0,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 0,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {
+          "Bench": 160,
+          "Squat": 0,
+          "Deadlift": 0
+        },
+        "variations": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 3900,
+          "time": "1:05:00",
+          "recency": "recent",
+          "weeklyKm": 15.645371577574968
+        },
+        "longRunDay": "Sat",
+        "manualSplit": {
+          "Tue": [
+            "bench",
+            "run"
+          ],
+          "Thu": [
+            "lower"
+          ],
+          "Fri": [
+            "bench"
+          ],
+          "Sat": [
+            "long"
+          ],
+          "Sun": [
+            "bench"
+          ]
+        },
+        "doubleDays": [
+          "Tue"
+        ]
+      }
+    },
+    {
+      "id": "novice",
+      "config": {
+        "startDate": "2026-10-19",
+        "runGoal": "fitness",
+        "maxes": {},
+        "tenKTime": null,
+        "runningBaselineMinutes": 60,
+        "weeks": 8,
+        "priority": "Balanced",
+        "bench": 2,
+        "squat": 1,
+        "deadlift": 1,
+        "runs": 2,
+        "trainingAge": "beginner",
+        "event": "hybrid",
+        "days": 5,
+        "noDate": true,
+        "date": "",
+        "liftProfiles": {
+          "Bench": {
+            "kg": 0,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Squat": {
+            "kg": 0,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 0,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {
+          "Bench": 0,
+          "Squat": 0,
+          "Deadlift": 0
+        },
+        "variations": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 0,
+          "time": "",
+          "recency": "recent",
+          "weeklyKm": 0
+        }
+      }
+    },
+    {
+      "id": "powerlifter",
+      "config": {
+        "startDate": "2026-10-19",
+        "runGoal": "fitness",
+        "maxes": {
+          "squat": 220,
+          "bench": 150,
+          "deadlift": 260
+        },
+        "tenKTime": "55:00",
+        "runningBaselineMinutes": 120,
+        "weeks": 20,
+        "priority": "Squat",
+        "bench": 2,
+        "squat": 2,
+        "deadlift": 1,
+        "runs": 2,
+        "trainingAge": "advanced",
+        "purposefulVariations": true,
+        "event": "hybrid",
+        "days": 5,
+        "noDate": true,
+        "date": "",
+        "liftProfiles": {
+          "Bench": {
+            "kg": 150,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Squat": {
+            "kg": 220,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 260,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {
+          "Bench": 150,
+          "Squat": 220,
+          "Deadlift": 260
+        },
+        "variations": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 3300,
+          "time": "55:00",
+          "recency": "recent",
+          "weeklyKm": 18.48998459167951
+        }
+      }
+    },
+    {
+      "id": "runner",
+      "config": {
+        "startDate": "2026-10-19",
+        "runGoal": "fitness",
+        "maxes": {
+          "squat": 140,
+          "bench": 100,
+          "deadlift": 180
+        },
+        "tenKTime": "45:00",
+        "runningBaselineMinutes": 180,
+        "weeks": 12,
+        "priority": "Running",
+        "hybridFocus": "running",
+        "bench": 1,
+        "squat": 1,
+        "deadlift": 0,
+        "runs": 4,
+        "runningTargetDate": "2027-01-10",
+        "event": "running",
+        "days": 5,
+        "noDate": false,
+        "date": "2027-01-10",
+        "liftProfiles": {
+          "Bench": {
+            "kg": 100,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Squat": {
+            "kg": 140,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 180,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {
+          "Bench": 100,
+          "Squat": 140,
+          "Deadlift": 180
+        },
+        "variations": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 2700,
+          "time": "45:00",
+          "recency": "recent",
+          "weeklyKm": 33.898305084745765
+        }
+      }
+    },
+    {
+      "id": "restricted",
+      "config": {
+        "startDate": "2026-10-19",
+        "runGoal": "fitness",
+        "maxes": {
+          "squat": 140,
+          "bench": 100,
+          "deadlift": 180
+        },
+        "tenKTime": "55:00",
+        "runningBaselineMinutes": 120,
+        "weeks": 8,
+        "priority": "Balanced",
+        "bench": 2,
+        "squat": 1,
+        "deadlift": 1,
+        "runs": 3,
+        "availableDays": [
+          "Tue",
+          "Thu",
+          "Sat"
+        ],
+        "maxSessionsPerDay": 2,
+        "fixedSessions": [
+          {
+            "kind": "run",
+            "runType": "long",
+            "day": "Sat"
+          }
+        ],
+        "doubleDays": [
+          "Tue",
+          "Thu"
+        ],
+        "event": "hybrid",
+        "days": 3,
+        "noDate": true,
+        "date": "",
+        "liftProfiles": {
+          "Bench": {
+            "kg": 100,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Squat": {
+            "kg": 140,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 180,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {
+          "Bench": 100,
+          "Squat": 140,
+          "Deadlift": 180
+        },
+        "variations": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 3300,
+          "time": "55:00",
+          "recency": "recent",
+          "weeklyKm": 18.48998459167951
+        },
+        "longRunDay": "Sat"
+      }
+    },
+    {
+      "id": "fatigue",
+      "config": {
+        "startDate": "2026-10-19",
+        "runGoal": "fitness",
+        "maxes": {
+          "squat": 140,
+          "bench": 100,
+          "deadlift": 180
+        },
+        "tenKTime": "55:00",
+        "runningBaselineMinutes": 120,
+        "weeks": 12,
+        "priority": "Bench",
+        "bench": 3,
+        "squat": 1,
+        "deadlift": 1,
+        "runs": 3,
+        "event": "hybrid",
+        "days": 5,
+        "noDate": true,
+        "date": "",
+        "liftProfiles": {
+          "Bench": {
+            "kg": 100,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Squat": {
+            "kg": 140,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 180,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {
+          "Bench": 100,
+          "Squat": 140,
+          "Deadlift": 180
+        },
+        "variations": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 3300,
+          "time": "55:00",
+          "recency": "recent",
+          "weeklyKm": 18.48998459167951
+        }
+      }
+    },
+    {
+      "id": "fast",
+      "config": {
+        "startDate": "2026-10-19",
+        "runGoal": "fitness",
+        "maxes": {
+          "squat": 140,
+          "bench": 100,
+          "deadlift": 180
+        },
+        "tenKTime": "55:00",
+        "runningBaselineMinutes": 120,
+        "weeks": 12,
+        "priority": "Bench",
+        "bench": 3,
+        "squat": 1,
+        "deadlift": 1,
+        "runs": 3,
+        "event": "hybrid",
+        "days": 5,
+        "noDate": true,
+        "date": "",
+        "liftProfiles": {
+          "Bench": {
+            "kg": 100,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Squat": {
+            "kg": 140,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 180,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {
+          "Bench": 100,
+          "Squat": 140,
+          "Deadlift": 180
+        },
+        "variations": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 3300,
+          "time": "55:00",
+          "recency": "recent",
+          "weeklyKm": 18.48998459167951
+        }
+      }
+    }
   ]
 }

@@ -1,14 +1,15 @@
 {
   "schema": "lhrf-athlete-test-report-v2",
   "engine": "lhrf-shared-coach-v1",
+  "policy": "review-v1",
   "synthetic": true,
   "summary": {
     "profiles": 7,
     "trajectories": 42,
     "simulatedWeeks": 468,
-    "checks": 12329,
+    "checks": 11790,
     "regressionFailures": 0,
-    "coachingGaps": 7,
+    "coachingGaps": 3,
     "coachingGatesPassed": false,
     "readyForLiveUse": false
   },
@@ -95,55 +96,6 @@
   "failures": [],
   "coachingGaps": [
     {
-      "id": "phase-transition-recovery",
-      "status": "blocked",
-      "expected": "Phase changes include recovery or a reviewed rationale.",
-      "examples": [
-        {
-          "athlete": "bench-dual-event",
-          "observed": "Foundation → Development at week 3"
-        },
-        {
-          "athlete": "bench-dual-event",
-          "observed": "Development → Specificity at week 5"
-        },
-        {
-          "athlete": "novice",
-          "observed": "Foundation → Development at week 3"
-        }
-      ]
-    },
-    {
-      "id": "bench-top-set-preference",
-      "status": "blocked",
-      "expected": "Honour requested bench top-set-first style.",
-      "examples": [
-        {
-          "athlete": "bench-dual-event",
-          "observed": "Foundation bench uses straight sets"
-        }
-      ]
-    },
-    {
-      "id": "light-lower-body",
-      "status": "blocked",
-      "expected": "Represent explicitly light lower-body work.",
-      "examples": [
-        {
-          "athlete": "bench-dual-event",
-          "observed": "Squat target RPE 7"
-        },
-        {
-          "athlete": "bench-dual-event",
-          "observed": "Deadlift target RPE 7"
-        },
-        {
-          "athlete": "bench-dual-event",
-          "observed": "Squat target RPE 8"
-        }
-      ]
-    },
-    {
       "id": "training-experience",
       "status": "blocked",
       "expected": "Training experience influences prescription or prompts review.",
@@ -177,17 +129,6 @@
         {
           "athlete": "restricted",
           "observed": "Generated day exceeds requested component capacity; generic warnings are not a resolution"
-        }
-      ]
-    },
-    {
-      "id": "post-event-progression",
-      "status": "blocked",
-      "expected": "Recover after the event and review the next training phase.",
-      "examples": [
-        {
-          "athlete": "bench-dual-event",
-          "observed": "Strength event leaves all later weeks labelled taper/event"
         }
       ]
     }

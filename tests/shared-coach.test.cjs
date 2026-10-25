@@ -5,7 +5,7 @@ const fixtures=require('./fixtures/live-coach-parity.json');
 const {profiles,normalizeProfile,reviewState}=require('./shared-fixtures.cjs');
 const hash=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
 test('shared extraction preserves 28 prior live prescriptions and three review decisions',()=>{
- for(const fixture of fixtures.cases){const c=normalizeProfile(profiles.find(p=>p.id===fixture.profile).config),data={sets:[],runs:[],checkins:[],decisions:[],overrides:{},customRoadmap:c};const before=JSON.stringify(data),engine=createEngine({data,now:()=>fixtures.timestamp});assert.equal(hash(engine.generatedSessions(c,fixture.week)),fixture.sha256,fixture.profile+' W'+fixture.week);assert.equal(JSON.stringify(data),before)}
+ for(const fixture of fixtures.cases){const c=normalizeProfile(fixtures.profiles.find(p=>p.id===fixture.profile).config),data={sets:[],runs:[],checkins:[],decisions:[],overrides:{},customRoadmap:c};const before=JSON.stringify(data),engine=createEngine({data,now:()=>fixtures.timestamp});assert.equal(hash(engine.generatedSessions(c,fixture.week)),fixture.sha256,fixture.profile+' W'+fixture.week);assert.equal(JSON.stringify(data),before)}
  for(const fixture of fixtures.reviews){const data=reviewState(fixture.mode),engine=createEngine({data,now:()=>fixtures.timestamp});data.activeSchedule=engine.generatedSessions(data.customRoadmap,3);const withSchedule=createEngine({data,schedule:data.activeSchedule,now:()=>fixtures.timestamp});assert.equal(hash(withSchedule.reviewDecision()),fixture.sha256,fixture.mode)}
 });
 test('preview output is a rendering adapter for the exact same native prescriptions',()=>{
