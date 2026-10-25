@@ -1331,16 +1331,23 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const dateFor=i=>{const d=new Date(weekBase);d.setDate(weekBase.getDate()+i);return d};
   const formatDate=d=>d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
   const trainingDays=days.map((day,i)=>({day,i,date:dateFor(i),sessions:currentSessions.filter(s=>matchesDay(s,day,i))})).filter(d=>d.sessions.length&&(!startDate||d.date>=startDate));
+  // A rest day must never be presented as yesterday's workout. Keep a Today card
+  // in the carousel only when this displayed programme week includes today.
+  const currentWeekIncludesToday=today>=dateFor(0)&&today<=dateFor(6);
+  if(currentWeekIncludesToday&&!trainingDays.some(d=>d.date.getTime()===today.getTime())){
+   trainingDays.push({day:days[dayIndex()],i:dayIndex(),date:new Date(today),sessions:[]});
+   trainingDays.sort((a,b)=>a.i-b.i);
+  }
   const localDateKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
   if(selectedOnDate!==localDateKey){selectedDay=null;selectedOnDate=localDateKey;}
   if(selectedDay===null||!trainingDays.some(d=>d.i===selectedDay)){
-   selectedDay=trainingDays.find(d=>d.date>=today)?.i??trainingDays[trainingDays.length-1]?.i??null;
+   selectedDay=trainingDays.find(d=>d.date.getTime()===today.getTime())?.i??trainingDays.find(d=>d.date>=today)?.i??trainingDays[trainingDays.length-1]?.i??null;
    detailLevel=0;
   }
   root.innerHTML='<div class="day-heading"><h2>Training days</h2><span>Today: '+today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · Swipe between workouts ↔</span></div><div class="day-carousel" id="dayCarousel" aria-label="Training days only"></div><div class="day-controls"><button type="button" id="dayPrev" aria-label="Previous training day">‹</button><div class="day-position" id="dayPosition"></div><button type="button" id="dayNext" aria-label="Next training day">›</button></div><div class="day-dots" id="dayDots" aria-hidden="true"></div>';
   const rail=document.getElementById('dayCarousel');
-  const todayTraining=trainingDays.some(d=>d.date.getTime()===today.getTime());
-  const nextTraining=trainingDays.find(d=>d.date>=today);
+  const todayTraining=trainingDays.some(d=>d.date.getTime()===today.getTime()&&d.sessions.length>0);
+  const nextTraining=trainingDays.find(d=>d.date>=today&&d.sessions.length>0);
   if(!todayTraining){
    const notice=document.createElement('div');notice.className='card';notice.style.margin='0 16px 12px';
    const beforeStart=startDate&&today<startDate;
@@ -1355,7 +1362,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const slides=[];
   for(const {day,i,date,sessions} of trainingDays){
    const slide=document.createElement('article');slide.className='day-slide';slide.dataset.index=i;
-   slide.innerHTML='<span class="day-label">'+(date.getTime()===today.getTime()?'Today · ':'')+'Training day</span><h3>'+day+' <span style="font-size:15px;font-weight:600;color:var(--muted);white-space:nowrap">'+formatDate(date)+'</span></h3><p class="day-status">'+sessions.length+' session'+(sessions.length===1?'':'s')+'</p>';
+   slide.innerHTML='<span class="day-label">'+(date.getTime()===today.getTime()?'Today · ':'')+(sessions.length?'Training day':'Rest day')+'</span><h3>'+day+' <span style="font-size:15px;font-weight:600;color:var(--muted);white-space:nowrap">'+formatDate(date)+'</span></h3><p class="day-status">'+sessions.length+' session'+(sessions.length===1?'':'s')+'</p>';
    for(const s of sessions){
     const eff=source==='saved-preview'?s:(effectiveSession(s.id)||s);
     const exercises=Array.isArray(eff.ex)?eff.ex:[],runs=Array.isArray(eff.runs)?eff.runs:[];
