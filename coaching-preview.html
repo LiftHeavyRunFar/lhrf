@@ -163,11 +163,17 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    const painFlag=feedback.some(x=>x.pain===true||x.injury===true||x.painReported===true);
    const highFatigue=fatigueScores.length>=2&&fatigueScores.slice(-2).every(n=>n>=8);
    const lowReadiness=readinessScores.length>=2&&readinessScores.slice(-2).every(n=>n<=3);
+   const lowEnergyReports=feedback.filter(x=>['low','okay','good'].includes(x.energy)).slice(-2);
+   const repeatedLowEnergy=lowEnergyReports.length===2&&lowEnergyReports.every(x=>x.energy==='low');
+   const harderReports=feedback.filter(x=>['harder','expected','easier'].includes(x.difficulty)).slice(-2);
+   const repeatedHarder=harderReports.length===2&&harderReports.every(x=>x.difficulty==='harder');
    if(painFlag)proposal.cautions.push('Pain or injury was flagged in workout feedback. Seek appropriate assessment before progressing.');
    if(highFatigue)proposal.cautions.push('Recent feedback reports sustained high fatigue. Review recovery and accessory volume first.');
    if(lowReadiness)proposal.cautions.push('Recent feedback reports low readiness. Hold load progression until recovery improves.');
+   if(repeatedLowEnergy)proposal.cautions.push('Two recent workouts reported low energy. Review sleep, fuelling and recovery before adjusting loads.');
+   if(repeatedHarder)proposal.cautions.push('Two recent workouts felt harder than expected. Review training stress before progressing.');
    if(!feedback.length)proposal.cautions.push('No structured recovery feedback available; use RPE trends cautiously.');
-   proposal.blockLoad=highRunLoad||phaseCaution||painFlag||highFatigue||lowReadiness;
+   proposal.blockLoad=highRunLoad||phaseCaution||painFlag||highFatigue||lowReadiness||repeatedLowEnergy||repeatedHarder;
   }
   // Conservative proposed loading is a preview only; do not alter current or future workouts.
   for(const proposal of proposals){
