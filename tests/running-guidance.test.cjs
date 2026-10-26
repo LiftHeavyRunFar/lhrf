@@ -28,3 +28,8 @@ test('the approved live version-2 block remains identical while candidate runnin
  const crypto=require('node:crypto'),fixture=require('./fixtures/approved-running-v2.json');
  for(const row of fixture.weeks)assert.equal(crypto.createHash('sha256').update(JSON.stringify(coach.createEngine({data:{customRoadmap:fixture.config}}).generatedSessions(fixture.config,row.week))).digest('hex'),row.sha256);
 });
+
+test('the historical running repair cannot downgrade a newer approved policy',()=>{
+ const state={customRoadmap:{...approved,runningGuidanceVersion:3},activeCustomWeek:1,activeSchedule:[],runs:[{km:5}]};
+ assert.equal(refreshRunningGuidance(state,coach),state);assert.equal(state.customRoadmap.runningGuidanceVersion,3);
+});
