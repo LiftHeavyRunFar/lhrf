@@ -5,7 +5,7 @@
 const fit=typeof module==='object'&&module.exports?require('./garmin-workout.js'):root.LHRFGarminWorkout;
 const API='https://intervals.icu/api/v1/athlete/0';
 function dateOnly(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))throw Error('Choose a workout date.');const d=new Date(value+'T12:00:00Z');if(!Number.isFinite(+d)||d.toISOString().slice(0,10)!==value)throw Error('Choose a valid workout date.');return value;}
-function authorization(key){const clean=String(key||'').trim();if(clean.length<8||clean.length>256||!/^[\x21-\x7e]+$/.test(clean))throw Error('Enter your Intervals.icu API key in connection setup.');return 'Basic '+btoa('API_KEY:'+clean);}
+function authorization(key){const clean=String(key||'').trim();if(!clean)throw Error('Paste your Intervals.icu API key into the key field first.');if(!/^[\x21-\x7e]+$/.test(clean))throw Error('The key contains spaces or unsupported characters. Copy the full API key again from Intervals.icu Developer Settings.');return 'Basic '+btoa('API_KEY:'+clean);}
 function workoutEvent({name,steps,sessionId,date,environment='outside'}){
  const day=dateOnly(date);if(!sessionId)throw Error('Select a scheduled running session first.');if(!fit)throw Error('The workout exporter has not loaded. Reopen LHRF online once.');
  const bytes=fit.encodeWorkout({name:'LHRF '+name,steps,environment});let binary='';for(const b of bytes)binary+=String.fromCharCode(b);
