@@ -468,10 +468,25 @@ function runStepRows(run){
  return [{label:run.role==='long-run'?'Long easy run':'Easy run',distanceKm:Number(run.distanceKm)>0?Number(run.distanceKm):null,pace:run.pace||'Easy',detail:'RPE '+(run.rpe||3.5)}];
 }
 function paceSecondsFromText(text){const m=String(text||'').match(/(\d{1,2}):([0-5]\d)/);return m?+m[1]*60+ +m[2]:null}
+function runEnvironment(){return data.runEnvironment==='treadmill'?'treadmill':'outside'}
+function displayRunPace(pace){
+ if(runEnvironment()!=='treadmill')return pace;
+ const values=[...String(pace).matchAll(/(\d{1,2}):([0-5]\d)/g)].map(m=>Number(m[1])*60+Number(m[2])).filter(x=>x>0);
+ if(!values.length)return pace;
+ const speeds=values.map(x=>3600/x).sort((a,b)=>a-b);
+ return [...new Set(speeds.map(x=>x.toFixed(1)))].join('–')+' km/h';
+}
+function runEnvironmentChanged(value){
+ data.runEnvironment=value==='treadmill'?'treadmill':'outside';save();
+ document.querySelectorAll('.run-environment-choice').forEach(el=>el.value=runEnvironment());
+ document.querySelectorAll('[data-run-pace]').forEach(el=>el.textContent=displayRunPace(el.dataset.runPace));
+ if(timerRunning||timerLeft)tickTimer();
+}
+document.addEventListener('change',event=>{if(event.target.matches('.run-environment-choice'))runEnvironmentChanged(event.target.value)});
 function runStepsHtml(run){
  const safe=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
  const steps=runStepRows(run),total=steps.reduce((a,x)=>a+(Number(x.distanceKm)||0),0);
- return '<section class="run-workout-flow" aria-label="Running workout steps"><div class="run-workout-heading"><b>'+safe(run.name||'RUN WORKOUT')+'</b><span>'+safe(steps.every(step=>Number(step.distanceKm)>0)?distanceLabel(total)+' total':'Distance not set')+'</span></div><ol class="run-workout-timeline">'+steps.map((step,i)=>'<li class="run-workout-step"><span class="run-workout-marker">'+(i+1)+'</span><div class="run-workout-step-body"><b>'+safe(step.label)+'</b><span>'+safe(runningStepPace(step,run))+'</span></div><strong class="run-step-distance">'+safe(Number(step.distanceKm)>0?distanceLabel(Number(step.distanceKm)):'Distance not set')+'</strong></li>').join('')+'</ol></section>';
+ return '<section class="run-workout-flow" aria-label="Running workout steps"><label>Run location <select class="run-environment-choice" aria-label="Run location"><option value="outside"'+(runEnvironment()==='outside'?' selected':'')+'>Outside · min/km</option><option value="treadmill"'+(runEnvironment()==='treadmill'?' selected':'')+'>Treadmill · km/h</option></select></label><div class="run-workout-heading"><b>'+safe(run.name||'RUN WORKOUT')+'</b><span>'+safe(steps.every(step=>Number(step.distanceKm)>0)?distanceLabel(total)+' total':'Distance not set')+'</span></div><ol class="run-workout-timeline">'+steps.map((step,i)=>'<li class="run-workout-step"><span class="run-workout-marker">'+(i+1)+'</span><div class="run-workout-step-body"><b>'+safe(step.label)+'</b><span data-run-pace="'+safe(runningStepPace(step,run))+'">'+safe(displayRunPace(runningStepPace(step,run)))+'</span></div><strong class="run-step-distance">'+safe(Number(step.distanceKm)>0?distanceLabel(Number(step.distanceKm)):'Distance not set')+'</strong></li>').join('')+'</ol></section>';
 }
 function runningStepPace(step,run){
  const pace=String(step.pace||'');if(/\d:\d{2}/.test(pace))return readableRunPace(pace);
@@ -642,13 +657,13 @@ function openRunningTools(run,label){
 }
 function clearRunningToolsSelection(){resetTimer();canonicalRunOverride=null;selectedCanonicalRunId=null;selectedCanonicalRun=null;buildRunPlan()}
 function updateRunPlan(){buildRunPlan()}
-function workoutText(){return 'Lift Heavy. Run Far. — '+(selectedCanonicalRun?.name||'No scheduled run')+'\n'+plannedSteps.map((x,i)=>`${i+1}. ${x.name}: ${distanceLabel(x.distanceKm)} at ${x.pace}`).join('\n')}
+function workoutText(){return 'Lift Heavy. Run Far. — '+(selectedCanonicalRun?.name||'No scheduled run')+'\n'+plannedSteps.map((x,i)=>`${i+1}. ${x.name}: ${distanceLabel(x.distanceKm)} at ${displayRunPace(x.pace)}`).join('\n')}
 function copyGarminWorkout(){if(navigator.clipboard?.writeText){navigator.clipboard.writeText(workoutText()).then(()=>alert('Workout steps copied. Recreate them in Garmin Connect.'),()=>prompt('Copy these steps:',workoutText()))}else prompt('Copy these steps:',workoutText())}
 function downloadBlob(name,contents,type){const blob=new Blob([contents],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function downloadWorkout(){downloadBlob('lift-heavy-run-far-workout.json',JSON.stringify({device:'Garmin Forerunner 165',type:runType(),steps:plannedSteps,disclaimer:'Workout preview, not a Garmin Connect import format'},null,2),'application/json')}
 function savePlannedRun(){if(!plannedSteps.length)return;data.plannedRuns=data.plannedRuns||[];data.plannedRuns.push({date:new Date().toISOString(),type:runType(),steps:structuredClone(plannedSteps)});save();alert('Planned workout saved locally. Automatic Garmin sync is not connected.')}
 function startRunTimer(){if(!plannedSteps.length||plannedSteps.some(x=>!(x.seconds>0)))return;resetTimer();timerIndex=0;timerLeft=plannedSteps[0].seconds;timerRunning=true;timerDeadline=Date.now()+timerLeft*1000;timerHandle=setInterval(tickTimer,250);tickTimer()}
-function tickTimer(){if(!plannedSteps.length)return;if(timerRunning){timerLeft=Math.max(0,Math.ceil((timerDeadline-Date.now())/1000));if(timerLeft===0){if(timerIndex>=plannedSteps.length-1){resetTimer();$('timerStep').textContent='Workout complete';return}timerIndex++;timerLeft=plannedSteps[timerIndex].seconds;timerDeadline=Date.now()+timerLeft*1000}}$('timerStep').textContent=plannedSteps[timerIndex].name+' · '+plannedSteps[timerIndex].pace;$('timerClock').textContent=durFmt(timerLeft);$('timerFill').style.width=(100*(1-timerLeft/plannedSteps[timerIndex].seconds))+'%';document.querySelectorAll('.intervalstep').forEach((e,i)=>e.classList.toggle('active',i===timerIndex));$('timerPause').textContent=timerRunning?'Pause':'Resume'}
+function tickTimer(){if(!plannedSteps.length)return;if(timerRunning){timerLeft=Math.max(0,Math.ceil((timerDeadline-Date.now())/1000));if(timerLeft===0){if(timerIndex>=plannedSteps.length-1){resetTimer();$('timerStep').textContent='Workout complete';return}timerIndex++;timerLeft=plannedSteps[timerIndex].seconds;timerDeadline=Date.now()+timerLeft*1000}}$('timerStep').textContent=plannedSteps[timerIndex].name+' · '+displayRunPace(plannedSteps[timerIndex].pace);$('timerClock').textContent=durFmt(timerLeft);$('timerFill').style.width=(100*(1-timerLeft/plannedSteps[timerIndex].seconds))+'%';document.querySelectorAll('.intervalstep').forEach((e,i)=>e.classList.toggle('active',i===timerIndex));$('timerPause').textContent=timerRunning?'Pause':'Resume'}
 function toggleTimer(){if(!plannedSteps.length)return;if(timerRunning){timerLeft=Math.max(0,Math.ceil((timerDeadline-Date.now())/1000));timerRunning=false}else{if(!timerLeft)timerLeft=plannedSteps[timerIndex].seconds;timerRunning=true;timerDeadline=Date.now()+timerLeft*1000}tickTimer()}
 function skipTimerStep(){if(!plannedSteps.length)return;if(timerIndex<plannedSteps.length-1)timerIndex++;else{resetTimer();$('timerStep').textContent='Workout complete';return}timerLeft=plannedSteps[timerIndex].seconds;timerDeadline=Date.now()+timerLeft*1000;tickTimer()}
 function resetTimer(){if(timerHandle)clearInterval(timerHandle);timerHandle=null;timerRunning=false;timerIndex=0;timerLeft=plannedSteps[0]?.seconds||0;$('timerStep').textContent='Ready to start';$('timerClock').textContent=durFmt(timerLeft);$('timerFill').style.width='0%';$('timerPause').textContent='Start / Resume';document.querySelectorAll('.intervalstep').forEach(x=>x.classList.remove('active'))}
