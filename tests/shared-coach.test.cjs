@@ -15,7 +15,8 @@ test('app, preview and bots reference the canonical engine; old prototype is not
  const read=f=>fs.readFileSync(path.join(__dirname,'..',f),'utf8');
  const app=read('index.html'),preview=read('coaching-preview.html'),bots=read('tests/athletes/simulator.cjs');
  assert.ok(app.includes('./src/coach-engine.js'));
- for(const name of ['generatedSessions','reviewDecision','loadFromTopSet','phaseBackoffLoad'])assert.ok(app.includes(`function ${name}(...args){return coachEngine().${name}(...args)}`),name);
+ for(const name of ['reviewDecision','loadFromTopSet','phaseBackoffLoad'])assert.ok(app.includes(`function ${name}(...args){return coachEngine().${name}(...args)}`),name);
+ assert.match(app,/function generatedSessions\(\.\.\.args\)\{const e=coachEngine\(\);return e\.generatedSessions\(\.\.\.args\)\.map\(e\.orderSessionExercises\)\}/);
  assert.ok(preview.includes('LHRFCoachAdapters.previewProgramme(c)'));
  assert.ok(preview.includes('LHRFCoachAdapters.reviewPreviewLogs(logs,profile)'));
  assert.ok(bots.includes("require('../../src/coach-engine.js')"));

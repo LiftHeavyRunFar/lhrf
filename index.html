@@ -414,7 +414,7 @@ function populate(){
  updateFeaturedSession();
 }
 
-function effectiveSession(...args){return coachEngine().effectiveSession(...args)}
+function effectiveSession(...args){const e=coachEngine();return e.orderSessionExercises(e.effectiveSession(...args))}
 function activeScreen(){return document.querySelector('.screen.active')?.id||'today'}
 function backFromWorkout(){const dest=workoutReturn.screen&&workoutReturn.screen!=='workout'?workoutReturn.screen:'today';go(dest);window.scrollTo(0,workoutReturn.scroll||0)}
 function openFeaturedSession(){
@@ -585,8 +585,8 @@ function hybridRunWeek(...args){return coachEngine().hybridRunWeek(...args)}
 // Programme selection is deterministic and explainable. It does not require AI or
 // replace an athlete's saved plan. Future feedback can adapt these prescriptions.
 function selectTrainingFramework(...args){return coachEngine().selectTrainingFramework(...args)}
-function generatedSessions(...args){return coachEngine().generatedSessions(...args)}
-function ensureKnownLiftLoads(...args){return coachEngine().ensureKnownLiftLoads(...args)}
+function generatedSessions(...args){const e=coachEngine();return e.generatedSessions(...args).map(e.orderSessionExercises)}
+function ensureKnownLiftLoads(...args){const e=coachEngine();return e.ensureKnownLiftLoads(...args).map(e.orderSessionExercises)}
 function renderPrescriptions(c,w){const sessions=ensureKnownLiftLoads(generatedSessions(c,w),c);$('customPrescriptions').innerHTML=sessions.map(x=>'<div class="entry"><b>'+x.day+' · '+x.name+'</b><p class="muted small">'+x.reason+'</p>'+(x.variationNotes||[]).map(t=>'<p class="muted small">'+t+'</p>').join('')+x.ex.map(e=>'<div>'+(e[5]?.role==='top'?'TOP SET · ':e[5]?.role==='backoff'?'BACK-OFF · ':'')+e[0]+': <b>'+e[1]+' × '+e[2]+(e[3]>0?' @ '+e[3]+' kg':' · select load')+'</b> · target RPE '+e[4]+'</div>').join('')+x.runs.map(r=>'<div><b>'+r.name+' · '+r.minutes+' min estimated</b>'+runStepsHtml(r)+'</div>').join('')+'</div>').join('')||'<p>No sessions scheduled.</p>'}
 function saveCustom(){const c=customConfig(),p=customPlan(c);if(p.feasible===false){$('customMsg').textContent='Some requested work cannot fit. Resolve the listed schedule conflicts before approving.';return}if(p.warnings.some(w=>/past|zero sessions|Add at least one/.test(w))){$('customMsg').textContent='Resolve the goal or schedule conflict before approving.';return}if(['powerlifting','running'].includes(c.event)&&!c.noDate&&!c.date){$('customMsg').textContent='Choose an event date or select “I haven’t booked an event yet”.';return}const week=+$('customWeek').value||1;if([3,4].includes(c.runningGuidanceVersion)){const assessment=coachEngine().runningAssessment(c,week);if(!assessment.feasible){$('customMsg').textContent=assessment.blocking.join(' ');return}}const next=applyApprovedHybridRunning(carryForwardApprovedProgression(ensureKnownLiftLoads(generatedSessions(c,week),c),week),week);if(!next.length){$('customMsg').textContent='No workouts generated. Check your frequencies.';return}if(!confirm('Activate this week’s generated workouts? Your previous workout schedule will be replaced, but training logs will remain.'))return;
  data.customRoadmap={...c,previewWeek:week,approvedAt:new Date().toISOString()};data.activeCustomWeek=week;data.overrides={};schedule=next;data.activeSchedule=next;save();populate();refresh();planDashSelection=week;renderPlanDashboard();$('customMsg').textContent='Week '+week+' activated. Open Today or Strength to see and log your new workouts.'}

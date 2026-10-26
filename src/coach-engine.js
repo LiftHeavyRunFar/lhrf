@@ -12,6 +12,18 @@ function createEngine(context={}){
  const schedule=context.schedule||data.activeSchedule||[];
  const clock=typeof context.now==='function'?context.now:()=>globalThis.Date.now();
  const Date=class extends globalThis.Date{constructor(...args){super(...(args.length?args:[clock()]))}static now(){return clock()}};
+// Execution order is separate from the saved dose; never reorder indexed live entries.
+function orderSessionExercises(session){
+ if(!session)return session;
+ const copy=JSON.parse(JSON.stringify(session));
+ const isolation=name=>/curl|pushdown|tricep.*extension|skull.?crusher|lateral raise|rear.?delt|face pull|fly|pec deck|leg extension|calf|straight.arm pulldown|crunch|plank|ab wheel|pallof/i.test(name);
+ const main=e=>e[5]?.category==='primary'||['top','backoff'].includes(e[5]?.role)||/^(squat|bench|bench press|deadlift|competition (squat|bench|deadlift)|paused (squat|bench|deadlift))$/i.test(e[0]);
+ const items=(copy.ex||[]).map((e,i)=>({e,i,rank:main(e)?0:isolation(e[0])?2:1}));
+ items.sort((a,b)=>a.rank-b.rank||a.i-b.i);
+ const positions=new Map(items.map((x,i)=>[x.i,i]));
+ for(const {e} of items)if(Number.isInteger(e[5]?.topIndex))e[5].topIndex=positions.get(e[5].topIndex);
+ copy.ex=items.map(x=>x.e);return copy;
+}
 function effectiveSession(id){
  const base=schedule.find(x=>x.id===id);if(!base)return null;
  const copy=JSON.parse(JSON.stringify(base));const ov=data.overrides?.[id];
@@ -983,7 +995,7 @@ function coachCandidate(){if(data.activeSchedule?.length)return null;
   return {requestedKm:Number((budget.requestedKm??budget.km).toFixed(3)),trainingKm:Number(trainingKm.toFixed(3)),raceKm:Number(raceKm.toFixed(3)),totalKm:Number((trainingKm+raceKm).toFixed(3)),reviewRequired:!!budget.reviewRequired,warnings:budget.warnings};
  }
  function describeWeek(c,week){const sessions=generatedSessions(c,week);return {week,sessions,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||sessions[0]?.phase||customPhase(week,c.weeks,c),deload:cycleWeek(week,c.weeks,c).deload,...([3,4].includes(c.runningGuidanceVersion)?{runningSummary:runningWeekSummary(c,week,sessions)}:{})}}
- return {runningAssessment,runningWeekSummary,candidateWeek,describeWeek,isDesignatedTopSet,generatedSessions,selectTrainingFramework,customPhase,customPlan,runningPaces,cycleWeek,variationBlock,variationChoice,estimatedMax,exerciseEstimatedMax,roundLoad,backoffProfile,phaseBackoffLoad,loadFromTopSet,accessorySelection,accessoryPrefs,hybridRunWeek,hybridRecoverySignals,reviewRecovery,paceText,distanceLabel,ensureKnownLiftLoads,effectiveSession,reviewDecision,hybridWorkloadRecommendation,hybridAthleteBaseline,hybridInterventionFollowup,reviewSessions,isPrimaryExercise,isTertiaryExercise,plannedNextWeek,reviewNextStep,coachCandidate,latestCheckin,accessoryNames,carryForwardApprovedProgression,applyApprovedHybridRunning,pbSeconds};
+ return {orderSessionExercises,runningAssessment,runningWeekSummary,candidateWeek,describeWeek,isDesignatedTopSet,generatedSessions,selectTrainingFramework,customPhase,customPlan,runningPaces,cycleWeek,variationBlock,variationChoice,estimatedMax,exerciseEstimatedMax,roundLoad,backoffProfile,phaseBackoffLoad,loadFromTopSet,accessorySelection,accessoryPrefs,hybridRunWeek,hybridRecoverySignals,reviewRecovery,paceText,distanceLabel,ensureKnownLiftLoads,effectiveSession,reviewDecision,hybridWorkloadRecommendation,hybridAthleteBaseline,hybridInterventionFollowup,reviewSessions,isPrimaryExercise,isTertiaryExercise,plannedNextWeek,reviewNextStep,coachCandidate,latestCheckin,accessoryNames,carryForwardApprovedProgression,applyApprovedHybridRunning,pbSeconds};
 }
 const api={schema:'lhrf-shared-coach-v1',createEngine,allowsProgression};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoach=api;
