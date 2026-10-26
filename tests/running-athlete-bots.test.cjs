@@ -171,3 +171,15 @@ test('version 4 runner matrix: allocation limits are explicit, budgets conserved
  const c=athlete({km:24,goal:'marathon',runs:2,runningGuidanceVersion:4});assert.equal(inspect(c,7).budget.progressionLimited,true);
  const old=athlete({goal:'marathon',km:15,runs:2,runningGuidanceVersion:3});assert.equal(inspect(old).plan.feasible,false,'Saved version 3 rules remain unchanged');
 });
+
+
+test('compound-first execution keeps prescriptions immutable, main lift pairs together and top indices valid',()=>{
+ const e=createProfileEngine(athlete()).engine;
+ const original={id:'reported',ex:[['Cable biceps curl',2,12,0,7],['Bench',1,5,127.5,7.5,{role:'top',category:'primary'}],['Bench',2,5,110,6.5,{role:'backoff',category:'primary',topIndex:1}],['Rope triceps pushdown',2,12,0,7],['Chest-supported row',3,10,50,7.5],['Incline dumbbell press',2,10,30,7.5],['Lat pulldown',2,10,30,7],['Straight-arm pulldown',2,12,20,7]]};
+ const before=JSON.stringify(original),ordered=e.orderSessionExercises(original);
+ assert.deepEqual(ordered.ex.map(x=>x[0]),['Bench','Bench','Chest-supported row','Incline dumbbell press','Lat pulldown','Cable biceps curl','Rope triceps pushdown','Straight-arm pulldown']);
+ assert.equal(ordered.ex[1][5].topIndex,0);assert.equal(JSON.stringify(original),before);
+ assert.deepEqual(e.orderSessionExercises(ordered),ordered);
+ assert.deepEqual(ordered.ex.map(x=>x.slice(0,5)).sort(),original.ex.map(x=>x.slice(0,5)).sort());
+ const lower=e.orderSessionExercises({ex:[['Squat',2,5,50,5],['Leg curl',2,12,20,7],['Deadlift',2,3,70,5],['Leg press',2,10,80,7]]});assert.deepEqual(lower.ex.map(x=>x[0]),['Squat','Deadlift','Leg press','Leg curl']);
+});
