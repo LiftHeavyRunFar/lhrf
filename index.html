@@ -638,8 +638,9 @@ function openRunningTools(run,label){
  const dialog=document.createElement('div');dialog.id='runningToolsDialog';dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-label','Running tools');dialog.style.cssText='position:fixed;inset:12px 12px calc(82px + env(safe-area-inset-bottom));z-index:1000;overflow:auto;background:var(--bg);border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:0 0 0 100vmax #000b';
  const close=document.createElement('button');close.id='runToolsClose';close.className='secondary';close.textContent='Close running tools';dialog.appendChild(close);
  const cards=['runPlanSummary','timerClock','garminPreview'].map(id=>document.getElementById(id).closest('.card'));const locations=cards.map(card=>({card,parent:card.parentNode,next:card.nextSibling}));cards.forEach(card=>dialog.appendChild(card));document.body.appendChild(dialog);
- close.onclick=()=>{locations.forEach(({card,parent,next})=>parent.insertBefore(card,next?.parentNode===parent?next:null));dialog.remove()};
+ close.onclick=()=>{locations.slice().reverse().forEach(({card,parent,next})=>parent.insertBefore(card,next?.parentNode===parent?next:null));dialog.remove()};
 }
+function clearRunningToolsSelection(){resetTimer();canonicalRunOverride=null;selectedCanonicalRunId=null;selectedCanonicalRun=null;buildRunPlan()}
 function updateRunPlan(){buildRunPlan()}
 function workoutText(){return 'Lift Heavy. Run Far. — '+(selectedCanonicalRun?.name||'No scheduled run')+'\n'+plannedSteps.map((x,i)=>`${i+1}. ${x.name}: ${distanceLabel(x.distanceKm)} at ${x.pace}`).join('\n')}
 function copyGarminWorkout(){if(navigator.clipboard?.writeText){navigator.clipboard.writeText(workoutText()).then(()=>alert('Workout steps copied. Recreate them in Garmin Connect.'),()=>prompt('Copy these steps:',workoutText()))}else prompt('Copy these steps:',workoutText())}
@@ -993,13 +994,13 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
     localStorage.setItem(key,JSON.stringify(old));
    }catch(err){document.getElementById('liveError').textContent='Could not save trial session; workout remains open.';return}
    const trialFeedbackSession={id:live.id,name:live.name,week:trial.week,trialRecordAt:stamp};
-   live=null;persist();status();go('train');showLiveFeedback(trialFeedbackSession);return;
+   live=null;persist();clearRunningToolsSelection();status();go('train');showLiveFeedback(trialFeedbackSession);return;
   }
   live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,week:Number(data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
   if(live.runLogged&&live.runEntry){data.runs=data.runs||[];data.runs.push({date:stamp,km:live.runEntry.km,min:live.runEntry.min,rpe:live.runEntry.rpe,type:live.runs?.[0]?.role||'run',sessionId:live.id,session:live.name,week:Number(data.activeCustomWeek)||1,notes:note})}
   data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,name:live.name,day:live.day,date:stamp,week:data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged});
   const finishedSession={id:live.id,name:live.name,week:Number(data.activeCustomWeek)||1};
-  save();live=null;persist();status();populate();refresh();go('train');showLiveFeedback(finishedSession);
+  save();live=null;persist();clearRunningToolsSelection();status();populate();refresh();go('train');showLiveFeedback(finishedSession);
 
  };
  function showLiveFeedback(session){
@@ -1029,7 +1030,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    save();refresh();overlay.remove();
   };
  }
- window.cancelLiveWorkout=function(){if(!live||!confirm('Discard this workout and all unsaved sets?'))return;live=null;persist();status()};
+ window.cancelLiveWorkout=function(){if(!live||!confirm('Discard this workout and all unsaved sets?'))return;live=null;persist();clearRunningToolsSelection();status()};
  const priorGo=go;go=function(id){if(id==='strength'||id==='running'||id==='workout')id='train';priorGo(id);if(id==='train')status();};
  const oldLabels=document.getElementById('title');
  // Train remains a real bottom tab, not a second browsing screen.
