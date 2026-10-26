@@ -44,7 +44,20 @@ function paceText(sec){if(!Number.isFinite(sec)||sec<=0)return '—';const round
 
 function estimatedMax(kg,reps){return kg*(1+Math.max(0,reps-1)/30)}
 
-function runningPaces(c){const p=c.runProfile;if(!p||!Number.isFinite(p.seconds)||p.seconds<=0||!Number.isFinite(p.distance)||p.distance<=0)return null;const tenK=p.seconds*Math.pow(10/p.distance,1.06);const race=tenK/10;return {race, easyLow:race*1.18,easyHigh:race*1.4,threshold:race*1.04,tenK,valid:true}}
+function runningPaces(c){const p=c.runProfile;if(!p||!Number.isFinite(p.seconds)||p.seconds<=0||!Number.isFinite(p.distance)||p.distance<=0)return null;const tenK=p.seconds*Math.pow(10/p.distance,1.06);const race=tenK/10;return {race, easyLow:race*1.18,easyHigh:race*1.4,threshold:Number(c.runningPaceVersion)>=2?3600/(10*Math.pow(3600/tenK,1/1.06)):race*1.04,tenK,valid:true}}
+
+// One-hour race-equivalent estimate, not a measured lactate threshold or goal-pace promise.
+function repaceThresholdRun(run,c){
+ const p=runningPaces(c);if(Number(c.runningPaceVersion)<2||!p||!(run.steps||[]).some(s=>/Threshold interval/i.test(s.label||'')))return run;
+ const copy=JSON.parse(JSON.stringify(run)),pace=paceText(p.threshold-5)+' to '+paceText(p.threshold+5);
+ copy.steps=copy.steps.map(s=>/Threshold interval/i.test(s.label||'')?{...s,pace}:s);copy.pace=pace;
+ const ranges=copy.steps.map(s=>{const times=[...String(s.pace||'').matchAll(/(\d+):([0-5]\d)/g)].map(m=>Number(m[1])*60+Number(m[2]));return times.length?{min:s.distanceKm*Math.min(...times)/60,max:s.distanceKm*Math.max(...times)/60}:null});
+ if(ranges.every(Boolean)){copy.durationRangeMinutes={min:Math.round(ranges.reduce((n,r)=>n+r.min,0)),max:Math.round(ranges.reduce((n,r)=>n+r.max,0))};copy.minutes=copy.durationRangeMinutes.max;}
+ copy.workMinutes=Math.round(copy.steps.filter(s=>/Threshold interval/i.test(s.label||'')).reduce((n,s)=>n+s.distanceKm*p.threshold/60,0));
+ copy.paceBasis={version:2,method:'one-hour-race-equivalent',baselineDistanceKm:c.runProfile.distance,baselineSeconds:c.runProfile.seconds,goalSeconds:c.runningGoalSeconds||null};
+ copy.coachNote='Provisional threshold estimate from your recorded running baseline, not your goal time. Start at the slower end. If warm-up feels unusually hard, soreness returns or pace cannot stay controlled, make the run easy or stop; preserve bench priority.';
+ return copy;
+}
 
 // Opt-in programme version. Saved programmes without this flag retain their prescriptions.
 function candidateWeek(c,w){
@@ -777,6 +790,7 @@ function generatedSessions(c,w){
   if(hard>total*.20+.001){for(const session of out)for(const run of session.runs||[]){if(run.role!=='quality-run')continue;const p=runningPaces(c);run.role='easy-run';run.name='Easy aerobic run';run.rpe=3.5;run.pace=p?paceText(p.easyLow)+' to '+paceText(p.easyHigh):'Confirm a recent running PB to set pace';run.steps=[{label:'Easy run',distanceKm:run.distanceKm,pace:run.pace}];run.workMinutes=0;if(p){run.minutes=Math.round(run.distanceKm*p.easyHigh/60);run.durationRangeMinutes={min:Math.round(run.distanceKm*p.easyLow/60),max:run.minutes}}run.structure=distanceLabel(run.distanceKm)+' easy running';session.hybridNotes.push('Partial calendar week: quality deferred to preserve mainly easy running.');session.name=session.name.replace('Controlled threshold intervals','Easy aerobic run');}}
  }
  if(c.sessionNamespace)for(const session of out){session.id=c.sessionNamespace+session.id;session.programmeId=c.programmeId;}
+ if(Number(c.runningPaceVersion)>=2)for(const session of out)session.runs=(session.runs||[]).map(run=>repaceThresholdRun(run,c));
  return ensureKnownLiftLoads(out,c);
 }
 
@@ -995,7 +1009,7 @@ function coachCandidate(){if(data.activeSchedule?.length)return null;
   return {requestedKm:Number((budget.requestedKm??budget.km).toFixed(3)),trainingKm:Number(trainingKm.toFixed(3)),raceKm:Number(raceKm.toFixed(3)),totalKm:Number((trainingKm+raceKm).toFixed(3)),reviewRequired:!!budget.reviewRequired,warnings:budget.warnings};
  }
  function describeWeek(c,week){const sessions=generatedSessions(c,week);return {week,sessions,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||sessions[0]?.phase||customPhase(week,c.weeks,c),deload:cycleWeek(week,c.weeks,c).deload,...([3,4].includes(c.runningGuidanceVersion)?{runningSummary:runningWeekSummary(c,week,sessions)}:{})}}
- return {orderSessionExercises,runningAssessment,runningWeekSummary,candidateWeek,describeWeek,isDesignatedTopSet,generatedSessions,selectTrainingFramework,customPhase,customPlan,runningPaces,cycleWeek,variationBlock,variationChoice,estimatedMax,exerciseEstimatedMax,roundLoad,backoffProfile,phaseBackoffLoad,loadFromTopSet,accessorySelection,accessoryPrefs,hybridRunWeek,hybridRecoverySignals,reviewRecovery,paceText,distanceLabel,ensureKnownLiftLoads,effectiveSession,reviewDecision,hybridWorkloadRecommendation,hybridAthleteBaseline,hybridInterventionFollowup,reviewSessions,isPrimaryExercise,isTertiaryExercise,plannedNextWeek,reviewNextStep,coachCandidate,latestCheckin,accessoryNames,carryForwardApprovedProgression,applyApprovedHybridRunning,pbSeconds};
+ return {repaceThresholdRun,orderSessionExercises,runningAssessment,runningWeekSummary,candidateWeek,describeWeek,isDesignatedTopSet,generatedSessions,selectTrainingFramework,customPhase,customPlan,runningPaces,cycleWeek,variationBlock,variationChoice,estimatedMax,exerciseEstimatedMax,roundLoad,backoffProfile,phaseBackoffLoad,loadFromTopSet,accessorySelection,accessoryPrefs,hybridRunWeek,hybridRecoverySignals,reviewRecovery,paceText,distanceLabel,ensureKnownLiftLoads,effectiveSession,reviewDecision,hybridWorkloadRecommendation,hybridAthleteBaseline,hybridInterventionFollowup,reviewSessions,isPrimaryExercise,isTertiaryExercise,plannedNextWeek,reviewNextStep,coachCandidate,latestCheckin,accessoryNames,carryForwardApprovedProgression,applyApprovedHybridRunning,pbSeconds};
 }
 const api={schema:'lhrf-shared-coach-v1',createEngine,allowsProgression};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoach=api;
