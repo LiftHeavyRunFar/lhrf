@@ -21,3 +21,9 @@ test('auth, network and ambiguous responses cannot claim a successful upload',as
  await assert.rejects(bridge.sendWorkout('fake-test-key',bridge.workoutEvent(fixture),{fetchImpl:async()=>({ok:true,json:async()=>[]})}),/not confirmed/);
  await assert.rejects(bridge.checkConnection('fake-test-key',{fetchImpl:async()=>({ok:true,json:async()=>({})})}),/verify/);
 });
+
+
+test('short nonempty keys reach the service; invalid credentials are decided by Intervals, not a guessed length',async()=>{
+ let contacted=false;await assert.rejects(bridge.checkConnection('1234567',{fetchImpl:async()=>{contacted=true;return {ok:false,status:401}}}),/did not authorise/);assert.equal(contacted,true);
+ contacted=false;await assert.rejects(bridge.checkConnection('',{fetchImpl:async()=>{contacted=true}}),/Paste your/);assert.equal(contacted,false);
+});

@@ -663,9 +663,9 @@ let intervalsConnection=null,intervalsSending=false;
 try{const saved=JSON.parse(localStorage.getItem(INTERVALS_KEY)||'null');if(saved?.key)intervalsConnection=saved}catch(e){}
 function intervalsStatus(){const node=$('intervalsConnectionStatus');if(node)node.textContent=intervalsConnection?'Connection saved for '+intervalsConnection.name+'. Garmin upload permission must also be enabled in Intervals.icu.':'Not connected. Set up Intervals.icu below.';}
 async function connectIntervals(){
- const button=$('intervalsConnect');button.disabled=true;
+ const button=$('intervalsConnect');button.disabled=true;button.textContent='Testing connection…';$('intervalsConnectionStatus').textContent='Contacting Intervals.icu…';
  try{if(!window.LHRFIntervals)throw Error('Connection tools have not loaded. Reopen LHRF online once.');const key=$('intervalsApiKey').value.trim();const account=await LHRFIntervals.checkConnection(key);const next={key,...account};if($('intervalsRemember').checked)localStorage.setItem(INTERVALS_KEY,JSON.stringify(next));else localStorage.removeItem(INTERVALS_KEY);intervalsConnection=next;$('intervalsApiKey').value='';intervalsStatus();}
- catch(error){$('intervalsConnectionStatus').textContent=error.message;}finally{button.disabled=false;}
+ catch(error){$('intervalsConnectionStatus').textContent=error.message;}finally{button.disabled=false;button.textContent='Test & save connection';}
 }
 function forgetIntervals(){intervalsConnection=null;try{localStorage.removeItem(INTERVALS_KEY)}catch(e){};$('intervalsApiKey').value='';$('intervalsRemember').checked=false;intervalsStatus();$('intervalsSendStatus').textContent='Connection forgotten on this device. Previously sent workouts remain in Intervals.icu.';}
 async function sendIntervalsWorkout(){
