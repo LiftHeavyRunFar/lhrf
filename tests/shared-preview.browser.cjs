@@ -13,6 +13,11 @@ const fixture={onboardingComplete:true,activeCustomWeek:1,customRoadmap:config,a
  await page.goto('http://shared.test/coaching-preview.html');
  for(const [name,value] of Object.entries({weeks:'6',startDate:'2026-10-19',strengthTargetDate:'2026-11-28',runningTargetDate:'2026-11-29',tenKTime:'1:05:00'}))await page.locator(`[name="${name}"]`).fill(value);
  await page.getByRole('button',{name:'Generate preview',exact:true}).click();
+ assert.match(await page.locator('#output').innerText(),/needs changes before training/,'Dated plans with an unknown running baseline must be blocked');
+ assert.equal(await page.locator('.trainPrescribed:not([disabled])').count(),0);
+ for(const [name,value] of Object.entries({bench:'1',squat:'0',deadlift:'0',runs:'2',runningBaselineMinutes:'120'}))await page.locator(`[name="${name}"]`).fill(value);
+ await page.locator('[name="trainingAge"]').selectOption('intermediate');await page.locator('[name="runGoal"]').selectOption('10k');
+ await page.getByRole('button',{name:'Generate preview',exact:true}).click();
  assert.match(await page.locator('#output').innerText(),/strength EVENT — 2026-11-28/);
  const week=page.locator('#output .week').filter({has:page.getByRole('heading',{name:'Week 3 — development',exact:true})});
  await week.locator('p').filter({hasText:/Bench: top set/}).locator('.trainPrescribed').first().click();
