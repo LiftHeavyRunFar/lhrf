@@ -44,7 +44,8 @@ function buildProgramme(input,options={}){
  for(let week=1;week<=c.weeks;week++){
   const described=engine.describeWeek(c,week),{sessions,phase}=described,cycle=engine.cycleWeek(week,c.weeks);
   const constraints=engine.customPlan(c),warnings=constraints.warnings.slice();
-  weeks.push({week,phase,deload:cycle.deload,sessions,warnings,...(constraints.unscheduled?{unscheduled:constraints.unscheduled,feasible:constraints.feasible}:{}),reviewRequired:warnings.length>0});
+  if(c.runningGuidanceVersion===3){const running=engine.runningAssessment(c,week);warnings.push(...running.warnings.filter(x=>!warnings.includes(x)));}
+  weeks.push({week,phase,deload:cycle.deload,sessions,warnings,...(described.runningSummary?{runningSummary:described.runningSummary}:{}),...(constraints.unscheduled?{unscheduled:constraints.unscheduled,feasible:constraints.feasible&&(c.runningGuidanceVersion!==3||engine.runningAssessment(c,week).feasible)}:{}),reviewRequired:warnings.length>0});
  }
  return {schema:'lhrf-shared-programme-v1',config:c,framework:engine.selectTrainingFramework(c),weeks,
   requiresAthleteApproval:true,limitations:['Current live coaching rules, not a new programme-policy rollout.','Known programme acceptance gaps remain; generation alone does not establish coaching quality.']};
@@ -67,7 +68,7 @@ function previewProgramme(input,options={}){
    });
    for(const run of session.runs||[]){const type=run.role==='quality-run'?'quality':run.role==='long-run'?'long':'easy';
     const index=runs.length;runs.push({...run,type,effort:'RPE '+run.rpe,pace:run.pace&&!String(run.pace).startsWith('RPE')?{label:run.pace}:null});
-    calendar.push({id:'r'+index,kind:'run',runType:type,day:session.day});
+    calendar.push({id:'r'+index,kind:'run',runType:type,day:session.day,runPrescription:clone(run)});
    }
   }
   w.warnings.forEach(detail=>issues.push({week:w.week,detail}));

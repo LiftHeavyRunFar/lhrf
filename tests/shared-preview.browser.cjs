@@ -27,11 +27,23 @@ const fixture={onboardingComplete:true,activeCustomWeek:1,customRoadmap:config,a
    const row=detail.locator('.live-set').nth(j);await row.locator('[data-field="rpe"]').fill(i===0?'8':'7');await row.locator('.set-check').click();
   }
  }
- await page.locator('#liveFinish').click();await page.locator('#liveFeedbackSkip').click();
- const logs=await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf-v2-genuine-training-log')));assert.equal(logs.length,1);assert.ok(logs[0].sets.length>0);
+ await page.locator('#liveNotes').fill('Synthetic bench notes');await page.locator('#liveFinish').click();await page.locator('#liveFeedbackSkip').click();
+ const logs=await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf-v2-genuine-training-log')));assert.equal(logs.length,1);assert.ok(logs[0].sets.length>0);assert.equal(logs[0].notes,'Synthetic bench notes');
  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean'))),fixture,'Trial must not modify the saved programme, onboarding or genuine logs');
  await page.goto('http://shared.test/coaching-preview.html');assert.ok(await page.locator('#performanceReview').isVisible());
  assert.match(await page.locator('#logHistory').innerText(),/Recorded real sessions \(1\)/);
+ // Running uses the full canonical prescription through preview -> live -> saved trial.
+ await page.getByRole('button',{name:'Generate preview',exact:true}).click();
+ const runRow=page.locator('#output .week').filter({has:page.getByRole('heading',{name:'Week 3 — development',exact:true})}).locator('p').filter({has:page.locator('.preview-run-steps')}).first();
+ const displayed=await runRow.locator('.preview-run-steps').innerText();assert.doesNotMatch(displayed,/RPE/);
+ await runRow.locator('.trainPrescribed').click();await page.waitForURL('**/index.html?trialTrain=1#train');await page.clock.runFor(100);
+ const live=await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_fresh_beta_live_v1114')));assert.ok(live.runs[0].steps.length>0);assert.ok(live.runs[0].distanceKm>0);
+ for(const step of live.runs[0].steps){assert.ok(displayed.includes(step.label));assert.ok(displayed.includes(step.pace));}
+ assert.equal(await page.locator('#liveRunRpe').count(),0);assert.doesNotMatch(await page.locator('#liveRunSection').innerText(),/RPE/);
+ await page.locator('#liveRunKm').fill(String(live.runs[0].distanceKm));await page.locator('#liveRunMinutes').fill(String(Math.max(1,live.runs[0].minutes)));await page.locator('#liveLogRun').click();await page.locator('#liveNotes').fill('Synthetic run notes');await page.locator('#liveFinish').click();await page.locator('#liveFeedbackSkip').click();
+ const afterRun=await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf-v2-genuine-training-log')));assert.equal(afterRun.length,2);assert.equal(afterRun[1].kind,'run');assert.equal(Object.hasOwn(afterRun[1],'rpe'),false);assert.equal(afterRun[1].km,live.runs[0].distanceKm);assert.equal(afterRun[1].notes,'Synthetic run notes');assert.deepEqual(afterRun[1].plannedSession.planned.run,live.runs[0]);
+ assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean'))),fixture,'Run trial also preserves the active programme and history');
+ await page.goto('http://shared.test/coaching-preview.html');assert.match(await page.locator('#logHistory').innerText(),/Recorded real sessions \(2\)/);assert.doesNotMatch(await page.locator('#logHistory').innerText(),/RPE undefined|RPE null/);
  assert.deepEqual(errors,[]);
  console.log('PASS shared preview generation -> live trial with all sets -> isolated log -> shared review; original programme and onboarding preserved.');
  await context.close();

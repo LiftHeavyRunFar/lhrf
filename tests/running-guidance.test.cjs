@@ -24,3 +24,7 @@ test('repair preserves completed and past prescriptions, all history, lifting, o
  assert.equal(refreshRunningGuidance(next,coach),next);assert.equal(refreshRunningGuidance(initial,coach,undefined,true),initial);
  const past=refreshRunningGuidance(initial,coach,'2026-11-03T12:00:00Z');assert.deepEqual(past.activeSchedule,initial.activeSchedule);
 });
+test('the approved live version-2 block remains identical while candidate running changes are tested',()=>{
+ const crypto=require('node:crypto'),fixture=require('./fixtures/approved-running-v2.json');
+ for(const row of fixture.weeks)assert.equal(crypto.createHash('sha256').update(JSON.stringify(coach.createEngine({data:{customRoadmap:fixture.config}}).generatedSessions(fixture.config,row.week))).digest('hex'),row.sha256);
+});

@@ -44,12 +44,13 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <form id="logForm"><div class="grid">
 <label>Session date <input type="date" name="date" required></label>
 <label>Discipline <select name="kind"><option value="bench">Bench</option><option value="squat">Squat</option><option value="deadlift">Deadlift</option><option value="run">Run</option></select></label>
-<label>Duration (minutes, optional) <input type="number" name="minutes" min="1" max="600" step="1"></label>
+<label>Distance (km) <input type="number" name="km" min="0.01" max="300" step="0.01"></label>
+<label>Duration (minutes, optional) <input type="number" name="minutes" min="0.1" max="600" step="0.1"></label>
 <label>Top weight (kg, optional) <input type="number" name="weight" min="0" max="600" step="0.5"></label>
 <label>Top reps (optional) <input type="number" name="reps" min="1" max="100" step="1"></label>
 <label>Actual RPE (1–10) <input type="number" name="rpe" min="1" max="10" step="0.5" required></label>
 </div><label>Notes (optional) <input type="text" name="notes" maxlength="300" style="max-width:100%;width:100%" placeholder="How did it feel?"></label>
-<div id="setLogger"><h3>Working sets (optional)</h3><p class="muted">Add each completed set and tick Completed. Suggested sets must be confirmed individually before saving. For running, use duration and RPE above instead.</p><div id="setRows"></div><button type="button" id="addSet">+ Add set</button></div><p><button type="submit">Save genuine session</button></p></form>
+<div id="setLogger"><h3>Working sets (optional)</h3><p class="muted">Add each completed set and tick Completed. Suggested sets must be confirmed individually before saving. For running, record actual distance and duration above.</p><div id="setRows"></div><button type="button" id="addSet">+ Add set</button></div><p><button type="submit">Save genuine session</button></p></form>
 <p id="logMessage" role="status"></p><div id="logHistory"></div><div id="performanceReview" aria-live="polite"></div></section>
 <script src="./src/coach-engine.js"></script>
 <script src="./src/coach-adapters.js"></script>
@@ -92,6 +93,15 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    row.querySelector('.setRpe').value=initial.rpe??'';}
  }
  document.getElementById('addSet').addEventListener('click',()=>addSet());
+ function syncLogDiscipline(){
+  const isRun=logForm.elements.namedItem('kind').value==='run';
+  for(const name of ['rpe','weight','reps']){const el=logForm.elements.namedItem(name);el.closest('label').hidden=isRun;el.disabled=isRun;el.required=name==='rpe'&&!isRun;}
+  const distance=logForm.elements.namedItem('km');distance.closest('label').hidden=!isRun;distance.disabled=!isRun;distance.required=isRun;
+  logForm.elements.namedItem('minutes').required=isRun;
+  document.getElementById('setLogger').hidden=isRun;
+  setRows.querySelectorAll('input,button').forEach(el=>el.disabled=isRun);
+ }
+ logForm.elements.namedItem('kind').addEventListener('change',syncLogDiscipline);syncLogDiscipline();
  let activePrescription=null;
  const readLogs=()=>{try{const value=JSON.parse(localStorage.getItem(logKey)||'[]');return Array.isArray(value)?value:[]}catch(err){return []}};
  const reviewPerformance=logs=>{
@@ -112,7 +122,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   });
   // Adapt storage rows; the app and preview use the same coaching decisions.
   const previewFields=new FormData(form),num=k=>Number(previewFields.get(k));
-  const profile={coachingPolicy:'review-v2',hybridFocus:String(previewFields.get('priority'))==='Running'?'running':'balanced',trainingAge:String(previewFields.get('trainingAge')||''),strengthMode:String(previewFields.get('strengthMode')||'auto'),runGoal:String(previewFields.get('runGoal')||'fitness'),weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),runs:num('runs'),priority:String(previewFields.get('priority')),
+  const profile={coachingPolicy:'review-v2',runningGuidanceVersion:3,hybridFocus:String(previewFields.get('priority'))==='Running'?'running':'balanced',trainingAge:String(previewFields.get('trainingAge')||''),strengthMode:String(previewFields.get('strengthMode')||'auto'),runGoal:String(previewFields.get('runGoal')||'fitness'),weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),runs:num('runs'),priority:String(previewFields.get('priority')),
    startDate:String(previewFields.get('startDate')||''),strengthTargetDate:String(previewFields.get('strengthTargetDate')||''),runningTargetDate:String(previewFields.get('runningTargetDate')||''),
    maxes:{bench:num('benchMax'),squat:num('squatMax'),deadlift:num('deadliftMax')},tenKTime:String(previewFields.get('tenKTime')||''),runningBaselineMinutes:num('runningBaselineMinutes')};
   const assessment=LHRFCoachAdapters.reviewPreviewLogs(logs,profile);
@@ -150,40 +160,41 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
  const updateOverride=(lift,delta)=>{const saved=readOverrides();if(delta===null)delete saved[lift];else if(Number.isFinite(delta)&&Math.abs(delta)<=10)saved[lift]={delta,approvedAt:new Date().toISOString()};else return false;try{localStorage.setItem(overrideKey,JSON.stringify(saved));return true}catch(err){return false}};
  const renderLogs=()=>{
   const logs=readLogs();reviewPerformance(logs);logHistory.innerHTML='<h3>Recorded real sessions ('+logs.length+')</h3>'+
-   (logs.length?logs.slice(-15).reverse().map(x=>'<p>'+esc(x.date+' · '+x.kind+' · RPE '+x.rpe+
+   (logs.length?logs.slice(-15).reverse().map(x=>'<p>'+esc(x.date+' · '+x.kind+(x.rpe!=null?' · RPE '+x.rpe:'')+(x.km!=null?' · '+x.km+' km':'')+
     (x.weight!=null?' · '+x.weight+' kg':'')+(x.reps!=null?' × '+x.reps+' reps':'')+
     (x.minutes!=null?' · '+x.minutes+' min':'')+(x.sets?.length?' · '+x.sets.length+' sets logged':'')+(typeof x.notes==='string'&&x.notes.trim()?' · '+x.notes:''))+'</p>').join(''):'<p>No genuine workouts logged yet.</p>');
  };
  logForm.addEventListener('submit',e=>{
   e.preventDefault();const v=new FormData(logForm);
   const kind=String(v.get('kind')),date=String(v.get('date')),
-   rpe=Number(v.get('rpe')),weight=v.get('weight')===''?null:Number(v.get('weight')),
-   reps=v.get('reps')===''?null:Number(v.get('reps')),
+   rpe=kind==='run'?null:Number(v.get('rpe')),km=kind==='run'?Number(v.get('km')):null,weight=kind==='run'||v.get('weight')===''?null:Number(v.get('weight')),
+   reps=kind==='run'||v.get('reps')===''?null:Number(v.get('reps')),
    minutes=v.get('minutes')===''?null:Number(v.get('minutes')),
    notes=String(v.get('notes')||'').trim();
   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!['bench','squat','deadlift','run'].includes(kind)||
-    !Number.isFinite(rpe)||rpe<1||rpe>10||
+    (kind!=='run'&&(!Number.isFinite(rpe)||rpe<1||rpe>10))||
     (weight!==null&&(!Number.isFinite(weight)||weight<0||weight>600))||
     (reps!==null&&(!Number.isInteger(reps)||reps<1||reps>100))||
-    (minutes!==null&&(!Number.isInteger(minutes)||minutes<1||minutes>600))){logMessage.textContent='Please check the session date, RPE and optional values.';return;}
+    (minutes!==null&&(!Number.isFinite(minutes)||minutes<=0||minutes>600))){logMessage.textContent='Please check the session date, RPE and optional values.';return;}
+  if(kind==='run'&&(!(km>0)||!(minutes>0))){logMessage.textContent='Enter your completed running distance and duration.';return;}
   if(kind==='run'&&(weight!==null||reps!==null)){logMessage.textContent='For a run, leave weight and reps blank.';return;}
   if(kind!=='run'&&minutes===null&&weight===null&&reps===null&&setRows.children.length===0){logMessage.textContent='Enter working sets, top weight/reps or duration for the lifting session.';return;}
-  const rows=[...setRows.children];
+  const rows=kind==='run'?[]:[...setRows.children];
   if(rows.some(row=>!row.querySelector('.setCompleted').checked)){
    logMessage.textContent='Mark every completed set, or remove sets you did not perform. No suggested sets are counted automatically.';return;
   }
   const sets=rows.map(row=>({weight:Number(row.querySelector('.setWeight').value),reps:Number(row.querySelector('.setReps').value),rpe:Number(row.querySelector('.setRpe').value)}));
   if(kind==='run'&&sets.length){logMessage.textContent='Remove lifting sets before logging a run.';return;}
   if(sets.some(x=>!Number.isFinite(x.weight)||x.weight<0||x.weight>600||!Number.isInteger(x.reps)||x.reps<1||x.reps>100||!Number.isFinite(x.rpe)||x.rpe<1||x.rpe>10)){logMessage.textContent='Check each set weight, reps and RPE.';return;}
-  const logs=readLogs();logs.push({date,kind,rpe,weight,reps,minutes,sets,notes,plannedSession:activePrescription,recordedAt:new Date().toISOString(),source:'genuine-athlete-entry'});
-  try{localStorage.setItem(logKey,JSON.stringify(logs));logMessage.textContent='Genuine session saved on this device.';logForm.reset();setRows.replaceChildren();activePrescription=null;renderLogs();}
+  const logs=readLogs();logs.push({date,kind,...(kind==='run'?{km}:{rpe}),weight,reps,minutes,sets,notes,plannedSession:activePrescription,recordedAt:new Date().toISOString(),source:'genuine-athlete-entry'});
+  try{localStorage.setItem(logKey,JSON.stringify(logs));logMessage.textContent='Genuine session saved on this device.';logForm.reset();syncLogDiscipline();setRows.replaceChildren();activePrescription=null;renderLogs();}
   catch(err){logMessage.textContent='Could not save the session. No entry was recorded.';}
  });
  renderLogs();
  form.addEventListener('submit',e=>{
   e.preventDefault();
   try{
-   const f=new FormData(form),num=k=>Number(f.get(k)),c={coachingPolicy:'review-v2',trainingAge:String(f.get('trainingAge')||''),strengthMode:String(f.get('strengthMode')||'auto'),runGoal:String(f.get('runGoal')||'fitness'),hybridFocus:String(f.get('priority'))==='Running'?'running':'balanced',
+   const f=new FormData(form),num=k=>Number(f.get(k)),c={coachingPolicy:'review-v2',runningGuidanceVersion:3,trainingAge:String(f.get('trainingAge')||''),strengthMode:String(f.get('strengthMode')||'auto'),runGoal:String(f.get('runGoal')||'fitness'),hybridFocus:String(f.get('priority'))==='Running'?'running':'balanced',
     startDate:String(f.get('startDate')||''),strengthTargetDate:String(f.get('strengthTargetDate')||''),runningTargetDate:String(f.get('runningTargetDate')||''),
     weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),
     runs:num('runs'),priority:String(f.get('priority')),maxes:{bench:num('benchMax')||null,squat:num('squatMax')||null,deadlift:num('deadliftMax')||null},
@@ -195,11 +206,11 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
    if(c.tenKTime&&!(LHRFCoach.createEngine().pbSeconds(c.tenKTime)>0))throw Error('Enter a plausible 10K PB as mm:ss or h:mm:ss, or leave it blank.');
    if((c.strengthTargetDate||c.runningTargetDate)&&!c.startDate)throw Error('Set a programme start date when entering an event.');
    const dated=!!(c.strengthTargetDate||c.runningTargetDate);
-   const p=LHRFCoachAdapters.previewProgramme(c);
+   const p=LHRFCoachAdapters.previewProgramme(c);const blocked=p.weeks.some(w=>w.feasible===false);
    if(p.valid===false)throw Error(p.errors.join(' '));
    const header='<div class="panel"><h2>Programme preview</h2><p>'+esc(p.outcome.description)+'</p>'+
     '<p>Structural checks: <strong>'+esc(p.passesStructuralChecks?'passed':'review needed')+'</strong>. These do not establish coaching safety.</p>'+
-    '<p class="warn">'+esc(p.issues.length)+' scheduling or approval flags across the programme.</p></div>';
+    '<p class="warn">'+esc(p.issues.length)+' scheduling or approval flags across the programme.</p>'+(blocked?'<p class="error">This programme needs changes before training. Resolve the running or schedule warnings below.</p>':'')+'</div>';
    const prescription=entry=>{
     if(entry.kind==='event')return esc(entry.sport+' EVENT — '+entry.date+' (training withheld pending review)');
     if(entry.kind==='strength'){
@@ -210,9 +221,10 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
        (x.suggestedWeight!=null?' ('+x.suggestedWeight+' kg suggested)':''));
      }).join(' · ');
     }
-    return esc(entry.runType+' run'+(entry.runMinutes!=null?' — '+entry.runMinutes+' min':'')+
-      (entry.runEffort?' · '+entry.runEffort:'')+
-      (entry.runPace?' · suggested pace '+entry.runPace:''));
+    const run=entry.runPrescription||{};
+    const steps=(run.steps||[]).map(step=>'<span style="display:block">'+esc(step.label+' · '+LHRFCoach.createEngine().distanceLabel(step.distanceKm)+' · '+(step.pace||'Pace requires a running baseline'))+'</span>').join('');
+    return esc(run.name||entry.runType+' run')+' · '+esc(LHRFCoach.createEngine().distanceLabel(run.distanceKm||0))+' total'+(steps?'<span class="preview-run-steps">'+steps+'</span>':' · '+esc(entry.runPace||'Pace requires a running baseline'));
+
    };
    const selectable=[];
    const weeks=p.weeks.map(w=>{
@@ -223,7 +235,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
       return {...item,weekStrengths:[lift?.top,lift?.backoff].filter(x=>x&&x.sets>0)};
      }
      const run=w.runs[Number(item.id.slice(1))];
-     return {...item,runMinutes:run?.minutes,runEffort:run?.effort,runPace:run?.pace?.label};
+     return {...item,runMinutes:run?.minutes,runEffort:run?.effort,runPace:run?.pace?.label,runPrescription:item.runPrescription||{...run,pace:run?.pace?.label||null}};
     });
     return '<div class="week"><h3>Week '+w.week+' — '+esc(w.phase)+'</h3>'+
     '<p>'+esc(w.objective)+'</p>'+
@@ -231,9 +243,9 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
      if(item.kind==='event')return '<p><strong>'+esc(item.day)+'</strong> · '+prescription(item)+'</p>';
      const id=selectable.length;selectable.push({item,week:w.week,phase:w.phase});
      return '<p><strong>'+esc(item.day)+'</strong> · '+prescription(item)+
-      ' <button type="button" class="startPrescribed" data-session="'+id+'">Log this session</button> <button type="button" class="trainPrescribed" data-session="'+id+'">Open in live Train</button></p>';
+      ' <button type="button" class="startPrescribed" data-session="'+id+'" '+(blocked?'disabled':'')+'>Log this session</button> <button type="button" class="trainPrescribed" data-session="'+id+'" '+(blocked?'disabled':'')+'>Open in live Train</button></p>';
     }).join('')+
-    (w.reviewRequired?'<small class="warn">Coach review required — inspect schedule conflicts and proposed changes.</small>':'')+
+    (w.warnings||[]).map(warning=>'<p class="warn">'+esc(warning)+'</p>').join('')+(w.reviewRequired?'<small class="warn">Coach review required — inspect the warnings above before training.</small>':'')+
     '</div>';
    }).join('');
    out.innerHTML=header+'<div class="panel"><h2>Weekly schedule</h2>'+weeks+'</div>';
@@ -241,7 +253,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     const chosen=selectable[Number(button.dataset.session)];if(!chosen)return;
     const item=chosen.item,kind=item.kind==='run'?'run':item.lift;
     const prescription={week:chosen.week,phase:chosen.phase,kind,day:item.day,
-      planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace}:
+      planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace,distanceKm:item.runPrescription?.distanceKm,run:item.runPrescription}:
       {sets:item.weekStrengths.map(x=>({role:x.role,sets:x.sets,reps:x.reps,rpe:x.rpe,weight:x.suggestedWeight}))}};
     const override=readOverrides()[kind];
     // A prior approval is not permission to raise loads in a taper or recovery week.
@@ -264,7 +276,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     const item=chosen.item,kind=item.kind==='run'?'run':item.lift;
     logForm.elements.namedItem('kind').value=kind;
     logForm.elements.namedItem('date').value=new Date().toLocaleDateString('en-CA');
-    logForm.elements.namedItem('rpe').value='7';
+    logForm.elements.namedItem('rpe').value=kind==='run'?'':'7';logForm.elements.namedItem('km').value=kind==='run'?(item.runPrescription?.distanceKm||''):'';syncLogDiscipline();
     logForm.elements.namedItem('minutes').value=item.kind==='run'?(item.runMinutes||''):'';
     logForm.elements.namedItem('weight').value='';logForm.elements.namedItem('reps').value='';
     setRows.replaceChildren();
@@ -272,9 +284,9 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
      for(let n=0;n<group.sets;n++)addSet({weight:group.suggestedWeight,reps:group.reps,rpe:group.rpe});
     }
     activePrescription={week:chosen.week,phase:chosen.phase,kind,day:item.day,
-     planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace}:
+     planned:item.kind==='run'?{minutes:item.runMinutes,type:item.runType,pace:item.runPace,distanceKm:item.runPrescription?.distanceKm,run:item.runPrescription}:
       {sets:item.weekStrengths.map(x=>({role:x.role,sets:x.sets,reps:x.reps,rpe:x.rpe,weight:x.suggestedWeight}))}};
-    logMessage.textContent='Selected week '+chosen.week+' '+item.day+' '+kind+'. Suggested sets are prefilled; edit actual values, tick Completed for each performed set and remove skipped sets before saving.';
+    logMessage.textContent='Selected week '+chosen.week+' '+item.day+' '+kind+'. For running, enter actual distance and duration. For lifting, tick Completed for each performed set and remove skipped sets before saving.';
     document.getElementById('trialLog').scrollIntoView({behavior:'smooth',block:'start'});
    }));
   }catch(err){out.innerHTML='<p class="error">Could not generate preview: '+esc(err.message)+'</p>';}

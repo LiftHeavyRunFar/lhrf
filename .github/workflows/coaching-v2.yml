@@ -76,6 +76,8 @@ jobs:
         run: node tests/shared-preview.browser.cjs
       - name: Test new athlete onboarding and policy selection
         run: node tests/onboarding-athletes.browser.cjs
+      - name: Test canonical running preview, timer, export and logging
+        run: node tests/running-flow.browser.cjs
       - name: Test install icons and approved programme activation
         run: node tests/release.browser.cjs
       - name: Prepare pre-extraction PWA fixture
