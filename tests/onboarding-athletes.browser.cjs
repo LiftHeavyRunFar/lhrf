@@ -2,9 +2,9 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{
- const context=await browser.newContext({viewport:{width:390,height:844},timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ let mixedEngine=false;const context=await browser.newContext({viewport:{width:390,height:844},timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.clock.install({time:new Date('2026-10-25T12:00:00Z')});
- await page.route('http://athlete.test/**',route=>{const file=new URL(route.request().url()).pathname;route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file==='/'?'index.html':file)),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.png')?'image/png':'text/html'})});
+ await page.route('http://athlete.test/**',route=>{const file=new URL(route.request().url()).pathname;route.fulfill({body:(()=>{const bytes=fs.readFileSync(path.join(__dirname,'..',file==='/'?'index.html':file));return mixedEngine&&file==='/src/coach-engine.js'?bytes.toString().replace('return {orderSessionExercises,','return {'):bytes})(),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.png')?'image/png':'text/html'})});
  await page.goto('http://athlete.test/');assert.equal(await page.locator('#firstRun').isVisible(),true);
  await page.locator('#frNext').click();await page.locator('[name="frFocus"][value="running"]').check();await page.locator('#frNext').click();
  await page.locator('#frNext').click();assert.match(await page.locator('#frError').innerText(),/experience/);
@@ -17,6 +17,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  assert.ok(data.activeSchedule.flatMap(s=>s.ex).filter(e=>e[5]?.category==='primary').every(e=>e[5].role==='straight'&&e[4]<=7));assert.ok(data.activeSchedule.flatMap(s=>s.ex).every(e=>!e[5]?.optional));
  await page.reload();assert.equal(await page.locator('#firstRun').isVisible(),false);assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean'))),data);
  for(const tab of ['today','train','plan','progress','settings']){await page.locator('nav [data-screen="'+tab+'"]').click();assert.equal(await page.locator('.screen.active').getAttribute('id'),tab)}
+ mixedEngine=true;await page.reload();assert.equal(await page.locator('#firstRun').isVisible(),false);assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean'))),data);await page.locator('nav [data-screen="today"]').click();assert.deepEqual(errors,[]);mixedEngine=false;
  // Reproduce the reported undated marathon onboarding using fresh synthetic storage.
  await page.evaluate(()=>{localStorage.clear();sessionStorage.clear()});await page.reload();
  await page.locator('#frNext').click();await page.locator('[name="frFocus"][value="running"]').check();await page.locator('#frNext').click();
