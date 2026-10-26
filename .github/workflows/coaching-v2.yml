@@ -71,19 +71,28 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Test all tabs and workout flow
+        if: ${{ !cancelled() }}
         run: node tests/today-flow.browser.cjs
       - name: Test preview to live logging and shared review
+        if: ${{ !cancelled() }}
         run: node tests/shared-preview.browser.cjs
       - name: Test new athlete onboarding and policy selection
+        if: ${{ !cancelled() }}
         run: node tests/onboarding-athletes.browser.cjs
+      - name: Test canonical running preview, timer, export and logging
+        if: ${{ !cancelled() }}
+        run: node tests/running-flow.browser.cjs
       - name: Test install icons and approved programme activation
+        if: ${{ !cancelled() }}
         run: node tests/release.browser.cjs
       - name: Prepare pre-extraction PWA fixture
+        if: ${{ !cancelled() }}
         run: |
           git fetch origin 58bbb0ba3603a36b40cbe1587b9d388e474a57c6
           mkdir -p /tmp/lhrf-previous
           git archive 58bbb0ba3603a36b40cbe1587b9d388e474a57c6 | tar -x -C /tmp/lhrf-previous
       - name: Test PWA update and offline data preservation
+        if: ${{ !cancelled() }}
         env:
           LHRF_PREVIOUS_ROOT: /tmp/lhrf-previous
         run: node tests/shared-update.browser.cjs

@@ -13,7 +13,7 @@ function install(state,config,engineModule,now=new Date().toISOString()){
 // Repair only future, unfinished running prescriptions; never rebuild lifting or history.
 function refreshRunningGuidance(state,engineModule,now=new Date().toISOString(),liveWorkout=false){
  const c=state.customRoadmap;
- if(liveWorkout||!c||c.runTemplate!=='easy-one-quality-10k'||c.runningGuidanceVersion===2)return state;
+ if(liveWorkout||!c||c.runTemplate!=='easy-one-quality-10k'||Number(c.runningGuidanceVersion)>=2)return state;
  const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
  next.customRoadmap.runningGuidanceVersion=2;
  const fresh=engineModule.createEngine({data:next}).generatedSessions(next.customRoadmap,week);
