@@ -141,3 +141,33 @@ test('partial and midweek-race calendars cannot hide pre-start workouts or post-
  const midweek=inspect(athlete({goal:'marathon',km:45,runs:3,availableDays:['Tue','Thu','Sat'],days:3,runningTargetDate:'2026-10-28'}));
  assert.ok(!midweek.sessions.some(s=>['Thu','Sat'].includes(s.day.slice(0,3))&&(s.runs||[]).length));
 });
+
+
+test('version 4: undated low-mileage two-run marathon is explicit progressive base building, not race preparation',()=>{
+ const c=athlete({goal:'marathon',km:15,runs:2,weeks:8,runningGuidanceVersion:4,hybridFocus:'running'});
+ const rows=Array.from({length:8},(_,i)=>inspect(c,i+1));
+ assert.equal(rows[0].plan.feasible,true);
+ for(const r of rows){assert.equal(r.budget.preparationMode,'base-building');assert.equal(r.budget.taper,false);assert.equal(r.race.length,0);assert.equal(r.quality.length,0);assert.equal(r.training.length,2);assert.ok(review(r,/third easy run/));}
+ assert.ok(rows[6].actual>=rows[0].actual*1.20,'Uncapped build must deliver meaningful peak progression');
+ assert.ok(rows[3].actual<rows[2].actual,'Consolidation reduces workload');
+ assert.ok(rows[4].actual>rows[2].actual,'Next block resumes above the prior peak');
+ assert.ok(rows[7].actual<rows[6].actual,'End-block consolidation is distinct from race taper');
+ const dated={...c,runningTargetDate:'2026-12-20'};
+ const checked=inspect(dated);assert.equal(checked.plan.feasible,false);assert.ok(review(checked,/Short marathon preparation/));
+});
+
+test('version 4 runner matrix: allocation limits are explicit, budgets conserved, growth bounded, saved policies immutable',()=>{
+ for(const km of [0,6,15,24,40,60])for(const goal of ['fitness','5k','10k','half','marathon'])for(const runs of [1,2,3,5]){
+  const c=athlete({km,goal,runs,weeks:12,runningGuidanceVersion:4}),before=JSON.stringify(c);let peak=0;
+  for(let w=1;w<=12;w++){
+   const r=inspect(c,w);assert.ok(r.actual<=r.budget.requestedKm+.15,`${goal}/${km}/${runs}: budget`);
+   if(r.budget.progressionLimited)assert.ok(review(r,/volume\/frequency review/));
+   assert.ok(r.runs.every(x=>Number.isFinite(x.distanceKm)&&x.distanceKm>0));
+   assert.ok(hardKm(r)<=r.actual*.20+.001);
+   if(!r.budget.deload){if(peak)assert.ok(r.actual<=peak*1.06+.2);peak=Math.max(peak,r.actual);}
+  }
+  assert.equal(JSON.stringify(c),before);
+ }
+ const c=athlete({km:24,goal:'marathon',runs:2,runningGuidanceVersion:4});assert.equal(inspect(c,7).budget.progressionLimited,true);
+ const old=athlete({goal:'marathon',km:15,runs:2,runningGuidanceVersion:3});assert.equal(inspect(old).plan.feasible,false,'Saved version 3 rules remain unchanged');
+});

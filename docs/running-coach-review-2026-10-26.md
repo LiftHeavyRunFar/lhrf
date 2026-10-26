@@ -34,3 +34,16 @@ These are conservative software acceptance guards, not clinical thresholds or pr
 - England Athletics, returning to running: rebuild at lower intensity/duration rather than assume past capacity remains current. https://www.englandathletics.org/news/the-perfect-way-to-return-to-running/
 
 These sources informed the review; neither validates this app's numeric policies or replaces athlete-specific coaching.
+
+
+## Version 4 correction: undated base building and progression
+
+New onboarding and new standalone proposals opt into runningGuidanceVersion 4. Saved version 2/3 programmes retain their prescriptions. This is not an automatic upgrade of the athlete's approved November block.
+
+Undated half/marathon goals are base-building blocks, not dated race preparation. Low-frequency marathon base building can be proposed with explicit limits and a suggestion to consider a third easy run; the schedule is never silently changed. Low-mileage/two-run dated marathon preparation remains blocked, and short dated marathon preparation needs individual review. Missing longest-run history prevents a claim of race readiness.
+
+Version 4 builds from previous peaks with explicit consolidation every fourth week. Provisional build rates are 2% for general fitness, 2.5% with strength priority, 4% for longer-distance goals, and 3.5% otherwise, compounded on build weeks and capped at 1.6 times baseline. Consolidation is 90% of the current build budget. These are configurable product defaults, not scientifically validated individual prescriptions or injury guarantees. Missing baselines do not receive automatic volume growth. Dated taper reductions are based on the pre-taper build rather than the initial baseline.
+
+Half/marathon ordinary-session limits allow up to 90 minutes, while existing long-session duration caps remain. Two-run allocation is balanced rather than overloading the long run. Quality-session spare budget stays in an explicitly named easy segment, not an oversized cooldown. Any material unallocated budget (over 0.15 km) is reported; onboarding also flags later-week limits so a flat preview cannot conceal capacity constraints. Limits may still mean a runner needs more suitable frequency or individual review; the engine does not force mileage to make the chart look ambitious.
+
+Regression coverage includes the reported undated 15 km/two-run/eight-week scenario, consolidation versus race taper, continuation above prior peaks, a 120-profile matrix over 12 weeks, dated short-horizon review, budget/quality constraints, saved-policy preservation and end-to-end onboarding. Source guidance supports distinguishing preparation from short race-readiness promises, not the numeric defaults: London Marathon provides 16-week race plans; Boston Athletic Association Level One uses four running days and a separate preparation phase.

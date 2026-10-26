@@ -17,5 +17,12 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  assert.ok(data.activeSchedule.flatMap(s=>s.ex).filter(e=>e[5]?.category==='primary').every(e=>e[5].role==='straight'&&e[4]<=7));assert.ok(data.activeSchedule.flatMap(s=>s.ex).every(e=>!e[5]?.optional));
  await page.reload();assert.equal(await page.locator('#firstRun').isVisible(),false);assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean'))),data);
  for(const tab of ['today','train','plan','progress','settings']){await page.locator('nav [data-screen="'+tab+'"]').click();assert.equal(await page.locator('.screen.active').getAttribute('id'),tab)}
+ // Reproduce the reported undated marathon onboarding using fresh synthetic storage.
+ await page.evaluate(()=>{localStorage.clear();sessionStorage.clear()});await page.reload();
+ await page.locator('#frNext').click();await page.locator('[name="frFocus"][value="running"]').check();await page.locator('#frNext').click();
+ await page.locator('#frExperience').selectOption('intermediate');await page.locator('#frGoal').selectOption('running');await page.locator('#frRunGoal').selectOption('marathon');await page.locator('#frStartDate').fill('2026-10-26');await page.locator('#frWeeks').fill('8');await page.locator('#frNext').click();
+ await page.locator('#frNext').click();await page.locator('#frRunTime').fill('1:05:00');await page.locator('#frRunKm').fill('15');await page.locator('#frNext').click();
+ assert.match(await page.locator('#frSummary').innerText(),/8-week base-building block/);assert.match(await page.locator('#frWarnings').innerText(),/third easy run/);assert.equal(await page.locator('#frNext').isEnabled(),true);assert.equal(await page.locator('#frCycleChart svg').count(),2);
+ await page.locator('#frNext').click();const base=await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean')));assert.equal(base.customRoadmap.runningGuidanceVersion,4);assert.equal(base.customRoadmap.runs,2);assert.equal(base.customRoadmap.runningTargetDate,'');
  assert.deepEqual(errors,[]);await context.close();console.log('PASS new beginner / running-priority onboarding requires experience, activates shared policy, excludes deadlift and preserves settings after reload; all five tabs work.');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

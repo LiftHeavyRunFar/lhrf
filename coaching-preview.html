@@ -122,7 +122,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   });
   // Adapt storage rows; the app and preview use the same coaching decisions.
   const previewFields=new FormData(form),num=k=>Number(previewFields.get(k));
-  const profile={coachingPolicy:'review-v2',runningGuidanceVersion:3,hybridFocus:String(previewFields.get('priority'))==='Running'?'running':'balanced',trainingAge:String(previewFields.get('trainingAge')||''),strengthMode:String(previewFields.get('strengthMode')||'auto'),runGoal:String(previewFields.get('runGoal')||'fitness'),weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),runs:num('runs'),priority:String(previewFields.get('priority')),
+  const profile={coachingPolicy:'review-v2',runningGuidanceVersion:4,hybridFocus:String(previewFields.get('priority'))==='Running'?'running':'balanced',trainingAge:String(previewFields.get('trainingAge')||''),strengthMode:String(previewFields.get('strengthMode')||'auto'),runGoal:String(previewFields.get('runGoal')||'fitness'),weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),runs:num('runs'),priority:String(previewFields.get('priority')),
    startDate:String(previewFields.get('startDate')||''),strengthTargetDate:String(previewFields.get('strengthTargetDate')||''),runningTargetDate:String(previewFields.get('runningTargetDate')||''),
    maxes:{bench:num('benchMax'),squat:num('squatMax'),deadlift:num('deadliftMax')},tenKTime:String(previewFields.get('tenKTime')||''),runningBaselineMinutes:num('runningBaselineMinutes')};
   const assessment=LHRFCoachAdapters.reviewPreviewLogs(logs,profile);
@@ -194,7 +194,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
  form.addEventListener('submit',e=>{
   e.preventDefault();
   try{
-   const f=new FormData(form),num=k=>Number(f.get(k)),c={coachingPolicy:'review-v2',runningGuidanceVersion:3,trainingAge:String(f.get('trainingAge')||''),strengthMode:String(f.get('strengthMode')||'auto'),runGoal:String(f.get('runGoal')||'fitness'),hybridFocus:String(f.get('priority'))==='Running'?'running':'balanced',
+   const f=new FormData(form),num=k=>Number(f.get(k)),c={coachingPolicy:'review-v2',runningGuidanceVersion:4,trainingAge:String(f.get('trainingAge')||''),strengthMode:String(f.get('strengthMode')||'auto'),runGoal:String(f.get('runGoal')||'fitness'),hybridFocus:String(f.get('priority'))==='Running'?'running':'balanced',
     startDate:String(f.get('startDate')||''),strengthTargetDate:String(f.get('strengthTargetDate')||''),runningTargetDate:String(f.get('runningTargetDate')||''),
     weeks:num('weeks'),bench:num('bench'),squat:num('squat'),deadlift:num('deadlift'),
     runs:num('runs'),priority:String(f.get('priority')),maxes:{bench:num('benchMax')||null,squat:num('squatMax')||null,deadlift:num('deadliftMax')||null},
