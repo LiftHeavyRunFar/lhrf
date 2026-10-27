@@ -19,3 +19,5 @@ test('updated five-week plan has a pyramid, target-pace practice, easy Saturdays
  for(let w=1;w<=5;w++){const next=engine.generatedSessions(c,w),old=engine.generatedSessions(base,w);assert.deepEqual(next.map(s=>[s.id,s.day,s.ex]),old.map(s=>[s.id,s.day,s.ex]));const sat=next.find(s=>s.day==='Sat');if(sat)assert.ok(sat.runs.every(r=>r.role==='long-run'&&r.workMinutes===0));}
  const get=w=>engine.generatedSessions(c,w).find(s=>s.day==='Tue').runs[0];assert.equal(get(2).workoutFamily,'pyramid');assert.equal(get(3).workoutFamily,'race-pace-repeats');assert.equal(get(3).pace,'5:55/km to 6:05/km');assert.equal(get(5).role,'easy-run');assert.equal(get(5).steps.some(s=>s.role==='work'),false);
 });
+
+test("active drafts without a stored week are protected in later weeks",()=>{const s=fixture(2),tue=s.activeSchedule.find(x=>x.day==='Tue'),live={id:tue.id+'::run'};const n=install.refreshApprovedRunningProgramme(s,coach,now,live);assert.deepEqual(n.activeSchedule.find(x=>x.id===tue.id),tue)});

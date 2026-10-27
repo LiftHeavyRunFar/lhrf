@@ -69,7 +69,7 @@ function refreshApprovedRunningProgramme(state,engineModule,now=new Date().toISO
   const sameWeek=x=>Number(x.week||1)===week;
   const matches=id=>id===session.id||id===session.id+'::run';
   const complete=(state.completedWorkouts||[]).some(x=>sameWeek(x)&&matches(x.id))||(state.runs||[]).some(x=>sameWeek(x)&&matches(x.sessionId));
-  const active=liveWorkout&&sameWeek(liveWorkout)&&(matches(liveWorkout.id)||liveWorkout.parentId===session.id||liveWorkout.id===session.id+'::strength');
+  const active=liveWorkout&&(liveWorkout.week==null||sameWeek(liveWorkout))&&(matches(liveWorkout.id)||liveWorkout.parentId===session.id||liveWorkout.id===session.id+'::strength');
   if(complete||active)return session;
   const replacement=fresh.find(x=>x.id===session.id);if(!replacement)return session;
   previous.push({id:session.id,runs:session.runs,name:session.name});
