@@ -79,6 +79,9 @@ jobs:
       - name: Test new athlete onboarding and policy selection
         if: ${{ !cancelled() }}
         run: node tests/onboarding-athletes.browser.cjs
+      - name: Test personal Garmin import review and data integrity
+        if: ${{ !cancelled() }}
+        run: node tests/garmin-import.browser.cjs
       - name: Test canonical running preview, timer, export and logging
         if: ${{ !cancelled() }}
         run: node tests/running-flow.browser.cjs
