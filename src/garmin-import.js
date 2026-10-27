@@ -17,7 +17,7 @@ function mergeRuns(state,choices){
  const next=JSON.parse(JSON.stringify(state));next.runs=next.runs||[];let added=0,linked=0;
  for(const choice of choices){const run=validatePayload({version:1,runs:[choice.run]})[0];if(next.runs.some(r=>r.source==='garmin-personal'&&String(r.sourceActivityId)===run.sourceActivityId))continue;
   if(choice.action==='new'){next.runs.push(run);added++;}
-  else if(/^link:\d+$/.test(choice.action||'')){const index=Number(choice.action.slice(5)),old=next.runs[index];if(!old||!reviewRuns(next,{version:1,runs:[run]})[0].matches.includes(index))throw Error('The matching log changed. Review the import again.');next.runs[index]={...old,...run,importOriginal:old};linked++;}
+  else if(/^link:\d+$/.test(choice.action||'')){const index=Number(choice.action.slice(5)),old=next.runs[index];if(!old||!reviewRuns(next,{version:1,runs:[run]})[0].matches.includes(index))throw Error('The matching log changed. Review the import again.');next.runs[index]={...old,...run,rpe:old.rpe??null,type:old.type||run.type,avgHr:run.avgHr??old.avgHr??null,maxHr:run.maxHr??old.maxHr??null,importOriginal:old};linked++;}
  }
  return {state:next,added,linked};
 }
