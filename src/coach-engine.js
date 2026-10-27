@@ -18,7 +18,7 @@ function orderSessionExercises(session){
  const copy=JSON.parse(JSON.stringify(session));
  const isolation=name=>/curl|pushdown|tricep.*extension|skull.?crusher|lateral raise|rear.?delt|face pull|fly|pec deck|leg extension|calf|straight.arm pulldown|crunch|plank|ab wheel|pallof/i.test(name);
  const main=e=>e[5]?.category==='primary'||['top','backoff'].includes(e[5]?.role)||/^(squat|bench|bench press|deadlift|competition (squat|bench|deadlift)|paused (squat|bench|deadlift))$/i.test(e[0]);
- const items=(copy.ex||[]).map((e,i)=>({e,i,rank:main(e)?0:isolation(e[0])?2:1}));
+ const items=(copy.ex||[]).map((e,i)=>({e,i,rank:e[5]?.optional||e[5]?.category==='optional'?3:main(e)?0:isolation(e[0])?2:1}));
  items.sort((a,b)=>a.rank-b.rank||a.i-b.i);
  const positions=new Map(items.map((x,i)=>[x.i,i]));
  for(const {e} of items)if(Number.isInteger(e[5]?.topIndex))e[5].topIndex=positions.get(e[5].topIndex);
@@ -429,6 +429,15 @@ function accessoryPrefs(){return data.accessoryPreferences||{}}
 
 function accessoryNames(){return [...new Set(Object.values(accessoryPools).flat(2).map(x=>x.name))].sort()}
 
+// Optional isolation work must add a purpose, not repeat a required attachment variant.
+// This deliberately leaves required exercises and main-lift top/back-off pairs intact.
+function accessoryFamily(name){
+ const n=String(name||'').toLowerCase().replace(/[-_]/g,' ').replace(/\s+/g,' ').trim();
+ if(/pushdown|triceps? extension|skull ?crusher/.test(n))return 'elbow-extension';
+ if(/biceps? curl|hammer curl|preacher curl|incline dumbbell curl/.test(n))return 'elbow-flexion';
+ return n;
+}
+
 function accessorySelection(lift,w,totalWeeks,secondary,c=data.customRoadmap){
  const phase=customPhase(w,totalWeeks,c||null),b=variationBlock(w,totalWeeks,c),idx=Math.min(3,Math.floor((w-1)/5));
  if(phase==='Taper / event')return [];
@@ -628,7 +637,7 @@ function generatedSessions(c,w){
  const liftCount={};
  for(const slot of plan.slots){if(!slot.items.length)continue;
   if([3,4].includes(c.runningGuidanceVersion)&&c.startDate){const date=new Date(c.startDate+'T12:00:00');date.setDate(date.getDate()-(date.getDay()+6)%7+(w-1)*7+(dayOffset[slot.day]??0));if(date<new Date(c.startDate+'T12:00:00'))continue;}
-  const ex=[],runs=[],variationNotes=[];
+  const ex=[],runs=[],variationNotes=[],optionalExercises=[];
   for(const item of slot.items){if(item.type==='strength'){
    const lift=item.name,occurrence=liftCount[lift]||0;liftCount[lift]=occurrence+1;
    const secondary=occurrence>0;
@@ -700,7 +709,7 @@ function generatedSessions(c,w){
    if(!beginnerPolicy(c)&&!maintenancePolicy(c)&&lift==='Bench'&&!taper&&!(candidate&&vb.deload)){
     const extras=[['Cable biceps curl','Hammer curl','Preacher curl','Incline dumbbell curl'],['Rope triceps pushdown','Overhead cable triceps extension','Single-arm cable pushdown','Dumbbell triceps extension']];
     const rotation=Math.floor((w-1)/4)%4;
-    for(const pool of extras){const name=pool[rotation];if(!ex.some(e=>e[0]===name))ex.push([name,2,12,0,7,{role:'optional',category:'optional',optional:true}]);}
+    for(const pool of extras){const name=pool[rotation],entry=[name,2,12,0,7,{role:'optional',category:'optional',optional:true}];if(Number(c.exerciseSelectionVersion)>=2)optionalExercises.push(entry);else if(!ex.some(e=>e[0]===name))ex.push(entry);}
    }
    // Accessories rotate by block, respect preferences, and use exercise-specific RPE loading.
    let accessories=accessorySelection(lift,w,c.weeks,secondary,c);
@@ -755,6 +764,9 @@ function generatedSessions(c,w){
     runs.push({role:isLongRun?'long-run':'easy-run',name:isLongRun?'Long easy run':'Easy aerobic run',distanceKm,minutes:duration,rpe:3.5,pace:rp?paceText(rp.easyLow)+' to '+paceText(rp.easyHigh):'RPE 3–4',steps:[{label:isLongRun?'Long easy run':'Easy run',distanceKm,detail:template?'Zone 2 / conversational · RPE 3–4':'RPE 3–4 · conversational',pace:rp?paceText(rp.easyLow)+' to '+paceText(rp.easyHigh):'Easy'}],structure:`${distanceLabel(distanceKm)} conversational easy running`,workMinutes:0,reason:isLongRun?'Protected endurance distance; adjust for recovery.':'Aerobic distance at conversational effort.'});
    }
   }}
+  // Resolve optional work only after all required lifting, including combined days.
+  const occupiedFamilies=new Set(ex.map(e=>accessoryFamily(e[0]))),prefs=accessoryPrefs();
+  for(const optional of optionalExercises){const family=accessoryFamily(optional[0]);if(occupiedFamilies.has(family)||['avoid','unavailable'].includes(prefs[optional[0]]))continue;ex.push(optional);occupiedFamilies.add(family);}
   const id='custom-'+slot.day.toLowerCase();const name=[...slot.items.filter(x=>x.type==='strength').map(x=>x.name),...runs.map(x=>x.name)].join(' + ');
   const purpose=phase==='Foundation'?'Build repeatable technique and capacity.':phase==='Development'?'Progress productive workload with manageable effort.':phase==='Specificity'?'Practise event-specific effort while managing fatigue.':'Reduce workload to arrive fresher for the event.';
   const policyReason=maintenancePolicy(c)?'Strength maintenance: reduced volume without planned load escalation. ':beginnerPolicy(c)?'Beginner / return-to-training entry: fewer sets and bounded effort; confirm technique and recovery. ':'';
@@ -955,7 +967,7 @@ function reviewDecision(){
    const prior=(data.decisions||[]).some(d=>d.key===`adaptive|${data.activeCustomWeek}|${x.name.toLowerCase()}`);
    if(prior)continue;
    if((data.decisions||[]).some(d=>d.approved&&d.kind==='adaptive-progression'&&d.exercise===ex[0]&&Number(d.week)>=Number(data.activeCustomWeek)-2))continue;
-   const alreadyCompleted=(data.completedWorkouts||[]).some(y=>y.id===target.id&&+y.week===+(data.activeCustomWeek||1));
+   const alreadyCompleted=(data.completedWorkouts||[]).some(y=>(y.id===target.id||y.id===target.id+'::strength')&&+y.week===+(data.activeCustomWeek||1));
    if(alreadyCompleted)continue;
    return {status:'progress',key:`adaptive|${data.activeCustomWeek}|${x.name.toLowerCase()}`,title:'Sustained strong performance — optional progression',summary:`Your recent ${x.name} top sets across multiple weeks were at least 0.75 RPE below target. The coach proposes a modest increase for the active week.`,changes:[{id:target.id,exercise:ex[0],loadFactor:1.025}],why:'Increase only the upcoming top-set suggestion by approximately 2.5%, subject to warm-ups. Back-offs still recalculate from the actual top set and its logged RPE. No deload or taper changes; approval required.'};
   }

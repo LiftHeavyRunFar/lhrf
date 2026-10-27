@@ -60,12 +60,12 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
   const text=await page.locator('#livePreview').innerText();if(previewText)assert.equal(text,previewText,'Every part of a day card opens the same preview');previewText=text;
   assert.equal(await page.locator('#livePreview .run-workout-flow').count(),1);assert.doesNotMatch(await page.locator('#livePreview .run-workout-flow').innerText(),/RPE/);await page.locator('#previewClose').click();
  }
- await page.locator('[data-session-id="fri"]').click();assert.equal(await page.locator('#livePreview').isVisible(),true);assert.equal(await page.evaluate(key=>localStorage.getItem(key),LIVE),null);
+ await page.locator('[data-session-id="fri::strength"]').click();assert.equal(await page.locator('#livePreview').isVisible(),true);assert.equal(await page.evaluate(key=>localStorage.getItem(key),LIVE),null);
  await page.locator('#previewClose').click();assert.deepEqual(await getData(),fixture,'preview never changes athlete data');
- await page.locator('[data-session-id="fri"]').click();await page.locator('#previewStart').click();assert.equal(await page.locator('#preWorkoutReadiness').isVisible(),true);assert.equal(await page.locator('#preWorkoutReadiness').getAttribute('open'),'');
- await page.locator('#liveFinish').click();assert.match(await page.locator('#liveRunError').innerText(),/Log your completed run/);
- await page.locator('#preWorkoutReadiness summary').click();
- await page.locator('.live-set [data-field="rpe"]').first().fill('8');await page.locator('.live-set .set-check').first().click();
+ await page.locator('[data-session-id="fri::strength"]').click();await page.locator('#previewStart').click();assert.equal(await page.locator('#readinessModal').isVisible(),true);assert.equal(await page.locator('#preWorkoutReadiness').getAttribute('open'),'');
+ await page.getByRole('button',{name:'Review readiness',exact:true}).click();await page.locator('#readinessContinue').click();assert.equal(await page.locator('#preWorkoutReadiness').isVisible(),false);assert.equal(await page.locator('#liveRunKm').count(),0,'Strength is independent of the pending run');
+ await page.locator('#liveFinish').click();assert.match(await page.locator('#liveError').innerText(),/Log at least one set/);
+ await page.locator('.live-set [data-field="rpe"]').first().fill('8');await page.locator('.live-set .set-check').first().click();assert.equal(await page.locator('.live-ex').first().getAttribute('open'),null,'Final set collapses its completed exercise');
  const backoff=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)).ex[1][3],LIVE);assert.ok(backoff>0);
  await page.reload();await page.locator('nav [data-screen="train"]').click();assert.equal(await page.locator('.set-check.checked').count(),1,'live workout survives reload');
  for(let j=0;j<2;j++){
@@ -73,14 +73,15 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
   const row=details.locator('.live-set').nth(j);await row.locator('[data-field="rpe"]').fill('7');await row.locator('.set-check').click();
  }
  await page.locator('#liveNotes').fill('Synthetic regression test');
- await page.locator('#liveRunKm').fill('3');await page.locator('#liveRunMinutes').fill('20');assert.equal(await page.locator('#liveRunRpe').count(),0);await page.locator('#liveLogRun').click();await page.locator('#liveFinish').click();
+ await page.locator('#liveFinish').click();
  assert.equal(await page.locator('#liveFeedbackDialog').isVisible(),true);await page.locator('#liveFeedbackDifficulty').selectOption('expected');await page.locator('#liveFeedbackSave').click();
- let saved=await getData();assert.equal(saved.sets.length,4);assert.equal(saved.runs.length,1);assert.equal(saved.completedWorkouts.length,3);assert.equal(saved.sessionFeedback.length,1);assert.deepEqual(saved.activeSchedule,fixture.activeSchedule);assert.deepEqual(saved.customRoadmap,fixture.customRoadmap);assert.deepEqual(saved.sentinel,fixture.sentinel);assert.deepEqual(saved.sets[0],fixture.sets[0]);assert.deepEqual(saved.completedWorkouts.slice(0,2),fixture.completedWorkouts);
+ let saved=await getData();assert.equal(saved.sets.length,4);assert.equal(saved.runs.length,0,'Strength review must not require or fabricate a run');assert.equal(saved.completedWorkouts.length,3);assert.equal(saved.sessionFeedback.length,1);assert.deepEqual(saved.activeSchedule,fixture.activeSchedule);assert.deepEqual(saved.customRoadmap,fixture.customRoadmap);assert.deepEqual(saved.sentinel,fixture.sentinel);assert.deepEqual(saved.sets[0],fixture.sets[0]);assert.deepEqual(saved.completedWorkouts.slice(0,2),fixture.completedWorkouts);
  assert.equal(await page.evaluate(key=>localStorage.getItem(key),LIVE),null);assert.equal(await page.locator('#preWorkoutReadiness').isVisible(),false);
  await page.locator('nav [data-screen="today"]').click();assert.equal(await page.locator('.day-workout.is-complete').count(),3);assert.equal(await page.locator('#todaySessions').count(),0,'Weekly cards are the sole Today workout list');
+ await page.locator('[data-session-id="fri::run"]').click();await page.locator('#previewStart').click();assert.equal(await page.locator('#readinessModal').count(),0,'Second workout shares daily readiness');assert.equal(await page.locator('.live-ex').count(),0,'Run excludes strength exercises');await page.locator('#liveFinish').click();assert.match(await page.locator('#liveRunError').innerText(),/Log your completed run/);await page.locator('#liveRunKm').fill('3');await page.locator('#liveRunMinutes').fill('20');await page.locator('#liveLogRun').click();await page.locator('#liveFinish').click();await page.locator('#liveFeedbackSkip').click();saved=await getData();assert.equal(saved.runs.length,1);assert.equal(saved.completedWorkouts.length,4);assert.equal(saved.completedWorkouts.at(-1).id,'fri::run');await page.locator('nav [data-screen="today"]').click();
  await page.locator('[data-session-id="sat"]').click();await page.locator('#previewStart').click();await page.locator('#liveRunKm').fill('3');await page.locator('#liveRunMinutes').fill('20');assert.equal(await page.locator('#liveRunRpe').count(),0);await page.locator('#liveLogRun').click();await page.locator('#liveFinish').click();await page.locator('#liveFeedbackSkip').click();
- await page.locator('nav [data-screen="today"]').click();assert.equal(await page.locator('#todaySessions button').count(),0,'No duplicate list appears after completion');assert.equal(await page.locator('.day-workout.is-complete').count(),4);
- await page.reload();assert.equal(await page.locator('#firstRun').isVisible(),false);assert.equal((await getData()).completedWorkouts.length,4);
+ await page.locator('nav [data-screen="today"]').click();assert.equal(await page.locator('#todaySessions button').count(),0,'No duplicate list appears after completion');assert.equal(await page.locator('.day-workout.is-complete').count(),5);
+ await page.reload();assert.equal(await page.locator('#firstRun').isVisible(),false);assert.equal((await getData()).completedWorkouts.length,5);
  await page.locator('nav [data-screen="today"]').click();
  // Exercise touch-driven horizontal scrolling in Chromium, not just the arrow handlers.
  await page.clock.runFor(900);
@@ -96,13 +97,13 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  assert.match(await page.locator('#dayPosition').innerText(),/Saturday|Sunday/);
  if(process.env.LHRF_SCREENSHOT)await page.screenshot({path:process.env.LHRF_SCREENSHOT,fullPage:true});
  assert.deepEqual(errors,[]);
- console.log('PASS five tabs; weekly rail/controls; single weekly calendar; completion across changed training days; read-only previews; Start/readiness; top set/back-offs; validation; combined workout/run logging; reload/resume; finish/feedback; data preservation.');
+ console.log('PASS five tabs; weekly rail/controls; single weekly calendar; completion across changed training days; read-only previews; Start/readiness; top set/back-offs; validation; independent strength/run logging and once-daily readiness; reload/resume; finish/feedback; data preservation.');
  // Sunday completion and the Monday/DST boundary must not relabel old workouts as future.
  await page.clock.setSystemTime(new Date('2026-10-25T10:00:00Z'));
  await page.reload();await page.locator('nav [data-screen="today"]').click();
  await page.clock.runFor(100); // Flush the two animation frames used to select the calendar day.
  assert.equal(await page.locator('#todaySessions button').count(),0);
- assert.equal(await page.locator('.day-workout.is-complete').count(),4);
+ assert.equal(await page.locator('.day-workout.is-complete').count(),5);
  assert.match(await page.locator('#dayPosition').innerText(),/Sunday 25 Oct/);
  for(let repeat=0;repeat<3;repeat++){
   await page.reload();await page.locator('nav [data-screen="today"]').click();await page.clock.runFor(150);

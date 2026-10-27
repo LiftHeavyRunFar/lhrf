@@ -1,0 +1,5 @@
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const t=require('../src/workout-tools');
+test('distance counts down across stages at the actual belt speed',()=>{let s=t.create([{distanceKm:1},{distanceKm:.5}],0);s.speed=6;s.running=true;s=t.advance(s,660000);assert.equal(s.index,1);assert.ok(Math.abs(s.stageKm-.1)<1e-8);assert.equal(s.speed,6);assert.equal(s.seconds,660);s=t.advance(s,1000000);assert.equal(s.complete,true);assert.equal(s.km,1.5);assert.equal(s.seconds,900);});
+test('speed change settles previous speed first; pause excludes breaks',()=>{let s=t.create([{distanceKm:10}],0);s.running=true;s.speed=6;s=t.changeSpeed(s,12,300000);assert.equal(s.km,.5);s=t.advance(s,600000);assert.equal(s.km,1.5);s.running=false;s=t.advance(s,900000);assert.equal(s.km,1.5);assert.equal(s.seconds,600);assert.throws(()=>t.changeSpeed(s,Infinity));});
+test('timed beginner stage advances and zero speed does not invent distance',()=>{let s=t.create([{seconds:60},{distanceKm:1}],0);s.running=true;s=t.advance(s,120000);assert.equal(s.index,1);assert.equal(s.km,0);assert.equal(s.seconds,120);assert.equal(s.complete,false);});
