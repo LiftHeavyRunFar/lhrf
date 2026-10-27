@@ -941,7 +941,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
     w.append(heading);if(done){const mark=document.createElement('span');mark.className='complete-mark';mark.textContent='✓ Completed';w.appendChild(mark)}w.append(overview,btn);slide.appendChild(w);
    }
    const hint=document.createElement('div');hint.className='day-hint';slide.appendChild(hint);
-   const openCard=()=>{if(sessions.length===1&&source!=='saved-preview')openWorkout(sessions[0].id)};
+   const openCard=()=>{if(source==='saved-preview'||!sessions.length)return;openWorkout(sessions.length===1?sessions[0].id:(sessions[0].parentId||sessions[0].id))};
    slide.addEventListener('click',e=>{if(e.target.closest('button,[data-session-id]'))return;openCard()});
    if(sessions.length===1&&source!=='saved-preview'){slide.tabIndex=0;slide.setAttribute('role','button');slide.setAttribute('aria-label','Preview '+sessions[0].name);slide.onkeydown=e=>{if(e.target===slide&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openCard()}};}
    rail.appendChild(slide);slides.push(slide);
