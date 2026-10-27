@@ -35,3 +35,9 @@ Official references:
 - https://developer.garmin.com/gc-developer-program/personal/personal-faq/
 - https://developer.garmin.com/gc-developer-program/personal/swagger-docs/
 - https://github.com/garmin/connect-personal-api-python
+
+## 27 October live-runtime correction
+
+The first real-account attempt returned HTTP 400 from our service immediately. A credential-free production probe reproduced the cause: Cloudflare workerd rejects `redirect: 'error'` synchronously, although Node accepts it. With `redirect: 'manual'`, the same token endpoint is reached and returns its expected authentication-required response. The service now uses manual mode and rejects non-2xx responses without following a redirect, retaining credential protection.
+
+The updated service also has bounded AbortController timeouts and safe stage-specific network errors. A private `/health?probe=1` diagnostic makes only credential-free requests to the fixed Garmin token endpoint. It returns no account data or credentials. It compares the known-broken mode with the supported mode to verify the runtime distinction. Regression tests cover no redirect following and do not use personal credentials.
