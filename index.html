@@ -1108,7 +1108,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   document.body.appendChild(dialog);
   const startButton=dialog.querySelector('#previewStart');
   if(planned||sessionCompleted(session)||(!(session.ex||[]).length&&!(session.runs||[]).length))startButton.remove();
-  else if(live&&live.id===id)startButton.textContent='Resume workout';
+  else if(live&&live.id===id)startButton.textContent='Start workout';
   dialog.querySelector('#previewClose').onclick=()=>dialog.remove();
   if(startButton.isConnected)startButton.onclick=()=>{
    const parts=workoutParts(session);
