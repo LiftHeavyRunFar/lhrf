@@ -2,6 +2,8 @@
  * Views supply plain athlete state and a clock. This module has no DOM, storage or network access. */
 (function(root){
 'use strict';
+const runningLibrary=typeof module==='object'&&module.exports?require('./running-workouts.js'):root.LHRFRunningWorkouts;
+const isHardStep=step=>step?.role?step.role==='work':/Threshold interval/i.test(step?.label||'');
 function allowsProgression(phase,deload=false){return !deload&&['foundation','development','specificity','intensification'].includes(String(phase||'').toLowerCase())}
 function candidatePolicy(c){return ['review-v1','review-v2'].includes(c?.coachingPolicy)}
 function broaderPolicy(c){return c?.coachingPolicy==='review-v2'}
@@ -44,11 +46,11 @@ function paceText(sec){if(!Number.isFinite(sec)||sec<=0)return '—';const round
 
 function estimatedMax(kg,reps){return kg*(1+Math.max(0,reps-1)/30)}
 
-function runningPaces(c){const p=c.runProfile;if(!p||!Number.isFinite(p.seconds)||p.seconds<=0||!Number.isFinite(p.distance)||p.distance<=0)return null;const tenK=p.seconds*Math.pow(10/p.distance,1.06);const race=tenK/10;return {race, easyLow:race*1.18,easyHigh:race*1.4,threshold:Number(c.runningPaceVersion)>=2?3600/(10*Math.pow(3600/tenK,1/1.06)):race*1.04,tenK,valid:true}}
+function runningPaces(c){const p=c.runProfile;if(Number(c.runningWorkoutVersion)>=1&&p?.effort==='training')return null;if(!p||!Number.isFinite(p.seconds)||p.seconds<=0||!Number.isFinite(p.distance)||p.distance<=0)return null;const tenK=p.seconds*Math.pow(10/p.distance,1.06);const race=tenK/10;return {race, easyLow:race*1.18,easyHigh:race*1.4,threshold:Number(c.runningPaceVersion)>=2?3600/(10*Math.pow(3600/tenK,1/1.06)):race*1.04,tenK,valid:true}}
 
 // One-hour race-equivalent estimate, not a measured lactate threshold or goal-pace promise.
 function repaceThresholdRun(run,c){
- const p=runningPaces(c);if(Number(c.runningPaceVersion)<2||!p||!(run.steps||[]).some(s=>/Threshold interval/i.test(s.label||'')))return run;
+ const p=runningPaces(c);if(run.libraryVersion||Number(c.runningPaceVersion)<2||!p||!(run.steps||[]).some(s=>/Threshold interval/i.test(s.label||'')))return run;
  const copy=JSON.parse(JSON.stringify(run)),pace=paceText(p.threshold-5)+' to '+paceText(p.threshold+5);
  copy.steps=copy.steps.map(s=>/Threshold interval/i.test(s.label||'')?{...s,pace}:s);copy.pace=pace;
  const ranges=copy.steps.map(s=>{const times=[...String(s.pace||'').matchAll(/(\d+):([0-5]\d)/g)].map(m=>Number(m[1])*60+Number(m[2]));return times.length?{min:s.distanceKm*Math.min(...times)/60,max:s.distanceKm*Math.max(...times)/60}:null});
@@ -222,11 +224,19 @@ function runningAssessment(c,w=1){
  const distances=Array.from({length:count},(_,i)=>round(Math.min(i===1?longCap:regularCap,count===1?requestedKm:i===1?requestedKm*longShare:requestedKm*(1-longShare)/(count-1))));
  if(!count)return {runs:[],warnings,blocking,feasible:!blocking.length,reviewRequired:!!blocking.length,requestedKm:0,actualKm:0,km:0,factor,deload,taper,remaining:until===null?null:until+1,longShare:0,longKm:0};
  const easy=p?paceText(p.easyLow)+' to '+paceText(p.easyHigh):'Confirm a recent running PB to set pace';
- const qualityAllowed=!(baseBuilding&&(count<3||base<25))&&known&&base>=12&&count>=2&&!!p&&profile.recency!=='old'&&!taper&&!postRace&&!deload&&goal!=='fitness';
+ const resultAge=profile.resultDate?(Date.now()-Date.parse(profile.resultDate+'T12:00:00'))/86400000:null;
+ const datedBaselineInvalid=Number(c.runningWorkoutVersion)>=1&&profile.resultDate&&(!validDate(profile.resultDate)||!Number.isFinite(resultAge)||profile.resultDate>new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'}));
+ const staleBaseline=Number(c.runningWorkoutVersion)>=1&&resultAge>56;
+ if(datedBaselineInvalid)blocking.push('Running result date is invalid or in the future. Check the baseline before approving.');
+ if(staleBaseline)warnings.push('Running result is more than eight weeks old. Confirm current fitness before adding quality work.');
+ if(Number(c.runningWorkoutVersion)>=1&&profile.effort==='training')warnings.push('An ordinary training run does not establish race fitness. Add a representative race or hard time-trial result; running stays easy until confirmed.');
+ if(Number(c.runningWorkoutVersion)>=1&&profile.environment==='treadmill')warnings.push('Treadmill result: belt calibration and conditions affect pace estimates. Confirm outdoor pacing before using the estimate for an outdoor race.');
+ const strengthEventThisWeek=Number(c.runningWorkoutVersion)>=1&&c.strengthTargetDate&&Number.isFinite(+new Date(c.strengthTargetDate+'T12:00:00'))&&Math.round((monday(new Date(c.strengthTargetDate+'T12:00:00'))-monday(origin))/604800000)+1===w;
+ const qualityAllowed=!strengthEventThisWeek&&!datedBaselineInvalid&&!staleBaseline&&!(baseBuilding&&(count<3||base<25))&&known&&base>=12&&count>=2&&!!p&&profile.recency!=='old'&&!taper&&!postRace&&!deload&&goal!=='fitness';
  const buildRun=(role,name,steps)=>{
   const distanceKm=Number(steps.reduce((n,s)=>n+s.distanceKm,0).toFixed(3));
-  const duration=p?steps.reduce((n,s)=>{const work=/Threshold interval/.test(s.label);return {min:n.min+s.distanceKm*(work?p.threshold-5:p.easyLow)/60,max:n.max+s.distanceKm*(work?p.threshold+5:p.easyHigh)/60}},{min:0,max:0}):null;
-  return {role,name,distanceKm,minutes:duration?Math.round(duration.max):null,durationRangeMinutes:duration?{min:Math.round(duration.min),max:Math.round(duration.max)}:null,rpe:role==='quality-run'?7:3.5,pace:role==='quality-run'?paceText(p.threshold-5)+' to '+paceText(p.threshold+5):easy,steps,workMinutes:duration?Math.round(steps.filter(s=>/Threshold interval/.test(s.label)).reduce((n,s)=>n+s.distanceKm*p.threshold/60,0)):0,structure:steps.map(s=>distanceLabel(s.distanceKm)+' '+s.label.toLowerCase()).join(' + '),reason:'Distance and pace from this athlete’s confirmed baseline; conservative session and progression limits.'};
+  const duration=p?steps.reduce((n,s)=>{const work=isHardStep(s);return {min:n.min+s.distanceKm*(work?p.threshold-5:p.easyLow)/60,max:n.max+s.distanceKm*(work?p.threshold+5:p.easyHigh)/60}},{min:0,max:0}):null;
+  return {role,name,distanceKm,minutes:duration?Math.round(duration.max):null,durationRangeMinutes:duration?{min:Math.round(duration.min),max:Math.round(duration.max)}:null,rpe:role==='quality-run'?7:3.5,pace:role==='quality-run'?paceText(p.threshold-5)+' to '+paceText(p.threshold+5):easy,steps,workMinutes:duration?Math.round(steps.filter(isHardStep).reduce((n,s)=>n+s.distanceKm*p.threshold/60,0)):0,structure:steps.map(s=>distanceLabel(s.distanceKm)+' '+s.label.toLowerCase()).join(' + '),reason:'Distance and pace from this athlete’s confirmed baseline; conservative session and progression limits.'};
  };
  let quality=null;
  if(qualityAllowed){
@@ -242,13 +252,21 @@ function runningAssessment(c,w=1){
    if(per>=.2&&run.distanceKm<=budget+.001&&cool<=run.distanceKm*.25&&cool*p.easyHigh/60<=15){quality=run;break;}
   }
  }
+ if(quality&&Number(c.runningWorkoutVersion)>=1&&runningLibrary){
+  const eventKm=({['5k']:5,['10k']:10,half:21.0975,marathon:42.195})[goal]||10;
+  const eventPace=p.tenK*Math.pow(eventKm/10,1.06)/eventKm;
+  const shortPace=p.tenK*Math.pow(5/10,1.06)/5;
+  const goalPace=Number(c.runningGoalSeconds)>0?Number(c.runningGoalSeconds)/eventKm:null;
+  quality=runningLibrary.buildQuality({baseRun:quality,kind:runningLibrary.selectKind({week:w,goal,weeksToRace:until}),thresholdSeconds:p.threshold,raceSeconds:eventPace,shortSeconds:shortPace,goalPaceSeconds:goalPace});
+  if(goalPace&&goalPace<eventPace)warnings.push('Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.');
+ }
  if(!quality&&goal!=='fitness'&&!taper&&!postRace)warnings.push('Easy-only foundation: quality work is deferred until recent mileage, pace baseline and the complete session budget support it.');
  if(quality){
   if(revised){
    // Keep remaining easy kilometres in the quality session, not a padded cooldown
    // or a silently enlarged long run. The complete session stays in its budget.
    const spare=round(Math.max(0,distances[0]-quality.distanceKm));
-   if(spare>=.1&&quality.distanceKm+spare<=distances[0]+.001){const steps=quality.steps.slice();steps.splice(steps.length-1,0,{label:'Easy aerobic running',distanceKm:spare,pace:easy});quality=buildRun('quality-run','Controlled threshold intervals',steps);}
+   if(spare>=.1&&quality.distanceKm+spare<=distances[0]+.001){const steps=quality.steps.slice();steps.splice(steps.length-1,0,{label:'Easy aerobic running',distanceKm:spare,pace:easy});const previous=quality;quality=buildRun('quality-run',previous.name,steps);if(previous.libraryVersion){quality=runningLibrary.buildQuality({baseRun:{...previous,steps},kind:previous.workoutFamily,thresholdSeconds:p.threshold,raceSeconds:previous.paceBasis.racePaceSeconds,shortSeconds:previous.paceBasis.shortPaceSeconds,goalPaceSeconds:previous.paceBasis.goalPaceSeconds});}}
   }
   const spare=Math.max(0,distances[0]-quality.distanceKm);distances[0]=quality.distanceKm;
   // Redistribute only into ordinary easy running that fits its session cap.
@@ -257,7 +275,7 @@ function runningAssessment(c,w=1){
  const runs=distances.map((km,i)=>i===0&&quality?quality:buildRun(i===1&&!taper&&!postRace?'long-run':'easy-run',i===1&&!taper&&!postRace?'Long easy run':'Easy aerobic run',[{label:i===1&&!taper&&!postRace?'Long easy run':'Easy run',distanceKm:km,pace:easy}]));
  const actualKm=Number(runs.reduce((n,r)=>n+r.distanceKm,0).toFixed(3));
  if(requestedKm-actualKm>(revised?.15:Math.max(.5,requestedKm*.10)))warnings.push('Running volume/frequency review: '+actualKm+' km fits the session duration and long-run limits; requested '+Number(requestedKm.toFixed(2))+' km does not. Increase suitable frequency or approve a lower weekly target.');
- const hard=runs.flatMap(r=>r.steps).filter(s=>/Threshold interval/.test(s.label)).reduce((n,s)=>n+s.distanceKm,0);
+ const hard=runs.flatMap(r=>r.steps).filter(isHardStep).reduce((n,s)=>n+s.distanceKm,0);
  if(hard>actualKm*.20+.001)blocking.push('Quality running exceeds the actual weekly intensity budget; coach review required.');
  return {runs,warnings:[...warnings,...blocking],blocking,feasible:!blocking.length,reviewRequired:!!(warnings.length||blocking.length),requestedKm,allocatedKm:actualKm,km:requestedKm,preparationMode:baseBuilding?'base-building':target?'dated-event':'general-development',progressionLimited:requestedKm-actualKm>.15,factor,deload,taper,remaining:until===null?null:until+1,longShare:actualKm?(runs.find(r=>r.role==='long-run')?.distanceKm||0)/actualKm:0,longKm:runs.find(r=>r.role==='long-run')?.distanceKm||0,qualityAllowed};
 }
@@ -798,8 +816,8 @@ function generatedSessions(c,w){
  }
  const dayOrder={Monday:0,Mon:0,Tuesday:1,Tue:1,Wednesday:2,Wed:2,Thursday:3,Thu:3,Friday:4,Fri:4,Saturday:5,Sat:5,Sunday:6,Sun:6};out.sort((a,b)=>(dayOrder[a.day]??7)-(dayOrder[b.day]??7));
  if([3,4].includes(c.runningGuidanceVersion)){
-  const training=out.flatMap(s=>s.runs||[]).filter(r=>r.role!=='race'),total=training.reduce((n,r)=>n+r.distanceKm,0),hard=training.flatMap(r=>r.steps||[]).filter(step=>/Threshold interval/.test(step.label)).reduce((n,step)=>n+step.distanceKm,0);
-  if(hard>total*.20+.001){for(const session of out)for(const run of session.runs||[]){if(run.role!=='quality-run')continue;const p=runningPaces(c);run.role='easy-run';run.name='Easy aerobic run';run.rpe=3.5;run.pace=p?paceText(p.easyLow)+' to '+paceText(p.easyHigh):'Confirm a recent running PB to set pace';run.steps=[{label:'Easy run',distanceKm:run.distanceKm,pace:run.pace}];run.workMinutes=0;if(p){run.minutes=Math.round(run.distanceKm*p.easyHigh/60);run.durationRangeMinutes={min:Math.round(run.distanceKm*p.easyLow/60),max:run.minutes}}run.structure=distanceLabel(run.distanceKm)+' easy running';session.hybridNotes.push('Partial calendar week: quality deferred to preserve mainly easy running.');session.name=session.name.replace('Controlled threshold intervals','Easy aerobic run');}}
+  const training=out.flatMap(s=>s.runs||[]).filter(r=>r.role!=='race'),total=training.reduce((n,r)=>n+r.distanceKm,0),hard=training.flatMap(r=>r.steps||[]).filter(isHardStep).reduce((n,step)=>n+step.distanceKm,0);
+  if(hard>total*.20+.001){for(const session of out)for(const run of session.runs||[]){if(run.role!=='quality-run')continue;const p=runningPaces(c),previousName=run.name;run.role='easy-run';run.name='Easy aerobic run';run.rpe=3.5;run.pace=p?paceText(p.easyLow)+' to '+paceText(p.easyHigh):'Confirm a recent running PB to set pace';run.steps=[{label:'Easy run',distanceKm:run.distanceKm,pace:run.pace}];run.workMinutes=0;if(p){run.minutes=Math.round(run.distanceKm*p.easyHigh/60);run.durationRangeMinutes={min:Math.round(run.distanceKm*p.easyLow/60),max:run.minutes}}run.structure=distanceLabel(run.distanceKm)+' easy running';session.hybridNotes.push('Partial calendar week: quality deferred to preserve mainly easy running.');session.name=session.name.replace(previousName,'Easy aerobic run');delete run.workoutFamily;delete run.libraryVersion;delete run.paceBasis;delete run.purpose;}}
  }
  if(c.sessionNamespace)for(const session of out){session.id=c.sessionNamespace+session.id;session.programmeId=c.programmeId;}
  if(Number(c.runningPaceVersion)>=2)for(const session of out)session.runs=(session.runs||[]).map(run=>repaceThresholdRun(run,c));
