@@ -4,7 +4,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const {normalizeProfile}=require('../src/coach-adapters.js');
 (async()=>{let upgraded=false;const current=path.join(__dirname,'..'),previous=process.env.LHRF_PREVIOUS_ROOT;
  if(!previous)throw Error('Set LHRF_PREVIOUS_ROOT to the pre-extraction Today-fix checkout.');
- const server=http.createServer((req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname,file=path.join(upgraded?current:previous,pathname==='/'?'index.html':pathname);res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.webmanifest')?'application/manifest+json':'text/html');res.end(fs.readFileSync(file))}catch(e){res.statusCode=404;res.end('Not found')}});
+ const server=http.createServer((req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname,file=path.join(upgraded?current:previous,pathname==='/'?'index.html':pathname);res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.webmanifest')?'application/manifest+json':'text/html');res.end(fs.readFileSync(file))}catch(e){res.statusCode=404;res.end('Not found')}});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});
  try{

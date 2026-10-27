@@ -1,0 +1,54 @@
+/* Workout variants retain the shared navy/blue LHRF shell. */
+body[data-workout-kind="strength"] #train{--accent:#729eff;--card:#0c192e;--card2:#11243c;--border:#29476d}
+body[data-workout-kind="run"] #train{--accent:#35c8df;--card:#091d2b;--card2:#0c2938;--border:#24505d}
+body[data-workout-kind] #train>.card,body[data-workout-kind] #liveTrainRoot>.card{border-top:2px solid var(--accent)}
+body[data-workout-kind="run"] #train button:not(.secondary):not(.ghost){background:var(--accent);color:#03222c}
+body[data-workout-kind="strength"] #train button:not(.secondary):not(.ghost){background:var(--accent);color:#07162e}
+body[data-treadmill-focus="true"] #appHeader{display:none}
+body[data-treadmill-focus="true"] main{padding-top:8px}
+body[data-treadmill-focus="true"] #train>h2,body[data-treadmill-focus="true"] #liveTrainRoot>*:not(#liveRunSection),body[data-treadmill-focus="true"] #liveRunSection>*:not(#treadmillControls){display:none!important}
+#treadmillControls{background:linear-gradient(155deg,#0c2637,#071620);border:1px solid #285262;color:#edfaff;padding:18px;border-radius:19px;font-variant-numeric:tabular-nums}
+#treadmillControls [hidden]{display:none!important}
+#treadmillControls .tm-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+#treadmillControls .tm-kicker{font-size:10px;letter-spacing:.15em;font-weight:800;color:#72c7d8}
+#treadmillControls #tmExit{padding:5px 0;font-size:11px;border:0;background:none;color:#a6c7d2}
+#treadmillControls .tm-laprow{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px;color:#b5d5df}
+#tmState{font-size:10px;letter-spacing:.1em;color:#68d8e9}
+#tmStage{font-size:23px;line-height:1.15;margin:8px 0 4px;letter-spacing:-.02em}
+#tmTarget{font-size:12px;color:#a3c6d2;margin:0 0 14px}
+#treadmillControls .tm-distance{text-align:center;padding:2px 0 13px}
+#treadmillControls .tm-distance>span{font-size:10px;letter-spacing:.12em;color:#8eafbd}
+#tmRemaining{font-size:46px;line-height:1.2;font-weight:800;letter-spacing:-.045em;margin:3px 0 8px}
+#treadmillControls .tm-track{height:4px;background:#163847;border-radius:5px;overflow:hidden}
+#tmFill{height:100%;width:0;background:#35c8df;transition:width .3s linear}
+#treadmillControls .tm-metrics{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 13px;background:#0c2230;border:1px solid #1c3c4a;border-radius:13px;overflow:hidden}
+#treadmillControls .tm-metric{padding:10px 12px;min-width:0}
+#treadmillControls .tm-metric:nth-child(odd){border-right:1px solid #1c3c4a}
+#treadmillControls .tm-metric:nth-child(-n+2){border-bottom:1px solid #1c3c4a}
+#treadmillControls .tm-metric span{display:block;font-size:10px;color:#8fafbc;margin-bottom:3px}
+#treadmillControls .tm-metric strong{display:block;font-size:19px;font-weight:750;white-space:nowrap}
+#treadmillControls .tm-next{padding:10px 12px;border-left:2px solid #2b7d91;background:#0a202e;border-radius:0 10px 10px 0;margin-bottom:13px}
+#tmNext{font-size:12px;margin:4px 0 0;color:#d9edf4;line-height:1.4}
+#treadmillControls .tm-speed-label{font-size:10px;color:#a3c6d2;text-align:center;display:block;margin-bottom:6px;letter-spacing:.06em}
+#treadmillControls .tm-speed-controls{display:grid;grid-template-columns:50px minmax(0,1fr) 50px;gap:9px;align-items:center}
+#treadmillControls .tm-speed-controls button{height:48px;font-size:23px;border-radius:12px}
+#tmSpeed{height:48px;font-size:24px;font-weight:750;text-align:center;padding:4px;background:#061721;border-color:#2b5466;color:#f1fbff;appearance:textfield;-moz-appearance:textfield}
+#tmSpeed::-webkit-inner-spin-button{appearance:none}
+#treadmillControls .tm-buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
+#treadmillControls .tm-buttons button{min-height:44px;font-size:13px}
+#tmError:empty{display:none}
+#tmError{font-size:11px;color:#c2e1e9;margin:9px 0 0}
+#treadmillControls .tm-estimate{font-size:10px;text-align:center;color:#82a6b5;margin:9px 0 0}
+body[data-treadmill-focus="true"] #tmIntro{display:none}
+@media(max-height:740px){#treadmillControls{padding:13px}#treadmillControls .tm-top{margin-bottom:7px}#tmStage{font-size:21px}#tmTarget{margin-bottom:8px}#tmRemaining{font-size:39px}#treadmillControls .tm-metric{padding:7px 10px}#treadmillControls .tm-next{margin-bottom:9px}#treadmillControls .tm-buttons{margin-top:9px}}
+/* Scoped overrides for the original app's retained !important visual layer. */
+body[data-workout-kind="run"]{background:radial-gradient(ellipse at 50% 0%,#08232d,#03070e 70%)!important}
+body[data-workout-kind="strength"]{background:radial-gradient(ellipse at 50% 0%,#101d37,#03070e 70%)!important}
+body[data-workout-kind="run"] #train .card{background:linear-gradient(145deg,#0c2432,#071820)!important;border-color:#24515e!important}
+body[data-workout-kind="strength"] #train .card{background:linear-gradient(145deg,#111f38,#091423)!important;border-color:#2a4268!important}
+body[data-workout-kind="run"] #train button:not(.secondary):not(.ghost){background:linear-gradient(180deg,#36c9df,#1295b2)!important}
+body[data-workout-kind="strength"] #train button:not(.secondary):not(.ghost){background:linear-gradient(180deg,#739fff,#3d6dc8)!important}
+body[data-workout-kind="run"] nav.nav button[data-screen].active{border-color:#65d4e5!important;color:#65d4e5!important;background:#0b2935!important}
+body[data-workout-kind="strength"] nav.nav button[data-screen].active{border-color:#8aaaff!important;color:#8aaaff!important;background:#152641!important}
+body[data-workout-kind="run"] #treadmillControls.card{background:linear-gradient(155deg,#0c2637,#071620)!important;border-color:#285262!important;box-shadow:none!important}
+#treadmillControls #tmExit{background:none!important;color:#a6c7d2!important;box-shadow:none!important}
