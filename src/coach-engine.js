@@ -776,6 +776,13 @@ function generatedSessions(c,w){
     const distanceKm=steps.reduce((n,x)=>n+x.distanceKm,0);
     const minutes=Math.round((warmKm+coolKm+(reps-1)*recoveryKm)*(rp?.easyLow||480)/60+reps*workKm*(rp?.threshold||420)/60);
     runs.push({role:'quality-run',name:'Controlled threshold intervals',distanceKm,minutes,rpe:7,pace:threshold,paceRole:'threshold intervals only',steps,structure:`${distanceLabel(warmKm)} easy + ${reps} × ${distanceLabel(workKm)} threshold / ${distanceLabel(recoveryKm)} recovery + ${distanceLabel(coolKm)} easy`,workMinutes:Math.round(reps*workKm*(rp?.threshold||420)/60),reason:distanceGuidance?'One controlled intensity session. Follow the distance and pace for each step; weekly mileage is the sum of prescribed sessions, with no filler cooldown.':template?'One controlled intensity session this week. Warm-up, recoveries and remaining distance stay conversational / Zone 2; pace is secondary to effort.':'Distances are the targets. Pace guides threshold efforts; adjust using RPE.'});
+    // Approved legacy split: vary running without changing the lifting calendar or dose.
+    if(Number(c.runningWorkoutVersion)>=1&&runningLibrary&&rp){
+     const eventKm=({['5k']:5,['10k']:10,half:21.0975,marathon:42.195})[String(c.runGoal).toLowerCase()]||10;
+     const raceSeconds=rp.tenK*Math.pow(eventKm/10,1.06)/eventKm,shortSeconds=rp.tenK*Math.pow(.5,1.06)/5;
+     runs[runs.length-1]=runningLibrary.buildQuality({baseRun:runs[runs.length-1],kind:runningLibrary.selectKind({week:w,goal:c.runGoal,weeksToRace:runWeek.remaining==null?null:runWeek.remaining-1}),thresholdSeconds:rp.threshold,raceSeconds,shortSeconds,goalPaceSeconds:c.runningGoalSeconds?c.runningGoalSeconds/eventKm:null});
+    }
+
    }else{
     const distanceKm=Math.round(perRun*4)/4;
     const duration=Math.round(distanceKm*(rp?.easyLow||480)/60);

@@ -8,7 +8,7 @@ function install(state,config,engineModule,now=new Date().toISOString()){
  next.programmeArchive=[...(next.programmeArchive||[]),archive];
  next.customRoadmap={...JSON.parse(JSON.stringify(config)),approvedAt:now};next.activeCustomWeek=1;next.overrides={};next.decisions=[];
  next.activeSchedule=engineModule.createEngine({data:next}).generatedSessions(next.customRoadmap,1);next.onboardingComplete=true;
- return next;
+ return refreshApprovedRunningProgramme(next,engineModule,now);
 }
 // Repair only future, unfinished running prescriptions; never rebuild lifting or history.
 function refreshRunningGuidance(state,engineModule,now=new Date().toISOString(),liveWorkout=false){
@@ -51,5 +51,33 @@ function refreshApprovedThresholdPaces(state,engineModule,now=new Date().toISOSt
  next.runningPaceArchive=[...(next.runningPaceArchive||[]),{version:1,week,updatedAt:now,approval:'User requested investigation, correction and publication on 26 October 2026',sessions:previous}];
  return next;
 }
-const api={install,refreshRunningGuidance,refreshApprovedThresholdPaces};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeInstall=api;
+// Explicit 27 October approval: refresh this athlete's running only, preserving every log.
+function refreshApprovedRunningProgramme(state,engineModule,now=new Date().toISOString(),liveWorkout=null){
+ const c=state.customRoadmap,revision='2026-10-27-running-v3';
+ if(c?.programmeId!=='november-2026'||c.approvedRunningRevision===revision||String(now).slice(0,10)<'2026-10-27')return state;
+ const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
+ const previousConfig=JSON.parse(JSON.stringify(c));
+ next.customRoadmap={...next.customRoadmap,runningWorkoutVersion:1,runningPaceVersion:2,runningGoalSeconds:3600,approvedRunningRevision:revision,
+  runProfile:{...c.runProfile,distance:5,seconds:1700,time:'28:20',recency:'recent',resultDate:null,effort:'performance',environment:'outdoor',reportedRecency:'Within the last month',confirmedAt:now}};
+ const fresh=engineModule.createEngine({data:next,now:()=>Date.parse(now)}).generatedSessions(next.customRoadmap,week);
+ const monday=new Date(c.startDate+'T12:00:00Z');monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7+(week-1)*7);
+ const today=new Date(now).toLocaleDateString('en-CA',{timeZone:'Europe/London'}),days={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6},previous=[];
+ next.activeSchedule=(state.activeSchedule||[]).map(session=>{
+  if(!(session.runs||[]).length)return session;
+  const offset=days[String(session.day).slice(0,3).toLowerCase()];if(offset===undefined)return session;
+  const date=new Date(monday);date.setUTCDate(date.getUTCDate()+offset);if(date.toISOString().slice(0,10)<today)return session;
+  const sameWeek=x=>Number(x.week||1)===week;
+  const matches=id=>id===session.id||id===session.id+'::run';
+  const complete=(state.completedWorkouts||[]).some(x=>sameWeek(x)&&matches(x.id))||(state.runs||[]).some(x=>sameWeek(x)&&matches(x.sessionId));
+  const active=liveWorkout&&sameWeek(liveWorkout)&&(matches(liveWorkout.id)||liveWorkout.parentId===session.id||liveWorkout.id===session.id+'::strength');
+  if(complete||active)return session;
+  const replacement=fresh.find(x=>x.id===session.id);if(!replacement)return session;
+  previous.push({id:session.id,runs:session.runs,name:session.name});
+  let name=session.name;for(let i=0;i<session.runs.length;i++)if(replacement.runs[i])name=name.replace(session.runs[i].name,replacement.runs[i].name);
+  return {...session,name,runs:replacement.runs};
+ });
+ next.runningProgrammeArchive=[...(next.runningProgrammeArchive||[]),{revision,approvedAt:now,approval:'User explicitly requested redoing the approved programme while preserving logs on 27 October 2026',programme:previousConfig,week,sessions:previous}];
+ return next;
+}
+const api={install,refreshRunningGuidance,refreshApprovedThresholdPaces,refreshApprovedRunningProgramme};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeInstall=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

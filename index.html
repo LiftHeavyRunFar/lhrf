@@ -1183,7 +1183,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   };
  }
  window.refreshApprovedLiveRunning=function(){
-  if(!live||!String(live.id).startsWith('november-2026-')||live.runLogged||live.runEntry||data.customRoadmap?.programmeId!=='november-2026'||Number(data.customRoadmap.runningPaceVersion)<2)return;
+  if(!live||!String(live.id).startsWith('november-2026-')||live.runLogged||live.runEntry||data.customRoadmap?.approvedRunningRevision||data.customRoadmap?.programmeId!=='november-2026'||Number(data.customRoadmap.runningPaceVersion)<2)return;
   const e=coachEngine();if(!e.repaceThresholdRun)return;
   live.runs=(live.runs||[]).map(run=>e.repaceThresholdRun(run,data.customRoadmap));persist();status();
  };
@@ -1493,6 +1493,14 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  const next=LHRFProgrammeInstall.refreshApprovedThresholdPaces(data,LHRFCoach,new Date().toISOString());
  if(next!==data){const previous=data,previousSchedule=schedule;data=next;schedule=next.activeSchedule;if(!save()){data=previous;schedule=previousSchedule;return}populate();refresh();renderPlanDashboard();}
  if(window.refreshApprovedLiveRunning)window.refreshApprovedLiveRunning();
+})();
+(function(){
+ if(!LHRFProgrammeInstall.refreshApprovedRunningProgramme)return;
+ const next=LHRFProgrammeInstall.refreshApprovedRunningProgramme(data,LHRFCoach,new Date().toISOString(),window.LHRFLive?.get?.());
+ if(next===data)return;
+ const previous=data,previousSchedule=schedule;data=next;schedule=next.activeSchedule;
+ if(!save()){data=previous;schedule=previousSchedule;return}
+ populate();refresh();renderPlanDashboard();
 })();
 (async function(){
  const requested=new URLSearchParams(location.search).get('programme');
