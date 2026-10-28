@@ -38,10 +38,10 @@ function mount({getData,commit}){
     for(const [value,label]of options){const o=document.createElement('option');o.value=value;o.textContent=label;select.append(o)}select.disabled=item.duplicate;row.append(select);
     if(item.run.splits.length){const d=document.createElement('details'),s=document.createElement('summary');s.textContent='Recorded splits ('+item.run.splits.length+')';d.append(s);for(const split of item.run.splits){const p=document.createElement('p');p.textContent=split.km.toFixed(2)+' km · '+split.min.toFixed(1)+' min'+(split.avgHr?' · '+split.avgHr+' bpm average':'');d.append(p)}row.append(d)}
     list.append(row);
-   });save.hidden=!items.length;status.textContent=items.length+' runs received. Review matches before saving. Your programme and bench work stay unchanged.';source?.close();
+   });save.hidden=false;status.textContent=items.length+' runs received. Review matches before saving. Your programme and bench work stay unchanged.';source?.close();
   }catch(e){status.textContent=e.message;}
  });
- save.onclick=()=>{if(!pending)return;try{const choices=items.map((item,i)=>({run:item.run,action:list.querySelector('[data-import-index="'+i+'"]').value}));const result=mergeRuns(getData(),choices);if(!commit(result.state))throw Error('Could not save. Existing records are unchanged.');status.textContent=result.added+' runs saved; '+result.linked+' existing logs updated with Garmin details.';save.hidden=true;pending=null;list.replaceChildren();}catch(e){status.textContent=e.message}};
+ save.onclick=()=>{if(!pending)return;try{const choices=items.map((item,i)=>({run:item.run,action:list.querySelector('[data-import-index="'+i+'"]').value}));const result=mergeRuns(getData(),choices);result.state.garminSync={savedAt:new Date().toISOString(),start:pending.start||null,end:pending.end||null,truncated:pending.truncated===true};if(!commit(result.state))throw Error('Could not save. Existing records are unchanged.');status.textContent=result.added+' runs saved; '+result.linked+' existing logs updated with Garmin details.';save.hidden=true;pending=null;list.replaceChildren();}catch(e){status.textContent=e.message}};
 }
 const api={BRIDGE,validatePayload,reviewRuns,mergeRuns,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFGarminImport=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
