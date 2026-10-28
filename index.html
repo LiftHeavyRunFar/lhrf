@@ -1150,7 +1150,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   }
   live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,week:Number(data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
   if(live.runLogged&&live.runEntry){data.runs=data.runs||[];data.runs.push({date:stamp,km:live.runEntry.km,min:live.runEntry.min,rpe:live.runEntry.rpe,type:live.runs?.[0]?.role||'run',sessionId:live.id,session:live.name,week:Number(data.activeCustomWeek)||1,notes:note})}
-  data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,parentId:live.parentId||null,component:live.component||null,name:live.name,day:live.day,date:stamp,week:data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged});
+  data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,parentId:live.parentId||null,component:live.component||null,name:live.name,day:live.day,date:stamp,week:data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged,notes:note,prescription:JSON.parse(JSON.stringify({ex:live.ex,runs:live.runs||[]}))});
   const finishedSession={id:live.id,name:live.name,week:Number(data.activeCustomWeek)||1};
   save();live=null;persist();clearRunningToolsSelection();status();populate();refresh();go('train');showLiveFeedback(finishedSession);
 
@@ -1521,4 +1521,4 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  };
 })();
 </script>
-<script src="./src/workout-tools.js"></script><script src="./src/garmin-import.js"></script><script>LHRFGarminImport.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script></body></html>
+<script src="./src/workout-tools.js"></script><script src="./src/garmin-import.js"></script><script>LHRFGarminImport.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/training-review.js"></script><script>LHRFTrainingReview.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script></body></html>
