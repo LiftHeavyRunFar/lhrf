@@ -445,7 +445,63 @@ const accessoryAlternatives={
 
 function accessoryPrefs(){return data.accessoryPreferences||{}}
 
-function accessoryNames(){return [...new Set(Object.values(accessoryPools).flat(2).map(x=>x.name))].sort()}
+// Stable within each block; different supporting jobs across the three bench days.
+const benchAccessoryRoles={
+ volume:[
+  {purpose:'Incline pressing support',kind:'press',sets:2,min:8,max:10,names:['Incline dumbbell press','Low-incline dumbbell press','Dumbbell floor press']},
+  {purpose:'Supported horizontal pulling',kind:'back',sets:3,min:10,max:12,names:['Chest-supported row','One-arm dumbbell row','Seated cable row']},
+  {purpose:'Lateral shoulder development',kind:'shoulder',sets:2,min:12,max:15,names:['Dumbbell lateral raise','Cable lateral raise','Machine lateral raise']}
+ ],
+ heavy:[
+  {purpose:'Vertical pulling and upper-back support',kind:'back',sets:3,min:8,max:10,names:['Lat pulldown','Neutral-grip lat pulldown','Assisted pull-up']},
+  {purpose:'Triceps support without another heavy press',kind:'triceps',sets:2,min:10,max:12,names:['Triceps pushdown','Overhead triceps extension','Single-arm cable pushdown']},
+  {purpose:'Rear-delt development',kind:'shoulder',sets:2,min:12,max:15,names:['Reverse pec deck','Rear-delt dumbbell fly','Cable rear-delt fly']}
+ ],
+ speed:[
+  {purpose:'Controlled shoulder pressing',kind:'press',sets:2,min:8,max:10,names:['Seated dumbbell shoulder press','Machine shoulder press','Seated neutral-grip dumbbell press']},
+  {purpose:'Horizontal pulling with a different setup',kind:'back',sets:3,min:10,max:12,names:['Seated cable row','Chest-supported cable row','One-arm cable row']},
+  {purpose:'Rear-shoulder and scapular control',kind:'shoulder',sets:2,min:12,max:15,names:['Face pull','Cable rear-delt fly','Reverse pec deck']}
+ ]
+};
+function accessoryNames(){return [...new Set([...Object.values(accessoryPools).flat(2).map(x=>x.name),...Object.values(benchAccessoryRoles).flat().flatMap(x=>x.names)])].sort()}
+
+function benchAccessorySelection(c,w,role,day,deload){
+ const slots=benchAccessoryRoles[role];if(!slots)return [];
+ const prefs=accessoryPrefs(),rotation=Math.floor((w-1)/5),used=new Set(),out=[];
+ let daysOut=null;
+ if(c.startDate&&c.strengthTargetDate){
+  const date=new Date(c.startDate+'T12:00:00Z'),offset=['mon','tue','wed','thu','fri','sat','sun'].indexOf(String(day).slice(0,3).toLowerCase());
+  date.setUTCDate(date.getUTCDate()-(date.getUTCDay()+6)%7+(w-1)*7+offset);
+  daysOut=Math.round((Date.parse(c.strengthTargetDate+'T12:00:00Z')-date)/86400000);
+ }
+ if(daysOut!==null&&daysOut<=5)return [];
+ const close=daysOut!==null&&daysOut<=10;
+ for(const slot of slots){
+  if(close&&slot.kind==='press')continue;
+  const choices=slot.names.map((_,i)=>slot.names[(i+rotation)%slot.names.length]);
+  const allowed=choices.filter(n=>!['avoid','unavailable'].includes(prefs[n])&&!used.has(n));
+  const name=allowed.find(n=>prefs[n]==='prefer')||allowed[0];if(!name)continue;used.add(name);
+  const target=deload||close?6:daysOut!==null&&daysOut<=14?6.5:7;
+  const sets=deload?1:close?(slot.kind==='back'?2:1):slot.sets;
+  const last=(data.sets||[]).filter(x=>x.exercise===name&&+x.weight>0&&+x.reps>0&&+x.rpe>=1&&+x.rpe<=10).at(-1);
+  const weight=last?(+last.reps>=slot.max&&+last.rpe<=target?Math.round(+last.weight*1.025*2)/2:+last.weight):0;
+  const range=slot.min+'–'+slot.max;
+  out.push({name,sets,reps:slot.min,weight,rpe:target,range,purpose:slot.purpose,
+   why:slot.purpose+'. Keep this movement through the block; work within '+range+' reps at the target RPE. '+(last?'Suggested load uses this exact exercise’s logged history.':'Choose the first working load by RPE; no load is borrowed from bench or another variation.')+(close?' Reduced supporting work near competition.':'')});
+ }
+ return out;
+}
+
+function benchOptionalExtras(w,required){
+ const prefs=accessoryPrefs(),used=new Set(required.map(e=>accessoryFamily(e[0]))),rotation=Math.floor((w-1)/5),out=[];
+ const pools=[['Cable biceps curl','Hammer curl','Preacher curl'],['Rope triceps pushdown','Overhead cable triceps extension','Single-arm cable pushdown','Dumbbell lateral raise','Cable lateral raise','Cable crunch']];
+ for(const pool of pools){
+  const choices=pool.map((_,i)=>pool[(i+rotation)%pool.length]);
+  const name=choices.find(n=>!['avoid','unavailable'].includes(prefs[n])&&!used.has(accessoryFamily(n)));if(!name)continue;
+  used.add(accessoryFamily(name));out.push([name,2,12,0,7,{role:'optional',category:'optional',optional:true}]);
+ }
+ return out;
+}
 
 // Optional isolation work must add a purpose, not repeat a required attachment variant.
 // This deliberately leaves required exercises and main-lift top/back-off pairs intact.
@@ -453,6 +509,7 @@ function accessoryFamily(name){
  const n=String(name||'').toLowerCase().replace(/[-_]/g,' ').replace(/\s+/g,' ').trim();
  if(/pushdown|triceps? extension|skull ?crusher/.test(n))return 'elbow-extension';
  if(/biceps? curl|hammer curl|preacher curl|incline dumbbell curl/.test(n))return 'elbow-flexion';
+ if(/lateral raise/.test(n))return 'shoulder-abduction';
  return n;
 }
 
@@ -770,17 +827,20 @@ function generatedSessions(c,w){
    if(useVariation){const why=selectedVariation.why+' '+(recent?'Suggested load uses previous exercise-specific history; verify by warm-ups.':'First exposure: discover working load through warm-ups at target RPE.');variationNotes.push(exerciseName+': '+why)}
    // Two optional, low-priority isolation slots rotate by training block.
    // Their completion is never required to finish a workout or assess adherence.
-   if(!beginnerPolicy(c)&&!maintenancePolicy(c)&&lift==='Bench'&&!taper&&!(candidate&&vb.deload)&&(!exposure||exposure.role!=='speed')){
+   const variedAccessories=!!exposure&&c.benchAccessoryVersion===1;
+   if(!beginnerPolicy(c)&&!maintenancePolicy(c)&&lift==='Bench'&&!taper&&!(candidate&&vb.deload)&&(!exposure||exposure.role!=='speed')&&!variedAccessories){
     const extras=[['Cable biceps curl','Hammer curl','Preacher curl','Incline dumbbell curl'],['Rope triceps pushdown','Overhead cable triceps extension','Single-arm cable pushdown','Dumbbell triceps extension']];
     const rotation=Math.floor((w-1)/4)%4;
     for(const pool of extras){const name=pool[rotation],entry=[name,2,12,0,7,{role:'optional',category:'optional',optional:true}];if(Number(c.exerciseSelectionVersion)>=2)optionalExercises.push(entry);else if(!ex.some(e=>e[0]===name))ex.push(entry);}
    }
    // Accessories rotate by block, respect preferences, and use exercise-specific RPE loading.
    let accessories=accessorySelection(lift,w,c.weeks,secondary,c);
-   if(exposure)accessories=taper||exposure.role==='speed'?[]:accessories.slice(0,2).map(a=>({...a,sets:Math.min(2,a.sets),rpe:Math.min(7,a.rpe)}));
+   if(variedAccessories)accessories=taper?[]:benchAccessorySelection(c,w,exposure.role,slot.day,vb.deload);
+   else if(exposure)accessories=taper||exposure.role==='speed'?[]:accessories.slice(0,2).map(a=>({...a,sets:Math.min(2,a.sets),rpe:Math.min(7,a.rpe)}));
    if(beginnerPolicy(c)||maintenancePolicy(c))accessories=accessories.filter(a=>isTertiaryExercise(a.name)).slice(0,1).map(a=>({...a,sets:1,rpe:6}));
    if(light)accessories=accessories.filter(a=>isTertiaryExercise(a.name)).slice(0,1).map(a=>({...a,sets:Math.min(2,a.sets),rpe:6}));
-   for(const acc of accessories){if(ex.some(e=>e[0]===acc.name))continue;ex.push([acc.name,acc.sets,acc.reps,acc.weight,acc.rpe]);variationNotes.push(acc.name+' ('+acc.range+' reps): '+acc.why)}
+   for(const acc of accessories){if(ex.some(e=>e[0]===acc.name))continue;const entry=[acc.name,acc.sets,acc.reps,acc.weight,acc.rpe];if(variedAccessories)entry.push({role:'accessory',category:'accessory',benchDayRole:exposure.role,purpose:acc.purpose,repRange:acc.range,cue:acc.why});ex.push(entry);variationNotes.push(acc.name+' ('+acc.range+' reps): '+acc.why)}
+   if(variedAccessories&&!taper&&!vb.deload&&accessories.every(a=>a.rpe>6))optionalExercises.push(...benchOptionalExtras(w,ex));
   }else{
    const isLongRun=/Long run|Longer easy aerobic/.test(item.detail);
    if(runningQueue){
