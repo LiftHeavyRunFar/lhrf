@@ -90,6 +90,9 @@ jobs:
       - name: Test install icons and approved programme activation
         if: ${{ !cancelled() }}
         run: node tests/release.browser.cjs
+      - name: Test approved bench roles and Friday live workout
+        if: ${{ !cancelled() }}
+        run: node tests/bench-exposure.browser.cjs
       - name: Prepare pre-extraction PWA fixture
         if: ${{ !cancelled() }}
         run: |

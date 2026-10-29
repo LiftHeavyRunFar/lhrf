@@ -623,6 +623,44 @@ function selectTrainingFramework(c){
  };
 }
 
+// Explicit opt-in: three bench exposures have different jobs, independent of phase labels.
+// Percentages are starting suggestions; effort and clean competition technique govern the load.
+function benchExposure(c,w,occurrence,day,eventWeek,baseline,deload){
+ if(c.benchExposureVersion!==1||Number(c.bench)!==3||beginnerPolicy(c)||maintenancePolicy(c))return null;
+ const role=['volume','heavy','speed'][occurrence];if(!role)return null;
+ const left=eventWeek===null?null:eventWeek-w;
+ let daysOut=null;
+ if(c.startDate&&c.strengthTargetDate){
+  const date=new Date(c.startDate+'T12:00:00Z'),offset=['mon','tue','wed','thu','fri','sat','sun'].indexOf(String(day).slice(0,3).toLowerCase());
+  date.setUTCDate(date.getUTCDate()-(date.getUTCDay()+6)%7+(w-1)*7+offset);
+  daysOut=Math.round((Date.parse(c.strengthTargetDate+'T12:00:00Z')-date)/86400000);
+ }
+ const meta={benchRole:role,competition:true,baseline};
+ const entry=(sets,reps,pct,rpe,kind)=>['Bench',sets,reps,baseline?roundLoad(baseline*pct):0,rpe,{...meta,role:kind,category:'primary'}];
+ if(daysOut!==null&&daysOut<3)return {role,ex:[],note:'No bench training in the final two days or after the competition.'};
+ if(left===0){meta.benchRole='technique';return {role:'technique',ex:[entry(2,2,.60,5.5,'straight')],note:'Competition-week technique only: easy paused doubles; no heavy single or accessories.'};}
+ if(deload)return {role,ex:[entry(2,3,.60,6,'straight')],note:'Recovery week: reduced bench work; resume distinct exposure roles after recovery.'};
+ const near=left!==null&&left>=1&&left<=4;
+ if(role==='heavy'){
+  const pct=near?({4:.875,3:.89,2:.90,1:.925}[left]):.825;
+  const top=entry(1,1,pct,near?(left<=2?8:7.5):7,'top');
+  const back=entry(near&&left<=2?2:3,near&&left<=2?2:3,near?(left===1?.75:left===2?.78:.75):.70,7,'backoff');
+  back[5].topIndex=0;
+  back[5].backoffProfile={backReps:back[2],backRpe:back[4],minDrop:.12,maxDrop:.22,fatigue:.025};
+  back[3]=phaseBackoffLoad(top[3],1,top[4],back[5].backoffProfile);
+  return {role,ex:[top,back],note:'Heavy competition practice: paused single, commands and repeatable setup. Warm-ups govern the suggested load; cap at the target RPE, no grinders or max testing.'};
+ }
+ if(role==='volume'){
+  const reps=near?(left===1?3:left===2?4:5):5,sets=near&&left===1?2:3;
+  const top=entry(1,reps,near&&left<=2?.75:.725,7,'top'),back=entry(sets,reps,near&&left===1?.65:.675,6.5,'backoff');
+  back[5].topIndex=0;
+  back[5].backoffProfile={backReps:back[2],backRpe:back[4],minDrop:.06,maxDrop:.14,fatigue:.025};
+  back[3]=phaseBackoffLoad(top[3],reps,top[4],back[5].backoffProfile);
+  return {role,ex:[top,back],note:'Volume: controlled paused competition bench, leaving repetitions in reserve. Volume decreases towards the meet; account for any running on the same day.'};
+ }
+ return {role,ex:[entry(near&&left===1?4:6,2,.55,5.5,'straight')],note:'Speed / technique: competition setup and pause, then accelerate each double. Reduce load or end the work when speed or technique clearly deteriorates; do not turn this into another heavy session.'};
+}
+
 function generatedSessions(c,w){
  const strengthEventWeek=c.strengthTargetDate&&c.startDate?Math.max(1,Math.floor((Date.parse(c.strengthTargetDate+'T12:00:00')-(Date.parse(c.startDate+'T12:00:00')-((new Date(c.startDate+'T12:00:00').getDay()+6)%7)*86400000))/604800000)+1):null;
  const strengthWeeks=strengthEventWeek||c.weeks;
@@ -668,7 +706,8 @@ function generatedSessions(c,w){
    const nearBenchMeet=lift==='Bench'&&strengthEventWeek&&weeksToStrengthEvent!==null&&weeksToStrengthEvent>=0&&weeksToStrengthEvent<=6;
    // Within six weeks of a bench meet, the first two weekly exposures must
    // practise the competition lift; only the third may use a variation.
-   const competitionBenchExposure=nearBenchMeet&&occurrence<2;
+   const rolePolicy=lift==='Bench'&&c.benchExposureVersion===1&&Number(c.bench)===3&&!beginnerPolicy(c)&&!maintenancePolicy(c)&&!light;
+   const competitionBenchExposure=(nearBenchMeet&&occurrence<2)||rolePolicy;
    const useVariation=!beginnerPolicy(c)&&!maintenancePolicy(c)&&secondary&&!taper&&!competitionBenchExposure&&!(strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench');const exerciseName=useVariation?selectedVariation.name:lift;
    const variationSets=useVariation?Math.max(1,sets-(phase==='Specificity'?1:0)):sets;
    const variationReps=useVariation?(phase==='Foundation'?6:phase==='Development'?5:phase==='Specificity'?3:reps):reps;
@@ -689,7 +728,14 @@ function generatedSessions(c,w){
    const peakPractice=!!strengthEventWeek&&w===strengthEventWeek-1&&lift==='Bench'&&(slot.day===peakBenchDay||slot.day.slice(0,3)===peakBenchDay?.slice(0,3));
     const requestedTop=candidate&&c.topSetFirst&&lift==='Bench';
     const topEligible=!light&&!beginnerPolicy(c)&&!maintenancePolicy(c)&&((requestedTop&&!vb.deload&&!taper)||(primary&&(strengthBlock||(weeksToStrengthEvent!==null&&weeksToStrengthEvent>0&&weeksToStrengthEvent<=3))&&!vb.deload&&!taper)||peakPractice);
-   if(light){
+   const exposure=rolePolicy?benchExposure(c,w,occurrence,slot.day,strengthEventWeek,baseline,vb.deload):null;
+   if(exposure){
+    if(!exposure.ex.length)continue;
+    const start=ex.length;
+    exposure.ex[0][5].cue=exposure.note;
+    for(const e of exposure.ex){if(e[5].topIndex!==undefined)e[5].topIndex+=start;ex.push(e);}
+    variationNotes.push(exposure.note);
+   }else if(light){
     ex.push([exerciseName,vb.deload||taper?1:2,3,baseline?roundLoad(baseline*.55):0,5.5,{role:'straight',category:'secondary',baseline,light:true}]);
     variationNotes.push(exerciseName+': light technique work, capped at RPE 5.5; no heavy top set.');
    }else if(beginnerPolicy(c)||maintenancePolicy(c)){
@@ -724,13 +770,14 @@ function generatedSessions(c,w){
    if(useVariation){const why=selectedVariation.why+' '+(recent?'Suggested load uses previous exercise-specific history; verify by warm-ups.':'First exposure: discover working load through warm-ups at target RPE.');variationNotes.push(exerciseName+': '+why)}
    // Two optional, low-priority isolation slots rotate by training block.
    // Their completion is never required to finish a workout or assess adherence.
-   if(!beginnerPolicy(c)&&!maintenancePolicy(c)&&lift==='Bench'&&!taper&&!(candidate&&vb.deload)){
+   if(!beginnerPolicy(c)&&!maintenancePolicy(c)&&lift==='Bench'&&!taper&&!(candidate&&vb.deload)&&(!exposure||exposure.role!=='speed')){
     const extras=[['Cable biceps curl','Hammer curl','Preacher curl','Incline dumbbell curl'],['Rope triceps pushdown','Overhead cable triceps extension','Single-arm cable pushdown','Dumbbell triceps extension']];
     const rotation=Math.floor((w-1)/4)%4;
     for(const pool of extras){const name=pool[rotation],entry=[name,2,12,0,7,{role:'optional',category:'optional',optional:true}];if(Number(c.exerciseSelectionVersion)>=2)optionalExercises.push(entry);else if(!ex.some(e=>e[0]===name))ex.push(entry);}
    }
    // Accessories rotate by block, respect preferences, and use exercise-specific RPE loading.
    let accessories=accessorySelection(lift,w,c.weeks,secondary,c);
+   if(exposure)accessories=taper||exposure.role==='speed'?[]:accessories.slice(0,2).map(a=>({...a,sets:Math.min(2,a.sets),rpe:Math.min(7,a.rpe)}));
    if(beginnerPolicy(c)||maintenancePolicy(c))accessories=accessories.filter(a=>isTertiaryExercise(a.name)).slice(0,1).map(a=>({...a,sets:1,rpe:6}));
    if(light)accessories=accessories.filter(a=>isTertiaryExercise(a.name)).slice(0,1).map(a=>({...a,sets:Math.min(2,a.sets),rpe:6}));
    for(const acc of accessories){if(ex.some(e=>e[0]===acc.name))continue;ex.push([acc.name,acc.sets,acc.reps,acc.weight,acc.rpe]);variationNotes.push(acc.name+' ('+acc.range+' reps): '+acc.why)}
@@ -799,7 +846,7 @@ function generatedSessions(c,w){
   const hybridNotes=broaderPolicy(c)?plan.warnings.filter(x=>x.startsWith('Could not schedule')||x.startsWith('Fixed ')):[];
   if(runs.length){const rw=hybridRunWeek(c,w);hybridNotes.push(...rw.warnings);if(rw.deload)hybridNotes.push('Running recovery week: reduced running volume.');if(rw.taper)hybridNotes.push('Running event taper: reduced running volume.');}
   if(ex.some(e=>/Squat|Deadlift/.test(e[0]))&&runs.some(r=>r.rpe>=7))hybridNotes.push('Hard running with lower-body lifting: consider moving the quality run or reducing its intensity.');
-  if([3,4].includes(c.runningGuidanceVersion)&&!ex.length&&!runs.length)continue;
+  if(([3,4].includes(c.runningGuidanceVersion)||c.benchExposureVersion===1)&&!ex.length&&!runs.length)continue;
   out.push({id,day:slot.day,name,desc:reason,hybridNotes,variationNotes,ex,run:!ex.length&&runs.length>0,runs,reason,week:w,phase});
  }
  // Replace ordinary training on the exact target dates, using Monday-anchored calendar weeks.
