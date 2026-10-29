@@ -1038,7 +1038,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    const completedSets=Array.from({length:e[1]},(_,j)=>live.entries[i+'_'+j]?.done).filter(Boolean).length;
    if(!completedSets&&redundantOptionalExercise(e,live.ex))return;
    const d=document.createElement('details');d.className='live-ex';d.open=i===expanded;
-   d.innerHTML=`<summary><span style="color:var(--accent)">${completedSets===e[1]?'✓':'○'}</span><span class="ex-text"><strong>${esc(e[5]?.role==='top'?'TOP SET · ':e[5]?.role==='backoff'?'BACK-OFF · ':'')}${esc(e[0])}</strong><small>${e[5]?.optional?'OPTIONAL · ':''}${e[1]} × ${esc(e[2])} · target RPE ${esc(e[4])}${e[3]>0?' · '+esc(e[3])+' kg suggested':''}</small></span><span class="live-status">${completedSets}/${e[1]}</span><span class="muted">⌄</span></summary><div class="ex-content"><div id="liveSets_${i}"></div></div>`;
+   d.innerHTML=`<summary><span style="color:var(--accent)">${completedSets===e[1]?'✓':'○'}</span><span class="ex-text"><strong>${esc(e[5]?.role==='top'?'TOP SET · ':e[5]?.role==='backoff'?'BACK-OFF · ':'')}${esc(e[0])}</strong><small>${e[5]?.optional?'OPTIONAL · ':''}${e[1]} × ${esc(e[2])} · target RPE ${esc(e[4])}${e[3]>0?' · '+esc(e[3])+' kg suggested':''}</small></span><span class="live-status">${completedSets}/${e[1]}</span><span class="muted">⌄</span></summary><div class="ex-content">${e[5]?.cue?'<p class="muted small">'+esc(e[5].cue)+'</p>':''}<div id="liveSets_${i}"></div></div>`;
    d.addEventListener('toggle',()=>{if(d.open){expanded=i;root.querySelectorAll('details').forEach(other=>{if(other!==d)other.open=false})}});
    root.appendChild(d);
    const rows=d.querySelector('#liveSets_'+i);
@@ -1106,7 +1106,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const old=document.getElementById('livePreview');if(old)old.remove();
   const dialog=document.createElement('div');dialog.id='livePreview';dialog.className='card';dialog.style.cssText='position:fixed;z-index:30;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));max-width:540px;margin:auto;box-shadow:0 0 0 200vmax #0009;max-height:75vh;overflow:auto';
   const eventInfo=session.eventDate?'<p class="muted small">Target event · '+esc(session.eventDate)+(session.eventType==='running'&&data.customRoadmap?.runGoal==='10k'?' · 10 km':'')+'. '+(session.runs?.length?'Follow the race distance and pace below.':'Event information only; this is not a training workout.')+'</p>':'';
-  const exercises=(session.ex||[]).filter(e=>!redundantOptionalExercise(e,session.ex)).map(e=>`<div class="entry">${esc(e[5]?.role==='top'?'TOP SET · ':e[5]?.role==='backoff'?'BACK-OFF · ':'')}${esc(e[0])} <span class="muted">· ${e[1]} × ${esc(e[2])} · RPE ${esc(e[4])} · ${e[3]>0?e[3]+' kg':'load by RPE'}</span></div>`).join('')+(session.runs||[]).map(r=>`<div class="entry"><strong>THEN RUN · ${esc(r.name)}</strong></div>${runStepsHtml(r)}`).join('');
+  const exercises=(session.ex||[]).filter(e=>!redundantOptionalExercise(e,session.ex)).map(e=>`<div class="entry">${esc(e[5]?.role==='top'?'TOP SET · ':e[5]?.role==='backoff'?'BACK-OFF · ':'')}${esc(e[0])}${e[5]?.benchRole?' · '+esc(e[5].benchRole.toUpperCase()):''} <span class="muted">· ${e[1]} × ${esc(e[2])} · RPE ${esc(e[4])} · ${e[3]>0?e[3]+' kg':'load by RPE'}</span>${e[5]?.cue?'<p class="muted small">'+esc(e[5].cue)+'</p>':''}</div>`).join('')+(session.runs||[]).map(r=>`<div class="entry"><strong>THEN RUN · ${esc(r.name)}</strong></div>${runStepsHtml(r)}`).join('');
   dialog.innerHTML=`<div class="row"><h2 style="margin:0">${esc(session.name)}</h2><button class="ghost" style="padding:7px" onclick="document.getElementById('livePreview').remove()">✕</button></div><p class="muted small">${esc(session.day)} · ${esc((planned?.date||scheduledDate(session))?.toLocaleDateString('en-GB',{day:'numeric',month:'short'})||'')} · ${planned?'Week '+planned.week+' · Future preview':sessionCompleted(session)?'✓ Completed':'Preview only'}</p>${eventInfo}${exercises||(!session.eventDate?'<p class="muted">Running session</p>':'')}<div class="live-actions" style="margin-top:14px"><button id="previewStart">Start workout</button><button class="secondary" id="previewClose">Close</button></div>`;
   dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
   document.body.appendChild(dialog);
@@ -1498,6 +1498,14 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 (function(){
  if(!LHRFProgrammeInstall.refreshApprovedRunningProgramme)return;
  const next=LHRFProgrammeInstall.refreshApprovedRunningProgramme(data,LHRFCoach,new Date().toISOString(),window.LHRFLive?.get?.());
+ if(next===data)return;
+ const previous=data,previousSchedule=schedule;data=next;schedule=next.activeSchedule;
+ if(!save()){data=previous;schedule=previousSchedule;return}
+ populate();refresh();renderPlanDashboard();
+})();
+(function(){
+ if(!LHRFProgrammeInstall.refreshApprovedBenchProgramme)return;
+ const next=LHRFProgrammeInstall.refreshApprovedBenchProgramme(data,LHRFCoach,new Date().toISOString(),window.LHRFLive?.get?.());
  if(next===data)return;
  const previous=data,previousSchedule=schedule;data=next;schedule=next.activeSchedule;
  if(!save()){data=previous;schedule=previousSchedule;return}

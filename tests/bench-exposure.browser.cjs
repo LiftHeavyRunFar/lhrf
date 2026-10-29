@@ -1,0 +1,29 @@
+// Synthetic installed-athlete regression: Friday 6am upgrade, preview, readiness and live logging.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const coach=require('../src/coach-engine'),install=require('../src/programme-install'),base=require('../programmes/november-2026.json');
+const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{
+ const context=await browser.newContext({viewport:{width:390,height:844},timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+ await page.clock.install({time:new Date('2026-10-30T05:55:00Z')});
+ const c=install.refreshApprovedRunningProgramme({customRoadmap:base,activeSchedule:[]},coach,'2026-10-27T12:00:00Z').customRoadmap;
+ const fixture={onboardingComplete:true,customRoadmap:c,activeCustomWeek:1,activeSchedule:coach.createEngine().generatedSessions(c,1),sets:[{date:'2026-10-27T07:00:00Z',sessionId:'november-2026-custom-tue::strength',exercise:'Bench',weight:115,reps:5,rpe:7,week:1}],runs:[],completedWorkouts:[{id:'november-2026-custom-tue::strength',week:1}],checkins:[],decisions:[],overrides:{},plannedRuns:[],goals:{strength:'Bench',running:'10K PB'},sentinel:'preserve'};
+ await page.route('http://bench.test/**',route=>{const file=new URL(route.request().url()).pathname;return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file==='/'?'index.html':file)),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':'text/html'})});
+ await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture});
+ await page.goto('http://bench.test/');
+ const state=()=>page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);
+ const upgraded=await state(),fri=upgraded.activeSchedule.find(s=>s.day==='Fri');
+ for(const k of ['sets','runs','completedWorkouts','onboardingComplete','sentinel'])assert.deepEqual(upgraded[k],fixture[k]);
+ assert.deepEqual(upgraded.activeSchedule.find(s=>s.day==='Tue'),fixture.activeSchedule.find(s=>s.day==='Tue'));
+ assert.equal(await page.locator('#firstRun').isVisible(),false);assert.equal(fri.ex[0][2],1);assert.equal(fri.ex[0][3],140);
+ await page.evaluate(id=>openWorkout(id),fri.id);
+ const preview=await page.locator('#livePreview').innerText();assert.match(preview,/HEAVY/);assert.match(preview,/140 kg/);assert.match(preview,/paused single/);
+ await page.locator('#previewStart').click();await page.getByRole('button',{name:'Review readiness',exact:true}).click();await page.locator('#readinessContinue').click();
+ assert.match(await page.locator('#liveTrainRoot').innerText(),/Heavy competition practice/);
+ const top=page.locator('.live-ex').first();await top.locator('[data-field="weight"]').first().fill('140');await top.locator('[data-field="rpe"]').first().fill('7.5');await top.locator('.set-row button, .live-set button').first().click();
+ const draft=await page.evaluate(LIVE=>JSON.parse(localStorage.getItem(LIVE)),LIVE);assert.equal(draft.entries['0_0'].done,true);assert.ok(draft.ex[1][3]<140);assert.ok(draft.ex[1][3]>0);
+ await page.reload();assert.deepEqual((await state()).sets,fixture.sets);const restored=await page.evaluate(LIVE=>JSON.parse(localStorage.getItem(LIVE)),LIVE);assert.deepEqual(restored.entries,draft.entries);assert.deepEqual(restored.ex,draft.ex);
+ assert.deepEqual(errors,[]);console.log('PASS Friday upgrade: history preserved, 140kg single previewed, readiness applied, top set logged and draft restored.');
+ await context.close();
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

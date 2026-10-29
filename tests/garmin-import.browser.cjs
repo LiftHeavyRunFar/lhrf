@@ -1,5 +1,5 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
-(async()=>{const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});try{
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{
  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const KEY='lhrf_beta_v1118_clean',config=require('../programmes/november-2026.json'),fixture={customRoadmap:config,activeCustomWeek:1,activeSchedule:require('../src/coach-engine').createEngine().generatedSessions(config,1),sets:[{exercise:'Bench',weight:120,reps:3}],runs:[],checkins:[],decisions:[],overrides:{},completedWorkouts:[],plannedRuns:[],goals:{},onboardingComplete:true,sentinel:'preserve'};
  await page.route('https://liftheavyrunfar.github.io/lhrf/**',route=>{const file=new URL(route.request().url()).pathname.replace('/lhrf/','');route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file||'index.html')),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'})});
