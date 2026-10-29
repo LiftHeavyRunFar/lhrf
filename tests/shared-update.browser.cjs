@@ -6,7 +6,7 @@ const {normalizeProfile}=require('../src/coach-adapters.js');
  if(!previous)throw Error('Set LHRF_PREVIOUS_ROOT to the pre-extraction Today-fix checkout.');
  const server=http.createServer((req,res)=>{try{const pathname=new URL(req.url,'http://localhost').pathname,file=path.join(upgraded?current:previous,pathname==='/'?'index.html':pathname);res.setHeader('Cache-Control','no-store');res.setHeader('Content-Type',file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.webmanifest')?'application/manifest+json':'text/html');res.end(fs.readFileSync(file))}catch(e){res.statusCode=404;res.end('Not found')}});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
- const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});
+ let browser;try{browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']})}catch(e){await new Promise(resolve=>server.close(resolve));throw e}
  try{
   const c=normalizeProfile(require('./athletes/profiles.cjs')[0].config),ex=[['Bench',1,3,120,8,{role:'top',category:'primary'}]];
   const fixture={onboardingComplete:true,customRoadmap:c,activeCustomWeek:1,activeSchedule:[{id:'saved-bench',day:'Tuesday',name:'Saved programme',ex,runs:[]}],sets:[],runs:[],checkins:[],plannedRuns:[],goals:{strength:'Bench',running:'10K PB'},decisions:[],overrides:{},completedWorkouts:[],sentinel:'preserve through upgrade'};
