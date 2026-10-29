@@ -82,10 +82,10 @@ function refreshApprovedRunningProgramme(state,engineModule,now=new Date().toISO
 // Explicit 29 October instruction: implement volume / heavy / speed for this approved block.
 // Revisit protected drafts on a later load; never replace completed or already-started work.
 function refreshApprovedBenchProgramme(state,engineModule,now=new Date().toISOString(),liveWorkout=null){
- const c=state.customRoadmap,revision='2026-10-29-bench-roles-v1';
+ const c=state.customRoadmap,revision='2026-10-29-bench-accessories-v1';
  if(c?.programmeId!=='november-2026'||c.strengthTargetDate!=='2026-11-28'||Number(c.bench)!==3||String(now).slice(0,10)<'2026-10-29')return state;
  const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
- next.customRoadmap={...next.customRoadmap,benchExposureVersion:1,approvedBenchRevision:revision};
+ next.customRoadmap={...next.customRoadmap,benchExposureVersion:1,benchAccessoryVersion:1,approvedBenchRevision:revision};
  const fresh=engineModule.createEngine({data:next,now:()=>Date.parse(now)}).generatedSessions(next.customRoadmap,week);
  const monday=new Date(c.startDate+'T12:00:00Z');monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7+(week-1)*7);
  const today=new Date(now).toLocaleDateString('en-CA',{timeZone:'Europe/London'}),days={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6},previous=[];
@@ -102,11 +102,15 @@ function refreshApprovedBenchProgramme(state,engineModule,now=new Date().toISOSt
   const replacement=fresh.find(x=>x.id===session.id);
   previous.push(session);
   // A removed pre-meet bench exposure may share a day with a preserved run.
-  const ex=replacement?.ex||[];
+  // The follow-up approval changes support work only when bench roles are already installed.
+  // Keep the exact saved main-lift dose, including any approved load progression.
+  const savedMain=(session.ex||[]).filter(e=>e[5]?.benchRole);
+  const support=(replacement?.ex||[]).filter(e=>!e[5]?.benchRole);
+  const ex=savedMain.length&&replacement?.ex?.length?[...savedMain,...support]:(replacement?.ex||[]);
   return {...session,ex,variationNotes:replacement?.variationNotes||['Bench rest before competition.'],benchExposureRevision:revision};
  }).filter(s=>s.benchExposureRevision!==revision||s.ex.length||(s.runs||[]).length||s.eventDate);
  if(c.approvedBenchRevision===revision&&!previous.length)return state;
- next.benchProgrammeArchive=[...(next.benchProgrammeArchive||[]),{revision,approvedAt:now,approval:'User requested implementation of the reviewed volume / heavy / speed proposal on 29 October 2026',programme:c,week,sessions:previous}];
+ next.benchProgrammeArchive=[...(next.benchProgrammeArchive||[]),{revision,approvedAt:now,approval:'User approved volume / heavy / speed implementation and publication, then requested complete, distinct accessory work on each bench day on 29 October 2026',programme:c,week,sessions:previous}];
  return next;
 }
 const api={install,refreshRunningGuidance,refreshApprovedThresholdPaces,refreshApprovedRunningProgramme,refreshApprovedBenchProgramme};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeInstall=api;
