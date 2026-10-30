@@ -1,4 +1,4 @@
-const CACHE = 'lhrf-shell-v1.21.0';
+const CACHE = 'lhrf-shell-v1.21.1';
 const SHELL = ['./','./index.html','./manifest.webmanifest','./icon-lhrf.svg','./icon-lhrf-192-v2.png','./icon-lhrf-512-v2.png','./icon-lhrf-maskable-v2.png','./src/training-review.js','./src/garmin-import.js','./src/intervals-sync.js','./src/garmin-workout.js','./src/workout-tools.js','./src/workout-tools.css','./src/running-workouts.js','./src/coach-engine.js','./src/coach-adapters.js','./src/programme-install.js','./programmes/november-2026.json'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
 self.addEventListener('activate', event => event.waitUntil((async () => {

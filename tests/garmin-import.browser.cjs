@@ -3,9 +3,10 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const KEY='lhrf_beta_v1118_clean',config=require('../programmes/november-2026.json'),fixture={customRoadmap:config,activeCustomWeek:1,activeSchedule:require('../src/coach-engine').createEngine().generatedSessions(config,1),sets:[{exercise:'Bench',weight:120,reps:3}],runs:[],checkins:[],decisions:[],overrides:{},completedWorkouts:[],plannedRuns:[],goals:{},onboardingComplete:true,sentinel:'preserve'};
  await page.route('https://liftheavyrunfar.github.io/lhrf/**',route=>{const file=new URL(route.request().url()).pathname.replace('/lhrf/','');route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file||'index.html')),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'})});
- await page.addInitScript(({KEY,fixture})=>localStorage.setItem(KEY,JSON.stringify(fixture)),{KEY,fixture});
- const run={source:'garmin-personal',sourceActivityId:'42',date:'2026-10-27T06:00:00Z',name:'<img src=x onerror=alert(1)>',km:6,min:30,avgHr:150,maxHr:178,splits:[{km:1,min:5,avgHr:148,maxHr:170}]};
- await context.route('https://lhrf-garmin-import.equalmelon128.chatgpt.site/**',route=>route.fulfill({contentType:'text/html',body:'<script>window.opener.postMessage({type:"lhrf-garmin-import",state:new URL(location.href).searchParams.get("state"),payload:'+JSON.stringify({version:1,runs:[run]})+'},"https://liftheavyrunfar.github.io");</script>'}));
+ await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture});
+ const run={source:'garmin-personal',sourceActivityId:'42',date:'2026-10-30T06:00:00Z',name:'<img src=x onerror=alert(1)>',km:6,min:30,avgHr:150,maxHr:178,splits:[{km:1,min:5,avgHr:148,maxHr:170}]};
+ let incomingRun=run;
+ await context.route('https://lhrf-garmin-import.equalmelon128.chatgpt.site/**',route=>route.fulfill({contentType:'text/html',body:'<script>window.opener.postMessage({type:"lhrf-garmin-import",state:new URL(location.href).searchParams.get("state"),payload:'+JSON.stringify({version:1,runs:[incomingRun]})+'},"https://liftheavyrunfar.github.io");</script>'}));
  await page.goto('https://liftheavyrunfar.github.io/lhrf/');await page.locator('nav [data-screen="settings"]').click();const before=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);
  await page.locator('#garminImportOpen').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});assert.match(await page.locator('#garminIncomingList').innerText(),/150 bpm/);assert.equal(await page.locator('#garminIncomingList img').count(),0);
  await page.locator('#garminIncomingSave').click();assert.match(await page.locator('#garminIncomingStatus').innerText(),/1 runs saved/);const after=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(after.runs.length,1);assert.equal(after.runs[0].avgHr,150);for(const k of Object.keys(before).filter(k=>k!=='runs'))assert.deepEqual(after[k],before[k]);
@@ -16,5 +17,25 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.getByRole('button',{name:'Save weekly check-in',exact:true}).click();
  const checked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(checked.weeklyCheckins.length,1);assert.deepEqual(checked.activeSchedule,after.activeSchedule);assert.ok(checked.garminSync.savedAt);
  await page.getByRole('button',{name:'Pull recent Garmin runs',exact:true}).click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});
- assert.deepEqual(errors,[]);console.log('PASS secure popup handoff, review, HR import, repeat protection and unchanged training state');
+ // Link the already imported Friday activity to Saturday without re-importing or starting LHRF tracking.
+ await page.locator('#garminSavedLinks summary').click();
+ const target=await page.evaluate(()=>LHRFGarminImport.plannedSessions(data,data.runs[0]).find(t=>t.plannedDate==='2026-10-31'));
+ assert.ok(target);await page.locator('#garminSavedLinks select').selectOption(target.key);await page.getByRole('button',{name:'Save session link',exact:true}).click();
+ const linked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(linked.runs.length,1);assert.equal(linked.runs[0].sessionId,target.id);assert.equal(linked.completedWorkouts.length,1);assert.equal(linked.completedWorkouts[0].plannedDate,'2026-10-31');assert.equal(linked.runs[0].date,'2026-10-30T06:00:00.000Z');
+ for(const k of ['customRoadmap','activeSchedule','sets','overrides'])assert.deepEqual(linked[k],checked[k]);
+ await page.locator('nav [data-screen="today"]').click();assert.match(await page.locator('[data-session-id="'+target.id+'"]').innerText(),/Completed Fri 30 Oct · planned Sat 31 Oct/);
+ await page.reload();assert.deepEqual(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY),linked);
+ await page.locator('nav [data-screen="settings"]').click();await page.locator('#garminSavedLinks summary').click();await page.locator('#garminSavedLinks select').selectOption('');await page.getByRole('button',{name:'Save session link',exact:true}).click();
+ const unlinked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(unlinked.runs.length,1);assert.equal(unlinked.completedWorkouts.length,0);assert.equal(unlinked.runs[0].sessionId,undefined);
+ const mixed=await page.evaluate(()=>LHRFGarminImport.plannedSessions(data,data.runs[0]).find(t=>t.parentId));assert.ok(mixed);
+ await page.locator('#garminSavedLinks select').selectOption(mixed.key);await page.getByRole('button',{name:'Save session link',exact:true}).click();
+ assert.equal(await page.evaluate(id=>sessionCompleted(schedule.find(s=>s.id===id)),mixed.parentId),false);
+ assert.equal(await page.evaluate(id=>sessionCompleted({id}),mixed.id),true);
+ // A fresh import also supports selecting the prescription before saving.
+ incomingRun={...run,sourceActivityId:'43',date:'2026-10-31T07:00:00Z'};await page.locator('#garminImportOpen').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});await page.locator('[data-planned-index="0"]').selectOption(target.key);
+ const beforeFailure=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);page.once('dialog',dialog=>dialog.dismiss());
+ await page.evaluate(()=>{window.originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='lhrf_beta_v1118_clean')throw Error('test quota');return window.originalSetItem.call(this,key,value)}});
+ await page.locator('#garminIncomingSave').click();assert.match(await page.locator('#garminIncomingStatus').innerText(),/Could not save/);assert.deepEqual(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY),beforeFailure);assert.deepEqual(await page.evaluate(()=>data),beforeFailure);
+ await page.evaluate(()=>Storage.prototype.setItem=window.originalSetItem);await page.locator('#garminIncomingSave').click();const fresh=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(fresh.runs.length,2);assert.equal(fresh.completedWorkouts.length,2);assert.equal(fresh.runs[1].sessionId,target.id);
+ assert.deepEqual(errors,[]);console.log('PASS secure Garmin handoff, explicit planned-run links, early completion, reload, unlink, mixed strength isolation, duplicate protection and preserved prescriptions');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
