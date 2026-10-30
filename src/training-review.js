@@ -3,7 +3,7 @@
 const day=x=>String(x||'').slice(0,10);
 function history(state){
  const rows=[],sets=state.sets||[],runs=state.runs||[],used=new Set();
- for(const w of state.completedWorkouts||[]){const own=sets.filter((s,i)=>{const yes=s.sessionId===w.id&&s.date===w.date;if(yes)used.add(i);return yes});rows.push({...w,kind:'strength',sets:own,runs:runs.filter(r=>r.sessionId===w.id&&day(r.date)===day(w.date)),feedback:(state.sessionFeedback||[]).filter(f=>f.sessionId===w.id&&day(f.date)===day(w.date))})}
+ for(const w of state.completedWorkouts||[]){const own=sets.filter((s,i)=>{const yes=s.sessionId===w.id&&s.date===w.date;if(yes)used.add(i);return yes});rows.push({...w,kind:w.component==='run'?'run':'strength',sets:own,runs:runs.filter(r=>r.sessionId===w.id&&day(r.date)===day(w.date)),feedback:(state.sessionFeedback||[]).filter(f=>f.sessionId===w.id&&day(f.date)===day(w.date))})}
  const groups=new Map();sets.forEach((s,i)=>{if(used.has(i))return;const key=day(s.date)+'|'+(s.sessionId||s.session||'Strength');if(!groups.has(key))groups.set(key,{date:s.date,name:s.session||'Strength session',kind:'strength',sets:[],runs:[],feedback:[]});groups.get(key).sets.push(s)});rows.push(...groups.values());
  for(const r of runs)if(!rows.some(w=>w.runs.includes(r)))rows.push({date:r.date,name:r.name||r.session||r.type||'Run',kind:'run',sets:[],runs:[r],feedback:[]});
  return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
@@ -33,6 +33,7 @@ function mount({getData,commit}){
  function renderHistory(){list.replaceChildren();const items=history(getData()).filter(r=>(!from.value||day(r.date)>=from.value)&&(!to.value||day(r.date)<=to.value)&&(type.value==='all'||type.value==='run'&&r.runs.length||type.value==='strength'&&r.sets.length));
  if(!items.length)make('p','No recorded workouts match these dates.',list);
  for(const row of items.slice(0,limit)){const detail=make('details',null,list);detail.className='entry';make('summary',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name,detail);
+ if(row.plannedDate)make('p','Completed '+new Date(row.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · planned '+new Date(row.plannedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}),detail).className='muted small';
  if(row.prescription){make('h3','Prescribed',detail);for(const e of row.prescription.ex||[])make('p',e[0]+' · '+e[1]+' × '+e[2]+' · '+e[3]+' kg · RPE '+e[4],detail);for(const r of row.prescription.runs||[])make('p',r.name+' · '+(r.structure||r.minutes+' min'),detail)}else make('p','Original prescription was not saved with this historical record.',detail).className='muted small';
  for(const s of row.sets)make('p',s.exercise+' · set '+s.set+' · '+s.weight+' kg × '+s.reps+' · RPE '+s.rpe+(s.target?' / target '+s.target:''),detail);
  for(const r of row.runs){make('p',r.km+' km · '+r.min+' min'+(r.km>0?' · '+pace(r.min/r.km)+'/km':'')+(r.avgHr?' · average HR '+r.avgHr+' bpm':'')+(r.maxHr?' · max HR '+r.maxHr+' bpm':'')+(r.rpe!=null?' · RPE '+r.rpe:''),detail);for(const s of r.splits||[])make('p','Split · '+s.km.toFixed(2)+' km · '+s.min.toFixed(1)+' min'+(s.avgHr?' · '+s.avgHr+' bpm':''),detail);
