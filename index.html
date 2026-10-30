@@ -1511,6 +1511,14 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  if(!save()){data=previous;schedule=previousSchedule;return}
  populate();refresh();renderPlanDashboard();
 })();
+(function(){
+ if(!LHRFProgrammeInstall.refreshApprovedBenchPeak)return;
+ const next=LHRFProgrammeInstall.refreshApprovedBenchPeak(data,LHRFCoach,new Date().toISOString(),window.LHRFLive?.get?.());
+ if(next===data)return;
+ const previous=data,previousSchedule=schedule;data=next;schedule=next.activeSchedule;
+ if(!save()){data=previous;schedule=previousSchedule;return}
+ populate();refresh();renderPlanDashboard();
+})();
 (async function(){
  const requested=new URLSearchParams(location.search).get('programme');
  let pending;try{pending=localStorage.getItem('lhrf_pending_programme')}catch(e){}

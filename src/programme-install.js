@@ -8,7 +8,7 @@ function install(state,config,engineModule,now=new Date().toISOString()){
  next.programmeArchive=[...(next.programmeArchive||[]),archive];
  next.customRoadmap={...JSON.parse(JSON.stringify(config)),approvedAt:now};next.activeCustomWeek=1;next.overrides={};next.decisions=[];
  next.activeSchedule=engineModule.createEngine({data:next}).generatedSessions(next.customRoadmap,1);next.onboardingComplete=true;
- return refreshApprovedBenchProgramme(refreshApprovedRunningProgramme(next,engineModule,now),engineModule,now);
+ return refreshApprovedBenchPeak(refreshApprovedBenchProgramme(refreshApprovedRunningProgramme(next,engineModule,now),engineModule,now),engineModule,now);
 }
 // Repair only future, unfinished running prescriptions; never rebuild lifting or history.
 function refreshRunningGuidance(state,engineModule,now=new Date().toISOString(),liveWorkout=false){
@@ -113,5 +113,34 @@ function refreshApprovedBenchProgramme(state,engineModule,now=new Date().toISOSt
  next.benchProgrammeArchive=[...(next.benchProgrammeArchive||[]),{revision,approvedAt:now,approval:'User approved volume / heavy / speed implementation and publication, then requested complete, distinct accessory work on each bench day on 29 October 2026',programme:c,week,sessions:previous}];
  return next;
 }
-const api={install,refreshRunningGuidance,refreshApprovedThresholdPaces,refreshApprovedRunningProgramme,refreshApprovedBenchProgramme};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeInstall=api;
+// Explicit 30 October approval: replace the remaining peak, never the athlete's records.
+function refreshApprovedBenchPeak(state,engineModule,now=new Date().toISOString(),liveWorkout=null){
+ const c=state.customRoadmap,revision='2026-10-30-bench-peak-v2';
+ if(c?.programmeId!=='november-2026'||c.strengthTargetDate!=='2026-11-28'||Number(c.bench)!==3||String(now).slice(0,10)<'2026-10-30')return state;
+ const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
+ next.customRoadmap={...next.customRoadmap,benchExposureVersion:1,benchAccessoryVersion:1,benchPeakVersion:2,finalHeavyBenchDaysOut:6,approvedBenchPeakRevision:revision};
+ const fresh=engineModule.createEngine({data:next,now:()=>Date.parse(now)}).generatedSessions(next.customRoadmap,week);
+ const monday=new Date(c.startDate+'T12:00:00Z');monday.setUTCDate(monday.getUTCDate()-(monday.getUTCDay()+6)%7+(week-1)*7);
+ const londonDate=value=>{const d=new Date(value);return Number.isFinite(+d)?d.toLocaleDateString('en-CA',{timeZone:'Europe/London'}):null};
+ const today=londonDate(now),days={mon:0,tue:1,wed:2,thu:3,fri:4,sat:5,sun:6},previous=[],overrides={};
+ next.activeSchedule=(state.activeSchedule||[]).map(session=>{
+  if(session.benchPeakRevision===revision||!(session.ex||[]).some(e=>e[5]?.benchRole||/^(bench|bench press|competition bench|paused bench)$/i.test(e[0])))return session;
+  if((session.ex||[]).some(e=>/squat|deadlift/i.test(e[0])))return session;
+  const offset=days[String(session.day).slice(0,3).toLowerCase()];if(offset===undefined)return session;
+  const date=new Date(monday);date.setUTCDate(date.getUTCDate()+offset);const key=date.toISOString().slice(0,10);if(key<today)return session;
+  const sameWeek=x=>x.week==null||Number(x.week)===week,matches=id=>id===session.id||id===session.id+'::strength';
+  const completed=(state.completedWorkouts||[]).some(x=>sameWeek(x)&&matches(x.id))||(state.sets||[]).some(x=>sameWeek(x)&&matches(x.sessionId));
+  const legacyLogged=(state.sets||[]).some(x=>!x.sessionId&&/^(bench|bench press|competition bench|paused bench)$/i.test(x.exercise||'')&&londonDate(x.date)===key);
+  const active=liveWorkout&&sameWeek(liveWorkout)&&(matches(liveWorkout.id)||liveWorkout.parentId===session.id);
+  if(completed||legacyLogged||active)return session;
+  const replacement=fresh.find(x=>x.id===session.id);previous.push(session);
+  // A newly approved remaining plan replaces old bench-only load/set overrides; retain them in the archive.
+  for(const id of [session.id,session.id+'::strength'])if(Object.hasOwn(next.overrides||{},id)){overrides[id]=next.overrides[id];delete next.overrides[id]}
+  return {...session,ex:replacement?.ex||[],variationNotes:replacement?.variationNotes||['Bench rest before competition.'],benchPeakRevision:revision};
+ }).filter(s=>s.benchPeakRevision!==revision||s.ex.length||(s.runs||[]).length||s.eventDate);
+ if(c.approvedBenchPeakRevision===revision&&!previous.length)return state;
+ next.benchPeakArchive=[...(next.benchPeakArchive||[]),{revision,approvedAt:now,approval:'User explicitly requested changing the remaining programme to reflect the reviewed RPE progression and final heavy Sunday while retaining the last two sessions on 30 October 2026',programme:c,week,sessions:previous,overrides}];
+ return next;
+}
+const api={install,refreshRunningGuidance,refreshApprovedThresholdPaces,refreshApprovedRunningProgramme,refreshApprovedBenchProgramme,refreshApprovedBenchPeak};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeInstall=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
