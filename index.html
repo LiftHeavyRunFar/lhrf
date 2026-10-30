@@ -906,7 +906,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
      if(!Number.isInteger(offset)||offset<0||offset>6)continue;
      const date=new Date(base);date.setDate(base.getDate()+offset);
      const done=workoutParts(session).every(p=>(data.completedWorkouts||[]).some(w=>(w.id===p.id||w.id===session.id)&&Number(w.week||1)===week));
-     if(date>today&&!done)future.push({session,date,week});
+     if(date>today&&!done){const pending=workoutParts(session).filter(p=>!(data.completedWorkouts||[]).some(w=>(w.id===p.id||w.id===session.id)&&Number(w.week||1)===week));future.push({session:pending.length===1?pending[0]:session,date,week});}
     }
    }
   }
