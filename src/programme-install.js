@@ -36,7 +36,7 @@ function refreshRunningGuidance(state,engineModule,now=new Date().toISOString(),
 // User-authorised 26 Oct review: only this installed block's future threshold paces.
 function refreshApprovedThresholdPaces(state,engineModule,now=new Date().toISOString()){
  const c=state.customRoadmap,engine=engineModule.createEngine({data:state});
- if(c?.programmeId!=='november-2026'||Number(c.runningPaceVersion)>=2||!engine.repaceThresholdRun)return state;
+ if(c?.coachingRulesVersion===1||c?.programmeId!=='november-2026'||Number(c.runningPaceVersion)>=2||!engine.repaceThresholdRun)return state;
  const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
  next.customRoadmap.runningPaceVersion=2;next.customRoadmap.runningGoalSeconds=3600;
  const previous=[],monday=new Date(c.startDate+'T12:00:00');monday.setDate(monday.getDate()-(monday.getDay()+6)%7+(week-1)*7);
@@ -54,7 +54,7 @@ function refreshApprovedThresholdPaces(state,engineModule,now=new Date().toISOSt
 // Explicit 27 October approval: refresh this athlete's running only, preserving every log.
 function refreshApprovedRunningProgramme(state,engineModule,now=new Date().toISOString(),liveWorkout=null){
  const c=state.customRoadmap,revision='2026-10-27-running-v3';
- if(c?.programmeId!=='november-2026'||c.approvedRunningRevision===revision||String(now).slice(0,10)<'2026-10-27')return state;
+ if(c?.coachingRulesVersion===1||c?.programmeId!=='november-2026'||c.approvedRunningRevision===revision||String(now).slice(0,10)<'2026-10-27')return state;
  const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
  const previousConfig=JSON.parse(JSON.stringify(c));
  next.customRoadmap={...next.customRoadmap,runningWorkoutVersion:1,runningPaceVersion:2,runningGoalSeconds:3600,approvedRunningRevision:revision,
@@ -83,7 +83,7 @@ function refreshApprovedRunningProgramme(state,engineModule,now=new Date().toISO
 // Revisit protected drafts on a later load; never replace completed or already-started work.
 function refreshApprovedBenchProgramme(state,engineModule,now=new Date().toISOString(),liveWorkout=null){
  const c=state.customRoadmap,revision='2026-10-29-bench-accessories-v1';
- if(c?.programmeId!=='november-2026'||c.strengthTargetDate!=='2026-11-28'||Number(c.bench)!==3||String(now).slice(0,10)<'2026-10-29')return state;
+ if(c?.coachingRulesVersion===1||c?.programmeId!=='november-2026'||c.strengthTargetDate!=='2026-11-28'||Number(c.bench)!==3||String(now).slice(0,10)<'2026-10-29')return state;
  const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
  next.customRoadmap={...next.customRoadmap,benchExposureVersion:1,benchAccessoryVersion:1,approvedBenchRevision:revision};
  const fresh=engineModule.createEngine({data:next,now:()=>Date.parse(now)}).generatedSessions(next.customRoadmap,week);
@@ -116,7 +116,7 @@ function refreshApprovedBenchProgramme(state,engineModule,now=new Date().toISOSt
 // Explicit 30 October approval: replace the remaining peak, never the athlete's records.
 function refreshApprovedBenchPeak(state,engineModule,now=new Date().toISOString(),liveWorkout=null){
  const c=state.customRoadmap,revision='2026-10-30-bench-peak-v2';
- if(c?.programmeId!=='november-2026'||c.strengthTargetDate!=='2026-11-28'||Number(c.bench)!==3||String(now).slice(0,10)<'2026-10-30')return state;
+ if(c?.coachingRulesVersion===1||c?.programmeId!=='november-2026'||c.strengthTargetDate!=='2026-11-28'||Number(c.bench)!==3||String(now).slice(0,10)<'2026-10-30')return state;
  const next=JSON.parse(JSON.stringify(state)),week=Number(state.activeCustomWeek)||1;
  next.customRoadmap={...next.customRoadmap,benchExposureVersion:1,benchAccessoryVersion:1,benchPeakVersion:2,finalHeavyBenchDaysOut:6,approvedBenchPeakRevision:revision};
  const fresh=engineModule.createEngine({data:next,now:()=>Date.parse(now)}).generatedSessions(next.customRoadmap,week);
