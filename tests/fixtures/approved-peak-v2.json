@@ -1,0 +1,161 @@
+{
+  "config": {
+    "startDate": "2026-10-27",
+    "runGoal": "10k",
+    "maxes": {
+      "bench": 160
+    },
+    "tenKTime": "1:05:00",
+    "runningBaselineMinutes": 120,
+    "weeks": 5,
+    "event": "bench",
+    "priority": "Bench",
+    "bench": 3,
+    "squat": 1,
+    "deadlift": 1,
+    "runs": 2,
+    "strengthTargetDate": "2026-11-28",
+    "runningTargetDate": "2026-11-29",
+    "availableDays": [
+      "Tue",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
+    ],
+    "fixedSessions": [
+      {
+        "kind": "strength",
+        "lift": "bench",
+        "exposure": 1,
+        "day": "Tue"
+      },
+      {
+        "kind": "run",
+        "runType": "quality",
+        "day": "Tue"
+      },
+      {
+        "kind": "strength",
+        "lift": "squat",
+        "day": "Thu"
+      },
+      {
+        "kind": "strength",
+        "lift": "deadlift",
+        "day": "Thu"
+      },
+      {
+        "kind": "strength",
+        "lift": "bench",
+        "exposure": 2,
+        "day": "Fri"
+      },
+      {
+        "kind": "run",
+        "runType": "long",
+        "day": "Sat"
+      },
+      {
+        "kind": "strength",
+        "lift": "bench",
+        "exposure": 3,
+        "day": "Sun"
+      }
+    ],
+    "topSetFirst": true,
+    "lightLifts": [
+      "squat",
+      "deadlift"
+    ],
+    "coachingPolicy": "review-v1",
+    "runTemplate": "easy-one-quality-10k",
+    "days": 5,
+    "noDate": false,
+    "date": "2026-11-28",
+    "liftProfiles": {
+      "Bench": {
+        "kg": 160,
+        "reps": 1,
+        "recency": "recent"
+      },
+      "Squat": {
+        "kg": 0,
+        "reps": 1,
+        "recency": "recent"
+      },
+      "Deadlift": {
+        "kg": 0,
+        "reps": 1,
+        "recency": "recent"
+      }
+    },
+    "baselines": {
+      "Bench": 160,
+      "Squat": 0,
+      "Deadlift": 0
+    },
+    "variations": {},
+    "runProfile": {
+      "distance": 10,
+      "seconds": 3900,
+      "time": "1:05:00",
+      "recency": "recent",
+      "weeklyKm": 20
+    },
+    "longRunDay": "Sat",
+    "manualSplit": {
+      "Tue": [
+        "bench",
+        "run"
+      ],
+      "Thu": [
+        "lower"
+      ],
+      "Fri": [
+        "bench"
+      ],
+      "Sat": [
+        "long"
+      ],
+      "Sun": [
+        "bench"
+      ]
+    },
+    "doubleDays": [
+      "Tue"
+    ],
+    "programmeVersion": "2026-10-27-v1",
+    "programmeId": "november-2026",
+    "sessionNamespace": "november-2026-",
+    "runningGuidanceVersion": 2,
+    "runningPaceVersion": 2,
+    "runningGoalSeconds": 3600,
+    "benchExposureVersion": 1,
+    "benchAccessoryVersion": 1,
+    "benchPeakVersion": 2,
+    "finalHeavyBenchDaysOut": 6
+  },
+  "weeks": [
+    {
+      "week": 1,
+      "sha256": "98472f358674b4a55c24576d2ae309aade4227e9de698d674d87eb843eb743c5"
+    },
+    {
+      "week": 2,
+      "sha256": "48c95e252f9e64bc40ef4fc94d46a17bb8361b018d686080b0ca40464043c9d6"
+    },
+    {
+      "week": 3,
+      "sha256": "f79d53411083d0e5c37c122f696947ae064c6531d71b7ab77aee8b463d4e586d"
+    },
+    {
+      "week": 4,
+      "sha256": "eb991ee9f93d24a4f0b5730e743d7d762901a59a6f7fcee82ca8843088ccd67a"
+    },
+    {
+      "week": 5,
+      "sha256": "ee6d2acc1f74d475db697a4b3047523f7d6fe89216f78f671fc7493149d8ad23"
+    }
+  ]
+}

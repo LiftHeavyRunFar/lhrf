@@ -48,7 +48,7 @@ function buildProgramme(input,options={}){
   weeks.push({week,phase,deload:cycle.deload,sessions,warnings,...(described.runningSummary?{runningSummary:described.runningSummary}:{}),...(constraints.unscheduled?{unscheduled:constraints.unscheduled,feasible:constraints.feasible&&(![3,4].includes(c.runningGuidanceVersion)||engine.runningAssessment(c,week).feasible)}:{}),reviewRequired:warnings.length>0});
  }
  return {schema:'lhrf-shared-programme-v1',config:c,framework:engine.selectTrainingFramework(c),weeks,
-  requiresAthleteApproval:true,limitations:['Current live coaching rules, not a new programme-policy rollout.','Known programme acceptance gaps remain; generation alone does not establish coaching quality.']};
+  requiresAthleteApproval:true,limitations:c.coachingRulesVersion===1?['Versioned coaching heuristics; tests do not establish individual competition readiness.','Existing approved programmes keep their saved policy until explicitly replaced.']:['Current live coaching rules, not a new programme-policy rollout.','Known programme acceptance gaps remain; generation alone does not establish coaching quality.']};
 }
 function previewProgramme(input,options={}){
  const native=buildProgramme(input,options),issues=[];
@@ -101,6 +101,8 @@ function reviewPreviewLogs(logs,input,options={}){
  return {decision,data,proposals:decision.changes?[{lift:(decision.changes[0]?.exercise||data.customRoadmap.priority).toLowerCase().replace(' press',''),direction:decision.status==='progress'?'easy':'hard',date:String(data.sets.at(-1)?.date||'').slice(0,10),message:decision.summary,evidence:decision.details||decision.why||'',cautions:decision.why?[decision.why]:[],blockLoad:decision.status!=='progress',sharedDecision:decision,
   loadSuggestion:decision.status==='progress'?(()=>{const change=decision.changes[0],ex=data.activeSchedule.find(s=>s.id===change.id)?.ex?.find(e=>e[0]===change.exercise&&e[5]?.role==='top');if(!ex)return undefined;return {current:ex[3],next:Math.round(ex[3]*change.loadFactor/2.5)*2.5,description:decision.why}})():undefined}]:[]};
 }
-const api={normalizeProfile,createProfileEngine,buildProgramme,previewProgramme,previewLogState,reviewPreviewLogs};
+function buildNewProgramme(input,options={}){return buildProgramme(normalizeProfile(coach.prepareNewProgramme(input)),options)}
+function previewNewProgramme(input,options={}){return previewProgramme(normalizeProfile(coach.prepareNewProgramme(input)),options)}
+const api={normalizeProfile,createProfileEngine,buildProgramme,previewProgramme,buildNewProgramme,previewNewProgramme,previewLogState,reviewPreviewLogs};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoachAdapters=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
