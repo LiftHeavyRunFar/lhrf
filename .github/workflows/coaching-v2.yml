@@ -56,6 +56,27 @@ jobs:
           name: synthetic-athlete-report
           path: athlete-report.json
 
+  five-scenario-baseline:
+    name: Five scenario coaching acceptance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate fictional athletes through the native engine
+        run: npm run test:scenarios
+      - name: Check independent coaching requirements
+        run: npm run test:scenarios:acceptance
+      - name: Retain exact outputs and mapping limitations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: five-scenario-engine-baseline
+          path: docs/qa/five-scenario-engine-baseline/
+
   shared-coach-browser:
     name: Shared engine — browser and PWA upgrade
     runs-on: ubuntu-latest
