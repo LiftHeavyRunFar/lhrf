@@ -105,3 +105,7 @@ test('Monday events after the UK daylight-saving change keep the correct taper w
  try{const p=create({weeks:13,strengthTargetDate:'2027-03-29'});assert.notEqual(p.weeks[11].phase,'Taper / event');assert.equal(p.weeks[12].phase,'Taper / event');assert.equal(p.weeks[12].sessions.filter(s=>s.eventDate==='2027-03-29').length,1);}
  finally{if(prior===undefined)delete process.env.TZ;else process.env.TZ=prior}
 });
+test('explicit light supporting lifts retain their constraint throughout general powerlifting preparation',()=>{
+ const p=create({weeks:12,event:'powerlifting',strengthTargetDate:target(12),lightLifts:['squat','deadlift']});
+ for(const w of p.weeks)for(const s of w.sessions)for(const e of main(s).filter(e=>['Squat','Deadlift'].includes(e[0]))){assert.ok(e[4]<=5.5);assert.notEqual(e[5]?.role,'top');}
+});

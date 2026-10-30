@@ -1381,6 +1381,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const focus=root.querySelector('input[name="frFocus"]:checked').value;
   get('customPriority').value=focus==='running'?'Running':focus==='balanced'?'Bench':'Squat';
   const goal=get('frGoal').value;
+  if(focus!=='running'&&['bench','squat','deadlift'].includes(goal))get('customPriority').value={bench:'Bench',squat:'Squat',deadlift:'Deadlift'}[goal];
   get('customEvent').value=goal;
   const start=get('frStartDate').value;
   const targets=[get('frStrengthDate').value,get('frRunningDate').value].filter(Boolean).sort();
