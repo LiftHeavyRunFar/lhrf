@@ -693,8 +693,27 @@ function benchExposure(c,w,occurrence,day,eventWeek,baseline,deload){
   daysOut=Math.round((Date.parse(c.strengthTargetDate+'T12:00:00Z')-date)/86400000);
  }
  const meta={benchRole:role,competition:true,baseline};
+ const revised=c.benchPeakVersion===2&&Number.isInteger(c.finalHeavyBenchDaysOut)&&c.finalHeavyBenchDaysOut>=5&&c.finalHeavyBenchDaysOut<=7&&daysOut!==null;
+ if(revised)meta.benchPeakVersion=2;
  const entry=(sets,reps,pct,rpe,kind)=>['Bench',sets,reps,baseline?roundLoad(baseline*pct):0,rpe,{...meta,role:kind,category:'primary'}];
  if(daysOut!==null&&daysOut<3)return {role,ex:[],note:'No bench training in the final two days or after the competition.'};
+ if(revised&&!deload){
+  const finalDays=c.finalHeavyBenchDaysOut,finalHeavy=daysOut===finalDays;
+  // The last heavy exposure replaces Sunday's speed work; Friday beforehand is light.
+  if(!finalHeavy&&(daysOut<finalDays||(role==='heavy'&&daysOut-finalDays<=3))){
+   meta.benchRole='technique';return {role:'technique',reducedSupport:true,ex:[entry(2,2,.60,5.5,'straight')],note:'Light paused technique only. Preserve recovery for the final heavy Sunday and competition; no extra pressing or accessories.'};
+  }
+  if(finalHeavy||role==='heavy'){
+   meta.benchRole='heavy';
+   const target=finalHeavy?9:left>=4?8:8.5;
+   // Coaching starting estimates, not fixed conversions: actual RPE determines today's load.
+   const pct=target===8?.922:target===8.5?.939:.955;
+   const top=entry(1,1,pct,target,'top'),back=entry(finalHeavy?1:left<=2?2:3,finalHeavy||left<=2?2:3,.75,finalHeavy?6:left<=2?6.5:7,'backoff');
+   back[5].topIndex=0;back[5].backoffProfile={backReps:back[2],backRpe:back[4],minDrop:finalHeavy?.18:.12,maxDrop:finalHeavy?.25:.22,fatigue:.025};
+   back[3]=phaseBackoffLoad(top[3],1,target,back[5].backoffProfile);
+   return {role:'heavy',finalHeavy,reducedSupport:finalHeavy,ex:[top,back],note:(finalHeavy?'Final heavy competition rehearsal, '+finalDays+' days before the meet. ':'Heavy competition practice: paused single and commands. ')+'Target RPE '+target+' is an effort ceiling, not a number to chase. The suggested weight is provisional; use warm-ups and actual effort. No missed repetitions or extra max attempts.'};
+  }
+ }
  if(left===0){meta.benchRole='technique';return {role:'technique',ex:[entry(2,2,.60,5.5,'straight')],note:'Competition-week technique only: easy paused doubles; no heavy single or accessories.'};}
  if(deload)return {role,ex:[entry(2,3,.60,6,'straight')],note:'Recovery week: reduced bench work; resume distinct exposure roles after recovery.'};
  const near=left!==null&&left>=1&&left<=4;
@@ -709,7 +728,8 @@ function benchExposure(c,w,occurrence,day,eventWeek,baseline,deload){
  }
  if(role==='volume'){
   const reps=near?(left===1?3:left===2?4:5):5,sets=near&&left===1?2:3;
-  const top=entry(1,reps,near&&left<=2?.75:.725,7,'top'),back=entry(sets,reps,near&&left===1?.65:.675,6.5,'backoff');
+  const volumePct=revised?({3:.837,4:.811,5:.786}[reps]):near&&left<=2?.75:.725;
+  const top=entry(1,reps,volumePct,7,'top'),back=entry(sets,reps,near&&left===1?.65:.675,6.5,'backoff');
   back[5].topIndex=0;
   back[5].backoffProfile={backReps:back[2],backRpe:back[4],minDrop:.06,maxDrop:.14,fatigue:.025};
   back[3]=phaseBackoffLoad(top[3],reps,top[4],back[5].backoffProfile);
@@ -835,12 +855,12 @@ function generatedSessions(c,w){
    }
    // Accessories rotate by block, respect preferences, and use exercise-specific RPE loading.
    let accessories=accessorySelection(lift,w,c.weeks,secondary,c);
-   if(variedAccessories)accessories=taper?[]:benchAccessorySelection(c,w,exposure.role,slot.day,vb.deload);
+   if(variedAccessories)accessories=taper||exposure.reducedSupport?[]:benchAccessorySelection(c,w,exposure.role,slot.day,vb.deload);
    else if(exposure)accessories=taper||exposure.role==='speed'?[]:accessories.slice(0,2).map(a=>({...a,sets:Math.min(2,a.sets),rpe:Math.min(7,a.rpe)}));
    if(beginnerPolicy(c)||maintenancePolicy(c))accessories=accessories.filter(a=>isTertiaryExercise(a.name)).slice(0,1).map(a=>({...a,sets:1,rpe:6}));
    if(light)accessories=accessories.filter(a=>isTertiaryExercise(a.name)).slice(0,1).map(a=>({...a,sets:Math.min(2,a.sets),rpe:6}));
    for(const acc of accessories){if(ex.some(e=>e[0]===acc.name))continue;const entry=[acc.name,acc.sets,acc.reps,acc.weight,acc.rpe];if(variedAccessories)entry.push({role:'accessory',category:'accessory',benchDayRole:exposure.role,purpose:acc.purpose,repRange:acc.range,cue:acc.why});ex.push(entry);variationNotes.push(acc.name+' ('+acc.range+' reps): '+acc.why)}
-   if(variedAccessories&&!taper&&!vb.deload&&accessories.every(a=>a.rpe>6))optionalExercises.push(...benchOptionalExtras(w,ex));
+   if(variedAccessories&&!taper&&!vb.deload&&!exposure.reducedSupport&&accessories.every(a=>a.rpe>6))optionalExercises.push(...benchOptionalExtras(w,ex));
   }else{
    const isLongRun=/Long run|Longer easy aerobic/.test(item.detail);
    if(runningQueue){
@@ -952,6 +972,7 @@ function carryForwardApprovedProgression(sessions,week){
  if(maintenancePolicy(data.customRoadmap)||!allowsProgression(phase,cycleWeek(week,Number(data.customRoadmap?.weeks)||20).deload))return sessions;
  for(const session of sessions)for(const ex of session.ex||[]){
   if(ex[5]?.role!=='top'||!(+ex[3]>0))continue;
+  if(ex[5]?.benchPeakVersion===2)continue; // This newly approved peak supersedes old percentage uplifts.
   const decisions=(data.decisions||[]).filter(d=>d.approved===true&&d.kind==='adaptive-progression'&&d.exercise===ex[0]&&Number(d.week)<week);
   // Cap total carry-forward uplift to 7.5%; later recommendations must be earned again.
   const factor=Math.min(1.075,decisions.reduce((f,d)=>f*(Number(d.factor)||1),1));

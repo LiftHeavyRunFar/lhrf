@@ -30,3 +30,25 @@ Initial target is RPE 7. Unknown accessory weights are left for selection by eff
 Supporting volume falls near competition: RPE 6.5 within 14 days, RPE 6 within ten days, reduced sets and no supplementary presses within ten days; no support work in the final five days or competition-week taper. Recovery weeks use reduced support rather than normal loading volume. This is purposeful variety across sessions and blocks, not weekly random exercise selection.
 
 The targeted installed-programme revision is `2026-10-29-bench-accessories-v1`. Existing bench-role main sets are copied exactly, including approved progressed loads; running, lower-body sessions and all logs remain intact. As before, completed, partially logged, overridden and active workouts are protected. The browser test now upgrades from the just-published bench-only Sunday, previews all three Sunday support exercises, verifies the saved heavy single is unchanged, and tests live logging/reload.
+
+
+## Approved peak revision — 30 October 2026
+
+Mark explicitly requested implementation of the reviewed peak while retaining his last two logged sessions. `benchPeakVersion: 2` is enabled only for the approved November programme via `refreshApprovedBenchPeak`. Previous programme policies retain their original output.
+
+| Heavy exposure | Effort ceiling | Initial suggestion from the saved 160 kg baseline |
+| --- | --- | --- |
+| Friday 30 October | RPE 8 | 147.5 kg × 1 |
+| Friday 6 November | RPE 8.5 | 150 kg × 1 |
+| Friday 13 November | RPE 8.5 | 150 kg × 1 |
+| Sunday 22 November | Up to RPE 9 | 152.5 kg × 1 |
+
+Friday 20 November is 2×2 light paused technique at RPE 5.5, with no supporting work. The final heavy Sunday has the single plus one easy double at RPE 6 and no accessories; it replaces speed work rather than adding a fifth heavy session. Tuesday 24 November retains the already-approved light technique dose. No Friday bench is added immediately before competition.
+
+Single starting fractions of .922, .939 and .955, and volume-set fractions of .786/.811/.837 for 5/4/3 reps at target 7, are provisional coaching load estimates, not exact or individually validated RPE conversions. Load is selected against actual warm-up and set effort; a lower actual RPE does not require another attempt just to reach the ceiling. Logged top-set performance still recalculates bounded back-offs. Weekly bench repetitions and back-off sets fall towards competition. Old adaptive-percentage uplifts do not stack onto the newly approved peak.
+
+The migration archives old remaining bench prescriptions and superseded future bench overrides. It preserves every set/run record, completion and recorded prescription, onboarding, prior programme archives, feedback and decisions. Completed and partially logged sessions (including legacy bench records without IDs) and live drafts are not replaced; past sessions and unrelated overrides are retained. Running and lower-body training are unchanged. It is repeat-safe, including when earlier startup migrations run first, and it leaves session IDs intact.
+
+Evidence for a last heavy bench inside seven days comes from the primary survey of 364 raw powerlifters (https://pubmed.ncbi.nlm.nih.gov/34846328/). The small trial comparing two and four cessation days supports lift-specific tapering but does not prove that an RPE-9 single six days out is universally optimal (https://pubmed.ncbi.nlm.nih.gov/37639652/). The exact four-exposure sequence above is the reviewed coaching choice. Individual load selection follows the effort-based approach described by the original RTS coach, not a claim that chart percentages guarantee effort: https://store.reactivetrainingsystems.com/blogs/default-blog-1/how-to-use-rpe-in-your-training-correctly .
+
+Validation includes the revised browser upgrade/logging test, exact heavy-exposure dates and effort ceilings, no heavy Friday/Sunday stacking, unchanged final Tuesday, falling volume, preservation of two completed sessions, legacy and active-draft protection, override archiving and repeat-safe startup. All policy and migration logic remains offline JavaScript.
