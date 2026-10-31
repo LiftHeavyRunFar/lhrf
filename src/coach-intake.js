@@ -24,6 +24,7 @@ function build(base,raw={}){
  const minimumGapHours=separateDays.length?number(raw.minimumGapHours,'Gap between separate visits',{minimum:6}):0,separateMinutes={};
  for(const day of separateDays)separateMinutes[day]=number(raw.separateMinutes?.[day]??minutes[day],day+' separate strength-visit minutes',{minimum:15,integer:true});
  const eventDays={};for(const [when,value]of Object.entries(raw.eventDays||{})){date(when,'Event date');eventDays[when]={confirmed:value.confirmed===true,minutes:number(value.minutes,'Event time allowance',{minimum:1,integer:true,optional:true})};if(value.logisticsMinutes!==undefined)eventDays[when].logisticsMinutes=number(value.logisticsMinutes,'Event logistics minutes');}
+ if(own(raw,'strengthModes')){if(!raw.strengthModes||typeof raw.strengthModes!=='object'||Array.isArray(raw.strengthModes)||Object.entries(raw.strengthModes).some(([lift,mode])=>!['Squat','Bench','Deadlift'].includes(lift)||!['auto','maintenance','progression'].includes(mode)))throw new RangeError('Per-lift strength modes are invalid.');c.strengthModes=clone(raw.strengthModes);}
  c.coachingRulesVersion=2;c.visitConstraints={strengthVisits,minutes,combinedDays,separateDays,separateMinutes,minimumGapHours,eventDays};
  c.doubleDays=[...new Set([...combinedDays,...separateDays])];
  c.runningHistory={};

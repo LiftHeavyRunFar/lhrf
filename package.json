@@ -9,7 +9,8 @@
     "test:athletes:json": "node scripts/test-athletes.cjs --json",
     "test:scenarios": "node scripts/test-five-scenarios.cjs",
     "test:scenarios:acceptance": "node scripts/audit-five-scenarios.cjs",
-    "test:coaching:rounds": "node scripts/replay-coaching-rounds.cjs"
+    "test:coaching:rounds": "node scripts/replay-coaching-rounds.cjs",
+    "test:coaching:depth": "node scripts/replay-coaching-depth.cjs"
   },
   "engines": {
     "node": ">=20"

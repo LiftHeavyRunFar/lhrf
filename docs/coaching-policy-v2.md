@@ -11,13 +11,23 @@ This policy implements the shared coaching changes exercised by the frozen five 
 - Running includes current-fitness race-pace rehearsals, progressive aerobic support, specific preparation and taper. Unsupported goal times do not set training paces. Marathon long runs depend on weekly support, duration, history and time windows; no universal 26 km ceiling is imposed.
 - Recent marathon recovery affects lifting as well as running. Immediate post-meet running is removed. Unknown running pace can use an explicitly timed health dose rather than a fabricated distance.
 
-The progression rates, time estimates, effort ceilings and review points are adjustable product heuristics. They are not validated injury thresholds or performance forecasts. Fresh web literature verification was unavailable during this implementation; no new paper verification is claimed.
+The progression rates, time estimates, effort ceilings and review points are adjustable product heuristics. They are not validated injury thresholds or performance forecasts. The initial implementation did not include fresh literature verification. Subsequent coaching-depth review documents the papers consulted and their limits in `docs/qa/coaching-round-three-actions.md`; no reviewed heuristic is presented as a validated individual safety threshold.
 
 ## Reproduce
 
 `npm test` runs software regression checks. `npm run test:coaching:rounds` enters all profiles automatically and enforces the sequence: frozen five, fresh five, then original three. It stops when a stage has blocked coaching-code gates. Raw inputs, outputs, exact code hashes and audit results are retained in `docs/qa/coaching-rounds-current/` and uploaded by CI.
 
 Code-gate success is separate from athlete readiness. Specific event permission, recovery reassessment, unknown history and comparison assumptions remain conditional. The standalone `test:scenarios:acceptance` command continues to return nonzero for those input reviews.
+
+## Reviewed refinements for new proposals
+
+`prepareNewProgramme` now adds `coachingRefinementVersion: 1` to newly requested version-two proposals. Saved records without this marker continue using their original prescriptions. The changes coordinate endurance events with support lifting, preserve smaller current-fitness taper pace reminders, normalise completed race facts across performance/recovery, and use observed long-run duration/recovery in planning and explicit review. A dated normal recovery report can resolve a completed marathon; pre-event or undated reports cannot clear future recovery.
+
+Optional `strengthModes` assigns progression, maintenance or auto independently to Bench, Squat and Deadlift, including ordered-goal stages. A single-lift event defaults the other lifts to maintenance, with explicit overrides. New proposals can reconcile two or more eligible recent same-lift sessions with the starting baseline, retaining dated evidence and limiting the proposed baseline change to 5%. This is proposal calibration requiring athlete approval; rendering a saved programme does not recalibrate it from new logs.
+
+Recovery windows, review points, calibration limits and dose fractions are adjustable planning heuristics, not validated safety thresholds or result forecasts. Future heavy blocks remain conditional on actual recovery. Two-visit allocation is not redesigned in this iteration.
+
+`npm run test:coaching:depth` replays the unchanged K–O profiles, retaining all native sessions, controlled evidence probes and 18 prescription-level checks. The original failure review and frozen before/after criteria are preserved in `docs/qa/coaching-round-three-*`. These checks complement, rather than replace, coaching review.
 
 ## Activation boundary
 

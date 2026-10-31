@@ -68,6 +68,8 @@ jobs:
           node-version: '22'
       - name: Replay frozen athletes, fresh athletes and original profiles in order
         run: npm run test:coaching:rounds
+      - name: Check prescription-level recovery, taper and calibration criteria
+        run: npm run test:coaching:depth
       - name: Retain exact outputs and mapping limitations
         if: always()
         uses: actions/upload-artifact@v4

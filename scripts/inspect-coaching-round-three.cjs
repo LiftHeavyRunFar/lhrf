@@ -34,7 +34,7 @@ const report={schema:'lhrf-coaching-round-three-depth-audit-v1',synthetic:true,
   })})),
  counterfactuals:{
   longRecovery24versus96Hours:{sessionsIdentical:JSON.stringify(sessions(original))===JSON.stringify(sessions(generate(slowRecovery))),warningsIdentical:JSON.stringify(original.weeks.map(w=>w.warnings))===JSON.stringify(generate(slowRecovery).weeks.map(w=>w.warnings))},
-  longRun145versus220Minutes:{sessionsIdentical:JSON.stringify(sessions(original))===JSON.stringify(sessions(generate(longerDuration)))},
+  longRun145versus220Minutes:{sessionsIdentical:JSON.stringify(sessions(original))===JSON.stringify(sessions(generate(longerDuration))),warningsIdentical:JSON.stringify(original.weeks.map(w=>w.warnings))===JSON.stringify(generate(longerDuration).weeks.map(w=>w.warnings))},
   sameKnownMarathonDateExplicitlyRepeated:{sessionsIdentical:JSON.stringify(sessions(original))===JSON.stringify(sessions(generate(explicitMarathon))),originalFirstWeekKm:original.weeks[0].sessions.flatMap(s=>s.runs||[]).reduce((n,r)=>n+r.distanceKm,0),explicitDateFirstWeekKm:generate(explicitMarathon).weeks[0].sessions.flatMap(s=>s.runs||[]).reduce((n,r)=>n+r.distanceKm,0)},
   improvedCompletedMainLiftEvidence:{observedSets:evidence.sets,sessionsIdentical:JSON.stringify(sessions(noLogs))===JSON.stringify(sessions(withLogs)),boundary:'Generation only: review proposals, explicit approval, and same-session effort-led adjustments are separate paths and are not disproved by this probe.'}
  }};
