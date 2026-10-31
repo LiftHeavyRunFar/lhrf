@@ -53,6 +53,7 @@ function prepareNewProgramme(input={},options={}){
  if(c.coachingRulesVersion>=2){
   c.coachingRefinementVersion=1;
   c.visitAllocationVersion=1;
+  c.weeklyStressVersion=1;
   c.coachingSafeguardsVersion=1;
   for(const permission of Object.values(c.visitConstraints?.eventDays||{}))for(const key of ['minutes','hardLimitMinutes','preferredFinishMinutes','estimatedMinutes','logisticsMinutes']){
    const value=permission[key];if(value!==undefined&&value!==null&&(!Number.isFinite(value)||value<(key==='logisticsMinutes'?0:1)))throw new RangeError('Invalid event '+key+'.');
@@ -224,7 +225,14 @@ function variationChoice(c,lift,w){const b=variationBlock(w,c.weeks,c),specific=
 
 // Component capacity is a hard constraint. Unplaced work is returned explicitly.
 function constrainedPlan(c,warnings,activities){
- if(Number(c.coachingRulesVersion)>=2&&c.visitConstraints)return visitPlanner.allocate(c,warnings,activities);
+ if(Number(c.coachingRulesVersion)>=2&&c.visitConstraints){
+  const dates=new Map();
+  return visitPlanner.allocate(c,warnings,activities,{recoveryLifts:Number(c.weeklyStressVersion)>=1?['Squat','Bench','Deadlift'].filter(lift=>generalStrengthRecovery(c,lift)):[],finalHeavyDates:slots=>{
+   const key=slots.map(s=>s.items.filter(i=>i.type==='strength').map(i=>i.name).join(',')).join('|');
+   if(!dates.has(key))dates.set(key,generalPolicy(c)&&c.strengthTargetDate?Object.values(generalStrengthCalendar(c,{slots}).lifts).filter(x=>x.finalHeavyDate&&/Squat|Deadlift/.test(x.lift)).map(x=>x.finalHeavyDate):[]);
+   return dates.get(key);
+  }});
+ }
  const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],short=x=>String(x).slice(0,3);
  const allowed=new Set((c.availableDays?.length?c.availableDays:days).map(short));
  const doubles=Array.isArray(c.doubleDays)?new Set(c.doubleDays.map(short)):null;

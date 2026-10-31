@@ -7,7 +7,46 @@ const short=x=>String(x).slice(0,3),clone=x=>JSON.parse(JSON.stringify(x));
 const lower=x=>/squat|deadlift/i.test(x.name||x[0]||'');
 function combinations(items,n){if(n===0)return [[]];if(n<0||n>items.length)return [];const out=[];for(let i=0;i<=items.length-n;i++)for(const tail of combinations(items.slice(i+1),n-1))out.push([items[i],...tail]);return out}
 function permutations(items,n){if(n===0)return [[]];const out=[];for(let i=0;i<items.length;i++)for(const rest of permutations(items.filter((_,j)=>i!==j),n-1))out.push([items[i],...rest]);return out}
-function allocate(c,warnings=[],activities=[]){
+// Relative scheduling costs, not physiological readiness scores. A continuous
+// distance kernel permits consecutive work when availability/dose warrants it.
+// The cyclic term includes Sunday -> Monday rather than resetting recovery weekly.
+function weeklyStress(c,slots,context={}){
+ const exposures={},loads=slots.map(s=>({lower:0,upper:0,run:0,lifts:{}}));
+ const recovering=new Set(context.recoveryLifts||[]);
+ for(let d=0;d<slots.length;d++)for(const x of slots[d].items){
+  if(x.type==='strength'){
+   const occurrence=exposures[x.name]||0;exposures[x.name]=occurrence+1;
+   const mode=c.strengthModes?.[x.name]||c.strengthMode,light=(c.lightLifts||[]).some(n=>String(n).toLowerCase()===x.name.toLowerCase());
+   const easy=light||['beginner','novice','returning'].includes(c.trainingAge)||mode==='maintenance';
+   const intensity=Number.isFinite(x.schedulingDemand)?x.schedulingDemand:light?.2:easy?.45:occurrence>=2?.25:occurrence===1?1:1.15;
+   const demand=recovering.has(x.name)?Math.min(intensity,.35):intensity;
+   loads[d][lower(x)?'lower':'upper']+=demand;loads[d].lifts[x.name]=demand;
+  }else{
+   const health=c.runGoal==='fitness',quality=!health&&/Quality/.test(x.detail),long=!health&&/Long run/.test(x.detail);
+   const history=c.runningHistory?.longRun,minutes=long?Number(history?.minutes):0;
+   // Observed long-run duration changes interference cost, never a prescription.
+   const duration=minutes>0?Math.max(.5,Math.sqrt(minutes/90)):1;
+   loads[d].run+=(Number.isFinite(x.schedulingDemand)?x.schedulingDemand:quality?.9:long?.75*duration:health?.12:.2);
+  }
+ }
+ let score=0;
+ for(let i=0;i<7;i++){
+  const a=loads[i];score+=a.lower*a.run*8+a.upper*a.upper*.15;
+  for(let j=i+1;j<7;j++){
+   const b=loads[j],gap=j-i,kernel=1/gap**2+1/(7-gap)**2;
+   const same=Object.keys(a.lifts).reduce((n,k)=>n+(a.lifts[k]||0)*(b.lifts[k]||0),0);
+   score+=kernel*(8*a.lower*b.lower+2*same+5*(a.lower*b.run+b.lower*a.run)+2*a.run*b.run+a.upper*b.upper*.5);
+  }
+ }
+ // Reuse the canonical final-exposure selection; do not invent new taper windows.
+ const finals=context.finalHeavyDates?.(slots)||[];
+ for(let i=0;i<finals.length;i++)for(let j=i+1;j<finals.length;j++){
+  const gap=Math.abs(Date.parse(finals[i])-Date.parse(finals[j]))/86400000;
+  score+=4/(1+gap)**2;
+ }
+ return score;
+}
+function allocate(c,warnings=[],activities=[],context={}){
  const cfg=c.visitConstraints||{},allowed=DAYS.filter(d=>(c.availableDays?.length?c.availableDays.map(short):DAYS).includes(d)),slots=()=>DAYS.map(day=>({day,items:[]}));
  const work=activities.map((x,i)=>({...x,componentId:'component-'+i})),strength=work.filter(x=>x.type==='strength'),runs=work.filter(x=>x.type==='run');
  const combined=new Set((cfg.combinedDays||[]).map(short)),separate=new Set((cfg.separateDays||[]).map(short));
@@ -31,7 +70,7 @@ function allocate(c,warnings=[],activities=[]){
   if(out.filter(s=>s.items.some(x=>x.type==='strength')).length!==visits)unscheduled.push({name:'Strength visits',reason:'Fixed split differs from the requested number of strength visits'});
   return {slots:out,warnings:[...warnings,...unscheduled.map(x=>x.reason)],total:work.length,scheduled:work.length-pending.length,unscheduled,feasible:!unscheduled.length};
  }
- let best=null;
+ let best=null,legacyBest=null;
  for(const strengthDays of combinations(allowed,visits))for(const runDays of permutations(allowed,runs.length)){
   if(longIndex>=0&&c.longRunDay&&runDays[longIndex]!==short(c.longRunDay))continue;
   if(runDays.some((day,i)=>strengthDays.includes(day)&&(!combined.has(day)&&!separate.has(day)||i===longIndex)))continue;
@@ -51,7 +90,17 @@ function allocate(c,warnings=[],activities=[]){
   // Quality early in the week, then supporting easy running; Sunday remains protected.
   if(!strengthFirstHealth)runDays.forEach((day,i)=>{if(i!==longIndex){const preferred=i===0?1:3;score+=Math.abs(DAYS.indexOf(day)-preferred)*2}});
   score+=out.reduce((n,s)=>n+(s.items.length?DAYS.indexOf(s.day)*.001:0),0);
+  const priorScore=score;
+  if(!legacyBest||priorScore<legacyBest.score)legacyBest={slots:out,score:priorScore};
+  if(Number(c.weeklyStressVersion)>=1)score+=weeklyStress(c,out,context);
   if(!best||score<best.score)best={slots:out,score};
+ }
+ if(best&&Number(c.weeklyStressVersion)>=1){
+  const previousDays=new Map(legacyBest.slots.flatMap(s=>s.items.map(x=>[x.componentId,s.day])));
+  const moved=best.slots.reduce((n,s)=>n+s.items.filter(x=>previousDays.get(x.componentId)!==s.day).length,0);
+  // Changing familiar days has a real cost. Require a material stress reduction,
+  // not marginal heuristic gains that churn an otherwise coherent calendar.
+  if(best.score+moved>=legacyBest.score+weeklyStress(c,legacyBest.slots,context))best=legacyBest;
  }
  if(!best)return fail('No complete visit calendar fits the requested strength visits, runs, protected long run and mixed/separate permissions. Review frequencies or availability.');
  return {warnings:warnings.slice(),slots:best.slots,total:work.length,scheduled:work.length,unscheduled:[],feasible:true,visitModel:'strength visits group multiple distinct lift exposures; one run per day'};
@@ -138,6 +187,6 @@ function fitSessions(c,input){
  if(reviewRequired)warnings.push('Visit windows reduce actual running from '+beforeKm.toFixed(2)+' to '+afterKm.toFixed(2)+' km. Review endurance adequacy before approving this block; removed kilometres are not automatically made up.');
  warnings.push(...issues);return {sessions,warnings,blockingIssues:issues.slice(),feasible:!issues.length,reviewRequired,runningAdjustments:{beforeKm:Number(beforeKm.toFixed(3)),afterKm:Number(afterKm.toFixed(3)),trimmedKm,reviewRequired}};
 }
-const api={allocate,fitSessions,strengthMinutes};
+const api={allocate,fitSessions,strengthMinutes,weeklyStress};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoachConstraints=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

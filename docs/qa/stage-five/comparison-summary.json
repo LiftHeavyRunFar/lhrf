@@ -1,0 +1,254 @@
+{
+  "capturedWeeks": 149,
+  "protectedBaseFiles": {
+    "checked": 227,
+    "changed": []
+  },
+  "profiles": [
+    {
+      "id": "O1",
+      "weeks": 26,
+      "beforeDays": [
+        "Mon",
+        "Tue",
+        "Wed"
+      ],
+      "afterDays": [
+        "Mon",
+        "Wed",
+        "Fri"
+      ],
+      "oldHardAdjacent": 11,
+      "newHardAdjacent": 0,
+      "changedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "strengthChangedWeeks": [
+        12
+      ],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": true,
+      "blockedWeeks": []
+    },
+    {
+      "id": "O2",
+      "weeks": 17,
+      "beforeDays": [
+        "Tue",
+        "Fri"
+      ],
+      "afterDays": [
+        "Tue",
+        "Fri"
+      ],
+      "oldHardAdjacent": 0,
+      "newHardAdjacent": 0,
+      "changedWeeks": [],
+      "strengthChangedWeeks": [],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": true,
+      "blockedWeeks": []
+    },
+    {
+      "id": "O3",
+      "weeks": 26,
+      "beforeDays": [
+        "Mon",
+        "Tue",
+        "Wed"
+      ],
+      "afterDays": [
+        "Mon",
+        "Wed",
+        "Fri"
+      ],
+      "oldHardAdjacent": 29,
+      "newHardAdjacent": 0,
+      "changedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "strengthChangedWeeks": [
+        26
+      ],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": true,
+      "blockedWeeks": []
+    },
+    {
+      "id": "P",
+      "weeks": 12,
+      "beforeDays": [
+        "Mon",
+        "Thu"
+      ],
+      "afterDays": [
+        "Mon",
+        "Thu"
+      ],
+      "oldHardAdjacent": 0,
+      "newHardAdjacent": 0,
+      "changedWeeks": [],
+      "strengthChangedWeeks": [],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": true,
+      "blockedWeeks": []
+    },
+    {
+      "id": "Q",
+      "weeks": 10,
+      "beforeDays": [
+        "Mon",
+        "Wed",
+        "Fri"
+      ],
+      "afterDays": [
+        "Mon",
+        "Wed",
+        "Fri"
+      ],
+      "oldHardAdjacent": 0,
+      "newHardAdjacent": 0,
+      "changedWeeks": [],
+      "strengthChangedWeeks": [],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": true,
+      "blockedWeeks": []
+    },
+    {
+      "id": "R",
+      "weeks": 8,
+      "beforeDays": [
+        "Tue",
+        "Thu"
+      ],
+      "afterDays": [
+        "Tue",
+        "Thu"
+      ],
+      "oldHardAdjacent": 0,
+      "newHardAdjacent": 0,
+      "changedWeeks": [],
+      "strengthChangedWeeks": [],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": false,
+      "blockedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "id": "S",
+      "weeks": 16,
+      "beforeDays": [
+        "Mon",
+        "Wed",
+        "Sat"
+      ],
+      "afterDays": [
+        "Mon",
+        "Wed",
+        "Sat"
+      ],
+      "oldHardAdjacent": 0,
+      "newHardAdjacent": 0,
+      "changedWeeks": [],
+      "strengthChangedWeeks": [],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": true,
+      "blockedWeeks": []
+    },
+    {
+      "id": "T",
+      "weeks": 18,
+      "beforeDays": [
+        "Mon",
+        "Thu"
+      ],
+      "afterDays": [
+        "Mon",
+        "Thu"
+      ],
+      "oldHardAdjacent": 0,
+      "newHardAdjacent": 0,
+      "changedWeeks": [],
+      "strengthChangedWeeks": [],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": true,
+      "blockedWeeks": [
+        18
+      ]
+    },
+    {
+      "id": "Taylor",
+      "weeks": 16,
+      "beforeDays": [
+        "Tue",
+        "Sat"
+      ],
+      "afterDays": [
+        "Tue",
+        "Sat"
+      ],
+      "oldHardAdjacent": 0,
+      "newHardAdjacent": 0,
+      "changedWeeks": [],
+      "strengthChangedWeeks": [],
+      "runningDosesUnchanged": true,
+      "allOrdinaryVisitsFit": true,
+      "blockedWeeks": []
+    }
+  ],
+  "gates": [
+    {
+      "cases": 3,
+      "passed": 0,
+      "blocked": 0,
+      "conditionalReview": 3,
+      "gates": 26,
+      "blockedGates": 0
+    }
+  ]
+}
