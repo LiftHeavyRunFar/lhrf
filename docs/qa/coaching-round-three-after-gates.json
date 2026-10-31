@@ -1,0 +1,100 @@
+{
+  "schema": "lhrf-coaching-round-three-gates-v1",
+  "coachingCodeGatesPassed": true,
+  "coachingSignoff": false,
+  "signoffBoundary": "Passing these frozen criteria still requires prescription review. It is not athlete readiness or a result forecast.",
+  "gates": [
+    {
+      "id": "K-native-generation",
+      "status": "pass",
+      "detail": "Native programmes must generate without errors."
+    },
+    {
+      "id": "L-native-generation",
+      "status": "pass",
+      "detail": "Native programmes must generate without errors."
+    },
+    {
+      "id": "M-native-generation",
+      "status": "pass",
+      "detail": "Native programmes must generate without errors."
+    },
+    {
+      "id": "N-native-generation",
+      "status": "pass",
+      "detail": "Native programmes must generate without errors."
+    },
+    {
+      "id": "O-native-generation",
+      "status": "pass",
+      "detail": "Native programmes must generate without errors."
+    },
+    {
+      "id": "K-established-endurance-retained",
+      "status": "pass",
+      "detail": "Established marathon preparation must retain substantial support under this supplied 75 km baseline; this is not a universal minimum."
+    },
+    {
+      "id": "K-small-taper-pace-reminders",
+      "status": "pass",
+      "detail": "Each recovered established-marathon taper week retains a smaller current-fitness work dose, bounded below the specific-block dose."
+    },
+    {
+      "id": "K-background-strength-taper",
+      "status": "pass",
+      "detail": "Background main-lift volume and deadlift effort reduce near the marathon."
+    },
+    {
+      "id": "L-unsupported-marathon-stays-blocked",
+      "status": "pass",
+      "detail": "Eight-week marathon from an 18 km baseline must not become approved just to satisfy the date."
+    },
+    {
+      "id": "M-support-lifts-maintained",
+      "status": "pass",
+      "detail": "Bench-only default support lifts receive maintenance/technique rather than a separate progressive peak, unless explicitly overridden."
+    },
+    {
+      "id": "M-bench-specific-heavy-practice-retained",
+      "status": "pass",
+      "detail": "Fixing support lifts must retain demanding bench competition practice."
+    },
+    {
+      "id": "N-day-after-half-recovery-coordination",
+      "status": "pass",
+      "detail": "Day-after-half lower lifting is absent or deliberately reduced, rather than unchanged maintenance."
+    },
+    {
+      "id": "N-no-race-week-strength-rebound",
+      "status": "pass",
+      "detail": "An unrelated strength deload must not cause a lower-lifting rebound in the running race week."
+    },
+    {
+      "id": "N-handover-remains-conditional",
+      "status": "pass",
+      "detail": "A dated future handover is planned subject to actual recovery review, not presented as proof of recovery."
+    },
+    {
+      "id": "long-run-recovery-observation-used",
+      "status": "pass",
+      "detail": "Changing observed recovery from 24 to 96 hours must affect dose or an explicit review warning."
+    },
+    {
+      "id": "long-run-duration-observation-used",
+      "status": "pass",
+      "detail": "Changing observed long-run duration must affect dose or an explicit review warning."
+    },
+    {
+      "id": "dated-marathon-facts-normalised",
+      "status": "pass",
+      "detail": "Repeating the same known marathon date in another supported field must not change the prescription."
+    },
+    {
+      "id": "new-proposal-uses-completed-lift-evidence",
+      "status": "pass",
+      "detail": "Eligible repeated same-lift evidence influences calibration/review of a newly requested proposal; approved records remain separate."
+    }
+  ],
+  "auditSha256": "a135f8d493eb52483e4cfa94673627929ba3cc045608de32810aed16558c704c",
+  "fixtureSha256": "fa52f05b76055696b73ef402339deb17e010c43879203fc837458e1bb415169c"
+}

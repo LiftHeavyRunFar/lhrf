@@ -1,0 +1,4379 @@
+{
+  "schema": "lhrf-coaching-round-three-depth-audit-v1",
+  "synthetic": true,
+  "fixtureSha256": "fa52f05b76055696b73ef402339deb17e010c43879203fc837458e1bb415169c",
+  "inspectionSha256": "00fac4f873e22445866b927df120abefacf2adb0dde0ef4e116f482265c4e894",
+  "provenance": {
+    "localCommit": "050a77fd6f18fcad361712a77967a4aca5af2c33",
+    "files": {
+      "src/coach-engine.js": "91a9224b547f11a32ce8c9ba8d2157ac2a83d39e795106f5582182ec9f7701c7",
+      "src/coach-adapters.js": "d62def889dcef65b0d15f7ec92f26369706f25e79cd997363bb1c3e0ce8ba35f",
+      "src/running-workouts.js": "45d2a9ddbf704275c8b8bbe9017c176a177f316932643a6718236bd1b75ef3c4",
+      "tests/fixtures/five-scenario-round-three-inputs.json": "fa52f05b76055696b73ef402339deb17e010c43879203fc837458e1bb415169c",
+      "scripts/test-five-scenarios.cjs": "4482091677c0a7553c414c83612ffe35e58d628c683a93f290ec5ef35c7c4767",
+      "scripts/audit-five-scenarios.cjs": "6840b10f9998cc3753fc0124f1eba984f82a1f90c35d98ecd254cd7b21b9d617",
+      "src/coach-constraints.js": "2484459d10e4705d1b1399eaa572fd74dc9b8892490d9dc7c3173e0a3b1585be",
+      "src/running-preparation.js": "64ee97fba316d29da2a25b73264b2fa0fd5c6d945177d930564c36b24c9e520c"
+    },
+    "entry": "buildNewProgramme -> prepareNewProgramme -> buildProgramme -> createEngine.describeWeek -> generatedSessions",
+    "browserParity": "index.html customConfig/sync use prepareNewProgramme; generatedSessions delegates to canonical createEngine; see shared-coach.test.cjs. No browser activation or storage used.",
+    "clock": "2026-10-31T12:00:00.000Z",
+    "seed": 2026103103
+  },
+  "interpretation": "This audit freezes observations. Repeated prescriptions may be purposeful, and observed weaknesses require coaching judgement. Probes create new proposals only, never edit an approved programme.",
+  "cases": [
+    {
+      "id": "K",
+      "name": "Casey: High-mileage marathon runner with background strength",
+      "error": null,
+      "checks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "weeks": [
+        {
+          "week": 1,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Recovery",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 44.283,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 27,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 72.5,
+                  "rpe": 6,
+                  "role": "recovery"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 65,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 6,
+                  "role": "recovery"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Recent marathon: provisional easy return, with no quality or long-run progression until recovery is confirmed. Rest or shorten if normal easy running is not comfortable.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 2,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 78.4,
+          "longRunKm": 28.2,
+          "qualityKm": 4,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 95,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 3,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 81.9,
+          "longRunKm": 29.45,
+          "qualityKm": 9.3,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 98,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 4,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 67.15,
+          "longRunKm": 24.15,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 86,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 5,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Specific preparation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 85.6,
+          "longRunKm": 30.4,
+          "qualityKm": 10,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 24,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 6,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 6,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 97,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 6,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 6,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 6,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 89.029,
+          "longRunKm": 31.2,
+          "qualityKm": 10.75,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 24,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 100,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 7,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 92.229,
+          "longRunKm": 32,
+          "qualityKm": 12,
+          "qualityDays": [
+            "Sun"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 24,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 100,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 8,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 76.65,
+          "longRunKm": 27.55,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 24,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 91,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 9,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 94.462,
+          "longRunKm": 32,
+          "qualityKm": 12,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 24,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 100,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 10,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 97.229,
+          "longRunKm": 32,
+          "qualityKm": 12,
+          "qualityDays": [
+            "Sun"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 19,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 6,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 6,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 100,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 6,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 6,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 11,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 96.262,
+          "longRunKm": 32,
+          "qualityKm": 12,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 100,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 12,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 64.133,
+          "longRunKm": 0,
+          "qualityKm": 4,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 92.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 93,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 62.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Visit windows reduce actual running from 75.95 to 64.13 km. Review endurance adequacy before approving this block; removed kilometres are not automatically made up."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 13,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 51.133,
+          "longRunKm": 0,
+          "qualityKm": 3,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 19,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 65,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 52.5,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 69,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 85,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 52.5,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 14,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 20.7,
+          "longRunKm": 0,
+          "qualityKm": 1.2,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 19,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 65,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 52.5,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 48,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 85,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 52.5,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race."
+          ],
+          "blockingIssues": []
+        }
+      ]
+    },
+    {
+      "id": "L",
+      "name": "Avery: First marathon ambition from a small running base",
+      "error": null,
+      "checks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "weeks": [
+        {
+          "week": 1,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": false,
+          "reviewRequired": true,
+          "runningKm": 18,
+          "longRunKm": 7.2,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Tue",
+              "minutes": 78,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 77.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 76,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 102.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ],
+          "blockingIssues": [
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ]
+        },
+        {
+          "week": 2,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": false,
+          "reviewRequired": true,
+          "runningKm": 18.8,
+          "longRunKm": 7.5,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Tue",
+              "minutes": 80,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 77.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 78,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 102.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ],
+          "blockingIssues": [
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ]
+        },
+        {
+          "week": 3,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": false,
+          "reviewRequired": true,
+          "runningKm": 19.65,
+          "longRunKm": 7.85,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Tue",
+              "minutes": 82,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 77.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 80,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 102.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ],
+          "blockingIssues": [
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ]
+        },
+        {
+          "week": 4,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": false,
+          "reviewRequired": true,
+          "runningKm": 16.1,
+          "longRunKm": 6.4,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Tue",
+              "minutes": 73,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 77.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 71,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 102.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ],
+          "blockingIssues": [
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ]
+        },
+        {
+          "week": 5,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Specific preparation",
+          "calendarFeasible": false,
+          "reviewRequired": true,
+          "runningKm": 20.55,
+          "longRunKm": 8.2,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Tue",
+              "minutes": 80,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 77.5,
+                  "rpe": 6,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 6,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 77,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 102.5,
+                  "rpe": 6,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 6,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Marathon endurance review: this specific block is not yet supported by substantial weekly mileage and long-run capacity. Review a completion-led run/walk approach, more suitable availability or the race date.",
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ],
+          "blockingIssues": [
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ]
+        },
+        {
+          "week": 6,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "calendarFeasible": false,
+          "reviewRequired": true,
+          "runningKm": 15.4,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Tue",
+              "minutes": 67,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 77.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 79,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 102.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ],
+          "blockingIssues": [
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ]
+        },
+        {
+          "week": 7,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "calendarFeasible": false,
+          "reviewRequired": true,
+          "runningKm": 11.3,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Tue",
+              "minutes": 51,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 45,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 72.5,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 45,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ],
+          "blockingIssues": [
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ]
+        },
+        {
+          "week": 8,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "calendarFeasible": false,
+          "reviewRequired": true,
+          "runningKm": 4.3,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Tue",
+              "minutes": 38,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 55,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 45,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 43,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 72.5,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 45,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ],
+          "blockingIssues": [
+            "Short marathon preparation needs individual review of established endurance and recovery."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "M",
+      "name": "Morgan: Bench-only meet with lower-body maintenance",
+      "error": null,
+      "checks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "weeks": [
+        {
+          "week": 1,
+          "priority": "Bench",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 54,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 145,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 130,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Wed",
+              "minutes": 88,
+              "exercises": [
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 8,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Fri",
+              "minutes": 52,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 172.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 5,
+                  "reps": 2,
+                  "kg": 75,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 2,
+          "priority": "Bench",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 54,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 145,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 130,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Wed",
+              "minutes": 88,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 122.5,
+                  "rpe": 8,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 115,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Fri",
+              "minutes": 52,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 172.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 5,
+                  "reps": 2,
+                  "kg": 82.5,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 3,
+          "priority": "Bench",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 54,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 145,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 137.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Wed",
+              "minutes": 87,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 112.5,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Fri",
+              "minutes": 52,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 172.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 5,
+                  "reps": 2,
+                  "kg": 90,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 4,
+          "priority": "Bench",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 10.2,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 54,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 145,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 137.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Wed",
+              "minutes": 81,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 112.5,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Fri",
+              "minutes": 52,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 172.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 5,
+                  "reps": 2,
+                  "kg": 75,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 5,
+          "priority": "Bench",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 54,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 145,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 137.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Wed",
+              "minutes": 87,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 112.5,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Fri",
+              "minutes": 52,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 172.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 5,
+                  "reps": 2,
+                  "kg": 82.5,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 6,
+          "priority": "Bench",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 51,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 145,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 140,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 122.5,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Wed",
+              "minutes": 87,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 112.5,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Fri",
+              "minutes": 50,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 172.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 5,
+                  "reps": 2,
+                  "kg": 90,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 7,
+          "priority": "Bench",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 26,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 145,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 140,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 122.5,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Wed",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 127.5,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 117.5,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Fri",
+              "minutes": 24,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 172.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 3,
+                  "reps": 2,
+                  "kg": 75,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 8,
+          "priority": "Bench",
+          "phase": "Taper / event",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 2.1,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 26,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 102.5,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 142.5,
+                  "rpe": 9,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 2,
+                  "kg": 122.5,
+                  "rpe": 6,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Wed",
+              "minutes": 32,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 90,
+                  "rpe": 5.5,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Strength competition week: short easy running only; the day after the meet requires a separate recovery decision."
+          ],
+          "blockingIssues": []
+        }
+      ]
+    },
+    {
+      "id": "N",
+      "name": "Jamie: Half marathon then powerlifting four weeks later",
+      "error": null,
+      "checks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "weeks": [
+        {
+          "week": 1,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 36,
+          "longRunKm": 13.65,
+          "qualityKm": 3.5,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 125,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 80,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 147.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Maintenance lifting and a strength competition conflict; review the strength objective before approval."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 2,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 37.6,
+          "longRunKm": 14.25,
+          "qualityKm": 3.7,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 125,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 82,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 147.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Maintenance lifting and a strength competition conflict; review the strength objective before approval."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 3,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 39.3,
+          "longRunKm": 14.9,
+          "qualityKm": 4.1,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 125,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 84,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 147.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Maintenance lifting and a strength competition conflict; review the strength objective before approval."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 4,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 32.25,
+          "longRunKm": 12.25,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 29,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 125,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 74,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 147.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7.5,
+                  "role": "maintenance"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Maintenance lifting and a strength competition conflict; review the strength objective before approval."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 5,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 21.6,
+          "longRunKm": 0,
+          "qualityKm": 1.25,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 19,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 87.5,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 67.5,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 77,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 105,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 67.5,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Maintenance lifting and a strength competition conflict; review the strength objective before approval."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 6,
+          "priority": "Running",
+          "phase": "Specificity",
+          "runningPhase": "Taper / event",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 6.9,
+          "longRunKm": 0,
+          "qualityKm": 0.45,
+          "qualityDays": [
+            "Tue"
+          ],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 19,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 87.5,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 67.5,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 52,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 105,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 67.5,
+                  "rpe": 6,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Maintenance lifting and a strength competition conflict; review the strength objective before approval."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 7,
+          "priority": "Running",
+          "phase": "Specificity",
+          "runningPhase": "Recovery",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 0,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 11,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 67.5,
+                  "rpe": 6,
+                  "role": "recovery"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 19,
+              "exercises": [
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 105,
+                  "rpe": 5.5,
+                  "role": "recovery"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 67.5,
+                  "rpe": 6,
+                  "role": "recovery"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Maintenance lifting and a strength competition conflict; review the strength objective before approval.",
+            "Post-race return is provisional: confirm recovery before accepting the next loading block."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 8,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 84,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 150,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 130,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 177.5,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 155,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 97.5,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 85,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 127.5,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 117.5,
+                  "rpe": 7,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 85,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 77.5,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 39,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 5,
+                  "reps": 2,
+                  "kg": 57.5,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness.",
+            "Deadlift: final heavy practice falls 13 days before the event because of availability; review this earlier-than-preferred exposure."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 9,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 38,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 95,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 182.5,
+                  "rpe": 9,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 2,
+                  "kg": 157.5,
+                  "rpe": 6,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 97.5,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 85,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 26,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 152.5,
+                  "rpe": 9,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 2,
+                  "kg": 130,
+                  "rpe": 6,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 90,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 13,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 3,
+                  "reps": 2,
+                  "kg": 62.5,
+                  "rpe": 5.5,
+                  "role": "speed"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness.",
+            "Deadlift: final heavy practice falls 13 days before the event because of availability; review this earlier-than-preferred exposure."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 10,
+          "priority": "Squat",
+          "phase": "Taper / event",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 6,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Mon",
+              "minutes": 37,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 95,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 115,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 100,
+                  "rpe": 9,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 2,
+                  "kg": 87.5,
+                  "rpe": 6,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Thu",
+              "minutes": 24,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 95,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 62.5,
+                  "rpe": 5.5,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness.",
+            "Strength competition week: short easy running only; the day after the meet requires a separate recovery decision.",
+            "Deadlift: final heavy practice falls 13 days before the event because of availability; review this earlier-than-preferred exposure."
+          ],
+          "blockingIssues": []
+        }
+      ]
+    },
+    {
+      "id": "O",
+      "name": "Taylor: Two-visit strength athlete with health running",
+      "error": null,
+      "checks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "weeks": [
+        {
+          "week": 1,
+          "priority": "Squat",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 10,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 112.5,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 152.5,
+                  "rpe": 7.5,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 142.5,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 80,
+                  "rpe": 7.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 75,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 40,
+              "exercises": [
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 2,
+          "priority": "Squat",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 10.2,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 112.5,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 152.5,
+                  "rpe": 7.5,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 142.5,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 80,
+                  "rpe": 7.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 75,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 40,
+              "exercises": [
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 3,
+          "priority": "Squat",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 10.35,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 112.5,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 152.5,
+                  "rpe": 7.5,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 142.5,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 80,
+                  "rpe": 7.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 75,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 40,
+              "exercises": [
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 4,
+          "priority": "Squat",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 8.5,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 120,
+                  "rpe": 7.5,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 112.5,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 152.5,
+                  "rpe": 7.5,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 142.5,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 80,
+                  "rpe": 7.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 75,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 40,
+              "exercises": [
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 5,
+          "priority": "Squat",
+          "phase": "Foundation",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 10.55,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 35,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 90,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 115,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 60,
+                  "rpe": 5.5,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 13,
+              "exercises": [
+                {
+                  "exercise": "Close-grip bench",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 0,
+                  "rpe": 5.5,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 6,
+          "priority": "Squat",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 10.75,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 130,
+                  "rpe": 8,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 165,
+                  "rpe": 8,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 155,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 87.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 80,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 41,
+              "exercises": [
+                {
+                  "exercise": "Spoto press",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 8,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Spoto press",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 7,
+          "priority": "Squat",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 10.95,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 130,
+                  "rpe": 8,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 165,
+                  "rpe": 8,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 155,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 87.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 80,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 41,
+              "exercises": [
+                {
+                  "exercise": "Spoto press",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 8,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Spoto press",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 8,
+          "priority": "Squat",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 8.95,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 130,
+                  "rpe": 8,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 165,
+                  "rpe": 8,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 155,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 87.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 80,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 41,
+              "exercises": [
+                {
+                  "exercise": "Spoto press",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 8,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Spoto press",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 9,
+          "priority": "Squat",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 11.15,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 130,
+                  "rpe": 8,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 165,
+                  "rpe": 8,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 155,
+                  "rpe": 7,
+                  "role": "strength"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 87.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 80,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 41,
+              "exercises": [
+                {
+                  "exercise": "Spoto press",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 8,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Spoto press",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 0,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 10,
+          "priority": "Squat",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 11.35,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 35,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 90,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 115,
+                  "rpe": 5.5,
+                  "role": "technique"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 60,
+                  "rpe": 5.5,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 13,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 60,
+                  "rpe": 5.5,
+                  "role": "technique"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 11,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 11.55,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 137.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 175,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 152.5,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 92.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 80,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 40,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 80,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 75,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 12,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 9.45,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 137.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 175,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 152.5,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 92.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 80,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 40,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 80,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 75,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 13,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 11.75,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 137.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 120,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 175,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 152.5,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 92.5,
+                  "rpe": 8,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 80,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 40,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 5,
+                  "kg": 80,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 5,
+                  "kg": 75,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 14,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 11.95,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 60,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 140,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 122.5,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 177.5,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 155,
+                  "rpe": 7,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 95,
+                  "rpe": 8.5,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 3,
+                  "kg": 82.5,
+                  "rpe": 7,
+                  "role": "heavy"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 13,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 85,
+                  "rpe": 7.5,
+                  "role": "volume"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 3,
+                  "kg": 77.5,
+                  "rpe": 7,
+                  "role": "volume"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 15,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": false,
+          "runningKm": 12,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [
+            {
+              "day": "Thu",
+              "minutes": 38,
+              "exercises": [
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 142.5,
+                  "rpe": 9,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Squat",
+                  "sets": 1,
+                  "reps": 2,
+                  "kg": 122.5,
+                  "rpe": 6,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 182.5,
+                  "rpe": 9,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Deadlift",
+                  "sets": 1,
+                  "reps": 2,
+                  "kg": 157.5,
+                  "rpe": 6,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 2,
+                  "reps": 2,
+                  "kg": 60,
+                  "rpe": 5.5,
+                  "role": "technique"
+                }
+              ]
+            },
+            {
+              "day": "Sat",
+              "minutes": 15,
+              "exercises": [
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 1,
+                  "kg": 95,
+                  "rpe": 9,
+                  "role": "heavy"
+                },
+                {
+                  "exercise": "Bench",
+                  "sets": 1,
+                  "reps": 2,
+                  "kg": 82.5,
+                  "rpe": 6,
+                  "role": "heavy"
+                }
+              ]
+            }
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 16,
+          "priority": "Squat",
+          "phase": "Taper / event",
+          "runningPhase": "Development",
+          "calendarFeasible": true,
+          "reviewRequired": true,
+          "runningKm": 1.75,
+          "longRunKm": 0,
+          "qualityKm": 0,
+          "qualityDays": [],
+          "mainWork": [],
+          "warnings": [
+            "Strength competition week: short easy running only; the day after the meet requires a separate recovery decision."
+          ],
+          "blockingIssues": []
+        }
+      ]
+    }
+  ],
+  "counterfactuals": {
+    "longRecovery24versus96Hours": {
+      "sessionsIdentical": false,
+      "warningsIdentical": false
+    },
+    "longRun145versus220Minutes": {
+      "sessionsIdentical": false,
+      "warningsIdentical": false
+    },
+    "sameKnownMarathonDateExplicitlyRepeated": {
+      "sessionsIdentical": true,
+      "originalFirstWeekKm": 44.283,
+      "explicitDateFirstWeekKm": 44.283
+    },
+    "improvedCompletedMainLiftEvidence": {
+      "observedSets": [
+        {
+          "date": "2026-10-25T12:00:00Z",
+          "exercise": "Squat",
+          "weight": 135,
+          "reps": 5,
+          "rpe": 7,
+          "target": 7,
+          "role": "top"
+        },
+        {
+          "date": "2026-10-25T12:00:00Z",
+          "exercise": "Bench",
+          "weight": 90,
+          "reps": 5,
+          "rpe": 7,
+          "target": 7,
+          "role": "top"
+        },
+        {
+          "date": "2026-10-25T12:00:00Z",
+          "exercise": "Deadlift",
+          "weight": 170,
+          "reps": 5,
+          "rpe": 7,
+          "target": 7,
+          "role": "top"
+        },
+        {
+          "date": "2026-10-29T12:00:00Z",
+          "exercise": "Squat",
+          "weight": 135,
+          "reps": 5,
+          "rpe": 7,
+          "target": 7,
+          "role": "top"
+        },
+        {
+          "date": "2026-10-29T12:00:00Z",
+          "exercise": "Bench",
+          "weight": 90,
+          "reps": 5,
+          "rpe": 7,
+          "target": 7,
+          "role": "top"
+        },
+        {
+          "date": "2026-10-29T12:00:00Z",
+          "exercise": "Deadlift",
+          "weight": 170,
+          "reps": 5,
+          "rpe": 7,
+          "target": 7,
+          "role": "top"
+        }
+      ],
+      "sessionsIdentical": false,
+      "boundary": "Generation only: review proposals, explicit approval, and same-session effort-led adjustments are separate paths and are not disproved by this probe."
+    }
+  }
+}

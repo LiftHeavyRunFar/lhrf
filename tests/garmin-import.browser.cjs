@@ -23,7 +23,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.ok(target);await page.locator('#garminSavedLinks select').selectOption(target.key);await page.getByRole('button',{name:'Save session link',exact:true}).click();
  const linked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(linked.runs.length,1);assert.equal(linked.runs[0].sessionId,target.id);assert.equal(linked.completedWorkouts.length,1);assert.equal(linked.completedWorkouts[0].plannedDate,'2026-10-31');assert.equal(linked.runs[0].date,'2026-10-30T06:00:00.000Z');
  for(const k of ['customRoadmap','activeSchedule','sets','overrides'])assert.deepEqual(linked[k],checked[k]);
- await page.locator('nav [data-screen="today"]').click();assert.match(await page.locator('[data-session-id="'+target.id+'"]').innerText(),/Completed Fri 30 Oct · planned Sat 31 Oct/);
+ await page.locator('nav [data-screen="today"]').click();assert.match(await page.locator('[data-session-id="'+target.id+'"]').innerText(),/Completed Fri,? 30 Oct · planned Sat,? 31 Oct/);
  await page.reload();assert.deepEqual(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY),linked);
  await page.locator('nav [data-screen="settings"]').click();await page.locator('#garminSavedLinks summary').click();await page.locator('#garminSavedLinks select').selectOption('');await page.getByRole('button',{name:'Save session link',exact:true}).click();
  const unlinked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(unlinked.runs.length,1);assert.equal(unlinked.completedWorkouts.length,0);assert.equal(unlinked.runs[0].sessionId,undefined);
