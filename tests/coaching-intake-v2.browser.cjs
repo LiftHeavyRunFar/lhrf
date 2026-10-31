@@ -66,7 +66,8 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
   {
    const {context,page,before,errors}=await contextFor(browser);await enter(page,'B');assert.equal(await page.locator('#frNext').isDisabled(),true);preserved(await read(page),before);
    assert.match(await page.locator('#frWarnings').innerText(),/event|availability|participation|time/i);
-   await backToGoals(page);await page.locator('#frRunningEventConfirmed').check();await set(page,'frRunningEventMinutes',150);await returnToPreview(page);assert.equal(await page.locator('#frNext').isEnabled(),true);preserved(await read(page),before);
+   await backToGoals(page);await page.locator('#frRunningEventConfirmed').check();await set(page,'frRunningEventMinutes',130);await returnToPreview(page);assert.equal(await page.locator('#frNext').isDisabled(),true,'Confirmed attendance cannot override an insufficient hard event allowance');assert.match(await page.locator('#frWarnings').innerText(),/hard event window of 130/);preserved(await read(page),before);
+   await backToGoals(page);await set(page,'frRunningEventMinutes',150);await returnToPreview(page);assert.equal(await page.locator('#frNext').isEnabled(),true);preserved(await read(page),before);
    await page.locator('#frNext').click();const after=await read(page);preserved(after,before,true);assert.deepEqual(after.customRoadmap.visitConstraints.eventDays['2027-03-21'],{confirmed:true,minutes:150});assert.deepEqual(errors,[]);await context.close();
   }
   // C: the real intake creates a dated sport handover and protects two separate Tuesday visits.

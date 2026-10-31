@@ -53,6 +53,10 @@ function prepareNewProgramme(input={},options={}){
  if(c.coachingRulesVersion>=2){
   c.coachingRefinementVersion=1;
   c.visitAllocationVersion=1;
+  c.coachingSafeguardsVersion=1;
+  for(const permission of Object.values(c.visitConstraints?.eventDays||{}))for(const key of ['minutes','hardLimitMinutes','preferredFinishMinutes','estimatedMinutes','logisticsMinutes']){
+   const value=permission[key];if(value!==undefined&&value!==null&&(!Number.isFinite(value)||value<(key==='logisticsMinutes'?0:1)))throw new RangeError('Invalid event '+key+'.');
+  }
   validateStrengthModes(c.strengthModes);
   if(['bench','squat','deadlift'].includes(c.event)){
    const primary=c.event[0].toUpperCase()+c.event.slice(1),explicit=c.strengthModes||{};
@@ -105,7 +109,8 @@ function weekConfig(input,w=1){
  c.goalSchedule=goals.map((g,i)=>({fromWeek:i?Math.floor((Date.parse(goals[i-1].date+'T12:00:00Z')+Number(goals[i-1].recoveryDays??7)*86400000+86400000-monday)/604800000)+1:1,hybridFocus:g.hybridFocus||(g.sport==='running'?'running':'strength')}));
  c.runningPriorityFromWeek=c.goalSchedule.find(g=>g.hybridFocus==='running')?.fromWeek||1;
  c._originRunningTargetDate=input.runningTargetDate;
- if(Number(c.coachingRefinementVersion)>=1&&index>0)c.handoverRecoveryReview={eventDate:goals[index-1].date,sport:goals[index-1].sport,conditional:true,note:'The dated handover is provisional. Confirm actual event recovery and completed training before accepting the next heavy or specific block; elapsed days alone do not clear fatigue.'};
+ const previous=Number(c.coachingSafeguardsVersion)>=1?goals.filter(g=>Date.parse(g.date+'T12:00:00Z')<when).at(-1):index>0?goals[index-1]:null;
+ if(Number(c.coachingRefinementVersion)>=1&&previous)c.handoverRecoveryReview={eventDate:previous.date,sport:previous.sport,conditional:true,note:'The dated handover is provisional. Confirm actual event recovery and completed training before accepting the next heavy or specific block; elapsed days alone do not clear fatigue.'};
  return c;
 }
 // Execution order is separate from the saved dose; never reorder indexed live entries.
@@ -852,6 +857,12 @@ function generalSessionDate(c,w,day){
  const d=new Date(c.startDate+'T12:00:00Z');if(offset<0||!Number.isFinite(+d))return null;
  d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7+(w-1)*7+offset);return d.toISOString().slice(0,10);
 }
+// Session dates, rather than Monday boundaries, govern an explicitly requested recovery interval.
+function orderedRecoveryInterval(c,w,day){
+ if(!(Number(c.coachingSafeguardsVersion)>=1))return null;
+ const date=generalSessionDate(c,w,day),stamp=x=>Date.parse(x+'T12:00:00Z');
+ return (c.orderedGoals||[]).map(goal=>({...goal,recoveryDays:Number(goal.recoveryDays??7),elapsed:(stamp(date)-stamp(goal.date))/86400000})).filter(g=>g.elapsed>0&&g.elapsed<g.recoveryDays).sort((a,b)=>a.elapsed-b.elapsed)[0]||null;
+}
 // Calendar selection depends on available exposures and the lift, never named weekdays.
 function generalStrengthCalendar(c,plan){
  plan=plan||customPlan(c);const lifts={},warnings=[];
@@ -922,8 +933,10 @@ function generalStrengthExposure(c,w,lift,occurrence,day,baseline,deload,phase,c
 
 // New proposals opt into this policy. Version-one approved prescriptions retain their saved dose.
 function generalStrengthRecovery(c,lift){
- const evidence=c.recoveryEvidence;
- if(!evidence||evidence.resolved===true||evidence.status==='recovered')return null;
+ const context=c.recoveryContext,relevant=context?.status==='all'||context?.status==='lower'&&['Squat','Deadlift'].includes(lift);
+ const reported=!context?.reportedAt||Number.isFinite(Date.parse(context.reportedAt))&&Date.parse(context.reportedAt)<=Date.now();
+ const evidence=c.recoveryEvidence||(Number(c.coachingSafeguardsVersion)>=1&&relevant&&reported?{status:'recovery-review',affectedLifts:[lift],observedAt:context.reportedAt}:null);
+ if(!evidence||evidence.resolved===true||evidence.status==='recovered'||(Number(c.coachingSafeguardsVersion)>=1&&evidence.cleared===true))return null;
  const entries=Array.isArray(evidence.lifts)?evidence.lifts:[];
  const specific=entries.find(x=>String(x.lift||'').toLowerCase()===lift.toLowerCase());
  const affected=(evidence.affectedLifts||[]).some(x=>String(x).toLowerCase()===lift.toLowerCase());
@@ -1111,6 +1124,21 @@ function generatedSessions(c,w){
     else if(days!==null&&days>=-7&&days<=7)exposure={role:'technique',reducedSupport:true,ex:[[lift,2,3,baseline?roundLoad(baseline*.55):0,5.5,{role:'straight',category:'primary',light:true,trainingRole:'technique'}]],note:'Bounded technique and recovery work around the event; no near-max single.'};
    }
    const enduranceSupport=runningStrengthSupport(c,w,slot.day,lift,baseline);if(enduranceSupport)exposure=enduranceSupport;
+   if(Number(c.coachingSafeguardsVersion)>=1&&maintenancePolicy(c,lift)&&!light&&generalStrengthRecovery(c,lift)){
+    if(!exposure||exposure.ex.some(e=>e[4]>6)){
+     if(beginnerPolicy(c)){
+      const anchor=generalRecoveryLoadAnchor(c,lift,baseline),dose=anchor?.baseline||baseline;
+      exposure={role:'recovery',reducedSupport:true,recoveryReviewRequired:true,ex:[[lift,1,3,dose?roundLoad(dose*.55):0,5.5,{role:'straight',category:'primary',baseline:dose,trainingRole:'recovery',recoveryReviewRequired:true}]],note:'Maintenance recovery: retain one easy triple at RPE 5.5 and omit low-value supporting work. Review the reported fatigue, sleep and completed training before restoring loading; use warm-ups to reduce further if needed.'};
+     }else exposure=generalStrengthExposureV2(c,w,lift,occurrence,slot.day,baseline,vb.deload,phase,generalCalendar,null);
+     if(vb.deload||taper)exposure={...exposure,ex:exposure.ex.slice(0,1).map(e=>[e[0],1,...e.slice(2)])};
+    }else exposure={...exposure,recoveryReviewRequired:true,note:exposure.note+' Persistent fatigue remains unresolved; retain this already light or resting dose until recovery is reviewed.',ex:exposure.ex.map(e=>[...e.slice(0,5),{...e[5],recoveryReviewRequired:true}])};
+   }
+   const recoveryInterval=orderedRecoveryInterval(c,w,slot.day);
+   if(recoveryInterval){
+    const note='Requested '+recoveryInterval.recoveryDays+'-day recovery after '+recoveryInterval.date+': day '+recoveryInterval.elapsed+' remains light. Review actual recovery before restoring hard work; elapsed days alone are not clearance.';
+    if(!exposure||exposure.ex.some(e=>e[4]>6))exposure={role:'recovery',reducedSupport:true,ex:recoveryInterval.sport==='strength'&&recoveryInterval.elapsed<=2?[]:[[exerciseName,vb.deload||taper?1:2,2,baseline?roundLoad(baseline*.55):0,5.5,{role:'straight',category:'primary',baseline,trainingRole:'recovery'}]],note:'Light technique while the requested recovery interval remains active.'};
+    exposure={...exposure,reducedSupport:true,recoveryReviewRequired:true,note:exposure.note+' '+note,ex:exposure.ex.map(e=>[...e.slice(0,5),{...e[5],recoveryReviewRequired:true,recoveryEventDate:recoveryInterval.date,recoveryDays:recoveryInterval.recoveryDays}])};
+   }
    if(exposure){
     if(!exposure.ex.length)continue;
     const start=ex.length;
@@ -1178,6 +1206,12 @@ function generatedSessions(c,w){
       if(['half','marathon'].includes(String(c.runGoal).toLowerCase()))run=null;
       else {const p=runningPaces(c),km=Math.min(run.distanceKm,2,p?20*60/p.easyHigh:2);run={...run,role:'easy-run',name:'Short pre-race easy run',distanceKm:Math.floor(km*20)/20,steps:[{label:'Pre-race easy run',distanceKm:Math.floor(km*20)/20,pace:run.steps[0].pace}]};if(p){run.minutes=Math.round(run.distanceKm*p.easyHigh/60);run.durationRangeMinutes={min:Math.round(run.distanceKm*p.easyLow/60),max:run.minutes}}}
      }
+    }
+    const recoveryInterval=orderedRecoveryInterval(c,w,slot.day);
+    if(run&&recoveryInterval&&(run.role==='long-run'||(run.steps||[]).some(isHardStep))){
+     const p=runningPaces(c),km=p?Math.floor(Math.min(run.distanceKm,20*60/p.easyHigh)*20)/20:0,pace=p?paceText(p.easyLow)+' to '+paceText(p.easyHigh):'Conversational easy effort';
+     run=p?runningPreparation.buildRun('Post-event recovery run','easy-run',[{label:'Easy recovery',role:'easy',distanceKm:km,pace}],p):{role:'easy-run',name:'Timed post-event recovery',minutes:15,durationRangeMinutes:{min:15,max:15},distanceKm:0,distanceKnown:false,pace,steps:[{label:'Easy recovery',role:'easy',minutes:15,distanceKm:0,pace}]};
+     run.rpe=3;run.reason='Requested post-event recovery interval: short easy running only, pending actual recovery review.';
     }
     if(run)runs.push(JSON.parse(JSON.stringify(run)));continue;
    }

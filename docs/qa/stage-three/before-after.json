@@ -1,0 +1,879 @@
+{
+  "scope": "Stage 3 corrections against immutable Stage 2 prescriptions; no original-three coaching comparison.",
+  "baseCommit": "b83d04a",
+  "sourceWorktreeAtCapture": true,
+  "sourceSha256": {
+    "src/coach-engine.js": "c5b0b26ca70f33ea52a7087382a7d314bb79a3609f801097bbc1d97089481789",
+    "src/coach-constraints.js": "b6f1b3d04347f347eb1572afa8cda4c3bae5bc68df73c9ea6e98238365f58cbe",
+    "src/coach-intake.js": "ff3c2a197aace8531511761852ea0cae1110fabebaff0d94adf062677e6509ba"
+  },
+  "inputSha256": "5a0e83d10a5aab146db43ad2d7170be0cd2ff97888de412a809161099a4e190a",
+  "checks": {
+    "unchangedFrozenFacts": true,
+    "nativeImmutableDeterministicCapture": true,
+    "leilaAndHugoPrescriptionsUnchanged": true,
+    "sofiaStillBlocked": true,
+    "hardTimeConflictBlocksKeiko": true,
+    "aspirationDoesNotChangeRacePrescription": true,
+    "affectedMaintenanceBoundedWithoutRemovingStrength": true,
+    "unaffectedBenchRetained": true,
+    "partialWeekHasNoEarlyHardWork": true,
+    "idrisDayNineIsLightWithReview": true,
+    "fatigueChangesMaintenance": true,
+    "noUnaddressedEngineFinding": true
+  },
+  "allCorrectionChecksPassed": true,
+  "comparisons": [
+    {
+      "id": "P",
+      "name": "Leila: Established 10K runner with two maintenance lifting visits",
+      "weeks": 12,
+      "dosesExactlyEqual": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "changedDoseWeeks": [],
+      "changedNumericPrescriptionWeeks": [],
+      "beforeFirstPrimary": [
+        {
+          "day": "Mon",
+          "ex": [
+            [
+              "Squat",
+              2,
+              3,
+              82.5,
+              7.5
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              50,
+              7.5
+            ]
+          ]
+        },
+        {
+          "day": "Tue",
+          "ex": []
+        },
+        {
+          "day": "Thu",
+          "ex": [
+            [
+              "Deadlift",
+              2,
+              3,
+              105,
+              7.5
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              50,
+              7.5
+            ]
+          ]
+        },
+        {
+          "day": "Fri",
+          "ex": []
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ],
+      "afterFirstPrimary": [
+        {
+          "day": "Mon",
+          "ex": [
+            [
+              "Squat",
+              2,
+              3,
+              82.5,
+              7.5
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              50,
+              7.5
+            ]
+          ]
+        },
+        {
+          "day": "Tue",
+          "ex": []
+        },
+        {
+          "day": "Thu",
+          "ex": [
+            [
+              "Deadlift",
+              2,
+              3,
+              105,
+              7.5
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              50,
+              7.5
+            ]
+          ]
+        },
+        {
+          "day": "Fri",
+          "ex": []
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ]
+    },
+    {
+      "id": "Q",
+      "name": "Hugo: Deadlift-priority lifter with two exposures per main lift",
+      "weeks": 10,
+      "dosesExactlyEqual": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "changedDoseWeeks": [],
+      "changedNumericPrescriptionWeeks": [],
+      "beforeFirstPrimary": [
+        {
+          "day": "Mon",
+          "ex": [
+            [
+              "Squat",
+              1,
+              3,
+              147.5,
+              8
+            ],
+            [
+              "Squat",
+              2,
+              3,
+              137.5,
+              7
+            ],
+            [
+              "Deadlift",
+              1,
+              3,
+              185,
+              8
+            ],
+            [
+              "Deadlift",
+              2,
+              3,
+              172.5,
+              7
+            ],
+            [
+              "Bench",
+              1,
+              3,
+              95,
+              8
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              87.5,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Wed",
+          "ex": [
+            [
+              "Paused deadlift",
+              1,
+              5,
+              0,
+              8
+            ],
+            [
+              "Paused deadlift",
+              2,
+              5,
+              0,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Fri",
+          "ex": [
+            [
+              "Safety-bar squat",
+              1,
+              5,
+              0,
+              8
+            ],
+            [
+              "Safety-bar squat",
+              2,
+              5,
+              0,
+              7
+            ],
+            [
+              "Close-grip bench",
+              1,
+              5,
+              0,
+              8
+            ],
+            [
+              "Close-grip bench",
+              2,
+              5,
+              0,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ],
+      "afterFirstPrimary": [
+        {
+          "day": "Mon",
+          "ex": [
+            [
+              "Squat",
+              1,
+              3,
+              147.5,
+              8
+            ],
+            [
+              "Squat",
+              2,
+              3,
+              137.5,
+              7
+            ],
+            [
+              "Deadlift",
+              1,
+              3,
+              185,
+              8
+            ],
+            [
+              "Deadlift",
+              2,
+              3,
+              172.5,
+              7
+            ],
+            [
+              "Bench",
+              1,
+              3,
+              95,
+              8
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              87.5,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Wed",
+          "ex": [
+            [
+              "Paused deadlift",
+              1,
+              5,
+              0,
+              8
+            ],
+            [
+              "Paused deadlift",
+              2,
+              5,
+              0,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Fri",
+          "ex": [
+            [
+              "Safety-bar squat",
+              1,
+              5,
+              0,
+              8
+            ],
+            [
+              "Safety-bar squat",
+              2,
+              5,
+              0,
+              7
+            ],
+            [
+              "Close-grip bench",
+              1,
+              5,
+              0,
+              8
+            ],
+            [
+              "Close-grip bench",
+              2,
+              5,
+              0,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ]
+    },
+    {
+      "id": "R",
+      "name": "Sofia: Returning novice preparing a first organised 5K",
+      "weeks": 8,
+      "dosesExactlyEqual": true,
+      "beforeBlockedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "afterBlockedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "changedDoseWeeks": [],
+      "changedNumericPrescriptionWeeks": [],
+      "beforeFirstPrimary": [
+        {
+          "day": "Tue",
+          "ex": [
+            [
+              "Squat",
+              2,
+              6,
+              27.5,
+              6
+            ],
+            [
+              "Bench",
+              2,
+              6,
+              17.5,
+              6
+            ]
+          ]
+        },
+        {
+          "day": "Thu",
+          "ex": [
+            [
+              "Deadlift",
+              2,
+              6,
+              37.5,
+              6
+            ],
+            [
+              "Bench",
+              2,
+              6,
+              17.5,
+              6
+            ]
+          ]
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ],
+      "afterFirstPrimary": [
+        {
+          "day": "Tue",
+          "ex": [
+            [
+              "Squat",
+              2,
+              6,
+              27.5,
+              6
+            ],
+            [
+              "Bench",
+              2,
+              6,
+              17.5,
+              6
+            ]
+          ]
+        },
+        {
+          "day": "Thu",
+          "ex": [
+            [
+              "Deadlift",
+              2,
+              6,
+              37.5,
+              6
+            ],
+            [
+              "Bench",
+              2,
+              6,
+              17.5,
+              6
+            ]
+          ]
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ]
+    },
+    {
+      "id": "S",
+      "name": "Idris: Powerlifting meet followed by a first dedicated half-marathon block",
+      "weeks": 16,
+      "dosesExactlyEqual": false,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "changedDoseWeeks": [
+        5,
+        6
+      ],
+      "changedNumericPrescriptionWeeks": [
+        6
+      ],
+      "beforeFirstPrimary": [
+        {
+          "day": "Mon",
+          "ex": [
+            [
+              "Squat",
+              1,
+              1,
+              180,
+              8
+            ],
+            [
+              "Squat",
+              2,
+              3,
+              157.5,
+              7
+            ],
+            [
+              "Bench",
+              1,
+              1,
+              115,
+              8
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              100,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Tue",
+          "ex": []
+        },
+        {
+          "day": "Wed",
+          "ex": [
+            [
+              "Squat",
+              1,
+              5,
+              155,
+              7.5
+            ],
+            [
+              "Squat",
+              2,
+              5,
+              145,
+              7
+            ],
+            [
+              "Bench",
+              1,
+              5,
+              100,
+              7.5
+            ],
+            [
+              "Bench",
+              2,
+              5,
+              92.5,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Sat",
+          "ex": [
+            [
+              "Deadlift",
+              1,
+              1,
+              215,
+              8.5
+            ],
+            [
+              "Deadlift",
+              2,
+              3,
+              187.5,
+              7
+            ],
+            [
+              "Bench",
+              5,
+              2,
+              62.5,
+              5.5
+            ]
+          ]
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ],
+      "afterFirstPrimary": [
+        {
+          "day": "Mon",
+          "ex": [
+            [
+              "Squat",
+              1,
+              1,
+              180,
+              8
+            ],
+            [
+              "Squat",
+              2,
+              3,
+              157.5,
+              7
+            ],
+            [
+              "Bench",
+              1,
+              1,
+              115,
+              8
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              100,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Tue",
+          "ex": []
+        },
+        {
+          "day": "Wed",
+          "ex": [
+            [
+              "Squat",
+              1,
+              5,
+              155,
+              7.5
+            ],
+            [
+              "Squat",
+              2,
+              5,
+              145,
+              7
+            ],
+            [
+              "Bench",
+              1,
+              5,
+              100,
+              7.5
+            ],
+            [
+              "Bench",
+              2,
+              5,
+              92.5,
+              7
+            ]
+          ]
+        },
+        {
+          "day": "Sat",
+          "ex": [
+            [
+              "Deadlift",
+              1,
+              1,
+              215,
+              8.5
+            ],
+            [
+              "Deadlift",
+              2,
+              3,
+              187.5,
+              7
+            ],
+            [
+              "Bench",
+              5,
+              2,
+              62.5,
+              5.5
+            ]
+          ]
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ]
+    },
+    {
+      "id": "T",
+      "name": "Keiko: Marathon preparation under persistent lower-body fatigue",
+      "weeks": 18,
+      "dosesExactlyEqual": false,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [
+        18
+      ],
+      "changedDoseWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "changedNumericPrescriptionWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "beforeFirstPrimary": [
+        {
+          "day": "Mon",
+          "ex": [
+            [
+              "Squat",
+              2,
+              3,
+              105,
+              7.5
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              70,
+              7.5
+            ]
+          ]
+        },
+        {
+          "day": "Tue",
+          "ex": []
+        },
+        {
+          "day": "Thu",
+          "ex": [
+            [
+              "Deadlift",
+              2,
+              3,
+              127.5,
+              7.5
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              70,
+              7.5
+            ]
+          ]
+        },
+        {
+          "day": "Sat",
+          "ex": []
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ],
+      "afterFirstPrimary": [
+        {
+          "day": "Mon",
+          "ex": [
+            [
+              "Squat",
+              1,
+              3,
+              95,
+              6.5
+            ],
+            [
+              "Squat",
+              1,
+              3,
+              95,
+              6
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              70,
+              7.5
+            ]
+          ]
+        },
+        {
+          "day": "Tue",
+          "ex": []
+        },
+        {
+          "day": "Thu",
+          "ex": [
+            [
+              "Deadlift",
+              1,
+              3,
+              120,
+              6.5
+            ],
+            [
+              "Deadlift",
+              1,
+              3,
+              117.5,
+              6
+            ],
+            [
+              "Bench",
+              2,
+              3,
+              70,
+              7.5
+            ]
+          ]
+        },
+        {
+          "day": "Sat",
+          "ex": []
+        },
+        {
+          "day": "Sun",
+          "ex": []
+        }
+      ]
+    }
+  ],
+  "retainedStageTwoAuditFindings": [
+    {
+      "id": "T",
+      "kind": "event-window-exceeded",
+      "severity": "high",
+      "week": 18,
+      "date": "2027-03-07",
+      "estimatedMinutes": 250,
+      "logisticsMinutes": 0,
+      "capMinutes": 240,
+      "calendarFeasible": false
+    }
+  ],
+  "interpretation": "The unchanged Stage 2 audit still reports the real 250-versus-240-minute athlete constraint. Stage 3 must block it, not erase or relabel the hard limit. No fatigue/partial-week failures remain.",
+  "originalThreeComparisonStarted": false,
+  "athleteApproval": false
+}
