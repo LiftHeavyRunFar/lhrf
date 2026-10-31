@@ -2,7 +2,7 @@
 
 The shared candidate engine has made legitimate progress. The previous baseline left all five programmes incomplete. The revised engine was replayed against the same source facts, reviewed independently, then tested against five newly randomised athletes. Only after correcting and replaying the new round was it compared with the original three scenarios.
 
-Version 2 is an explicit candidate opt-in. This work does not upgrade an existing approved programme, clear fatigue, confirm unknown athlete facts or deploy the app.
+Version 2 is now connected to structured new-programme setup in the review branch; the standalone trial keeps an explicit opt-in. See `coaching-intake-v2-review.md` for the subsequent app/browser integration review. This work does not upgrade an existing approved programme, clear fatigue, confirm unknown athlete facts or deploy the app.
 
 ## Results
 

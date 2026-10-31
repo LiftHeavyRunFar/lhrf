@@ -180,9 +180,9 @@ function assess(c,w=1,options={}){
  let requestedKm=round(base*factor);
  if(goal==='fitness'&&!supportEndurance)requestedKm=round(Math.min(requestedKm,count*(lowerFatigue?8:6)));
  if(lowerFatigue)warnings.push('Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.');
- const enduranceSpecific=(goal==='marathon'&&w>=Math.max(5,priorityFrom+4)&&(until===null||until<=10))||(goal==='half'&&w>=5&&until!==null&&until<=8);
+ const enduranceSpecific=(goal==='marathon'&&raceWeek!==null&&w>=Math.max(5,priorityFrom+4)&&until<=10)||(goal==='half'&&w>=5&&until!==null&&until<=8);
  let phase=taper?'Taper / event':postRace||recoveringMarathon?'Recovery':enduranceSpecific?'Specific preparation':w<=Math.max(4,priorityFrom+2)?'Aerobic foundation':'Development';
- if(goal==='marathon'&&count&&count<3)blocking.push('Marathon preparation needs more running support than one or two sessions, or individual review of a constrained alternative.');
+ if(goal==='marathon'&&count&&count<3){if(raceWeek!==null)blocking.push('Marathon preparation needs more running support than one or two sessions, or individual review of a constrained alternative.');else warnings.push('Two or fewer runs can support a base-building block. Consider a third easy run and review completed endurance before choosing a marathon date; this block does not establish race readiness.');}
  if(goal==='marathon'&&raceWeek!==null&&raceWeek<12)blocking.push('Short marathon preparation needs individual review of established endurance and recovery.');
  if(goal==='marathon'&&h.base&&h.base<25)warnings.push('Build an aerobic base before treating this as race-ready marathon preparation; review completed mileage and long runs before the specific block.');
  if(recoveringMarathon)warnings.push('Recent marathon: provisional easy return, with no quality or long-run progression until recovery is confirmed. Rest or shorten if normal easy running is not comfortable.');

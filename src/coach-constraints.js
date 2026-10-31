@@ -70,7 +70,7 @@ function fitSessions(c,input){
   let runMinutes=(session.runs||[]).reduce((n,r)=>n+Number(r.durationRangeMinutes?.max??r.minutes),0);const knownRuns=(session.runs||[]).every(r=>Number.isFinite(Number(r.durationRangeMinutes?.max??r.minutes))&&(r.durationRangeMinutes?.max??r.minutes)!==null);
   if(session.eventDate){
    const duration=(session.runs||[]).length?runMinutes:Number(permission?.minutes),known=Number.isFinite(duration)&&duration>0;
-   const allowed=permission?.confirmed===true||(ordinary.has(day)&&session.eventType==='running'&&known&&Number.isFinite(cap)&&duration+(Number(permission?.logisticsMinutes)||0)<=cap);
+   const allowed=permission?.confirmed===true||(!permission&&ordinary.has(day)&&session.eventType==='running'&&known&&Number.isFinite(cap)&&duration+(Number(permission?.logisticsMinutes)||0)<=cap);
    session.eventPermission={confirmed:allowed,explicit:permission?.confirmed===true,estimatedMinutes:known?duration:null,logisticsMinutes:permission?.logisticsMinutes??null};
    if(!allowed){const note='Confirm event-day availability and sufficient time for '+session.eventDate+' before approving participation.';issues.push(note);session.constraintWarnings=[note];session.constraintIssues=[{kind:ordinary.has(day)&&known&&Number.isFinite(cap)&&duration>cap?'event-time':'event-permission',date:session.eventDate,requiresAthleteInput:true,detail:note}]}
    session.timeBudget={totalMinutes:known?duration:null,event:true,confirmed:allowed,includesWarmups:false,includesRest:false,includesTransitions:false};

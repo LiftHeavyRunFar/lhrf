@@ -70,3 +70,9 @@ test('running priority can reduce beginner straight-set volume while retaining t
  const ex=['Squat','Bench'].map(n=>[n,3,6,50,7,{role:'straight',category:'primary'}]);
  const result=fitSessions(config,[{day:'Tue',ex,runs:[run]}]);const s=result.sessions[0];assert.equal(result.feasible,true);assert.ok(s.ex.every(e=>e[1]>=2));assert.ok(s.ex.some(e=>e[1]===2));assert.deepEqual(s.runs[0].steps.filter(x=>x.role==='work'),work.filter(x=>x.role==='work'));assert.ok(s.timeBudget.adjustments.some(x=>/straight-set volume/.test(x)));assert.equal(ex[0][1],3);
 });
+test('explicit unconfirmed event attendance remains blocked even inside an ordinary training window',()=>{
+ const config=c(['Sun'],0);config.visitConstraints.minutes.Sun=120;config.visitConstraints.eventDays={'2027-01-10':{confirmed:false,minutes:90}};
+ const event={day:'Sunday',eventDate:'2027-01-10',eventType:'running',ex:[],runs:[{distanceKm:10,minutes:60,durationRangeMinutes:{min:55,max:60}}]};
+ const held=fitSessions(config,[event]);assert.equal(held.feasible,false);assert.equal(held.sessions[0].eventPermission.confirmed,false);
+ config.visitConstraints.eventDays[event.eventDate].confirmed=true;assert.equal(fitSessions(config,[event]).feasible,true);
+});

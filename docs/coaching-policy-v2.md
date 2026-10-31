@@ -21,6 +21,8 @@ Code-gate success is separate from athlete readiness. Specific event permission,
 
 ## Activation boundary
 
-New proposals explicitly select `coachingRulesVersion: 2` and supply the structured visit/history/ordered-goal contract. Existing approved records retain their saved version. Current onboarding remains version one; this candidate has not been published or made the default. A production rollout still needs the intake/UI contract and end-to-end browser/device validation. No approved programme, logs, onboarding or live data was read or changed by these tests.
+New-programme setup now translates structured visit, running-history, recovery and ordered-goal inputs through `coach-intake.js` into `coachingRulesVersion: 2`. Preview and explicit approval validate the full programme horizon, including future events. Existing approved records retain their saved version; opening a preview does not activate or rewrite them. Approval archives the previous programme and retains training history. Legacy advanced fields cannot silently replace a version-two handover: they route the athlete through structured programme review.
 
-The browser and Node paths share the same modules. `running-workouts.js`, `running-preparation.js` and `coach-constraints.js` load before `coach-engine.js`; offline shell assets include them. Browser-global VM parity is tested. Full Playwright UI checks could not launch locally because the browser binary is absent; they remain configured in GitHub CI.
+The optional version-two standalone preview uses the same adapter and keeps trial data separate from approved app storage. The browser and Node paths share canonical modules, and the offline shell includes the adapter. Genuine Chromium checks cover intake, approval, history retention, time-only runs, and PWA updating with an unfinished workout. These are synthetic browser contexts, not live athlete accounts or hardware delivery tests.
+
+This integration is saved for review and has not been deployed. No live approved programme or athlete logs were changed.

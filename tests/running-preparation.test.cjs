@@ -113,3 +113,11 @@ test('marathon-specific endurance uses the available long-run window with suppor
  assert.equal(peak.reviewGates.handoverProgressionReview,true);assert.equal(peak.reviewGates.longDurationReview,true);
  assert.ok(slowWeeks[13].requestedKm<=slowWeeks[10].requestedKm*1.15,'Post-meet return must be assessed against the established pre-taper dose, not compound fictional growth through the meet/recovery week');
 });
+test('undated low-frequency marathon goals build a base without claiming race-specific preparation',()=>{
+ const c={...base,weeks:8,runs:2,runningTargetDate:'',runGoal:'marathon',runProfile:{...base.runProfile,weeklyKm:15}};
+ const weeks=Array.from({length:8},(_,i)=>preparation.assess(c,i+1,options));
+ assert.ok(weeks.every(w=>w.feasible&&w.preparationMode==='base-building'&&w.phase!=='Specific preparation'&&!w.taper));
+ assert.ok(weeks.every(w=>w.runs.length===2&&w.runs.every(r=>!r.steps.some(s=>s.role==='work'))));
+ assert.ok(weeks[0].warnings.some(x=>/third easy run/.test(x)));
+ assert.equal(preparation.assess({...c,runningTargetDate:'2027-03-07'},1,options).feasible,false);
+});

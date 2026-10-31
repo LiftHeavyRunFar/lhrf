@@ -120,6 +120,12 @@ jobs:
       - name: Test new-programme shared coaching defaults and approval boundary
         if: ${{ !cancelled() }}
         run: node tests/general-coaching.browser.cjs
+      - name: Test version-two intake, full-horizon approval and priority handover
+        if: ${{ !cancelled() }}
+        run: node tests/coaching-intake-v2.browser.cjs
+      - name: Test isolated version-two preview and saved prescription review
+        if: ${{ !cancelled() }}
+        run: node tests/preview-intake-v2.browser.cjs
       - name: Prepare pre-extraction PWA fixture
         if: ${{ !cancelled() }}
         run: |

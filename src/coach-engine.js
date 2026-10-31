@@ -19,6 +19,7 @@ function prepareNewProgramme(input={}){
  if((input.strengthTargetDate||input.runningTargetDate)&&!input.startDate)throw new RangeError('A dated programme needs a start date.');
  if([input.strengthTargetDate,input.runningTargetDate].some(x=>x&&input.startDate&&x<input.startDate))throw new RangeError('Event dates must follow the programme start.');
  const c=JSON.parse(JSON.stringify(input));c.coachingRulesVersion=Number(input.coachingRulesVersion)>=2?2:1;c.coachingPolicy='review-v2';c.exerciseSelectionVersion=2;
+ if(c.coachingRulesVersion>=2&&c.strengthTargetDate&&c.strengthTargetDate===c.runningTargetDate)throw new RangeError('Strength and running events on the same date need an individual timing review before generating this programme.');
  if(c.coachingRulesVersion>=2&&c.orderedGoals){
   if(!Array.isArray(c.orderedGoals)||!c.orderedGoals.length||c.orderedGoals.length>8)throw new RangeError('Ordered goals require one to eight dated events.');
   let prior='';
