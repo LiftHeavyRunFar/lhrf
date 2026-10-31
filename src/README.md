@@ -4,6 +4,8 @@
 
 `coach-adapters.js` translates profile fields, persisted trial log records and rendering shapes. Keep programme and feedback decisions in the engine.
 
+New version-two proposals carry `visitAllocationVersion: 1`: strength-first health-running calendars consider lifting-window capacity without treating an easy health run as race-quality work or imposing endurance long-run leg protection. Existing saved configs without this marker retain their allocation. Explicit fixed splits still take precedence. Inclusive session fitting and event/recovery checks remain mandatory.
+
 The older `*-v2.js` files are historical, isolated prototype comparison code. They are retained only for existing historical regression tests. They are not loaded by `index.html`, `coaching-preview.html` or the current athlete simulator. The wiring test rejects reintroducing their script imports into either page.
 
 To change coaching behaviour, add a canonical-engine regression/acceptance case, change the shared implementation and replay the athletes. Do not reintroduce inline coaching thresholds in a view or implement a separate generator for previews.

@@ -11,6 +11,10 @@ function allocate(c,warnings=[],activities=[]){
  const cfg=c.visitConstraints||{},allowed=DAYS.filter(d=>(c.availableDays?.length?c.availableDays.map(short):DAYS).includes(d)),slots=()=>DAYS.map(day=>({day,items:[]}));
  const work=activities.map((x,i)=>({...x,componentId:'component-'+i})),strength=work.filter(x=>x.type==='strength'),runs=work.filter(x=>x.type==='run');
  const combined=new Set((cfg.combinedDays||[]).map(short)),separate=new Set((cfg.separateDays||[]).map(short));
+ // New strength-first health programmes use the available lifting windows.
+ // Their easy runs do not need race-quality placement or long-run leg protection.
+ // Saved proposals without this marker keep their original calendar.
+ const strengthFirstHealth=Number(c.visitAllocationVersion)>=1&&c.runGoal==='fitness'&&c.priority!=='Running'&&c.hybridFocus!=='running';
  const requested=Number(cfg.strengthVisits),visits=strength.length?(Number.isInteger(requested)&&requested>0?requested:Math.max(...['Squat','Bench','Deadlift'].map(name=>strength.filter(x=>x.name===name).length))):0;
  const fail=reason=>{const unscheduled=work.map(x=>({...x,reason}));return {slots:slots(),warnings:[...warnings,reason],total:work.length,scheduled:0,unscheduled,feasible:false}};
  if(visits>allowed.length||runs.length>allowed.length||visits<Math.max(0,...['Squat','Bench','Deadlift'].map(name=>strength.filter(x=>x.name===name).length)))return fail('Requested visit and lift/run frequencies cannot fit the available days.');
@@ -38,14 +42,14 @@ function allocate(c,warnings=[],activities=[]){
   for(const item of strength.slice().sort((a,b)=>Number(lower(b))-Number(lower(a)))){
    const choices=strengthDays.map(day=>out.find(s=>s.day===day)).filter(s=>!s.items.some(x=>x.type==='strength'&&x.name===item.name));
    choices.sort((a,b)=>{
-    const rank=s=>{const i=DAYS.indexOf(s.day),long=longIndex>=0?DAYS.indexOf(runDays[longIndex]):-9,others=s.items.filter(x=>x.type==='strength'),adjacent=out.some(x=>Math.abs(DAYS.indexOf(x.day)-i)===1&&x.items.some(y=>y.type==='strength'&&y.name===item.name));return others.length*3+(lower(item)&&((long-i+7)%7===1)?24:0)+(lower(item)&&others.some(lower)?7:0)+(adjacent?12:0)+(s.items.some(x=>x.type==='run')&&!separate.has(s.day)?4:0)+i*.02};return rank(a)-rank(b)
+    const rank=s=>{const i=DAYS.indexOf(s.day),long=longIndex>=0?DAYS.indexOf(runDays[longIndex]):-9,others=s.items.filter(x=>x.type==='strength'),adjacent=out.some(x=>Math.abs(DAYS.indexOf(x.day)-i)===1&&x.items.some(y=>y.type==='strength'&&y.name===item.name));return others.length*3+(!strengthFirstHealth&&lower(item)&&((long-i+7)%7===1)?24:0)+(lower(item)&&others.some(lower)?7:0)+(adjacent?12:0)+(s.items.some(x=>x.type==='run')&&!separate.has(s.day)?4:0)+i*.02};return rank(a)-rank(b)
    });
    if(!choices.length){valid=false;break}choices[0].items.push(item);
   }
   if(!valid||strengthDays.some(day=>!out.find(s=>s.day===day).items.some(x=>x.type==='strength')))continue;
-  for(const s of out){const i=DAYS.indexOf(s.day),ss=s.items.filter(x=>x.type==='strength');score+=ss.length**2;if(ss.some(lower)&&longIndex>=0&&(DAYS.indexOf(runDays[longIndex])-i+7)%7===1)score+=40;if(ss.length&&s.items.some(x=>x.type==='run')&&!separate.has(s.day))score+=2;}
+  for(const s of out){const i=DAYS.indexOf(s.day),ss=s.items.filter(x=>x.type==='strength'),cap=Number(cfg.minutes?.[s.day]);score+=ss.length**2*(strengthFirstHealth&&cap>0?75/cap:1);if(!strengthFirstHealth&&ss.some(lower)&&longIndex>=0&&(DAYS.indexOf(runDays[longIndex])-i+7)%7===1)score+=40;if(ss.length&&s.items.some(x=>x.type==='run')&&!separate.has(s.day))score+=2;}
   // Quality early in the week, then supporting easy running; Sunday remains protected.
-  runDays.forEach((day,i)=>{if(i!==longIndex){const preferred=i===0?1:3;score+=Math.abs(DAYS.indexOf(day)-preferred)*2}});
+  if(!strengthFirstHealth)runDays.forEach((day,i)=>{if(i!==longIndex){const preferred=i===0?1:3;score+=Math.abs(DAYS.indexOf(day)-preferred)*2}});
   score+=out.reduce((n,s)=>n+(s.items.length?DAYS.indexOf(s.day)*.001:0),0);
   if(!best||score<best.score)best={slots:out,score};
  }

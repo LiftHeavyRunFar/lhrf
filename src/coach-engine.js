@@ -52,6 +52,7 @@ function prepareNewProgramme(input={},options={}){
  const c=JSON.parse(JSON.stringify(input));c.coachingRulesVersion=Number(input.coachingRulesVersion)>=2?2:1;c.coachingPolicy='review-v2';c.exerciseSelectionVersion=2;
  if(c.coachingRulesVersion>=2){
   c.coachingRefinementVersion=1;
+  c.visitAllocationVersion=1;
   validateStrengthModes(c.strengthModes);
   if(['bench','squat','deadlift'].includes(c.event)){
    const primary=c.event[0].toUpperCase()+c.event.slice(1),explicit=c.strengthModes||{};
