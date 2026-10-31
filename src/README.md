@@ -1,6 +1,6 @@
 # Coaching source of truth
 
-`coach-engine.js` is the single active coaching implementation. The app, programme preview, workload/recovery review, live load calculations and athlete test bots must call it.
+`coach-engine.js` is the canonical coaching entry. The app, programme preview, workload/recovery review, live load calculations and athlete test bots must call it. Its version-two policy delegates pure visit fitting to `coach-constraints.js` and running preparation to `running-preparation.js`; views must not implement replacement coaching rules.
 
 `coach-adapters.js` translates profile fields, persisted trial log records and rendering shapes. Keep programme and feedback decisions in the engine.
 

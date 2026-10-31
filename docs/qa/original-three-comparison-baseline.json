@@ -1,0 +1,895 @@
+{
+  "schema": "lhrf-original-three-historical-comparison-baseline-v1",
+  "status": "Historical source extraction complete; updated native engine not yet compared",
+  "synthetic": true,
+  "scope": "Current Library handouts are manual programme baselines, not actual engine output. They can be compared as coaching prescriptions, with provenance distinction explicit.",
+  "profiles": [
+    {
+      "id": "original-1",
+      "title": "Powerlifting then marathon",
+      "library_file_id": "libfile_2400e0615b5881919f78cf09a379cc06",
+      "filename": "01-Strength-to-marathon-v2.pdf",
+      "pages": 27,
+      "user_facts": {
+        "powerlifting_in_weeks": 12,
+        "maxes_kg": {
+          "squat": 210,
+          "bench": 130,
+          "deadlift": 240
+        },
+        "marathon_in_months": 6,
+        "recent_marathon_seconds": 18780,
+        "after_meet_priority": "Maintain strength as well as possible while preparing for marathon"
+      },
+      "artifact_assumptions": {
+        "start_date": "2026-11-02",
+        "powerlifting_date": "2027-01-23",
+        "marathon_date": "2027-05-02",
+        "weeks": 26,
+        "pre_race_weekly_km": 30,
+        "pre_race_weekly_km_status": "Explicit provisional assumption to check at week 2, not supplied athlete history",
+        "availability": "Calendar assumes M/W/F lifting and Tue/Thu/Sun running first; then Tue/Wed/Fri/Sun running with Tuesday/Thursday maintenance lifting. Athlete availability/minute caps were not supplied."
+      },
+      "coaching_baseline": {
+        "running_frequencies": "3 initially, 4 after strength event",
+        "strength_visits": "3 initially, 2 after strength event; week13 has no lifting",
+        "easy_pace_seconds_km": [
+          480,
+          555
+        ],
+        "steady_pace_seconds_km": [
+          440,
+          465
+        ],
+        "marathon_effort_first_explicit_weeks": [
+          24,
+          25
+        ],
+        "strength_roles": "Monday squat/bench volume, Wednesday deadlift/bench heavier work, Friday squat plus speed bench and technique deadlift",
+        "speed_bench_start_kg": 72.5,
+        "maintenance_initial_loads_kg": {
+          "squat": 147.5,
+          "bench": 90,
+          "deadlift": 167.5
+        },
+        "maintenance_rpe": "6-7",
+        "taper_weeks": [
+          24,
+          25,
+          26
+        ],
+        "consolidation_or_lighter_work_weeks": [
+          5,
+          8,
+          17,
+          21
+        ]
+      },
+      "comparison_priorities": [
+        "Dated strength-to-running handover and a recovery week must be visible in native output.",
+        "Compare actual scheduled mileage and supporting run distribution; do not count a requested but unplaced run.",
+        "The old week23 long run is 30km, 50% of 60km/week, and takes approximately 240-277.5min at the supplied easy pace. New engine must resolve a viable distance/time/recovery tradeoff explicitly.",
+        "More regular marathon-specific rehearsal should occur before the taper when fitness and recovery support it, with realistic fuel practice.",
+        "Maintenance loading should remain effort-led rather than frozen indefinitely to initial suggested kilograms."
+      ],
+      "weekly_summaries": [
+        {
+          "week": 1,
+          "page": 2,
+          "phase": "RECOVER",
+          "displayed_running_summary": "18 km                                   8 km                           Follow the day cards",
+          "displayed_training_km": 18.0,
+          "displayed_long_km": 8.0,
+          "race_separate": false
+        },
+        {
+          "week": 2,
+          "page": 3,
+          "phase": "STRENGTH FIRST",
+          "displayed_running_summary": "24 km                                 10 km                           Follow the day cards",
+          "displayed_training_km": 24.0,
+          "displayed_long_km": 10.0,
+          "race_separate": false
+        },
+        {
+          "week": 3,
+          "page": 4,
+          "phase": "STRENGTH FIRST",
+          "displayed_running_summary": "28 km                                 12 km                           Follow the day cards",
+          "displayed_training_km": 28.0,
+          "displayed_long_km": 12.0,
+          "race_separate": false
+        },
+        {
+          "week": 4,
+          "page": 5,
+          "phase": "STRENGTH FIRST",
+          "displayed_running_summary": "26 km                                 10 km                           Follow the day cards",
+          "displayed_training_km": 26.0,
+          "displayed_long_km": 10.0,
+          "race_separate": false
+        },
+        {
+          "week": 5,
+          "page": 6,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "30 km                                  14 km                           Follow the day cards",
+          "displayed_training_km": 30.0,
+          "displayed_long_km": 14.0,
+          "race_separate": false
+        },
+        {
+          "week": 6,
+          "page": 7,
+          "phase": "STRENGTH FIRST",
+          "displayed_running_summary": "32 km                                 14 km                            Follow the day cards",
+          "displayed_training_km": 32.0,
+          "displayed_long_km": 14.0,
+          "race_separate": false
+        },
+        {
+          "week": 7,
+          "page": 8,
+          "phase": "STRENGTH FIRST",
+          "displayed_running_summary": "34 km                                 16 km                           Follow the day cards",
+          "displayed_training_km": 34.0,
+          "displayed_long_km": 16.0,
+          "race_separate": false
+        },
+        {
+          "week": 8,
+          "page": 9,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "28 km                                  12 km                           Follow the day cards",
+          "displayed_training_km": 28.0,
+          "displayed_long_km": 12.0,
+          "race_separate": false
+        },
+        {
+          "week": 9,
+          "page": 10,
+          "phase": "STRENGTH FIRST",
+          "displayed_running_summary": "34 km                                 16 km                            Follow the day cards",
+          "displayed_training_km": 34.0,
+          "displayed_long_km": 16.0,
+          "race_separate": false
+        },
+        {
+          "week": 10,
+          "page": 11,
+          "phase": "STRENGTH FIRST",
+          "displayed_running_summary": "30 km                                 14 km                           Follow the day cards",
+          "displayed_training_km": 30.0,
+          "displayed_long_km": 14.0,
+          "race_separate": false
+        },
+        {
+          "week": 11,
+          "page": 12,
+          "phase": "FINAL LOWER LIFTS",
+          "displayed_running_summary": "24 km                               10 km                           Follow the day cards",
+          "displayed_training_km": 24.0,
+          "displayed_long_km": 10.0,
+          "race_separate": false
+        },
+        {
+          "week": 12,
+          "page": 13,
+          "phase": "COMPETE",
+          "displayed_running_summary": "12 km                                 0 km                           Follow the day cards",
+          "displayed_training_km": 12.0,
+          "displayed_long_km": 0.0,
+          "race_separate": false
+        },
+        {
+          "week": 13,
+          "page": 14,
+          "phase": "RECOVER & SWITCH",
+          "displayed_running_summary": "16 km                                   8 km                            Follow the day cards",
+          "displayed_training_km": 16.0,
+          "displayed_long_km": 8.0,
+          "race_separate": false
+        },
+        {
+          "week": 14,
+          "page": 15,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "28 km                                   12 km                             Follow the day cards",
+          "displayed_training_km": 28.0,
+          "displayed_long_km": 12.0,
+          "race_separate": false
+        },
+        {
+          "week": 15,
+          "page": 16,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "34 km                                   14 km                            Follow the day cards",
+          "displayed_training_km": 34.0,
+          "displayed_long_km": 14.0,
+          "race_separate": false
+        },
+        {
+          "week": 16,
+          "page": 17,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "38 km                                   16 km                            Follow the day cards",
+          "displayed_training_km": 38.0,
+          "displayed_long_km": 16.0,
+          "race_separate": false
+        },
+        {
+          "week": 17,
+          "page": 18,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "32 km                                   12 km                             Follow the day cards",
+          "displayed_training_km": 32.0,
+          "displayed_long_km": 12.0,
+          "race_separate": false
+        },
+        {
+          "week": 18,
+          "page": 19,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "42 km                                   20 km                            Follow the day cards",
+          "displayed_training_km": 42.0,
+          "displayed_long_km": 20.0,
+          "race_separate": false
+        },
+        {
+          "week": 19,
+          "page": 20,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "46 km                                   22 km                            Follow the day cards",
+          "displayed_training_km": 46.0,
+          "displayed_long_km": 22.0,
+          "race_separate": false
+        },
+        {
+          "week": 20,
+          "page": 21,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "50 km                                   24 km                             Follow the day cards",
+          "displayed_training_km": 50.0,
+          "displayed_long_km": 24.0,
+          "race_separate": false
+        },
+        {
+          "week": 21,
+          "page": 22,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "42 km                                   18 km                             Follow the day cards",
+          "displayed_training_km": 42.0,
+          "displayed_long_km": 18.0,
+          "race_separate": false
+        },
+        {
+          "week": 22,
+          "page": 23,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "56 km                                   28 km                             Follow the day cards",
+          "displayed_training_km": 56.0,
+          "displayed_long_km": 28.0,
+          "race_separate": false
+        },
+        {
+          "week": 23,
+          "page": 24,
+          "phase": "RUNNING FIRST",
+          "displayed_running_summary": "60 km                                   30 km                             Follow the day cards",
+          "displayed_training_km": 60.0,
+          "displayed_long_km": 30.0,
+          "race_separate": false
+        },
+        {
+          "week": 24,
+          "page": 25,
+          "phase": "TAPER",
+          "displayed_running_summary": "44 km                                   18 km                           Follow the day cards",
+          "displayed_training_km": 44.0,
+          "displayed_long_km": 18.0,
+          "race_separate": false
+        },
+        {
+          "week": 25,
+          "page": 26,
+          "phase": "TAPER",
+          "displayed_running_summary": "30 km                                   12 km                           Follow the day cards",
+          "displayed_training_km": 30.0,
+          "displayed_long_km": 12.0,
+          "race_separate": false
+        },
+        {
+          "week": 26,
+          "page": 27,
+          "phase": "RACE WEEK",
+          "displayed_running_summary": "12 km + race                            42.2 km race                    Follow the day cards",
+          "displayed_training_km": 12.0,
+          "displayed_long_km": 42.2,
+          "race_separate": true
+        }
+      ],
+      "evidence": {
+        "read_route": "Library read current full text, continued until has_more=false",
+        "read_at": "2026-10-30",
+        "line_count": 1616,
+        "notes": "Exact source facts are separate from planning assumptions introduced by the historical handout. Historical PDFs were manually authored; do not label them prior native-engine outputs."
+      },
+      "peak_metrics": {
+        "week": 23,
+        "weekly_km": 60,
+        "long_km": 30,
+        "long_share": 0.5,
+        "long_duration_minutes_at_given_easy_pace": [
+          240,
+          277.5
+        ]
+      }
+    },
+    {
+      "id": "original-2",
+      "title": "Marathon priority",
+      "library_file_id": "libfile_da2b376e6b9081919140bd6594b47ce0",
+      "filename": "02-Marathon-priority-v2.pdf",
+      "pages": 18,
+      "user_facts": {
+        "marathon_in_months": 4,
+        "recent_marathon_seconds": 10740,
+        "recent_marathon_timing": "last week",
+        "priority": "Running; strength in background"
+      },
+      "artifact_assumptions": {
+        "start_date": "2026-11-02",
+        "marathon_date": "2027-02-28",
+        "weeks": 17,
+        "pre_race_weekly_km_range": [
+          40,
+          50
+        ],
+        "pre_race_weekly_km_status": "Explicit provisional assumption, not inferred or confirmed by the 2:59 result",
+        "availability": "Four runs Tue/Wed/Fri/Sun; two short lifts Tuesday/Friday, separated where possible by about six hours. Athlete availability and caps were not supplied.",
+        "strength_baselines": "Unknown; no kilogram targets supplied"
+      },
+      "coaching_baseline": {
+        "running_frequency": 4,
+        "strength_visits": 2,
+        "easy_pace_seconds_km": [
+          300,
+          340
+        ],
+        "threshold_pace_seconds_km": [
+          240,
+          250
+        ],
+        "initial_marathon_pace_seconds_km": 255,
+        "marathon_pace_finish_weeks": [
+          9,
+          12
+        ],
+        "marathon_pace_finish_km": 8,
+        "consolidation_weeks": [
+          4,
+          8,
+          11,
+          13
+        ],
+        "taper_weeks": [
+          15,
+          16,
+          17
+        ],
+        "lifting_effort": "RPE6-7, reduced dose, deadlift usually one set in build",
+        "recent_marathon_recovery": "Week1 no lifting; week2 two very light lifts; build gated by recovery and normal volume check"
+      },
+      "comparison_priorities": [
+        "Keep post-marathon recovery and unknown lifting loads honest.",
+        "Four versus more runs must follow available time and confirmed training history, not 2:59 alone.",
+        "Old peak32km is48.5% of66km/week; compare support mileage, frequency and time rather than automatically approving this concentration.",
+        "Old substantial marathon-specific long-run finishes occur only weeks9/12; new preparation should contain progressive current-fitness race-pace rehearsal before taper.",
+        "Race-week coach note mentions omitting Friday deadlift although no Friday lift is prescribed; remove stale directions.",
+        "Do not report a sub3 finish as guaranteed merely from prior race time."
+      ],
+      "weekly_summaries": [
+        {
+          "week": 1,
+          "page": 2,
+          "phase": "RECOVER",
+          "displayed_running_summary": "20 km                                   8 km                           Follow the day cards",
+          "displayed_training_km": 20.0,
+          "displayed_long_km": 8.0,
+          "race_separate": false
+        },
+        {
+          "week": 2,
+          "page": 3,
+          "phase": "RECOVER",
+          "displayed_running_summary": "32 km                                   14 km                           Follow the day cards",
+          "displayed_training_km": 32.0,
+          "displayed_long_km": 14.0,
+          "race_separate": false
+        },
+        {
+          "week": 3,
+          "page": 4,
+          "phase": "MARATHON BUILD",
+          "displayed_running_summary": "42 km                                 18 km                            Follow the day cards",
+          "displayed_training_km": 42.0,
+          "displayed_long_km": 18.0,
+          "race_separate": false
+        },
+        {
+          "week": 4,
+          "page": 5,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "38 km                                   16 km                           Follow the day cards",
+          "displayed_training_km": 38.0,
+          "displayed_long_km": 16.0,
+          "race_separate": false
+        },
+        {
+          "week": 5,
+          "page": 6,
+          "phase": "MARATHON BUILD",
+          "displayed_running_summary": "48 km                                 20 km                            Follow the day cards",
+          "displayed_training_km": 48.0,
+          "displayed_long_km": 20.0,
+          "race_separate": false
+        },
+        {
+          "week": 6,
+          "page": 7,
+          "phase": "MARATHON BUILD",
+          "displayed_running_summary": "52 km                                 22 km                            Follow the day cards",
+          "displayed_training_km": 52.0,
+          "displayed_long_km": 22.0,
+          "race_separate": false
+        },
+        {
+          "week": 7,
+          "page": 8,
+          "phase": "MARATHON BUILD",
+          "displayed_running_summary": "56 km                                 24 km                            Follow the day cards",
+          "displayed_training_km": 56.0,
+          "displayed_long_km": 24.0,
+          "race_separate": false
+        },
+        {
+          "week": 8,
+          "page": 9,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "46 km                                 20 km                            Follow the day cards",
+          "displayed_training_km": 46.0,
+          "displayed_long_km": 20.0,
+          "race_separate": false
+        },
+        {
+          "week": 9,
+          "page": 10,
+          "phase": "MARATHON BUILD",
+          "displayed_running_summary": "58 km                                 26 km                            Follow the day cards",
+          "displayed_training_km": 58.0,
+          "displayed_long_km": 26.0,
+          "race_separate": false
+        },
+        {
+          "week": 10,
+          "page": 11,
+          "phase": "MARATHON BUILD",
+          "displayed_running_summary": "62 km                                 28 km                            Follow the day cards",
+          "displayed_training_km": 62.0,
+          "displayed_long_km": 28.0,
+          "race_separate": false
+        },
+        {
+          "week": 11,
+          "page": 12,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "52 km                                 24 km                            Follow the day cards",
+          "displayed_training_km": 52.0,
+          "displayed_long_km": 24.0,
+          "race_separate": false
+        },
+        {
+          "week": 12,
+          "page": 13,
+          "phase": "MARATHON BUILD",
+          "displayed_running_summary": "64 km                                 30 km                            Follow the day cards",
+          "displayed_training_km": 64.0,
+          "displayed_long_km": 30.0,
+          "race_separate": false
+        },
+        {
+          "week": 13,
+          "page": 14,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "58 km                                 26 km                            Follow the day cards",
+          "displayed_training_km": 58.0,
+          "displayed_long_km": 26.0,
+          "race_separate": false
+        },
+        {
+          "week": 14,
+          "page": 15,
+          "phase": "MARATHON BUILD",
+          "displayed_running_summary": "66 km                                 32 km                            Follow the day cards",
+          "displayed_training_km": 66.0,
+          "displayed_long_km": 32.0,
+          "race_separate": false
+        },
+        {
+          "week": 15,
+          "page": 16,
+          "phase": "TAPER",
+          "displayed_running_summary": "50 km                                 22 km                            Follow the day cards",
+          "displayed_training_km": 50.0,
+          "displayed_long_km": 22.0,
+          "race_separate": false
+        },
+        {
+          "week": 16,
+          "page": 17,
+          "phase": "TAPER",
+          "displayed_running_summary": "34 km                                   14 km                           Follow the day cards",
+          "displayed_training_km": 34.0,
+          "displayed_long_km": 14.0,
+          "race_separate": false
+        },
+        {
+          "week": 17,
+          "page": 18,
+          "phase": "TAPER",
+          "displayed_running_summary": "14 km + race                            42.2 km race                    Follow the day cards",
+          "displayed_training_km": 14.0,
+          "displayed_long_km": 42.2,
+          "race_separate": true
+        }
+      ],
+      "evidence": {
+        "read_route": "Library read current full text, continued until has_more=false",
+        "read_at": "2026-10-30",
+        "line_count": 1063,
+        "notes": "Exact source facts are separate from planning assumptions introduced by the historical handout. Historical PDFs were manually authored; do not label them prior native-engine outputs."
+      },
+      "peak_metrics": {
+        "week": 14,
+        "weekly_km": 66,
+        "long_km": 32,
+        "long_share": 0.48484848484848486,
+        "long_duration_minutes_at_given_easy_pace": [
+          160,
+          181.33333333333334
+        ]
+      }
+    },
+    {
+      "id": "original-3",
+      "title": "First powerlifting meet",
+      "library_file_id": "libfile_bab6ae6add78819187ad8e98c59c1d43",
+      "filename": "03-First-powerlifting-meet-v2.pdf",
+      "pages": 27,
+      "user_facts": {
+        "first_powerlifting_meet_in_months": 6,
+        "tested_1rm": false,
+        "rep_performances": [
+          {
+            "lift": "squat",
+            "kg": 140,
+            "reps": 5
+          },
+          {
+            "lift": "bench",
+            "kg": 80,
+            "reps": 5
+          },
+          {
+            "lift": "deadlift",
+            "kg": 160,
+            "reps": 3
+          }
+        ],
+        "running_goal": "General health"
+      },
+      "artifact_assumptions": {
+        "start_date": "2026-11-02",
+        "meet_date": "2027-05-01",
+        "weeks": 26,
+        "lifting_familiarity": "Assumes athlete already knows the lifts; not a supplied training-age history",
+        "availability": "M/W/F strength, Tue/Sat easy running, Thu/Sun rest. Athlete availability and minute caps not supplied.",
+        "running_baseline": "No confirmed recent mileage or race baseline; health runs prescribe distance-or-time, whichever comes first",
+        "rep_set_effort": "User did not state baseline-set RPE"
+      },
+      "coaching_baseline": {
+        "strength_visits": 3,
+        "health_runs": 2,
+        "week1_opening_loads_kg": {
+          "squat_top_5": 125,
+          "bench_top_5": 72.5,
+          "deadlift_top_4": 137.5
+        },
+        "speed_bench_start_kg": 50,
+        "speed_bench_start_repetition": "50kg appears across almost all 25 pre-meet weeks, with no explicit rebaseline instruction",
+        "volume_day": "Monday squat/bench",
+        "heavier_day": "Wednesday deadlift/bench; Friday squat",
+        "speed_day": "Friday bench doubles",
+        "commands": "General depth/pause/lockout reminders; week23 asks for command-practice singles",
+        "consolidation_weeks": [
+          5,
+          10,
+          15,
+          20
+        ],
+        "competition_practice_weeks": [
+          16,
+          23
+        ],
+        "taper_weeks": [
+          24,
+          25,
+          26
+        ],
+        "peak_single_effort": "Usually8, optional8-8.5 week23; finalbench8-8.5",
+        "final_exposures": {
+          "deadlift": "Wednesday21April (10days out)",
+          "squat": "Friday23April (8days out)",
+          "bench": "Monday26April (5days out)"
+        },
+        "progression": "After two comparable top sets at least1RPE below target, consider small increases; otherwise repeat or effort-adjust",
+        "backoff_load": "90-93% of actual top set; effort priority over percentage not made explicit"
+      },
+      "comparison_priorities": [
+        "Preserve rep baselines and avoid a mandatory max test or fabricated rep-set RPE.",
+        "Volume, strength and speed must have distinct purposes and doses with progressing/reviewed speed reference loads.",
+        "Make effort the explicit governing target if suggested percentage and RPE conflict.",
+        "Test purposeful variation and return to competition specificity, with actually prescribed command practice.",
+        "Compare sensible novice effort progression and final exposures; RPE9 need not be forced on an inexperienced athlete.",
+        "Health running should remain appropriate to unknown baseline rather than inventing race pace or mileage."
+      ],
+      "weekly_summaries": [
+        {
+          "week": 1,
+          "page": 2,
+          "phase": "BUILD THE BASICS",
+          "displayed_running_summary": "up to 10 km                           up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 2,
+          "page": 3,
+          "phase": "BUILD THE BASICS",
+          "displayed_running_summary": "up to 10 km                           up to 5 km                       Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 3,
+          "page": 4,
+          "phase": "BUILD THE BASICS",
+          "displayed_running_summary": "up to 10 km                           up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 4,
+          "page": 5,
+          "phase": "BUILD THE BASICS",
+          "displayed_running_summary": "up to 10 km                           up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 5,
+          "page": 6,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "up to 8 km                            up to 4 km                      Follow the day cards",
+          "displayed_training_km": 8.0,
+          "displayed_long_km": 4.0,
+          "race_separate": false
+        },
+        {
+          "week": 6,
+          "page": 7,
+          "phase": "BUILD THE BASICS",
+          "displayed_running_summary": "up to 11 km                             up to 5.5 km                     Follow the day cards",
+          "displayed_training_km": 11.0,
+          "displayed_long_km": 5.5,
+          "race_separate": false
+        },
+        {
+          "week": 7,
+          "page": 8,
+          "phase": "BUILD THE BASICS",
+          "displayed_running_summary": "up to 11 km                             up to 5.5 km                     Follow the day cards",
+          "displayed_training_km": 11.0,
+          "displayed_long_km": 5.5,
+          "race_separate": false
+        },
+        {
+          "week": 8,
+          "page": 9,
+          "phase": "BUILD THE BASICS",
+          "displayed_running_summary": "up to 11 km                             up to 5.5 km                     Follow the day cards",
+          "displayed_training_km": 11.0,
+          "displayed_long_km": 5.5,
+          "race_separate": false
+        },
+        {
+          "week": 9,
+          "page": 10,
+          "phase": "BUILD THE BASICS",
+          "displayed_running_summary": "up to 11 km                             up to 5.5 km                     Follow the day cards",
+          "displayed_training_km": 11.0,
+          "displayed_long_km": 5.5,
+          "race_separate": false
+        },
+        {
+          "week": 10,
+          "page": 11,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "up to 9 km                              up to 4.5 km                     Follow the day cards",
+          "displayed_training_km": 9.0,
+          "displayed_long_km": 4.5,
+          "race_separate": false
+        },
+        {
+          "week": 11,
+          "page": 12,
+          "phase": "STRENGTH",
+          "displayed_running_summary": "up to 12 km                            up to 6 km                      Follow the day cards",
+          "displayed_training_km": 12.0,
+          "displayed_long_km": 6.0,
+          "race_separate": false
+        },
+        {
+          "week": 12,
+          "page": 13,
+          "phase": "STRENGTH",
+          "displayed_running_summary": "up to 12 km                            up to 6 km                      Follow the day cards",
+          "displayed_training_km": 12.0,
+          "displayed_long_km": 6.0,
+          "race_separate": false
+        },
+        {
+          "week": 13,
+          "page": 14,
+          "phase": "STRENGTH",
+          "displayed_running_summary": "up to 12 km                            up to 6 km                      Follow the day cards",
+          "displayed_training_km": 12.0,
+          "displayed_long_km": 6.0,
+          "race_separate": false
+        },
+        {
+          "week": 14,
+          "page": 15,
+          "phase": "STRENGTH",
+          "displayed_running_summary": "up to 12 km                            up to 6 km                      Follow the day cards",
+          "displayed_training_km": 12.0,
+          "displayed_long_km": 6.0,
+          "race_separate": false
+        },
+        {
+          "week": 15,
+          "page": 16,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "up to 9 km                             up to 4.5 km                     Follow the day cards",
+          "displayed_training_km": 9.0,
+          "displayed_long_km": 4.5,
+          "race_separate": false
+        },
+        {
+          "week": 16,
+          "page": 17,
+          "phase": "COMPETITION PRACTICE",
+          "displayed_running_summary": "up to 10 km                             up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 17,
+          "page": 18,
+          "phase": "COMPETITION PRACTICE",
+          "displayed_running_summary": "up to 10 km                             up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 18,
+          "page": 19,
+          "phase": "COMPETITION PRACTICE",
+          "displayed_running_summary": "up to 10 km                             up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 19,
+          "page": 20,
+          "phase": "COMPETITION PRACTICE",
+          "displayed_running_summary": "up to 10 km                             up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 20,
+          "page": 21,
+          "phase": "CONSOLIDATE",
+          "displayed_running_summary": "up to 10 km                             up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 21,
+          "page": 22,
+          "phase": "COMPETITION PRACTICE",
+          "displayed_running_summary": "up to 10 km                            up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 22,
+          "page": 23,
+          "phase": "COMPETITION PRACTICE",
+          "displayed_running_summary": "up to 10 km                            up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 23,
+          "page": 24,
+          "phase": "COMPETITION PRACTICE",
+          "displayed_running_summary": "up to 10 km                            up to 5 km                      Follow the day cards",
+          "displayed_training_km": 10.0,
+          "displayed_long_km": 5.0,
+          "race_separate": false
+        },
+        {
+          "week": 24,
+          "page": 25,
+          "phase": "TAPER",
+          "displayed_running_summary": "up to 8 km                            up to 4 km                      Follow the day cards",
+          "displayed_training_km": 8.0,
+          "displayed_long_km": 4.0,
+          "race_separate": false
+        },
+        {
+          "week": 25,
+          "page": 26,
+          "phase": "FINAL LOWER LIFTS",
+          "displayed_running_summary": "up to 6 km                            up to 3 km                      Follow the day cards",
+          "displayed_training_km": 6.0,
+          "displayed_long_km": 3.0,
+          "race_separate": false
+        },
+        {
+          "week": 26,
+          "page": 27,
+          "phase": "MEET WEEK",
+          "displayed_running_summary": "15-20 min optional                    No long run                    Follow the day cards",
+          "race_separate": false
+        }
+      ],
+      "evidence": {
+        "read_route": "Library read current full text, continued until has_more=false",
+        "read_at": "2026-10-30",
+        "line_count": 1569,
+        "notes": "Exact source facts are separate from planning assumptions introduced by the historical handout. Historical PDFs were manually authored; do not label them prior native-engine outputs."
+      }
+    }
+  ],
+  "comparison_rules": [
+    "Freeze actual user facts. Record every added assumption rather than invent athlete history.",
+    "Use these exact event dates/horizons for an apples-to-apples handout comparison; separately note dates were planning assumptions.",
+    "Report actual scheduled work, time budgets, unscheduled work and review gates.",
+    "A better maximum long run is not sufficient evidence by itself: compare whole weekly support and recovery.",
+    "No validated performance forecast or injury-risk inference follows from a synthetic plan."
+  ]
+}

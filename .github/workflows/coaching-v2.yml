@@ -66,16 +66,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Generate fictional athletes through the native engine
-        run: npm run test:scenarios
-      - name: Check independent coaching requirements
-        run: npm run test:scenarios:acceptance
+      - name: Replay frozen athletes, fresh athletes and original profiles in order
+        run: npm run test:coaching:rounds
       - name: Retain exact outputs and mapping limitations
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: five-scenario-engine-baseline
-          path: docs/qa/five-scenario-engine-baseline/
+          path: docs/qa/coaching-rounds-current/
 
   shared-coach-browser:
     name: Shared engine — browser and PWA upgrade

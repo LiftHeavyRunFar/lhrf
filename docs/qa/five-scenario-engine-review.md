@@ -1,5 +1,6 @@
 # Priya — five-scenario coaching-engine review
 
+Historical baseline before coaching policy v2. The current fixture now exercises the revised candidate. See `coaching-v2-final-review.md` and `../coaching-policy-v2.md` for current results; the original baseline is retained in the review archive.
 **Verdict: none of these five baseline outputs is a complete programme ready to hand to an athlete. All five are correctly marked `feasible: false` by the engine.** This is useful evidence of gaps, not evidence that the engine approved them.
 
 These fictional profiles were executed against the actual shared engine at local commit `d366ffdf5e11d50e11e424eaf32fc248ccf9eb47`, with clock fixed to 30 October 2026, programme start 2 November 2026 and seed 1570806085. The runner uses `buildNewProgramme → prepareNewProgramme → buildProgramme → createEngine.describeWeek → generatedSessions`. The browser app delegates to the same core; this was a local core test, not a browser activation or deployed-build verification. No live athlete records were read or changed.

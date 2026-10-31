@@ -57,3 +57,39 @@ test('positive evidence can clear individual gates without weakening acceptance 
  assert.equal(gate(result,'D','fatigue-evidence-response').status,'pass');
  for(const id of 'ABCDE')assert.equal(gate(result,id,'inclusive-visit-minute-contract').status,'pass');
 });
+test('separated visits are checked individually and must retain the promised recovery gap',()=>{
+ const fixture=malformedReport(),c=fixture.cases.find(c=>c.id==='C');c.unsupported=[];
+ c.source.availability.separate_double_days=['Tue'];c.source.availability.separate_double_each_session_minutes=75;c.source.availability.separate_double_minimum_gap_hours=6;
+ for(const session of c.programme.weeks[0].sessions)if(!session.eventDate)session.timeBudget={includesWarmups:true,includesRest:true,includesTransitions:true,totalMinutes:40};
+ const t=c.programme.weeks[0].sessions.find(s=>s.day==='Tue');t.runs=[{role:'easy-run',minutes:70,distanceKm:8}];
+ t.timeBudget={includesWarmups:true,includesRest:true,includesTransitions:true,totalMinutes:130,separate:true,minimumGapHours:6,visits:[{kind:'run',totalMinutes:70},{kind:'strength',totalMinutes:60}]};
+ assert.equal(gate(audit(fixture),'C','inclusive-visit-minute-contract').status,'pass');
+ t.timeBudget.minimumGapHours=2;
+ assert.equal(gate(audit(fixture),'C','inclusive-visit-minute-contract').status,'blocked');
+});
+test('an unresolved event window is credited only when the native programme specifically blocks it',()=>{
+ const fixture=malformedReport(),b=fixture.cases.find(c=>c.id==='B'),week=b.programme.weeks.at(-1),event=week.sessions[0];
+ event.constraintIssues=[{kind:'event-time',date:event.eventDate,requiresAthleteInput:true,detail:'Confirm extension beyond the130-minute window.'}];
+ let result=audit(fixture);assert.equal(gate(result,'B','event-time-window').status,'pass');assert.ok(result.cases.find(c=>c.id==='B').inputReviews.some(x=>x.kind==='event-time'));
+ week.feasible=true;
+ assert.equal(gate(audit(fixture),'B','event-time-window').status,'blocked');
+});
+test('event-only conditional review cannot hide an unrelated blocking coaching issue',()=>{
+ const fixture=malformedReport(),b=fixture.cases.find(c=>c.id==='B');
+ const first=b.programme.weeks[0];first.feasible=true;first.unscheduled=[];
+ const eventWeek=b.programme.weeks.at(-1),event=eventWeek.sessions[0],detail='Confirm the race-time extension before approval.';
+ event.constraintIssues=[{kind:'event-time',date:event.eventDate,requiresAthleteInput:true,detail}];
+ eventWeek.blockingIssues=[detail,'Quality running exceeds the final scheduled weekly budget.'];
+ assert.equal(gate(audit(fixture),'B','complete-calendar').status,'blocked');
+ eventWeek.blockingIssues=[detail];
+ assert.equal(gate(audit(fixture),'B','complete-calendar').status,'pass');
+});
+test('explicit uncapped event permission is distinct from a capped training visit',()=>{
+ const fixture=malformedReport(),b=fixture.cases.find(c=>c.id==='B'),event=b.programme.weeks.at(-1).sessions[0];
+ b.input.visitConstraints={eventDays:{[event.eventDate]:{confirmed:true,minutes:null}}};
+ assert.equal(gate(audit(fixture),'B','event-time-window').status,'pass');
+ b.input.visitConstraints.eventDays[event.eventDate]={confirmed:false,minutes:null};
+ assert.equal(gate(audit(fixture),'B','event-time-window').status,'blocked');
+ b.input.visitConstraints.eventDays[event.eventDate]={confirmed:false,minutes:130};
+ assert.equal(gate(audit(fixture),'B','event-time-window').status,'blocked');
+});

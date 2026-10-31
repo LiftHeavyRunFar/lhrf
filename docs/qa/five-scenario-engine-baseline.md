@@ -1,5 +1,6 @@
 # Five-scenario native coaching-engine baseline
 
+Historical baseline before coaching policy v2. The current fixture now exercises the revised candidate. See `coaching-v2-final-review.md` and `../coaching-policy-v2.md` for current results; the original baseline is retained in the review archive.
 The five fictional athletes are supplied by Priya's preserved scenario fixture. Rowan's runner enters those facts automatically, calls the actual shared LHRF engine, and saves its returned prescriptions unchanged. This is a baseline for independent criticism, not a hand-written replacement programme or an endorsement to train from a blocked draft.
 
 ## Reproduce
