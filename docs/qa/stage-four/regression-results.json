@@ -1,0 +1,274 @@
+{
+  "engineCommit": "560199b078a1eef409cc015ec3bec7d1621d14b9",
+  "software": {
+    "command": "node --test --test-isolation=none tests/*.test.cjs",
+    "tests": 273,
+    "passed": 273,
+    "failed": 0
+  },
+  "athleteRegression": {
+    "profiles": 7,
+    "trajectories": 42,
+    "simulatedWeeks": 468,
+    "checks": 9994,
+    "regressionFailures": 0,
+    "coachingGaps": 0,
+    "coachingGatesPassed": true,
+    "readyForLiveUse": false
+  },
+  "earlierRounds": [
+    {
+      "fixturePath": "tests/fixtures/five-scenario-engine-inputs.json",
+      "cases": 5,
+      "passed": 2,
+      "blocked": 0,
+      "conditionalReview": 3,
+      "gates": 44,
+      "blockedGates": 0
+    },
+    {
+      "fixturePath": "tests/fixtures/five-scenario-round-two-inputs.json",
+      "cases": 5,
+      "passed": 5,
+      "blocked": 0,
+      "conditionalReview": 0,
+      "gates": 42,
+      "blockedGates": 0
+    }
+  ],
+  "depth": {
+    "criteria": 18,
+    "passed": 18,
+    "coachingCodeGatesPassed": true
+  },
+  "stageThree": {
+    "allCorrectionChecksPassed": true,
+    "checks": {
+      "unchangedFrozenFacts": true,
+      "nativeImmutableDeterministicCapture": true,
+      "leilaAndHugoPrescriptionsUnchanged": true,
+      "sofiaStillBlocked": true,
+      "hardTimeConflictBlocksKeiko": true,
+      "aspirationDoesNotChangeRacePrescription": true,
+      "affectedMaintenanceBoundedWithoutRemovingStrength": true,
+      "unaffectedBenchRetained": true,
+      "partialWeekHasNoEarlyHardWork": true,
+      "idrisDayNineIsLightWithReview": true,
+      "fatigueChangesMaintenance": true,
+      "noUnaddressedEngineFinding": true
+    },
+    "retainedFindings": [
+      {
+        "id": "T",
+        "kind": "event-window-exceeded",
+        "severity": "high",
+        "week": 18,
+        "date": "2027-03-07",
+        "estimatedMinutes": 250,
+        "logisticsMinutes": 0,
+        "capMinutes": 240,
+        "calendarFeasible": false
+      }
+    ]
+  },
+  "browsers": {
+    "playwright": "1.56.1",
+    "chromium": "/usr/bin/chromium",
+    "results": [
+      {
+        "name": "coaching-intake-v2",
+        "exitCode": 0
+      },
+      {
+        "name": "preview-intake-v2",
+        "exitCode": 0
+      },
+      {
+        "name": "general-coaching",
+        "exitCode": 0
+      }
+    ]
+  },
+  "originalThree": {
+    "capturedWeeks": 69,
+    "gates": {
+      "cases": 3,
+      "passed": 0,
+      "blocked": 0,
+      "conditionalReview": 3,
+      "gates": 26,
+      "blockedGates": 0
+    },
+    "protectedBaseFiles": {
+      "count": 210,
+      "changed": []
+    },
+    "savedComparisons": 6,
+    "comparisons": [
+      {
+        "id": "O1",
+        "changedVersusOriginal": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          25,
+          26
+        ],
+        "changedVersusPreStageOne": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "runningDosesUnchanged": true,
+        "adjacentHardLowerPairs": 11
+      },
+      {
+        "id": "O2",
+        "changedVersusOriginal": [
+          2,
+          16,
+          17
+        ],
+        "changedVersusPreStageOne": [],
+        "runningDosesUnchanged": true,
+        "adjacentHardLowerPairs": 0
+      },
+      {
+        "id": "O3",
+        "changedVersusOriginal": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        "changedVersusPreStageOne": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        "runningDosesUnchanged": true,
+        "adjacentHardLowerPairs": 29
+      }
+    ]
+  },
+  "preservation": {
+    "baseFiles": {
+      "count": 210,
+      "changed": []
+    },
+    "additionalSavedCaptureChecks": [
+      {
+        "id": "O1",
+        "baseline": "original",
+        "weeks": 26,
+        "savedProgrammeExactlyUnchanged": true,
+        "logsApprovalsSchedulesAndUnfinishedWorkoutUnchanged": true
+      },
+      {
+        "id": "O1",
+        "baseline": "pre-stage-one",
+        "weeks": 26,
+        "savedProgrammeExactlyUnchanged": true,
+        "logsApprovalsSchedulesAndUnfinishedWorkoutUnchanged": true
+      },
+      {
+        "id": "O2",
+        "baseline": "original",
+        "weeks": 17,
+        "savedProgrammeExactlyUnchanged": true,
+        "logsApprovalsSchedulesAndUnfinishedWorkoutUnchanged": true
+      },
+      {
+        "id": "O2",
+        "baseline": "pre-stage-one",
+        "weeks": 17,
+        "savedProgrammeExactlyUnchanged": true,
+        "logsApprovalsSchedulesAndUnfinishedWorkoutUnchanged": true
+      },
+      {
+        "id": "O3",
+        "baseline": "original",
+        "weeks": 26,
+        "savedProgrammeExactlyUnchanged": true,
+        "logsApprovalsSchedulesAndUnfinishedWorkoutUnchanged": true
+      },
+      {
+        "id": "O3",
+        "baseline": "pre-stage-one",
+        "weeks": 26,
+        "savedProgrammeExactlyUnchanged": true,
+        "logsApprovalsSchedulesAndUnfinishedWorkoutUnchanged": true
+      }
+    ],
+    "existingSuiteSavedProfiles": 23,
+    "existingSuiteSavedWeeks": 339,
+    "realAthleteStoreOpened": false
+  },
+  "independentCoachingApproval": false,
+  "reason": "A passing software suite does not clear the independently observed O1/O3 Stage-1 scheduling regression."
+}

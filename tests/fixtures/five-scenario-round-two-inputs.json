@@ -1,0 +1,980 @@
+{
+  "schema": "lhrf-scenario-engine-inputs-v2",
+  "seed": 2026103002,
+  "clock": "2026-10-30T12:00:00.000Z",
+  "source": {
+    "fictional": true,
+    "programme_start": "2026-11-02",
+    "randomisation": "Python random.Random(2026103002): shuffled coherent goal patterns, bounded event horizons and baseline values. Physiology and availability remain coherent rather than independently randomised.",
+    "profiles": [
+      {
+        "id": "F",
+        "label": "Half marathon with a negotiable faster target",
+        "goals": [
+          {
+            "sport": "running",
+            "distance_km": 21.0975,
+            "date": "2027-02-21",
+            "aspirational_seconds": 6900,
+            "target_status": "1:55 aspiration; current fitness governs training"
+          }
+        ],
+        "priority": "Running",
+        "strength": {
+          "training_age": "intermediate",
+          "reference_maxes_kg": {
+            "squat": 105,
+            "bench": 75,
+            "deadlift": 135
+          },
+          "sets": []
+        },
+        "running": {
+          "current_runs_per_week": 3,
+          "weekly_km_history": [
+            24,
+            26,
+            25,
+            27,
+            28,
+            28
+          ],
+          "recent_long_run": {
+            "km": 14,
+            "minutes": 100,
+            "recovery_hours_max": 24
+          },
+          "race": {
+            "distance_km": 10,
+            "seconds": 3210,
+            "date": "2026-10-11",
+            "effort": "full race effort",
+            "environment": "outdoor"
+          }
+        },
+        "availability": {
+          "days": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "visit_limits_minutes": {
+            "Tue": 75,
+            "Thu": 90,
+            "Sat": 75,
+            "Sun": 165
+          },
+          "combined_run_lift_days": [
+            "Thu"
+          ],
+          "separate_doubles_permitted": false,
+          "whole_visit_cap_includes_all_components": true
+        },
+        "health_context": "Pain-free, no current illness; recovery normal unless explicit evidence supplied."
+      },
+      {
+        "id": "G",
+        "label": "Powerlifting first, then a dedicated 10K block",
+        "goals": [
+          {
+            "sport": "powerlifting",
+            "date": "2027-01-09",
+            "target_status": "Strength first until this meet"
+          },
+          {
+            "sport": "running",
+            "distance_km": 10,
+            "date": "2027-04-18",
+            "aspirational_seconds": 2700,
+            "target_status": "45-minute aspiration after the meet"
+          }
+        ],
+        "priority": "Strength first",
+        "strength": {
+          "training_age": "advanced",
+          "reference_maxes_kg": {
+            "squat": 175,
+            "bench": 115,
+            "deadlift": 215
+          },
+          "sets": []
+        },
+        "running": {
+          "current_runs_per_week": 2,
+          "weekly_km_history": [
+            24,
+            25,
+            24,
+            26,
+            24,
+            26
+          ],
+          "recent_long_run": {
+            "km": 12,
+            "minutes": 75,
+            "recovery_hours_max": 24
+          },
+          "race": {
+            "distance_km": 10,
+            "seconds": 2850,
+            "date": "2026-10-11",
+            "effort": "full race effort",
+            "environment": "outdoor"
+          }
+        },
+        "availability": {
+          "days": [
+            "Mon",
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "visit_limits_minutes": {
+            "Mon": 90,
+            "Tue": 90,
+            "Thu": 90,
+            "Fri": 90,
+            "Sun": 135
+          },
+          "combined_run_lift_days": [
+            "Tue",
+            "Thu"
+          ],
+          "separate_doubles_permitted": false,
+          "whole_visit_cap_includes_all_components": true
+        },
+        "health_context": "Pain-free, no current illness; recovery normal unless explicit evidence supplied."
+      },
+      {
+        "id": "H",
+        "label": "First organised 5K with developing lifting skills",
+        "goals": [
+          {
+            "sport": "running",
+            "distance_km": 5,
+            "date": "2027-01-24",
+            "target_status": "Finish comfortably; no time target"
+          }
+        ],
+        "priority": "Running",
+        "strength": {
+          "training_age": "beginner",
+          "reference_maxes_kg": {},
+          "sets": [
+            {
+              "lift": "squat",
+              "kg": 40,
+              "reps": 8,
+              "rpe": 7
+            },
+            {
+              "lift": "bench",
+              "kg": 30,
+              "reps": 8,
+              "rpe": 7
+            },
+            {
+              "lift": "deadlift",
+              "kg": 60,
+              "reps": 5,
+              "rpe": 7
+            }
+          ]
+        },
+        "running": {
+          "current_runs_per_week": 3,
+          "weekly_km_history": [
+            10,
+            11,
+            12,
+            10,
+            12,
+            13
+          ],
+          "recent_long_run": {
+            "km": 5,
+            "minutes": 38,
+            "recovery_hours_max": 24
+          },
+          "race": {
+            "distance_km": 3,
+            "seconds": 1110,
+            "date": "2026-10-11",
+            "effort": "full race effort",
+            "environment": "outdoor"
+          }
+        },
+        "availability": {
+          "days": [
+            "Tue",
+            "Thu",
+            "Sun"
+          ],
+          "visit_limits_minutes": {
+            "Tue": 60,
+            "Thu": 70,
+            "Sun": 80
+          },
+          "combined_run_lift_days": [
+            "Tue",
+            "Thu"
+          ],
+          "separate_doubles_permitted": false,
+          "whole_visit_cap_includes_all_components": true
+        },
+        "health_context": "Pain-free, no current illness; recovery normal unless explicit evidence supplied."
+      },
+      {
+        "id": "I",
+        "label": "Marathon build with an established aerobic base",
+        "goals": [
+          {
+            "sport": "running",
+            "distance_km": 42.195,
+            "date": "2027-03-07",
+            "target_status": "Completion with sustained pacing; no invented faster target"
+          }
+        ],
+        "priority": "Running",
+        "strength": {
+          "training_age": "advanced",
+          "reference_maxes_kg": {
+            "squat": 140,
+            "bench": 95,
+            "deadlift": 180
+          },
+          "sets": []
+        },
+        "running": {
+          "current_runs_per_week": 4,
+          "weekly_km_history": [
+            50,
+            52,
+            48,
+            55,
+            56,
+            54
+          ],
+          "recent_long_run": {
+            "km": 24,
+            "minutes": 155,
+            "recovery_hours_max": 24
+          },
+          "race": {
+            "distance_km": 42.195,
+            "seconds": 13080,
+            "date": "2026-10-11",
+            "effort": "full race effort",
+            "environment": "outdoor"
+          }
+        },
+        "availability": {
+          "days": [
+            "Mon",
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "visit_limits_minutes": {
+            "Mon": 90,
+            "Tue": 90,
+            "Thu": 90,
+            "Sat": 90,
+            "Sun": 240
+          },
+          "combined_run_lift_days": [
+            "Mon",
+            "Thu"
+          ],
+          "separate_doubles_permitted": false,
+          "whole_visit_cap_includes_all_components": true
+        },
+        "health_context": "Pain-free, no current illness; recovery normal unless explicit evidence supplied."
+      },
+      {
+        "id": "J",
+        "label": "Experienced powerlifter prioritising bench with health running",
+        "goals": [
+          {
+            "sport": "powerlifting",
+            "date": "2027-02-20",
+            "target_status": "Best technically sound competition total"
+          }
+        ],
+        "priority": "Strength first",
+        "strength": {
+          "training_age": "advanced",
+          "reference_maxes_kg": {
+            "squat": 240,
+            "bench": 145,
+            "deadlift": 260
+          },
+          "sets": []
+        },
+        "running": {
+          "current_runs_per_week": 2,
+          "weekly_km_history": [
+            14,
+            16,
+            15,
+            16,
+            14,
+            16
+          ],
+          "recent_long_run": {
+            "km": 8,
+            "minutes": 49,
+            "recovery_hours_max": 24
+          },
+          "race": {
+            "distance_km": 10,
+            "seconds": 2700,
+            "date": "2026-10-11",
+            "effort": "full race effort",
+            "environment": "outdoor"
+          }
+        },
+        "availability": {
+          "days": [
+            "Mon",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "visit_limits_minutes": {
+            "Mon": 90,
+            "Wed": 100,
+            "Fri": 80,
+            "Sun": 75
+          },
+          "combined_run_lift_days": [
+            "Wed"
+          ],
+          "separate_doubles_permitted": false,
+          "whole_visit_cap_includes_all_components": true
+        },
+        "health_context": "Pain-free, no current illness; recovery normal unless explicit evidence supplied."
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "F",
+      "name": "Half marathon with a negotiable faster target",
+      "config": {
+        "coachingRulesVersion": 2,
+        "weeks": 16,
+        "startDate": "2026-11-02",
+        "event": "running",
+        "priority": "Running",
+        "hybridFocus": "running",
+        "strengthMode": "maintenance",
+        "trainingAge": "intermediate",
+        "squat": 1,
+        "bench": 2,
+        "deadlift": 1,
+        "runs": 3,
+        "days": 4,
+        "availableDays": [
+          "Tue",
+          "Thu",
+          "Sat",
+          "Sun"
+        ],
+        "doubleDays": [
+          "Thu"
+        ],
+        "longRunDay": "Sun",
+        "runGoal": "half",
+        "strengthTargetDate": "",
+        "runningTargetDate": "2027-02-21",
+        "noDate": false,
+        "liftProfiles": {
+          "Squat": {
+            "kg": 105,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Bench": {
+            "kg": 75,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 135,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 3210,
+          "time": "53:30",
+          "weeklyKm": 28,
+          "recency": "recent",
+          "resultDate": "2026-10-11",
+          "effort": "performance",
+          "environment": "outside"
+        },
+        "variations": {},
+        "visitConstraints": {
+          "strengthVisits": 2,
+          "minutes": {
+            "Tue": 75,
+            "Thu": 90,
+            "Sat": 75,
+            "Sun": 165
+          },
+          "combinedDays": [
+            "Thu"
+          ],
+          "separateDays": [],
+          "separateMinutes": {},
+          "minimumGapHours": 0,
+          "eventDays": {
+            "2027-02-21": {
+              "confirmed": true,
+              "minutes": 165
+            }
+          }
+        },
+        "runningHistory": {
+          "weeklyKm": [
+            24,
+            26,
+            25,
+            27,
+            28,
+            28
+          ],
+          "longRun": {
+            "km": 14,
+            "minutes": 100,
+            "recoveryHours": 24
+          }
+        },
+        "runningGoalSeconds": 6900
+      },
+      "historicalData": {
+        "sets": [],
+        "runs": [],
+        "checkins": [],
+        "sessionFeedback": [],
+        "decisions": [],
+        "overrides": {},
+        "activeCustomWeek": 1
+      },
+      "mapping": [
+        "Fictional facts generated from coherent templates with fixed seed2026103002; goals and training windows supplied as complete test inputs.",
+        "Per-lift frequencies are declared test design choices, not inferred from a real athlete.",
+        "All event days are explicitly permitted in this synthetic round; none is silently added by the engine.",
+        "Native engine supplies all exercises, doses, paces and session calendars."
+      ],
+      "unsupported": []
+    },
+    {
+      "id": "G",
+      "name": "Powerlifting first, then a dedicated 10K block",
+      "config": {
+        "coachingRulesVersion": 2,
+        "weeks": 24,
+        "startDate": "2026-11-02",
+        "event": "powerlifting",
+        "priority": "Squat",
+        "hybridFocus": "strength",
+        "strengthMode": "progression",
+        "trainingAge": "advanced",
+        "squat": 2,
+        "bench": 3,
+        "deadlift": 1,
+        "runs": 2,
+        "days": 5,
+        "availableDays": [
+          "Mon",
+          "Tue",
+          "Thu",
+          "Fri",
+          "Sun"
+        ],
+        "doubleDays": [
+          "Tue",
+          "Thu"
+        ],
+        "longRunDay": "Sun",
+        "runGoal": "fitness",
+        "strengthTargetDate": "2027-01-09",
+        "runningTargetDate": "2027-04-18",
+        "noDate": false,
+        "liftProfiles": {
+          "Squat": {
+            "kg": 175,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Bench": {
+            "kg": 115,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 215,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 2850,
+          "time": "47:30",
+          "weeklyKm": 26,
+          "recency": "recent",
+          "resultDate": "2026-10-11",
+          "effort": "performance",
+          "environment": "outside"
+        },
+        "variations": {},
+        "visitConstraints": {
+          "strengthVisits": 3,
+          "minutes": {
+            "Mon": 90,
+            "Tue": 90,
+            "Thu": 90,
+            "Fri": 90,
+            "Sun": 135
+          },
+          "combinedDays": [
+            "Tue",
+            "Thu"
+          ],
+          "separateDays": [],
+          "separateMinutes": {},
+          "minimumGapHours": 0,
+          "eventDays": {
+            "2027-01-09": {
+              "confirmed": true,
+              "minutes": null
+            },
+            "2027-04-18": {
+              "confirmed": true,
+              "minutes": 135
+            }
+          }
+        },
+        "runningHistory": {
+          "weeklyKm": [
+            24,
+            25,
+            24,
+            26,
+            24,
+            26
+          ],
+          "longRun": {
+            "km": 12,
+            "minutes": 75,
+            "recoveryHours": 24
+          }
+        },
+        "runningGoalSeconds": 2700,
+        "orderedGoals": [
+          {
+            "sport": "strength",
+            "date": "2027-01-09",
+            "priority": "Squat",
+            "hybridFocus": "strength",
+            "runs": 2,
+            "bench": 3,
+            "squat": 2,
+            "deadlift": 1,
+            "strengthVisits": 3,
+            "strengthMode": "progression",
+            "runGoal": "fitness",
+            "recoveryDays": 7
+          },
+          {
+            "sport": "running",
+            "date": "2027-04-18",
+            "priority": "Running",
+            "hybridFocus": "running",
+            "runs": 4,
+            "bench": 2,
+            "squat": 1,
+            "deadlift": 1,
+            "strengthVisits": 2,
+            "strengthMode": "maintenance",
+            "runGoal": "10K",
+            "recoveryDays": 7
+          }
+        ]
+      },
+      "historicalData": {
+        "sets": [],
+        "runs": [],
+        "checkins": [],
+        "sessionFeedback": [],
+        "decisions": [],
+        "overrides": {},
+        "activeCustomWeek": 1
+      },
+      "mapping": [
+        "Fictional facts generated from coherent templates with fixed seed2026103002; goals and training windows supplied as complete test inputs.",
+        "Per-lift frequencies are declared test design choices, not inferred from a real athlete.",
+        "All event days are explicitly permitted in this synthetic round; none is silently added by the engine.",
+        "Native engine supplies all exercises, doses, paces and session calendars."
+      ],
+      "unsupported": []
+    },
+    {
+      "id": "H",
+      "name": "First organised 5K with developing lifting skills",
+      "config": {
+        "coachingRulesVersion": 2,
+        "weeks": 12,
+        "startDate": "2026-11-02",
+        "event": "running",
+        "priority": "Running",
+        "hybridFocus": "running",
+        "strengthMode": "progression",
+        "trainingAge": "beginner",
+        "squat": 1,
+        "bench": 2,
+        "deadlift": 1,
+        "runs": 3,
+        "days": 3,
+        "availableDays": [
+          "Tue",
+          "Thu",
+          "Sun"
+        ],
+        "doubleDays": [
+          "Tue",
+          "Thu"
+        ],
+        "longRunDay": "Sun",
+        "runGoal": "5K",
+        "strengthTargetDate": "",
+        "runningTargetDate": "2027-01-24",
+        "noDate": false,
+        "liftProfiles": {
+          "Squat": {
+            "kg": 40,
+            "reps": 8,
+            "recency": "recent"
+          },
+          "Bench": {
+            "kg": 30,
+            "reps": 8,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 60,
+            "reps": 5,
+            "recency": "recent"
+          }
+        },
+        "baselines": {},
+        "runProfile": {
+          "distance": 3,
+          "seconds": 1110,
+          "time": "18:30",
+          "weeklyKm": 13,
+          "recency": "recent",
+          "resultDate": "2026-10-11",
+          "effort": "performance",
+          "environment": "outside"
+        },
+        "variations": {},
+        "visitConstraints": {
+          "strengthVisits": 2,
+          "minutes": {
+            "Tue": 60,
+            "Thu": 70,
+            "Sun": 80
+          },
+          "combinedDays": [
+            "Tue",
+            "Thu"
+          ],
+          "separateDays": [],
+          "separateMinutes": {},
+          "minimumGapHours": 0,
+          "eventDays": {
+            "2027-01-24": {
+              "confirmed": true,
+              "minutes": 80
+            }
+          }
+        },
+        "runningHistory": {
+          "weeklyKm": [
+            10,
+            11,
+            12,
+            10,
+            12,
+            13
+          ],
+          "longRun": {
+            "km": 5,
+            "minutes": 38,
+            "recoveryHours": 24
+          }
+        }
+      },
+      "historicalData": {
+        "sets": [],
+        "runs": [],
+        "checkins": [],
+        "sessionFeedback": [],
+        "decisions": [],
+        "overrides": {},
+        "activeCustomWeek": 1
+      },
+      "mapping": [
+        "Fictional facts generated from coherent templates with fixed seed2026103002; goals and training windows supplied as complete test inputs.",
+        "Per-lift frequencies are declared test design choices, not inferred from a real athlete.",
+        "All event days are explicitly permitted in this synthetic round; none is silently added by the engine.",
+        "Native engine supplies all exercises, doses, paces and session calendars."
+      ],
+      "unsupported": []
+    },
+    {
+      "id": "I",
+      "name": "Marathon build with an established aerobic base",
+      "config": {
+        "coachingRulesVersion": 2,
+        "weeks": 18,
+        "startDate": "2026-11-02",
+        "event": "running",
+        "priority": "Running",
+        "hybridFocus": "running",
+        "strengthMode": "maintenance",
+        "trainingAge": "advanced",
+        "squat": 1,
+        "bench": 2,
+        "deadlift": 1,
+        "runs": 4,
+        "days": 5,
+        "availableDays": [
+          "Mon",
+          "Tue",
+          "Thu",
+          "Sat",
+          "Sun"
+        ],
+        "doubleDays": [
+          "Mon",
+          "Thu"
+        ],
+        "longRunDay": "Sun",
+        "runGoal": "marathon",
+        "strengthTargetDate": "",
+        "runningTargetDate": "2027-03-07",
+        "noDate": false,
+        "liftProfiles": {
+          "Squat": {
+            "kg": 140,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Bench": {
+            "kg": 95,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 180,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {},
+        "runProfile": {
+          "distance": 42.195,
+          "seconds": 13080,
+          "time": "3:38:00",
+          "weeklyKm": 54,
+          "recency": "recent",
+          "resultDate": "2026-10-11",
+          "effort": "performance",
+          "environment": "outside"
+        },
+        "variations": {},
+        "visitConstraints": {
+          "strengthVisits": 2,
+          "minutes": {
+            "Mon": 90,
+            "Tue": 90,
+            "Thu": 90,
+            "Sat": 90,
+            "Sun": 240
+          },
+          "combinedDays": [
+            "Mon",
+            "Thu"
+          ],
+          "separateDays": [],
+          "separateMinutes": {},
+          "minimumGapHours": 0,
+          "eventDays": {
+            "2027-03-07": {
+              "confirmed": true,
+              "minutes": 240
+            }
+          }
+        },
+        "runningHistory": {
+          "weeklyKm": [
+            50,
+            52,
+            48,
+            55,
+            56,
+            54
+          ],
+          "longRun": {
+            "km": 24,
+            "minutes": 155,
+            "recoveryHours": 24
+          }
+        }
+      },
+      "historicalData": {
+        "sets": [],
+        "runs": [],
+        "checkins": [],
+        "sessionFeedback": [],
+        "decisions": [],
+        "overrides": {},
+        "activeCustomWeek": 1
+      },
+      "mapping": [
+        "Fictional facts generated from coherent templates with fixed seed2026103002; goals and training windows supplied as complete test inputs.",
+        "Per-lift frequencies are declared test design choices, not inferred from a real athlete.",
+        "All event days are explicitly permitted in this synthetic round; none is silently added by the engine.",
+        "Native engine supplies all exercises, doses, paces and session calendars."
+      ],
+      "unsupported": []
+    },
+    {
+      "id": "J",
+      "name": "Experienced powerlifter prioritising bench with health running",
+      "config": {
+        "coachingRulesVersion": 2,
+        "weeks": 16,
+        "startDate": "2026-11-02",
+        "event": "powerlifting",
+        "priority": "Bench",
+        "hybridFocus": "strength",
+        "strengthMode": "progression",
+        "trainingAge": "advanced",
+        "squat": 2,
+        "bench": 3,
+        "deadlift": 1,
+        "runs": 2,
+        "days": 4,
+        "availableDays": [
+          "Mon",
+          "Wed",
+          "Fri",
+          "Sun"
+        ],
+        "doubleDays": [
+          "Wed"
+        ],
+        "longRunDay": "Sun",
+        "runGoal": "fitness",
+        "strengthTargetDate": "2027-02-20",
+        "runningTargetDate": "",
+        "noDate": false,
+        "liftProfiles": {
+          "Squat": {
+            "kg": 240,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Bench": {
+            "kg": 145,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 260,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {},
+        "runProfile": {
+          "distance": 10,
+          "seconds": 2700,
+          "time": "45:00",
+          "weeklyKm": 16,
+          "recency": "recent",
+          "resultDate": "2026-10-11",
+          "effort": "performance",
+          "environment": "outside"
+        },
+        "variations": {},
+        "visitConstraints": {
+          "strengthVisits": 3,
+          "minutes": {
+            "Mon": 90,
+            "Wed": 100,
+            "Fri": 80,
+            "Sun": 75
+          },
+          "combinedDays": [
+            "Wed"
+          ],
+          "separateDays": [],
+          "separateMinutes": {},
+          "minimumGapHours": 0,
+          "eventDays": {
+            "2027-02-20": {
+              "confirmed": true,
+              "minutes": null
+            }
+          }
+        },
+        "runningHistory": {
+          "weeklyKm": [
+            14,
+            16,
+            15,
+            16,
+            14,
+            16
+          ],
+          "longRun": {
+            "km": 8,
+            "minutes": 49,
+            "recoveryHours": 24
+          }
+        }
+      },
+      "historicalData": {
+        "sets": [],
+        "runs": [],
+        "checkins": [],
+        "sessionFeedback": [],
+        "decisions": [],
+        "overrides": {},
+        "activeCustomWeek": 1
+      },
+      "mapping": [
+        "Fictional facts generated from coherent templates with fixed seed2026103002; goals and training windows supplied as complete test inputs.",
+        "Per-lift frequencies are declared test design choices, not inferred from a real athlete.",
+        "All event days are explicitly permitted in this synthetic round; none is silently added by the engine.",
+        "Native engine supplies all exercises, doses, paces and session calendars."
+      ],
+      "unsupported": []
+    }
+  ],
+  "releaseGate": "Do not execute this fresh round until Priya independently confirms legitimate progress against frozen A-E."
+}

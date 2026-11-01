@@ -22,11 +22,12 @@ function plannedSessions(state,run){
  const days={mon:0,monday:0,tue:1,tuesday:1,wed:2,wednesday:2,thu:3,thursday:3,fri:4,friday:4,sat:5,saturday:5,sun:6,sunday:6},out=[];
  for(let week=1;week<=Math.min(104,Number(c.weeks)||1);week++){
   const base=new Date(start);base.setDate(base.getDate()+(week-1)*7);if(Math.abs((base-actual)/86400000)>15)continue;
-  const sessions=week===Number(state.activeCustomWeek||1)&&state.activeSchedule?.length?state.activeSchedule:coach.createEngine({data:state,schedule:[]}).generatedSessions(c,week);
+  const frozen=state.reviewedProgramme&&state.reviewedProgramme.config.programmeId===c.programmeId?state.reviewedProgramme.weeks.find(w=>w.week===week)?.sessions:null;
+  const sessions=week===Number(state.activeCustomWeek||1)&&state.activeSchedule?.length?state.activeSchedule:frozen||coach.createEngine({data:state,schedule:[]}).generatedSessions(c,week);
   for(const session of sessions){if(!session.runs?.length)continue;const offset=days[String(session.day||'').toLowerCase()]??session.dayIndex;if(!Number.isInteger(offset)||offset<0||offset>6)continue;
-   const date=new Date(base);date.setDate(date.getDate()+offset);const distance=Math.round((Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())-Date.UTC(actual.getFullYear(),actual.getMonth(),actual.getDate()))/86400000);if(Math.abs(distance)>7)continue;
+   const date=session.scheduledDate?new Date(session.scheduledDate+'T12:00:00'):new Date(base);if(!session.scheduledDate)date.setDate(date.getDate()+offset);const sourceWeek=Number(session.sourceProgrammeWeek||week),distance=Math.round((Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())-Date.UTC(actual.getFullYear(),actual.getMonth(),actual.getDate()))/86400000);if(Math.abs(distance)>7)continue;
    const mixed=!!session.ex?.length,id=mixed?session.id+'::run':session.id;
-   out.push({key:JSON.stringify([week,id,localDay(date)]),id,parentId:mixed?session.id:null,component:'run',week,plannedDate:localDay(date),day:session.day,name:session.runs.map(r=>r.name).join(', '),prescription:{ex:[],runs:session.runs},distance});
+   out.push({key:JSON.stringify([sourceWeek,id,localDay(date)]),id,parentId:mixed?session.id:null,component:'run',week:sourceWeek,...(sourceWeek!==week?{calendarWeek:week}:{}),plannedDate:localDay(date),day:session.day,name:session.runs.map(r=>r.name).join(', '),prescription:{ex:[],runs:session.runs},distance});
   }
  }
  return out.sort((a,b)=>Math.abs(a.distance)-Math.abs(b.distance)||a.plannedDate.localeCompare(b.plannedDate));

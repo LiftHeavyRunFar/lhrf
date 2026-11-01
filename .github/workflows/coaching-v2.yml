@@ -31,9 +31,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Exact saved-output hashes were recorded on this runtime (PR #107).
+          # V8 Math.pow differs in its last bits on Node 22; keep the frozen hashes.
+          node-version: '24.19.0'
       - name: Run coaching v2 tests
         run: npm test
 
@@ -55,6 +59,27 @@ jobs:
         with:
           name: synthetic-athlete-report
           path: athlete-report.json
+
+  five-scenario-baseline:
+    name: Coaching replay safety (programme feasibility reported separately)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify engine safety; retain blocked programme feasibility outcomes
+        run: npm run test:coaching:safety
+      - name: Check prescription-level recovery, taper and calibration criteria
+        run: npm run test:coaching:depth
+      - name: Retain exact outputs and mapping limitations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: five-scenario-engine-baseline
+          path: docs/qa/coaching-rounds-current/
 
   shared-coach-browser:
     name: Shared engine — browser and PWA upgrade
@@ -86,6 +111,9 @@ jobs:
       - name: Test new athlete onboarding and policy selection
         if: ${{ !cancelled() }}
         run: node tests/onboarding-athletes.browser.cjs
+      - name: Test missing-experience performance calibration and saved programme boundary
+        if: ${{ !cancelled() }}
+        run: node tests/experience-calibration.browser.cjs
       - name: Test personal Garmin import review and data integrity
         if: ${{ !cancelled() }}
         run: node tests/garmin-import.browser.cjs
@@ -101,6 +129,12 @@ jobs:
       - name: Test new-programme shared coaching defaults and approval boundary
         if: ${{ !cancelled() }}
         run: node tests/general-coaching.browser.cjs
+      - name: Test version-two intake, full-horizon approval and priority handover
+        if: ${{ !cancelled() }}
+        run: node tests/coaching-intake-v2.browser.cjs
+      - name: Test isolated version-two preview and saved prescription review
+        if: ${{ !cancelled() }}
+        run: node tests/preview-intake-v2.browser.cjs
       - name: Prepare pre-extraction PWA fixture
         if: ${{ !cancelled() }}
         run: |
@@ -112,3 +146,11 @@ jobs:
         env:
           LHRF_PREVIOUS_ROOT: /tmp/lhrf-previous
         run: node tests/shared-update.browser.cjs
+
+      - name: Test flexible time estimates and shortened workouts on mobile
+        if: ${{ !cancelled() }}
+        run: node tests/flexible-session-time.browser.cjs
+
+      - name: Test verified replacement, interruption, rollback and race consent on mobile
+        if: ${{ !cancelled() }}
+        run: node tests/programme-replacement.browser.cjs

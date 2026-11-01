@@ -1,0 +1,234 @@
+{
+  "scope": "Actual before/after generated running dose across the earlier thirteen, not athlete outcomes. Taper reminders can increase the number of work-pace weeks without increasing full quality dose.",
+  "profiles": [
+    {
+      "id": "A",
+      "before": {
+        "firstTrainingKm": 23.342,
+        "peakTrainingKm": 25.599,
+        "longestKm": 10.85,
+        "qualityWeeks": 7,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 23.342,
+        "peakTrainingKm": 25.599,
+        "longestKm": 10.85,
+        "qualityWeeks": 7,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "B",
+      "before": {
+        "firstTrainingKm": 18.0,
+        "peakTrainingKm": 27.659,
+        "longestKm": 15.3,
+        "qualityWeeks": 14,
+        "blockedWeeks": [
+          20
+        ]
+      },
+      "after": {
+        "firstTrainingKm": 18.0,
+        "peakTrainingKm": 27.659,
+        "longestKm": 15.3,
+        "qualityWeeks": 14,
+        "blockedWeeks": [
+          20
+        ]
+      }
+    },
+    {
+      "id": "C",
+      "before": {
+        "firstTrainingKm": 28.0,
+        "peakTrainingKm": 30.6,
+        "longestKm": 11.6,
+        "qualityWeeks": 4,
+        "blockedWeeks": [
+          18
+        ]
+      },
+      "after": {
+        "firstTrainingKm": 28.0,
+        "peakTrainingKm": 30.6,
+        "longestKm": 11.6,
+        "qualityWeeks": 4,
+        "blockedWeeks": [
+          18
+        ]
+      }
+    },
+    {
+      "id": "D",
+      "before": {
+        "firstTrainingKm": 16,
+        "peakTrainingKm": 16,
+        "longestKm": 0,
+        "qualityWeeks": 0,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 16,
+        "peakTrainingKm": 16,
+        "longestKm": 0,
+        "qualityWeeks": 0,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "E",
+      "before": {
+        "firstTrainingKm": 23.509,
+        "peakTrainingKm": 31.479,
+        "longestKm": 15.65,
+        "qualityWeeks": 8,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 23.509,
+        "peakTrainingKm": 31.479,
+        "longestKm": 15.65,
+        "qualityWeeks": 9,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "F",
+      "before": {
+        "firstTrainingKm": 26.848,
+        "peakTrainingKm": 38.047,
+        "longestKm": 20,
+        "qualityWeeks": 11,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 26.848,
+        "peakTrainingKm": 38.047,
+        "longestKm": 20,
+        "qualityWeeks": 13,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "G",
+      "before": {
+        "firstTrainingKm": 12,
+        "peakTrainingKm": 39.0,
+        "longestKm": 14.8,
+        "qualityWeeks": 9,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 12,
+        "peakTrainingKm": 39.0,
+        "longestKm": 14.8,
+        "qualityWeeks": 10,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "H",
+      "before": {
+        "firstTrainingKm": 12.0,
+        "peakTrainingKm": 14.671,
+        "longestKm": 5.75,
+        "qualityWeeks": 9,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 12.0,
+        "peakTrainingKm": 14.671,
+        "longestKm": 5.75,
+        "qualityWeeks": 9,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "I",
+      "before": {
+        "firstTrainingKm": 51.947,
+        "peakTrainingKm": 71.888,
+        "longestKm": 32,
+        "qualityWeeks": 12,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 51.947,
+        "peakTrainingKm": 71.888,
+        "longestKm": 32,
+        "qualityWeeks": 15,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "J",
+      "before": {
+        "firstTrainingKm": 12,
+        "peakTrainingKm": 12,
+        "longestKm": 0,
+        "qualityWeeks": 0,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 12,
+        "peakTrainingKm": 12,
+        "longestKm": 0,
+        "qualityWeeks": 0,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "O1",
+      "before": {
+        "firstTrainingKm": 12.0,
+        "peakTrainingKm": 54.73,
+        "longestKm": 25.15,
+        "qualityWeeks": 8,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 12.0,
+        "peakTrainingKm": 54.73,
+        "longestKm": 25.15,
+        "qualityWeeks": 8,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "O2",
+      "before": {
+        "firstTrainingKm": 18.0,
+        "peakTrainingKm": 68.609,
+        "longestKm": 31.45,
+        "qualityWeeks": 9,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 18.0,
+        "peakTrainingKm": 68.609,
+        "longestKm": 31.45,
+        "qualityWeeks": 9,
+        "blockedWeeks": []
+      }
+    },
+    {
+      "id": "O3",
+      "before": {
+        "firstTrainingKm": 0,
+        "peakTrainingKm": 0,
+        "longestKm": 0,
+        "qualityWeeks": 0,
+        "blockedWeeks": []
+      },
+      "after": {
+        "firstTrainingKm": 0,
+        "peakTrainingKm": 0,
+        "longestKm": 0,
+        "qualityWeeks": 0,
+        "blockedWeeks": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,622 @@
+{
+  "schema": "lhrf-original-three-engine-inputs-v2",
+  "seed": null,
+  "clock": "2026-10-30T12:00:00.000Z",
+  "source": {
+    "profiles": [
+      {
+        "id": "O1",
+        "label": "Powerlifting then marathon",
+        "goals": [
+          {
+            "sport": "powerlifting",
+            "date": "2027-01-23",
+            "target_status": "Strength first, exact date reused from prior handout assumption"
+          },
+          {
+            "sport": "running",
+            "distance_km": 42.195,
+            "date": "2027-05-02",
+            "target_status": "Maintain strength and prepare for marathon"
+          }
+        ],
+        "priority": "Strength first",
+        "provided_facts": {
+          "powerlifting_in_weeks": 12,
+          "maxes_kg": {
+            "squat": 210,
+            "bench": 130,
+            "deadlift": 240
+          },
+          "marathon_in_months": 6,
+          "recent_marathon_seconds": 18780,
+          "after_meet_priority": "Maintain strength as well as possible while preparing for marathon"
+        },
+        "historical_handout": {
+          "library_file_id": "libfile_2400e0615b5881919f78cf09a379cc06",
+          "filename": "01-Strength-to-marathon-v2.pdf"
+        },
+        "strength": {
+          "reference_maxes_kg": {
+            "squat": 210,
+            "bench": 130,
+            "deadlift": 240
+          },
+          "sets": [],
+          "tested_1rms": true
+        },
+        "running": {
+          "current_runs_per_week": 3,
+          "weekly_km_history": [],
+          "recent_long_run": null,
+          "race": {
+            "distance_km": 42.195,
+            "seconds": 18780,
+            "date": null
+          }
+        },
+        "availability": {
+          "days": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "visit_limits_minutes": {
+            "Mon": 90,
+            "Tue": 90,
+            "Wed": 90,
+            "Thu": 90,
+            "Fri": 90,
+            "Sun": 240
+          },
+          "combined_run_lift_days": [
+            "Tue",
+            "Thu"
+          ],
+          "assumed_for_comparison": true
+        },
+        "inputAssumptions": [
+          "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+          "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+          "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+          "Current scalar mileage uses the prior PDF provisional assumption (30 km or midpoint45 km); no six-week history or long-run recovery data is invented.",
+          "The previous marathon is placed on25October solely to make the historical first recovery week executable; exact completion date was not provided."
+        ]
+      },
+      {
+        "id": "O2",
+        "label": "Marathon priority",
+        "goals": [
+          {
+            "sport": "running",
+            "distance_km": 42.195,
+            "date": "2027-02-28",
+            "target_status": "Running priority; exact date reused from prior handout assumption"
+          }
+        ],
+        "priority": "Running; strength in background",
+        "provided_facts": {
+          "marathon_in_months": 4,
+          "recent_marathon_seconds": 10740,
+          "recent_marathon_timing": "last week",
+          "priority": "Running; strength in background"
+        },
+        "historical_handout": {
+          "library_file_id": "libfile_da2b376e6b9081919140bd6594b47ce0",
+          "filename": "02-Marathon-priority-v2.pdf"
+        },
+        "strength": {
+          "reference_maxes_kg": {},
+          "sets": [],
+          "tested_1rms": false
+        },
+        "running": {
+          "current_runs_per_week": 4,
+          "weekly_km_history": [],
+          "recent_long_run": null,
+          "race": {
+            "distance_km": 42.195,
+            "seconds": 10740,
+            "date": null
+          }
+        },
+        "availability": {
+          "days": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "visit_limits_minutes": {
+            "Tue": 90,
+            "Wed": 90,
+            "Fri": 90,
+            "Sun": 240
+          },
+          "combined_run_lift_days": [
+            "Tue",
+            "Fri"
+          ],
+          "assumed_for_comparison": true
+        },
+        "inputAssumptions": [
+          "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+          "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+          "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+          "Current scalar mileage uses the prior PDF provisional assumption (30 km or midpoint45 km); no six-week history or long-run recovery data is invented.",
+          "The previous marathon is placed on25October solely to make the historical first recovery week executable; exact completion date was not provided."
+        ]
+      },
+      {
+        "id": "O3",
+        "label": "First powerlifting meet",
+        "goals": [
+          {
+            "sport": "powerlifting",
+            "date": "2027-05-01",
+            "target_status": "First meet; exact date reused from prior handout assumption"
+          }
+        ],
+        "priority": "Strength first",
+        "provided_facts": {
+          "first_powerlifting_meet_in_months": 6,
+          "tested_1rm": false,
+          "rep_performances": [
+            {
+              "lift": "squat",
+              "kg": 140,
+              "reps": 5
+            },
+            {
+              "lift": "bench",
+              "kg": 80,
+              "reps": 5
+            },
+            {
+              "lift": "deadlift",
+              "kg": 160,
+              "reps": 3
+            }
+          ],
+          "running_goal": "General health"
+        },
+        "historical_handout": {
+          "library_file_id": "libfile_bab6ae6add78819187ad8e98c59c1d43",
+          "filename": "03-First-powerlifting-meet-v2.pdf"
+        },
+        "strength": {
+          "reference_maxes_kg": {},
+          "sets": [
+            {
+              "lift": "squat",
+              "kg": 140,
+              "reps": 5
+            },
+            {
+              "lift": "bench",
+              "kg": 80,
+              "reps": 5
+            },
+            {
+              "lift": "deadlift",
+              "kg": 160,
+              "reps": 3
+            }
+          ],
+          "tested_1rms": false
+        },
+        "running": {
+          "current_runs_per_week": 2,
+          "weekly_km_history": [],
+          "recent_long_run": null,
+          "race": null
+        },
+        "availability": {
+          "days": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sat"
+          ],
+          "visit_limits_minutes": {
+            "Mon": 90,
+            "Tue": 90,
+            "Wed": 90,
+            "Fri": 90,
+            "Sat": 90
+          },
+          "combined_run_lift_days": [],
+          "assumed_for_comparison": true
+        },
+        "inputAssumptions": [
+          "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+          "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+          "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+          "No running pace, mileage or recent long run was supplied. Health-running entry must remain provisional and effort/time based."
+        ]
+      }
+    ],
+    "fictional": true,
+    "scope": "Original user scenarios with explicitly declared comparison assumptions from prior manual PDFs; no fabricated longitudinal history."
+  },
+  "cases": [
+    {
+      "id": "O1",
+      "name": "Powerlifting then marathon",
+      "config": {
+        "coachingRulesVersion": 2,
+        "weeks": 26,
+        "startDate": "2026-11-02",
+        "event": "powerlifting",
+        "priority": "Squat",
+        "hybridFocus": "strength",
+        "strengthMode": "progression",
+        "trainingAge": "intermediate",
+        "squat": 2,
+        "bench": 3,
+        "deadlift": 1,
+        "runs": 3,
+        "days": 6,
+        "availableDays": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sun"
+        ],
+        "doubleDays": [
+          "Tue",
+          "Thu"
+        ],
+        "longRunDay": "Sun",
+        "runGoal": "fitness",
+        "strengthTargetDate": "2027-01-23",
+        "runningTargetDate": "2027-05-02",
+        "noDate": false,
+        "liftProfiles": {
+          "Squat": {
+            "kg": 210,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Bench": {
+            "kg": 130,
+            "reps": 1,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 240,
+            "reps": 1,
+            "recency": "recent"
+          }
+        },
+        "baselines": {},
+        "runProfile": {
+          "distance": 42.195,
+          "seconds": 18780,
+          "weeklyKm": 30,
+          "recency": "recent",
+          "effort": "performance"
+        },
+        "variations": {},
+        "visitConstraints": {
+          "strengthVisits": 3,
+          "minutes": {
+            "Mon": 90,
+            "Tue": 90,
+            "Wed": 90,
+            "Thu": 90,
+            "Fri": 90,
+            "Sun": 240
+          },
+          "combinedDays": [
+            "Tue",
+            "Thu"
+          ],
+          "separateDays": [],
+          "separateMinutes": {},
+          "minimumGapHours": 0,
+          "eventDays": {
+            "2027-01-23": {
+              "confirmed": true,
+              "minutes": null
+            },
+            "2027-05-02": {
+              "confirmed": true,
+              "minutes": null
+            }
+          }
+        },
+        "runningHistory": {
+          "weeklyKm": [],
+          "recentMarathonDate": "2026-10-25"
+        },
+        "inputUncertainties": [
+          "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+          "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+          "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+          "Current scalar mileage uses the prior PDF provisional assumption (30 km or midpoint45 km); no six-week history or long-run recovery data is invented.",
+          "The previous marathon is placed on25October solely to make the historical first recovery week executable; exact completion date was not provided."
+        ],
+        "orderedGoals": [
+          {
+            "sport": "strength",
+            "date": "2027-01-23",
+            "priority": "Squat",
+            "hybridFocus": "strength",
+            "runs": 3,
+            "bench": 3,
+            "squat": 2,
+            "deadlift": 1,
+            "strengthVisits": 3,
+            "strengthMode": "progression",
+            "runGoal": "fitness",
+            "recoveryDays": 7
+          },
+          {
+            "sport": "running",
+            "date": "2027-05-02",
+            "priority": "Running",
+            "hybridFocus": "running",
+            "runs": 4,
+            "bench": 2,
+            "squat": 1,
+            "deadlift": 1,
+            "strengthVisits": 2,
+            "strengthMode": "maintenance",
+            "runGoal": "marathon",
+            "recoveryDays": 7
+          }
+        ]
+      },
+      "historicalData": {
+        "sets": [],
+        "runs": [],
+        "checkins": [],
+        "sessionFeedback": [],
+        "decisions": [],
+        "overrides": {},
+        "activeCustomWeek": 1
+      },
+      "mapping": [
+        "Original user facts are retained separately from all comparison assumptions.",
+        "This is a replay under declared historical-handout assumptions, not confirmation of an actual athlete's weekly history, schedule or readiness.",
+        "All exercises, loads, session calendars and running prescriptions are native engine output."
+      ],
+      "unsupported": [
+        "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+        "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+        "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+        "Current scalar mileage uses the prior PDF provisional assumption (30 km or midpoint45 km); no six-week history or long-run recovery data is invented.",
+        "The previous marathon is placed on25October solely to make the historical first recovery week executable; exact completion date was not provided."
+      ]
+    },
+    {
+      "id": "O2",
+      "name": "Marathon priority",
+      "config": {
+        "coachingRulesVersion": 2,
+        "weeks": 17,
+        "startDate": "2026-11-02",
+        "event": "running",
+        "priority": "Running",
+        "hybridFocus": "running",
+        "strengthMode": "maintenance",
+        "trainingAge": "intermediate",
+        "squat": 1,
+        "bench": 2,
+        "deadlift": 1,
+        "runs": 4,
+        "days": 4,
+        "availableDays": [
+          "Tue",
+          "Wed",
+          "Fri",
+          "Sun"
+        ],
+        "doubleDays": [
+          "Tue",
+          "Fri"
+        ],
+        "longRunDay": "Sun",
+        "runGoal": "marathon",
+        "strengthTargetDate": "",
+        "runningTargetDate": "2027-02-28",
+        "noDate": false,
+        "liftProfiles": {
+          "Squat": {
+            "kg": 0,
+            "reps": 1,
+            "recency": "unknown"
+          },
+          "Bench": {
+            "kg": 0,
+            "reps": 1,
+            "recency": "unknown"
+          },
+          "Deadlift": {
+            "kg": 0,
+            "reps": 1,
+            "recency": "unknown"
+          }
+        },
+        "baselines": {},
+        "runProfile": {
+          "distance": 42.195,
+          "seconds": 10740,
+          "weeklyKm": 45,
+          "recency": "recent",
+          "effort": "performance"
+        },
+        "variations": {},
+        "visitConstraints": {
+          "strengthVisits": 2,
+          "minutes": {
+            "Tue": 90,
+            "Wed": 90,
+            "Fri": 90,
+            "Sun": 240
+          },
+          "combinedDays": [
+            "Tue",
+            "Fri"
+          ],
+          "separateDays": [],
+          "separateMinutes": {},
+          "minimumGapHours": 0,
+          "eventDays": {
+            "2027-02-28": {
+              "confirmed": true,
+              "minutes": null
+            }
+          }
+        },
+        "runningHistory": {
+          "weeklyKm": [],
+          "recentMarathonDate": "2026-10-25"
+        },
+        "inputUncertainties": [
+          "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+          "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+          "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+          "Current scalar mileage uses the prior PDF provisional assumption (30 km or midpoint45 km); no six-week history or long-run recovery data is invented.",
+          "The previous marathon is placed on25October solely to make the historical first recovery week executable; exact completion date was not provided."
+        ]
+      },
+      "historicalData": {
+        "sets": [],
+        "runs": [],
+        "checkins": [],
+        "sessionFeedback": [],
+        "decisions": [],
+        "overrides": {},
+        "activeCustomWeek": 1
+      },
+      "mapping": [
+        "Original user facts are retained separately from all comparison assumptions.",
+        "This is a replay under declared historical-handout assumptions, not confirmation of an actual athlete's weekly history, schedule or readiness.",
+        "All exercises, loads, session calendars and running prescriptions are native engine output."
+      ],
+      "unsupported": [
+        "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+        "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+        "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+        "Current scalar mileage uses the prior PDF provisional assumption (30 km or midpoint45 km); no six-week history or long-run recovery data is invented.",
+        "The previous marathon is placed on25October solely to make the historical first recovery week executable; exact completion date was not provided."
+      ]
+    },
+    {
+      "id": "O3",
+      "name": "First powerlifting meet",
+      "config": {
+        "coachingRulesVersion": 2,
+        "weeks": 26,
+        "startDate": "2026-11-02",
+        "event": "powerlifting",
+        "priority": "Squat",
+        "hybridFocus": "strength",
+        "strengthMode": "progression",
+        "trainingAge": "intermediate",
+        "squat": 2,
+        "bench": 3,
+        "deadlift": 1,
+        "runs": 2,
+        "days": 5,
+        "availableDays": [
+          "Mon",
+          "Tue",
+          "Wed",
+          "Fri",
+          "Sat"
+        ],
+        "doubleDays": [],
+        "longRunDay": "Sat",
+        "runGoal": "fitness",
+        "strengthTargetDate": "2027-05-01",
+        "runningTargetDate": "",
+        "noDate": false,
+        "liftProfiles": {
+          "Squat": {
+            "kg": 140,
+            "reps": 5,
+            "recency": "recent"
+          },
+          "Bench": {
+            "kg": 80,
+            "reps": 5,
+            "recency": "recent"
+          },
+          "Deadlift": {
+            "kg": 160,
+            "reps": 3,
+            "recency": "recent"
+          }
+        },
+        "baselines": {},
+        "runProfile": {
+          "distance": 42.195,
+          "seconds": null,
+          "weeklyKm": 0,
+          "recency": "recent",
+          "effort": "training"
+        },
+        "variations": {},
+        "visitConstraints": {
+          "strengthVisits": 3,
+          "minutes": {
+            "Mon": 90,
+            "Tue": 90,
+            "Wed": 90,
+            "Fri": 90,
+            "Sat": 90
+          },
+          "combinedDays": [],
+          "separateDays": [],
+          "separateMinutes": {},
+          "minimumGapHours": 0,
+          "eventDays": {
+            "2027-05-01": {
+              "confirmed": true,
+              "minutes": null
+            }
+          }
+        },
+        "runningHistory": {
+          "weeklyKm": []
+        },
+        "inputUncertainties": [
+          "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+          "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+          "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+          "No running pace, mileage or recent long run was supplied. Health-running entry must remain provisional and effort/time based."
+        ]
+      },
+      "historicalData": {
+        "sets": [],
+        "runs": [],
+        "checkins": [],
+        "sessionFeedback": [],
+        "decisions": [],
+        "overrides": {},
+        "activeCustomWeek": 1
+      },
+      "mapping": [
+        "Original user facts are retained separately from all comparison assumptions.",
+        "This is a replay under declared historical-handout assumptions, not confirmation of an actual athlete's weekly history, schedule or readiness.",
+        "All exercises, loads, session calendars and running prescriptions are native engine output."
+      ],
+      "unsupported": [
+        "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+        "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+        "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+        "No running pace, mileage or recent long run was supplied. Health-running entry must remain provisional and effort/time based."
+      ]
+    }
+  ],
+  "releaseGate": "Execute only after review of fresh five-athlete round; retain all unresolved source assumptions in comparison verdict."
+}

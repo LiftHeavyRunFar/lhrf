@@ -1,0 +1,1045 @@
+{
+  "baseCommit": "5d27f31",
+  "weeks": 149,
+  "profiles": [
+    {
+      "id": "O1",
+      "weeks": 26,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": false,
+      "changedSessionCount": 44,
+      "blockedWeeks": [
+        {
+          "week": 3,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 5,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 6,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 7,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 9,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 10,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 11,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 21,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 22,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 23,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 24,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 25,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        }
+      ],
+      "beforeBlockedWeeks": [],
+      "firstWeekVisits": [
+        {
+          "day": "Mon",
+          "estimate": {
+            "min": 21,
+            "max": 34
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Tue",
+          "estimate": {
+            "min": 34,
+            "max": 41
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Wed",
+          "estimate": {
+            "min": 21,
+            "max": 34
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Thu",
+          "estimate": {
+            "min": 40,
+            "max": 49
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Fri",
+          "estimate": {
+            "min": 21,
+            "max": 34
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Sun",
+          "estimate": {
+            "min": 33,
+            "max": 41
+          },
+          "hardCap": 240
+        }
+      ],
+      "baselineSha256": "28ef4b8f272f85c1bdc206264c02fe401fa661170da086277cf2a847b05fa5d1"
+    },
+    {
+      "id": "O2",
+      "weeks": 17,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": false,
+      "changedSessionCount": 17,
+      "blockedWeeks": [
+        {
+          "week": 3,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 4,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 5,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 6,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 7,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 8,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 9,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 10,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 11,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 12,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 13,
+          "issues": [
+            "Tue essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 14,
+          "issues": [
+            "Tue essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 15,
+          "issues": [
+            "Tue essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        }
+      ],
+      "beforeBlockedWeeks": [],
+      "firstWeekVisits": [
+        {
+          "day": "Tue",
+          "estimate": {
+            "min": 46,
+            "max": 67
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Wed",
+          "estimate": {
+            "min": 33,
+            "max": 41
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Fri",
+          "estimate": {
+            "min": 46,
+            "max": 67
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Sun",
+          "estimate": {
+            "min": 21,
+            "max": 26
+          },
+          "hardCap": 240
+        }
+      ],
+      "baselineSha256": "e1f845f1b8493a3f15a6c1222f71144a386e0ffbe37b14afbbe9de66a3d0f5c9"
+    },
+    {
+      "id": "O3",
+      "weeks": 26,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": true,
+      "changedSessionCount": 60,
+      "blockedWeeks": [],
+      "beforeBlockedWeeks": [],
+      "firstWeekVisits": [
+        {
+          "day": "Mon",
+          "estimate": {
+            "min": 57,
+            "max": 85
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Tue",
+          "estimate": {
+            "min": 23,
+            "max": 25
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Wed",
+          "estimate": {
+            "min": 59,
+            "max": 88
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Fri",
+          "estimate": {
+            "min": 59,
+            "max": 88
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Sat",
+          "estimate": {
+            "min": 23,
+            "max": 25
+          },
+          "hardCap": 90
+        }
+      ],
+      "baselineSha256": "532d53ebbc3d9e0970921770f40f1915f7b9b95bc44aa388b50076dde01d3959"
+    },
+    {
+      "id": "P",
+      "weeks": 12,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": false,
+      "changedSessionCount": 7,
+      "blockedWeeks": [
+        {
+          "week": 1,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 2,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 3,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 4,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 5,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 6,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 7,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 8,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 9,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 10,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 11,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 12,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        }
+      ],
+      "beforeBlockedWeeks": [],
+      "firstWeekVisits": [
+        {
+          "day": "Mon",
+          "estimate": {
+            "min": 38,
+            "max": 58
+          },
+          "hardCap": 70
+        },
+        {
+          "day": "Tue",
+          "estimate": {
+            "min": 39,
+            "max": 46
+          },
+          "hardCap": 75
+        },
+        {
+          "day": "Thu",
+          "estimate": {
+            "min": 77,
+            "max": 105
+          },
+          "hardCap": 80
+        },
+        {
+          "day": "Fri",
+          "estimate": {
+            "min": 43,
+            "max": 52
+          },
+          "hardCap": 60
+        },
+        {
+          "day": "Sun",
+          "estimate": {
+            "min": 65,
+            "max": 78
+          },
+          "hardCap": 110
+        }
+      ],
+      "baselineSha256": "9ca19d940f9da4f44cb6fa017bf906935fe84779325cc46072e3b6abd16d6c52"
+    },
+    {
+      "id": "Q",
+      "weeks": 10,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": true,
+      "changedSessionCount": 21,
+      "blockedWeeks": [
+        {
+          "week": 1,
+          "issues": [
+            "Mon essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 2,
+          "issues": [
+            "Mon essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 3,
+          "issues": [
+            "Mon essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 4,
+          "issues": [
+            "Mon essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 5,
+          "issues": [
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 6,
+          "issues": [
+            "Mon essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 7,
+          "issues": [
+            "Mon essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 8,
+          "issues": [
+            "Mon essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 9,
+          "issues": [
+            "Wed essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Sun essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        }
+      ],
+      "beforeBlockedWeeks": [],
+      "firstWeekVisits": [
+        {
+          "day": "Mon",
+          "estimate": {
+            "min": 71,
+            "max": 108
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Wed",
+          "estimate": {
+            "min": 75,
+            "max": 102
+          },
+          "hardCap": 80
+        },
+        {
+          "day": "Fri",
+          "estimate": {
+            "min": 67,
+            "max": 100
+          },
+          "hardCap": 100
+        },
+        {
+          "day": "Sun",
+          "estimate": {
+            "min": 41,
+            "max": 50
+          },
+          "hardCap": 45
+        }
+      ],
+      "baselineSha256": "0a1a2af52f50b088d80a49cafdf8bae27110b76d94835f7ae222b4a9d6920ffa"
+    },
+    {
+      "id": "R",
+      "weeks": 8,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": true,
+      "changedSessionCount": 10,
+      "blockedWeeks": [
+        {
+          "week": 1,
+          "issues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Thu has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Sun has unknown prescribed running duration; confirm representative pace or a timed prescription."
+          ]
+        },
+        {
+          "week": 2,
+          "issues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Thu has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Sun has unknown prescribed running duration; confirm representative pace or a timed prescription."
+          ]
+        },
+        {
+          "week": 3,
+          "issues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Thu has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Sun has unknown prescribed running duration; confirm representative pace or a timed prescription."
+          ]
+        },
+        {
+          "week": 4,
+          "issues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Thu has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Sun has unknown prescribed running duration; confirm representative pace or a timed prescription."
+          ]
+        },
+        {
+          "week": 5,
+          "issues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Thu has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Sun has unknown prescribed running duration; confirm representative pace or a timed prescription."
+          ]
+        },
+        {
+          "week": 6,
+          "issues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Thu has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Sun has unknown prescribed running duration; confirm representative pace or a timed prescription."
+          ]
+        },
+        {
+          "week": 7,
+          "issues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Thu has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Sun has unknown prescribed running duration; confirm representative pace or a timed prescription."
+          ]
+        },
+        {
+          "week": 8,
+          "issues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Thu has unknown prescribed running duration; confirm representative pace or a timed prescription.",
+            "Confirm a representative event-duration estimate before checking the hard time limit. Do not substitute the preferred finish target."
+          ]
+        }
+      ],
+      "beforeBlockedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "firstWeekVisits": [
+        {
+          "day": "Tue",
+          "estimate": null,
+          "hardCap": 60
+        },
+        {
+          "day": "Thu",
+          "estimate": null,
+          "hardCap": 60
+        },
+        {
+          "day": "Sun",
+          "estimate": null,
+          "hardCap": 90
+        }
+      ],
+      "baselineSha256": "6721de725b93a622535cb8112f3db8b5aca97634b9c97ca4b8f92c0030740097"
+    },
+    {
+      "id": "S",
+      "weeks": 16,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": false,
+      "changedSessionCount": 13,
+      "blockedWeeks": [
+        {
+          "week": 1,
+          "issues": [
+            "Tue essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 2,
+          "issues": [
+            "Tue essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 3,
+          "issues": [
+            "Tue essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 6,
+          "issues": [
+            "Tue essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 7,
+          "issues": [
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 9,
+          "issues": [
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 10,
+          "issues": [
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 11,
+          "issues": [
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 12,
+          "issues": [
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 13,
+          "issues": [
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 14,
+          "issues": [
+            "Fri essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        }
+      ],
+      "beforeBlockedWeeks": [],
+      "firstWeekVisits": [
+        {
+          "day": "Mon",
+          "estimate": {
+            "min": 65,
+            "max": 94
+          },
+          "hardCap": 95
+        },
+        {
+          "day": "Tue",
+          "estimate": {
+            "min": 85,
+            "max": 102
+          },
+          "hardCap": 75
+        },
+        {
+          "day": "Wed",
+          "estimate": {
+            "min": 59,
+            "max": 88
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Sat",
+          "estimate": {
+            "min": 73,
+            "max": 106
+          },
+          "hardCap": 130
+        },
+        {
+          "day": "Sun",
+          "estimate": {
+            "min": 52,
+            "max": 63
+          },
+          "hardCap": 150
+        }
+      ],
+      "baselineSha256": "085e98fae005c806e04246eeae9619a0c62279df030569f3754828343550d3c3"
+    },
+    {
+      "id": "T",
+      "weeks": 18,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": false,
+      "changedSessionCount": 17,
+      "blockedWeeks": [
+        {
+          "week": 1,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 2,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 3,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 4,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 5,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 6,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 7,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 8,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 9,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 10,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 11,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 12,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 13,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 14,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 15,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 16,
+          "issues": [
+            "Thu essential work cannot fit the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 17,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed."
+          ]
+        },
+        {
+          "week": 18,
+          "issues": [
+            "Thu essential work may exceed the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.",
+            "Estimated event duration 250 minutes plus 0 minutes logistics exceeds the hard event window of 240 minutes. Confirm a genuinely larger window or choose a suitable event/date; do not force faster pacing to fit."
+          ]
+        }
+      ],
+      "beforeBlockedWeeks": [
+        18
+      ],
+      "firstWeekVisits": [
+        {
+          "day": "Mon",
+          "estimate": {
+            "min": 32,
+            "max": 50
+          },
+          "hardCap": 75
+        },
+        {
+          "day": "Tue",
+          "estimate": {
+            "min": 50,
+            "max": 60
+          },
+          "hardCap": 90
+        },
+        {
+          "day": "Thu",
+          "estimate": {
+            "min": 82,
+            "max": 111
+          },
+          "hardCap": 75
+        },
+        {
+          "day": "Sat",
+          "estimate": {
+            "min": 50,
+            "max": 60
+          },
+          "hardCap": 105
+        },
+        {
+          "day": "Sun",
+          "estimate": {
+            "min": 50,
+            "max": 61
+          },
+          "hardCap": 190
+        }
+      ],
+      "baselineSha256": "f0729d47c6da1021d15c419bf388b6c3793253d25957a9713fcee9c552911bdb"
+    },
+    {
+      "id": "Taylor",
+      "weeks": 16,
+      "savedPolicyExactlyUnchanged": true,
+      "inputsUnchanged": true,
+      "deterministic": true,
+      "essentialPrescriptionAndDaysUnchanged": true,
+      "changedSessionCount": 15,
+      "blockedWeeks": [],
+      "beforeBlockedWeeks": [],
+      "firstWeekVisits": [
+        {
+          "day": "Tue",
+          "estimate": {
+            "min": 69,
+            "max": 102
+          },
+          "hardCap": 120
+        },
+        {
+          "day": "Thu",
+          "estimate": {
+            "min": 38,
+            "max": 46
+          },
+          "hardCap": 60
+        },
+        {
+          "day": "Sat",
+          "estimate": {
+            "min": 69,
+            "max": 102
+          },
+          "hardCap": 120
+        },
+        {
+          "day": "Sun",
+          "estimate": {
+            "min": 38,
+            "max": 46
+          },
+          "hardCap": 60
+        }
+      ],
+      "baselineSha256": "b4f4e8680ea9067630607240fe04080a1b059d0b2c8ed4eaf058faaf939354f8"
+    }
+  ],
+  "sourceSha256": {
+    "src/coach-engine.js": "ddd6133bb09566acbeb1f72a5dd773bd2b31991f66725bdeca90b8c546abc1be",
+    "src/coach-constraints.js": "885422f15f8bd6e21b748fde3c358a1f996546337dccaedcb4d729ff642d2e1f",
+    "src/coach-intake.js": "a59be666da0565ad8b2ac571a76e6d4e6fa9fae967ac24296cf9a1708b4dc498",
+    "index.html": "044c5f632bf06f2082f931efb69b8f979a40736bea510920528587f2defbf355"
+  },
+  "savedDataChanged": false,
+  "activated": false
+}

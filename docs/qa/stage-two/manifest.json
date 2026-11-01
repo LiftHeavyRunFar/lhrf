@@ -1,0 +1,50 @@
+{
+  "synthetic": true,
+  "athleteApproved": false,
+  "stageOneCommit": "78c4ba291097c8be757a0de8ad46cee65e859f24",
+  "inputFreezeCommit": "988d741",
+  "inputSha256": "5a0e83d10a5aab146db43ad2d7170be0cd2ff97888de412a809161099a4e190a",
+  "totalWeeks": 64,
+  "programmes": [
+    {
+      "id": "P",
+      "raw": "docs/qa/stage-two/programmes/P.json",
+      "readable": "docs/qa/stage-two/programmes/P.md",
+      "weeks": 12,
+      "sha256": "f8086d55a1f93e081ea444d4f35c0ce98eedafacc76a97f257e334e7a496e5f2",
+      "verdict": "Acceptable candidate, subject to normal recovery checks."
+    },
+    {
+      "id": "Q",
+      "raw": "docs/qa/stage-two/programmes/Q.json",
+      "readable": "docs/qa/stage-two/programmes/Q.md",
+      "weeks": 10,
+      "sha256": "2bcc87ca107c1ea460319ecb6e4b1a30b3480af19e92025a5dfb33317d90fcfa",
+      "verdict": "Acceptable strength-first candidate; squat-first meet-order practice is a defensible coaching choice."
+    },
+    {
+      "id": "R",
+      "raw": "docs/qa/stage-two/programmes/R.json",
+      "readable": "docs/qa/stage-two/programmes/R.md",
+      "weeks": 8,
+      "sha256": "8d5c2f43cc6d042e6c486c974ff4d8188d4c198f254f87ebe5f36d7168065538",
+      "verdict": "BLOCKED DRAFT: running performance/duration is unconfirmed. Not an executable race programme."
+    },
+    {
+      "id": "S",
+      "raw": "docs/qa/stage-two/programmes/S.json",
+      "readable": "docs/qa/stage-two/programmes/S.md",
+      "weeks": 16,
+      "sha256": "e74f844774af6bb70ab7f046b12fb7b733cf244fd6b2c4c285fe3666afa6cbe4",
+      "verdict": "NOT APPROVED: hard lifting returns inside the stated recovery interval."
+    },
+    {
+      "id": "T",
+      "raw": "docs/qa/stage-two/programmes/T.json",
+      "readable": "docs/qa/stage-two/programmes/T.md",
+      "weeks": 18,
+      "sha256": "7c3910c2ebd17bf99b74d779e91ae9d2a46666dc251ed24692a64f391ae3ecba",
+      "verdict": "NOT APPROVED: affected maintenance lifting does not respond to fatigue; estimated race time exceeds the explicit event allowance."
+    }
+  ]
+}

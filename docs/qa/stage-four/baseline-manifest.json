@@ -1,0 +1,68 @@
+{
+  "schema": "lhrf-stage-four-baselines-v1",
+  "frozenInputSha256": "576ebbb21cd3b8158832d709f1e17c4af3c873d5cfd707ac8ca3a293e30df723",
+  "historicalSummary": "docs/qa/original-three-native-comparison.json",
+  "historicalSummarySourceLabel": "960ca061444ce23f660b3aee42580beed2dec96b",
+  "originalNativeReconstruction": "Original full native captures were not retained for the initial review. Reproduced at bb87f26, whose every captured source/fixture/runner hash matches the earlier committed frozen comparison provenance. Reconstructed outputs are explicitly not recovered original raw files.",
+  "originalSourceMatchesFrozenProvenance": {
+    "src/coach-engine.js": true,
+    "src/coach-adapters.js": true,
+    "src/running-workouts.js": true,
+    "tests/fixtures/original-three-engine-inputs.json": true,
+    "scripts/test-five-scenarios.cjs": true,
+    "scripts/audit-five-scenarios.cjs": true,
+    "src/coach-constraints.js": true,
+    "src/running-preparation.js": true
+  },
+  "preStageOneReconstruction": "Clean replay at ec13dc5, using byte-identical frozen inputs.",
+  "retainedCaptureProvenanceCaveat": {
+    "path": "/workspace/work/taylor-rounds/original-three",
+    "recordedHEAD": "ec13dc5121170c2c22bda5a024bdd4df3acd3d84",
+    "actualSourceMatches": "78c4ba2 (also b83d04a)",
+    "explanation": "Previously generated capture labelled ec13dc5 was made with uncommitted Stage 1 source changes. Not used as a pre-Stage-1 baseline."
+  },
+  "captures": [
+    {
+      "id": "O1",
+      "path": "docs/qa/stage-four/original-native/O1.json",
+      "sha256": "936c2839ffaf126f9a96781442468acb498b3c544fc6c685192831d3bce82e08",
+      "sourceCommit": "bb87f26a9b5a7274359ba7f99db2923120d30072",
+      "weeks": 26
+    },
+    {
+      "id": "O2",
+      "path": "docs/qa/stage-four/original-native/O2.json",
+      "sha256": "81103b112cf0777703d643467f2748a742a9ea46a7f748c53064d9928e7346c9",
+      "sourceCommit": "bb87f26a9b5a7274359ba7f99db2923120d30072",
+      "weeks": 17
+    },
+    {
+      "id": "O3",
+      "path": "docs/qa/stage-four/original-native/O3.json",
+      "sha256": "744f573485ad7dfccb02a62d4e5aeecbb36dd465ec55dd102654e2ca25fbda74",
+      "sourceCommit": "bb87f26a9b5a7274359ba7f99db2923120d30072",
+      "weeks": 26
+    },
+    {
+      "id": "O1",
+      "path": "docs/qa/stage-four/pre-stage-one/O1.json",
+      "sha256": "f1654670b25536e9ca1ded9e0e2f6687c14d74e7243eab4375439b1a6a9e7132",
+      "sourceCommit": "ec13dc5121170c2c22bda5a024bdd4df3acd3d84",
+      "weeks": 26
+    },
+    {
+      "id": "O2",
+      "path": "docs/qa/stage-four/pre-stage-one/O2.json",
+      "sha256": "f002d36290fc831c46bfb69042da19c170d57bcd4082ce51c4d18538f6e5dc64",
+      "sourceCommit": "ec13dc5121170c2c22bda5a024bdd4df3acd3d84",
+      "weeks": 17
+    },
+    {
+      "id": "O3",
+      "path": "docs/qa/stage-four/pre-stage-one/O3.json",
+      "sha256": "8744f7cda5086e6d67b390c51846d52a52373f6851af307d2a3d2860a41e231c",
+      "sourceCommit": "ec13dc5121170c2c22bda5a024bdd4df3acd3d84",
+      "weeks": 26
+    }
+  ]
+}

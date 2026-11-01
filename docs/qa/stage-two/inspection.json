@@ -1,0 +1,2045 @@
+{
+  "scope": "Objective inspection, not a complete coaching judgement. Read the prescription review.",
+  "metrics": [
+    {
+      "id": "P",
+      "name": "Leila: Established 10K runner with two maintenance lifting visits",
+      "weeks": 12,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "blockedWeeks": [],
+      "peakTrainingKm": 43.636,
+      "longestTrainingRunKm": 16,
+      "longestAnyEasyRunKm": 16,
+      "qualityWeeks": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        9,
+        10,
+        11,
+        12
+      ],
+      "events": [
+        {
+          "date": "2027-01-24",
+          "minutes": 44,
+          "allowedMinutes": 240,
+          "logisticsMinutes": 0,
+          "confirmed": true
+        }
+      ],
+      "weekly": [
+        {
+          "week": 1,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 35,
+          "longKm": 12,
+          "workKm": 3.6,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 2,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 36.05,
+          "longKm": 12.8,
+          "workKm": 3.65,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 3,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 37.15,
+          "longKm": 13.6,
+          "workKm": 3.75,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 4,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 30.45,
+          "longKm": 11.55,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 5,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 38.25,
+          "longKm": 14.4,
+          "workKm": 3.6,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 6,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 39.4,
+          "longKm": 14.95,
+          "workKm": 3.8,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 7,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 40.55,
+          "longKm": 15.4,
+          "workKm": 4,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 8,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 33.25,
+          "longKm": 12.6,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 9,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 41.8,
+          "longKm": 15.85,
+          "workKm": 4,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 10,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 43.05,
+          "longKm": 16,
+          "workKm": 4,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 11,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 43.636,
+          "longKm": 16,
+          "workKm": 4,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 12,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 9.95,
+          "longKm": 0,
+          "workKm": 0.5,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Fri",
+            "Sunday"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        }
+      ]
+    },
+    {
+      "id": "Q",
+      "name": "Hugo: Deadlift-priority lifter with two exposures per main lift",
+      "weeks": 10,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "blockedWeeks": [],
+      "peakTrainingKm": 12,
+      "longestTrainingRunKm": 0,
+      "longestAnyEasyRunKm": 6.2,
+      "qualityWeeks": [],
+      "events": [
+        {
+          "date": "2027-01-09",
+          "minutes": null,
+          "allowedMinutes": null,
+          "logisticsMinutes": 0,
+          "confirmed": true
+        }
+      ],
+      "weekly": [
+        {
+          "week": 1,
+          "priority": "Deadlift",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 12,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 2,
+          "priority": "Deadlift",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 12,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 3,
+          "priority": "Deadlift",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 12,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 4,
+          "priority": "Deadlift",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 10.2,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 5,
+          "priority": "Deadlift",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 12,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 6,
+          "priority": "Deadlift",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 12,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 7,
+          "priority": "Deadlift",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 12,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 8,
+          "priority": "Deadlift",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 10.75,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 9,
+          "priority": "Deadlift",
+          "phase": "Specificity",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": false,
+          "trainingKm": 12,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Fri"
+          ],
+          "runDays": [
+            "Wed",
+            "Sun"
+          ],
+          "warnings": [],
+          "blockingIssues": []
+        },
+        {
+          "week": 10,
+          "priority": "Deadlift",
+          "phase": "Taper / event",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 2.1,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed"
+          ],
+          "runDays": [
+            "Wed"
+          ],
+          "warnings": [
+            "Strength competition week: short easy running only; the day after the meet requires a separate recovery decision."
+          ],
+          "blockingIssues": []
+        }
+      ]
+    },
+    {
+      "id": "R",
+      "name": "Sofia: Returning novice preparing a first organised 5K",
+      "weeks": 8,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "blockedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "peakTrainingKm": 8.1,
+      "longestTrainingRunKm": 3.05,
+      "longestAnyEasyRunKm": 3.05,
+      "qualityWeeks": [],
+      "events": [
+        {
+          "date": "2026-12-26",
+          "minutes": null,
+          "allowedMinutes": 90,
+          "logisticsMinutes": 20,
+          "confirmed": true
+        }
+      ],
+      "weekly": [
+        {
+          "week": 1,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": false,
+          "reviewRequired": true,
+          "trainingKm": 7,
+          "longKm": 2.65,
+          "workKm": 0,
+          "strengthDays": [
+            "Tue",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sun"
+          ],
+          "warnings": [
+            "You have 7 weekly activities across 3 available days. Several double-session days would be required.",
+            "Enter a valid running PB and recent weekly distance.",
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ],
+          "blockingIssues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ]
+        },
+        {
+          "week": 2,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": false,
+          "reviewRequired": true,
+          "trainingKm": 7.2,
+          "longKm": 2.7,
+          "workKm": 0,
+          "strengthDays": [
+            "Tue",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sun"
+          ],
+          "warnings": [
+            "You have 7 weekly activities across 3 available days. Several double-session days would be required.",
+            "Enter a valid running PB and recent weekly distance.",
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ],
+          "blockingIssues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ]
+        },
+        {
+          "week": 3,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": false,
+          "reviewRequired": true,
+          "trainingKm": 7.45,
+          "longKm": 2.8,
+          "workKm": 0,
+          "strengthDays": [
+            "Tue",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sun"
+          ],
+          "warnings": [
+            "You have 7 weekly activities across 3 available days. Several double-session days would be required.",
+            "Enter a valid running PB and recent weekly distance.",
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ],
+          "blockingIssues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ]
+        },
+        {
+          "week": 4,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": false,
+          "reviewRequired": true,
+          "trainingKm": 6.1,
+          "longKm": 2.3,
+          "workKm": 0,
+          "strengthDays": [
+            "Tue",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sun"
+          ],
+          "warnings": [
+            "You have 7 weekly activities across 3 available days. Several double-session days would be required.",
+            "Enter a valid running PB and recent weekly distance.",
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ],
+          "blockingIssues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ]
+        },
+        {
+          "week": 5,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Development",
+          "feasible": false,
+          "reviewRequired": true,
+          "trainingKm": 7.65,
+          "longKm": 2.9,
+          "workKm": 0,
+          "strengthDays": [
+            "Tue",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sun"
+          ],
+          "warnings": [
+            "You have 7 weekly activities across 3 available days. Several double-session days would be required.",
+            "Enter a valid running PB and recent weekly distance.",
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ],
+          "blockingIssues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ]
+        },
+        {
+          "week": 6,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": false,
+          "reviewRequired": true,
+          "trainingKm": 7.9,
+          "longKm": 3,
+          "workKm": 0,
+          "strengthDays": [
+            "Tue",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sun"
+          ],
+          "warnings": [
+            "You have 7 weekly activities across 3 available days. Several double-session days would be required.",
+            "Enter a valid running PB and recent weekly distance.",
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ],
+          "blockingIssues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ]
+        },
+        {
+          "week": 7,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": false,
+          "reviewRequired": true,
+          "trainingKm": 8.1,
+          "longKm": 3.05,
+          "workKm": 0,
+          "strengthDays": [
+            "Tue",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sun"
+          ],
+          "warnings": [
+            "You have 7 weekly activities across 3 available days. Several double-session days would be required.",
+            "Enter a valid running PB and recent weekly distance.",
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ],
+          "blockingIssues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Sun does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ]
+        },
+        {
+          "week": 8,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "feasible": false,
+          "reviewRequired": true,
+          "trainingKm": 1.55,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Tue",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Saturday"
+          ],
+          "warnings": [
+            "You have 7 weekly activities across 3 available days. Several double-session days would be required.",
+            "Enter a valid running PB and recent weekly distance.",
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ],
+          "blockingIssues": [
+            "Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.",
+            "Tue does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work.",
+            "Thu does not fit its inclusive visit window because running duration is unknown. Review dose or availability; do not rush rest or omit main work."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "S",
+      "name": "Idris: Powerlifting meet followed by a first dedicated half-marathon block",
+      "weeks": 16,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "blockedWeeks": [],
+      "peakTrainingKm": 34.45,
+      "longestTrainingRunKm": 13.05,
+      "longestAnyEasyRunKm": 13.05,
+      "qualityWeeks": [
+        7,
+        9,
+        10,
+        11,
+        13,
+        14
+      ],
+      "events": [
+        {
+          "date": "2026-11-28",
+          "minutes": null,
+          "allowedMinutes": null,
+          "logisticsMinutes": 0,
+          "confirmed": true
+        },
+        {
+          "date": "2027-02-21",
+          "minutes": 103,
+          "allowedMinutes": 240,
+          "logisticsMinutes": 0,
+          "confirmed": true
+        }
+      ],
+      "weekly": [
+        {
+          "week": 1,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 20.658,
+          "longKm": 9,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Sat"
+          ],
+          "runDays": [
+            "Tue",
+            "Sun"
+          ],
+          "warnings": [
+            "Maintain an easy aerobic base for the later half while strength has priority. Race-specific running starts after the dated handover and recovery review.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Visit windows reduce actual running from 24.00 to 20.66 km. Review endurance adequacy before approving this block; removed kilometres are not automatically made up."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 2,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 21.458,
+          "longKm": 9.8,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Sat"
+          ],
+          "runDays": [
+            "Tue",
+            "Sun"
+          ],
+          "warnings": [
+            "Maintain an easy aerobic base for the later half while strength has priority. Race-specific running starts after the dated handover and recovery review.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Visit windows reduce actual running from 24.45 to 21.46 km. Review endurance adequacy before approving this block; removed kilometres are not automatically made up."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 3,
+          "priority": "Squat",
+          "phase": "Specificity",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 22.258,
+          "longKm": 10.6,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Sat"
+          ],
+          "runDays": [
+            "Tue",
+            "Sun"
+          ],
+          "warnings": [
+            "Maintain an easy aerobic base for the later half while strength has priority. Race-specific running starts after the dated handover and recovery review.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Visit windows reduce actual running from 24.85 to 22.26 km. Review endurance adequacy before approving this block; removed kilometres are not automatically made up."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 4,
+          "priority": "Squat",
+          "phase": "Taper / event",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 4.2,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed"
+          ],
+          "runDays": [
+            "Tue"
+          ],
+          "warnings": [
+            "Strength competition week: short easy running only; the day after the meet requires a separate recovery decision.",
+            "Maintain an easy aerobic base for the later half while strength has priority. Race-specific running starts after the dated handover and recovery review."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 5,
+          "priority": "Squat",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 12,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Wed",
+            "Sat"
+          ],
+          "runDays": [
+            "Tue",
+            "Sun"
+          ],
+          "warnings": [
+            "After the strength meet: provisional reduced easy running, with no long run until recovery is confirmed before the endurance-priority handover.",
+            "Maintain an easy aerobic base for the later half while strength has priority. Race-specific running starts after the dated handover and recovery review."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 6,
+          "priority": "Squat",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 23.858,
+          "longKm": 12.2,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Wed",
+            "Sat"
+          ],
+          "runDays": [
+            "Tue",
+            "Sun"
+          ],
+          "warnings": [
+            "Maintain an easy aerobic base for the later half while strength has priority. Race-specific running starts after the dated handover and recovery review.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 7,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 27.65,
+          "longKm": 10.5,
+          "workKm": 2.6,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 8,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 22.65,
+          "longKm": 8.6,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 9,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.9,
+          "longKm": 10.95,
+          "workKm": 3,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 10,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 30.2,
+          "longKm": 11.45,
+          "workKm": 2.95,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 11,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 31.55,
+          "longKm": 11.95,
+          "workKm": 2.95,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 12,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 25.85,
+          "longKm": 9.8,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness.",
+            "Half-marathon preparation review: long-running exposure remains modest. Review a completion-led run/walk strategy, recovery and supporting mileage before approving the final specific block."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 13,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 32.95,
+          "longKm": 12.5,
+          "workKm": 3.15,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness.",
+            "Half-marathon preparation review: long-running exposure remains modest. Review a completion-led run/walk strategy, recovery and supporting mileage before approving the final specific block."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 14,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 34.45,
+          "longKm": 13.05,
+          "workKm": 3.3,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness.",
+            "Half-marathon preparation review: long-running exposure remains modest. Review a completion-led run/walk strategy, recovery and supporting mileage before approving the final specific block."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 15,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 18.15,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Fri"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sun"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 16,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 7.85,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon"
+          ],
+          "runDays": [
+            "Tue",
+            "Wed",
+            "Fri",
+            "Sunday"
+          ],
+          "warnings": [
+            "Post-race / post-event handover review: confirm actual recovery and completed training before accepting the next heavy or specific block. Elapsed recovery days alone do not establish readiness."
+          ],
+          "blockingIssues": []
+        }
+      ]
+    },
+    {
+      "id": "T",
+      "name": "Keiko: Marathon preparation under persistent lower-body fatigue",
+      "weeks": 18,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "blockedWeeks": [],
+      "peakTrainingKm": 29.032,
+      "longestTrainingRunKm": 0,
+      "longestAnyEasyRunKm": 7.35,
+      "qualityWeeks": [],
+      "events": [
+        {
+          "date": "2027-03-07",
+          "minutes": 250,
+          "allowedMinutes": 240,
+          "logisticsMinutes": 0,
+          "confirmed": true
+        }
+      ],
+      "weekly": [
+        {
+          "week": 1,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 2,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 3,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 4,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Aerobic foundation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 5,
+          "priority": "Running",
+          "phase": "Foundation",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 29.032,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 6,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 7,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Development",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 8,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 9,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Marathon endurance review: this specific block is not yet supported by substantial weekly mileage and long-run capacity. Review a completion-led run/walk approach, more suitable availability or the race date."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 10,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 29.032,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Marathon endurance review: this specific block is not yet supported by substantial weekly mileage and long-run capacity. Review a completion-led run/walk approach, more suitable availability or the race date."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 11,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Marathon endurance review: this specific block is not yet supported by substantial weekly mileage and long-run capacity. Review a completion-led run/walk approach, more suitable availability or the race date."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 12,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 13,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Marathon endurance review: this specific block is not yet supported by substantial weekly mileage and long-run capacity. Review a completion-led run/walk approach, more suitable availability or the race date."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 14,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Marathon endurance review: this specific block is not yet supported by substantial weekly mileage and long-run capacity. Review a completion-led run/walk approach, more suitable availability or the race date."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 15,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Specific preparation",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 29.032,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.",
+            "Marathon endurance review: this specific block is not yet supported by substantial weekly mileage and long-run capacity. Review a completion-led run/walk approach, more suitable availability or the race date."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 16,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 28.364,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 17,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 29.032,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sat",
+            "Sun"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        },
+        {
+          "week": 18,
+          "priority": "Running",
+          "phase": "Development",
+          "runningPhase": "Taper / event",
+          "feasible": true,
+          "reviewRequired": true,
+          "trainingKm": 10.95,
+          "longKm": 0,
+          "workKm": 0,
+          "strengthDays": [
+            "Mon",
+            "Thu"
+          ],
+          "runDays": [
+            "Tue",
+            "Thu",
+            "Sunday"
+          ],
+          "warnings": [
+            "Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.",
+            "The recent long run required 96 hours of recovery. Review whether that dose is repeatable before extending it or adding quality; the observation remains unresolved rather than being cleared by the week number.",
+            "Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.",
+            "Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run."
+          ],
+          "blockingIssues": []
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "S",
+      "kind": "hard-work-within-requested-recovery",
+      "severity": "high",
+      "week": 6,
+      "date": "2026-12-07",
+      "daysAfterEvent": 9,
+      "requestedRecoveryDays": 10,
+      "lifts": [
+        [
+          "Squat",
+          1,
+          3,
+          167.5,
+          8
+        ],
+        [
+          "Bench",
+          1,
+          3,
+          107.5,
+          8
+        ]
+      ],
+      "hardRuns": [],
+      "handoverReview": null
+    },
+    {
+      "id": "T",
+      "kind": "event-window-exceeded",
+      "severity": "high",
+      "week": 18,
+      "date": "2027-03-07",
+      "estimatedMinutes": 250,
+      "logisticsMinutes": 0,
+      "capMinutes": 240,
+      "calendarFeasible": true
+    },
+    {
+      "id": "T",
+      "kind": "fatigue-not-applied-to-maintenance-lifting",
+      "severity": "high",
+      "detail": {
+        "id": "T",
+        "boundary": "Counterfactual new proposals only; original capture and input remain unedited.",
+        "allPrimaryLiftingIdentical": true,
+        "withFatigue": [
+          {
+            "day": "Mon",
+            "exercise": [
+              "Squat",
+              2,
+              3,
+              105,
+              7.5
+            ],
+            "recoveryReviewRequired": false
+          },
+          {
+            "day": "Thu",
+            "exercise": [
+              "Deadlift",
+              2,
+              3,
+              127.5,
+              7.5
+            ],
+            "recoveryReviewRequired": false
+          }
+        ],
+        "withoutFatigue": [
+          {
+            "day": "Mon",
+            "exercise": [
+              "Squat",
+              2,
+              3,
+              105,
+              7.5
+            ],
+            "recoveryReviewRequired": false
+          },
+          {
+            "day": "Thu",
+            "exercise": [
+              "Deadlift",
+              2,
+              3,
+              127.5,
+              7.5
+            ],
+            "recoveryReviewRequired": false
+          }
+        ]
+      }
+    }
+  ],
+  "probes": [
+    {
+      "id": "T",
+      "boundary": "Counterfactual new proposals only; original capture and input remain unedited.",
+      "allPrimaryLiftingIdentical": true,
+      "withFatigue": [
+        {
+          "day": "Mon",
+          "exercise": [
+            "Squat",
+            2,
+            3,
+            105,
+            7.5
+          ],
+          "recoveryReviewRequired": false
+        },
+        {
+          "day": "Thu",
+          "exercise": [
+            "Deadlift",
+            2,
+            3,
+            127.5,
+            7.5
+          ],
+          "recoveryReviewRequired": false
+        }
+      ],
+      "withoutFatigue": [
+        {
+          "day": "Mon",
+          "exercise": [
+            "Squat",
+            2,
+            3,
+            105,
+            7.5
+          ],
+          "recoveryReviewRequired": false
+        },
+        {
+          "day": "Thu",
+          "exercise": [
+            "Deadlift",
+            2,
+            3,
+            127.5,
+            7.5
+          ],
+          "recoveryReviewRequired": false
+        }
+      ]
+    }
+  ],
+  "inputSha256": "5a0e83d10a5aab146db43ad2d7170be0cd2ff97888de412a809161099a4e190a",
+  "provenance": {
+    "localCommit": "988d74120d63b0abb5c070afa1cb6bd91f4d81ae",
+    "files": {
+      "src/coach-engine.js": "c50794f6d1ac9acb7fb366712f5e4eee1b77cc82b139e4850f172c471a7cce96",
+      "src/coach-adapters.js": "d62def889dcef65b0d15f7ec92f26369706f25e79cd997363bb1c3e0ce8ba35f",
+      "src/running-workouts.js": "45d2a9ddbf704275c8b8bbe9017c176a177f316932643a6718236bd1b75ef3c4",
+      "tests/fixtures/stage-two-new-athletes.json": "5a0e83d10a5aab146db43ad2d7170be0cd2ff97888de412a809161099a4e190a",
+      "scripts/test-five-scenarios.cjs": "4482091677c0a7553c414c83612ffe35e58d628c683a93f290ec5ef35c7c4767",
+      "scripts/audit-five-scenarios.cjs": "6840b10f9998cc3753fc0124f1eba984f82a1f90c35d98ecd254cd7b21b9d617",
+      "src/coach-constraints.js": "3d6355e3e6afb63b124d1ad53cd84ef2be4e9be0304a7991371cc6ab18138307",
+      "src/running-preparation.js": "64ee97fba316d29da2a25b73264b2fa0fd5c6d945177d930564c36b24c9e520c"
+    },
+    "entry": "buildNewProgramme -> prepareNewProgramme -> buildProgramme -> createEngine.describeWeek -> generatedSessions",
+    "browserParity": "index.html customConfig/sync use prepareNewProgramme; generatedSessions delegates to canonical createEngine; see shared-coach.test.cjs. No browser activation or storage used.",
+    "clock": "2026-10-31T12:00:00.000Z",
+    "seed": 2026103104
+  },
+  "engineeringCapturePassed": true,
+  "coachingSignoff": false,
+  "originalThreeComparisonStarted": false
+}

@@ -1,0 +1,6 @@
+{
+  "scope": "Raw saved version-two configurations without the refinement marker, compared against archived commit 050a77f. Full native programme objects including sessions, warnings and metadata are equal.",
+  "cases": 18,
+  "weeks": 275,
+  "exactOutputEquality": true
+}

@@ -1,0 +1,376 @@
+{
+  "schema": "lhrf-coaching-v2-review-comparison-v1",
+  "scope": "Actual native outputs after sequential frozen-five, fresh-five and original-three review. Historical original three PDFs were manually authored. No performance forecast or deployed-build certification.",
+  "rounds": {
+    "frozenFive": {
+      "cases": 5,
+      "passed": 2,
+      "blocked": 0,
+      "conditionalReview": 3,
+      "gates": 44,
+      "blockedGates": 0
+    },
+    "freshFive": {
+      "cases": 5,
+      "passed": 5,
+      "blocked": 0,
+      "conditionalReview": 0,
+      "gates": 42,
+      "blockedGates": 0
+    },
+    "originalThree": {
+      "cases": 3,
+      "passed": 0,
+      "blocked": 0,
+      "conditionalReview": 3,
+      "gates": 26,
+      "blockedGates": 0
+    }
+  },
+  "originalComparison": [
+    {
+      "id": "O1",
+      "title": "Powerlifting then marathon",
+      "historicalManualPdf": {
+        "library_file_id": "libfile_2400e0615b5881919f78cf09a379cc06",
+        "filename": "01-Strength-to-marathon-v2.pdf",
+        "peakWeeklyKm": 60.0,
+        "longestRunKm": 30.0,
+        "coachingBaseline": {
+          "running_frequencies": "3 initially, 4 after strength event",
+          "strength_visits": "3 initially, 2 after strength event; week13 has no lifting",
+          "easy_pace_seconds_km": [
+            480,
+            555
+          ],
+          "steady_pace_seconds_km": [
+            440,
+            465
+          ],
+          "marathon_effort_first_explicit_weeks": [
+            24,
+            25
+          ],
+          "strength_roles": "Monday squat/bench volume, Wednesday deadlift/bench heavier work, Friday squat plus speed bench and technique deadlift",
+          "speed_bench_start_kg": 72.5,
+          "maintenance_initial_loads_kg": {
+            "squat": 147.5,
+            "bench": 90,
+            "deadlift": 167.5
+          },
+          "maintenance_rpe": "6-7",
+          "taper_weeks": [
+            24,
+            25,
+            26
+          ],
+          "consolidation_or_lighter_work_weeks": [
+            5,
+            8,
+            17,
+            21
+          ]
+        }
+      },
+      "updatedNativeEngine": {
+        "peakWeeklyKm": 54.73,
+        "longestRunKm": 25.15,
+        "longestRunMinutes": 240,
+        "marathonRehearsalWeeks": [
+          15,
+          17,
+          18,
+          19,
+          21,
+          22,
+          23
+        ],
+        "speedBenchLoadRangeKg": [
+          65.0,
+          77.5
+        ],
+        "firstWeekPrimaryRpe": 5.5,
+        "unresolvedReadinessWeeks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ]
+      },
+      "providedFacts": {
+        "powerlifting_in_weeks": 12,
+        "maxes_kg": {
+          "squat": 210,
+          "bench": 130,
+          "deadlift": 240
+        },
+        "marathon_in_months": 6,
+        "recent_marathon_seconds": 18780,
+        "after_meet_priority": "Maintain strength as well as possible while preparing for marathon"
+      },
+      "assumptions": [
+        "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+        "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+        "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+        "Current scalar mileage uses the prior PDF provisional assumption (30 km or midpoint45 km); no six-week history or long-run recovery data is invented.",
+        "The previous marathon is placed on25October solely to make the historical first recovery week executable; exact completion date was not provided."
+      ],
+      "verdict": "conditional-review"
+    },
+    {
+      "id": "O2",
+      "title": "Marathon priority",
+      "historicalManualPdf": {
+        "library_file_id": "libfile_da2b376e6b9081919140bd6594b47ce0",
+        "filename": "02-Marathon-priority-v2.pdf",
+        "peakWeeklyKm": 66.0,
+        "longestRunKm": 32.0,
+        "coachingBaseline": {
+          "running_frequency": 4,
+          "strength_visits": 2,
+          "easy_pace_seconds_km": [
+            300,
+            340
+          ],
+          "threshold_pace_seconds_km": [
+            240,
+            250
+          ],
+          "initial_marathon_pace_seconds_km": 255,
+          "marathon_pace_finish_weeks": [
+            9,
+            12
+          ],
+          "marathon_pace_finish_km": 8,
+          "consolidation_weeks": [
+            4,
+            8,
+            11,
+            13
+          ],
+          "taper_weeks": [
+            15,
+            16,
+            17
+          ],
+          "lifting_effort": "RPE6-7, reduced dose, deadlift usually one set in build",
+          "recent_marathon_recovery": "Week1 no lifting; week2 two very light lifts; build gated by recovery and normal volume check"
+        }
+      },
+      "updatedNativeEngine": {
+        "peakWeeklyKm": 68.609,
+        "longestRunKm": 31.45,
+        "longestRunMinutes": 172,
+        "marathonRehearsalWeeks": [
+          3,
+          6,
+          7,
+          9,
+          10,
+          11,
+          13,
+          14
+        ],
+        "speedBenchLoadRangeKg": null,
+        "firstWeekPrimaryRpe": 5.5,
+        "unresolvedReadinessWeeks": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17
+        ]
+      },
+      "providedFacts": {
+        "marathon_in_months": 4,
+        "recent_marathon_seconds": 10740,
+        "recent_marathon_timing": "last week",
+        "priority": "Running; strength in background"
+      },
+      "assumptions": [
+        "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+        "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+        "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+        "Current scalar mileage uses the prior PDF provisional assumption (30 km or midpoint45 km); no six-week history or long-run recovery data is invented.",
+        "The previous marathon is placed on25October solely to make the historical first recovery week executable; exact completion date was not provided."
+      ],
+      "verdict": "conditional-review"
+    },
+    {
+      "id": "O3",
+      "title": "First powerlifting meet",
+      "historicalManualPdf": {
+        "library_file_id": "libfile_bab6ae6add78819187ad8e98c59c1d43",
+        "filename": "03-First-powerlifting-meet-v2.pdf",
+        "peakWeeklyKm": 12.0,
+        "longestRunKm": 6.0,
+        "coachingBaseline": {
+          "strength_visits": 3,
+          "health_runs": 2,
+          "week1_opening_loads_kg": {
+            "squat_top_5": 125,
+            "bench_top_5": 72.5,
+            "deadlift_top_4": 137.5
+          },
+          "speed_bench_start_kg": 50,
+          "speed_bench_start_repetition": "50kg appears across almost all 25 pre-meet weeks, with no explicit rebaseline instruction",
+          "volume_day": "Monday squat/bench",
+          "heavier_day": "Wednesday deadlift/bench; Friday squat",
+          "speed_day": "Friday bench doubles",
+          "commands": "General depth/pause/lockout reminders; week23 asks for command-practice singles",
+          "consolidation_weeks": [
+            5,
+            10,
+            15,
+            20
+          ],
+          "competition_practice_weeks": [
+            16,
+            23
+          ],
+          "taper_weeks": [
+            24,
+            25,
+            26
+          ],
+          "peak_single_effort": "Usually8, optional8-8.5 week23; finalbench8-8.5",
+          "final_exposures": {
+            "deadlift": "Wednesday21April (10days out)",
+            "squat": "Friday23April (8days out)",
+            "bench": "Monday26April (5days out)"
+          },
+          "progression": "After two comparable top sets at least1RPE below target, consider small increases; otherwise repeat or effort-adjust",
+          "backoff_load": "90-93% of actual top set; effort priority over percentage not made explicit"
+        }
+      },
+      "updatedNativeEngine": {
+        "peakWeeklyKm": 0,
+        "longestRunKm": 0,
+        "longestRunMinutes": 0,
+        "marathonRehearsalWeeks": [],
+        "speedBenchLoadRangeKg": [
+          45.0,
+          55.0
+        ],
+        "firstWeekPrimaryRpe": 7.5,
+        "unresolvedReadinessWeeks": []
+      },
+      "providedFacts": {
+        "first_powerlifting_meet_in_months": 6,
+        "tested_1rm": false,
+        "rep_performances": [
+          {
+            "lift": "squat",
+            "kg": 140,
+            "reps": 5
+          },
+          {
+            "lift": "bench",
+            "kg": 80,
+            "reps": 5
+          },
+          {
+            "lift": "deadlift",
+            "kg": 160,
+            "reps": 3
+          }
+        ],
+        "running_goal": "General health"
+      },
+      "assumptions": [
+        "Exact event dates and horizon reuse the historical PDF calendar. The original user supplied relative times.",
+        "Training days reuse the historical PDF calendar; all 90-minute weekday caps and 240-minute Sunday caps are new explicit comparison assumptions, not athlete facts.",
+        "Training age is an explicit comparison assumption; first competition is not proof of lifting inexperience.",
+        "No running pace, mileage or recent long run was supplied. Health-running entry must remain provisional and effort/time based."
+      ],
+      "verdict": "conditional-review"
+    }
+  ],
+  "provenance": {
+    "frozen": {
+      "localCommit": "960ca061444ce23f660b3aee42580beed2dec96b",
+      "files": {
+        "src/coach-engine.js": "eec5eca4b5e69082ec5e3fa93380709992e8c653d4bc079e2c240ef7262bd6c8",
+        "src/coach-adapters.js": "1e103cfa5883bcd382d594a2794eda6ba1f92e9c2b822ada7fa0635d187b232e",
+        "src/running-workouts.js": "45d2a9ddbf704275c8b8bbe9017c176a177f316932643a6718236bd1b75ef3c4",
+        "tests/fixtures/five-scenario-engine-inputs.json": "6c3b7699727e7f80eca8815d8a5d8f39941eb50eb09d32889c3c4b1a4c0a596d",
+        "scripts/test-five-scenarios.cjs": "4482091677c0a7553c414c83612ffe35e58d628c683a93f290ec5ef35c7c4767",
+        "scripts/audit-five-scenarios.cjs": "6840b10f9998cc3753fc0124f1eba984f82a1f90c35d98ecd254cd7b21b9d617",
+        "src/coach-constraints.js": "fc27b9131db9ab152723da81f0137f0595cd07072ff8c66ba29ffbe89c107141",
+        "src/running-preparation.js": "0e67d599974f0cfbd2b3b35bd78a34f843870f563fc9caacda554d8e7d7c65c0"
+      },
+      "entry": "buildNewProgramme -> prepareNewProgramme -> buildProgramme -> createEngine.describeWeek -> generatedSessions",
+      "browserParity": "index.html customConfig/sync use prepareNewProgramme; generatedSessions delegates to canonical createEngine; see shared-coach.test.cjs. No browser activation or storage used.",
+      "clock": "2026-10-30T12:00:00.000Z",
+      "seed": 1570806085
+    },
+    "fresh": {
+      "localCommit": "960ca061444ce23f660b3aee42580beed2dec96b",
+      "files": {
+        "src/coach-engine.js": "eec5eca4b5e69082ec5e3fa93380709992e8c653d4bc079e2c240ef7262bd6c8",
+        "src/coach-adapters.js": "1e103cfa5883bcd382d594a2794eda6ba1f92e9c2b822ada7fa0635d187b232e",
+        "src/running-workouts.js": "45d2a9ddbf704275c8b8bbe9017c176a177f316932643a6718236bd1b75ef3c4",
+        "tests/fixtures/five-scenario-round-two-inputs.json": "d3fccf9f4aa420666f635f43df13518a0cd8d1bb63352be6627382606d7b4eb2",
+        "scripts/test-five-scenarios.cjs": "4482091677c0a7553c414c83612ffe35e58d628c683a93f290ec5ef35c7c4767",
+        "scripts/audit-five-scenarios.cjs": "6840b10f9998cc3753fc0124f1eba984f82a1f90c35d98ecd254cd7b21b9d617",
+        "src/coach-constraints.js": "fc27b9131db9ab152723da81f0137f0595cd07072ff8c66ba29ffbe89c107141",
+        "src/running-preparation.js": "0e67d599974f0cfbd2b3b35bd78a34f843870f563fc9caacda554d8e7d7c65c0"
+      },
+      "entry": "buildNewProgramme -> prepareNewProgramme -> buildProgramme -> createEngine.describeWeek -> generatedSessions",
+      "browserParity": "index.html customConfig/sync use prepareNewProgramme; generatedSessions delegates to canonical createEngine; see shared-coach.test.cjs. No browser activation or storage used.",
+      "clock": "2026-10-30T12:00:00.000Z",
+      "seed": 2026103002
+    },
+    "original": {
+      "localCommit": "960ca061444ce23f660b3aee42580beed2dec96b",
+      "files": {
+        "src/coach-engine.js": "eec5eca4b5e69082ec5e3fa93380709992e8c653d4bc079e2c240ef7262bd6c8",
+        "src/coach-adapters.js": "1e103cfa5883bcd382d594a2794eda6ba1f92e9c2b822ada7fa0635d187b232e",
+        "src/running-workouts.js": "45d2a9ddbf704275c8b8bbe9017c176a177f316932643a6718236bd1b75ef3c4",
+        "tests/fixtures/original-three-engine-inputs.json": "576ebbb21cd3b8158832d709f1e17c4af3c873d5cfd707ac8ca3a293e30df723",
+        "scripts/test-five-scenarios.cjs": "4482091677c0a7553c414c83612ffe35e58d628c683a93f290ec5ef35c7c4767",
+        "scripts/audit-five-scenarios.cjs": "6840b10f9998cc3753fc0124f1eba984f82a1f90c35d98ecd254cd7b21b9d617",
+        "src/coach-constraints.js": "fc27b9131db9ab152723da81f0137f0595cd07072ff8c66ba29ffbe89c107141",
+        "src/running-preparation.js": "0e67d599974f0cfbd2b3b35bd78a34f843870f563fc9caacda554d8e7d7c65c0"
+      },
+      "entry": "buildNewProgramme -> prepareNewProgramme -> buildProgramme -> createEngine.describeWeek -> generatedSessions",
+      "browserParity": "index.html customConfig/sync use prepareNewProgramme; generatedSessions delegates to canonical createEngine; see shared-coach.test.cjs. No browser activation or storage used.",
+      "clock": "2026-10-30T12:00:00.000Z",
+      "seed": null
+    }
+  }
+}

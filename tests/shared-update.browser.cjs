@@ -16,7 +16,7 @@ const {normalizeProfile}=require('../src/coach-adapters.js');
   const url='http://localhost:'+server.address().port+'/';await page.goto(url);await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);await page.waitForTimeout(150);await page.waitForLoadState('load');
   assert.equal(await page.evaluate(()=>!!navigator.serviceWorker.controller),true);
   upgraded=true;await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update()});
-  await page.locator('#lhrf-update-banner').waitFor({state:'visible'});await page.locator('#lhrf-update-banner button').click();
+  await page.locator('#lhrf-update-banner').waitFor({state:'visible'});await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.locator('#lhrf-update-banner button').click()]);
   await page.waitForFunction(()=>typeof window.LHRFCoach?.createEngine==='function');
   const state=()=>page.evaluate(()=>({data:JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean')),live:JSON.parse(localStorage.getItem('lhrf_fresh_beta_live_v1114'))}));
   assert.deepEqual((await state()).data,fixture);assert.deepEqual((await state()).live,live);

@@ -1,0 +1,518 @@
+{
+  "baseCommit": "0a1d1d3e846e41086363032e28bec6d2a15f6e39",
+  "captureWorkingTreeBeforeCommit": true,
+  "sourceSha256": {
+    "src/coach-engine.js": "814c49cab76fb1ff35683a9cc87631507d49b12fe3827a0a7ebf13ecb62439db",
+    "src/coach-constraints.js": "80dd7dca47cc8935f0f2d64347efc0a33f880d1a6f01c5583972e8df88a83906"
+  },
+  "software": {
+    "command": "node --test --test-isolation=none tests/*.test.cjs",
+    "tests": 279,
+    "passed": 279,
+    "failed": 0,
+    "newSchedulingTests": 6,
+    "strongerRotatedAndFinalHeavyTestsSeparatelyRerun": true
+  },
+  "athleteRegression": {
+    "profiles": 7,
+    "trajectories": 42,
+    "simulatedWeeks": 468,
+    "checks": 9994,
+    "regressionFailures": 0,
+    "coachingGaps": 0,
+    "coachingGatesPassed": true,
+    "readyForLiveUse": false
+  },
+  "earlierRounds": [
+    {
+      "fixturePath": "tests/fixtures/five-scenario-engine-inputs.json",
+      "cases": 5,
+      "passed": 2,
+      "blocked": 0,
+      "conditionalReview": 3,
+      "gates": 44,
+      "blockedGates": 0
+    },
+    {
+      "fixturePath": "tests/fixtures/five-scenario-round-two-inputs.json",
+      "cases": 5,
+      "passed": 5,
+      "blocked": 0,
+      "conditionalReview": 0,
+      "gates": 42,
+      "blockedGates": 0
+    }
+  ],
+  "depth": {
+    "criteria": 18,
+    "passed": 18
+  },
+  "stageThree": {
+    "checks": {
+      "unchangedFrozenFacts": true,
+      "nativeImmutableDeterministicCapture": true,
+      "leilaAndHugoPrescriptionsUnchanged": true,
+      "sofiaStillBlocked": true,
+      "hardTimeConflictBlocksKeiko": true,
+      "aspirationDoesNotChangeRacePrescription": true,
+      "affectedMaintenanceBoundedWithoutRemovingStrength": true,
+      "unaffectedBenchRetained": true,
+      "partialWeekHasNoEarlyHardWork": true,
+      "idrisDayNineIsLightWithReview": true,
+      "fatigueChangesMaintenance": true,
+      "noUnaddressedEngineFinding": true
+    },
+    "allCorrectionChecksPassed": true,
+    "retainedFindings": [
+      {
+        "id": "T",
+        "kind": "event-window-exceeded",
+        "severity": "high",
+        "week": 18,
+        "date": "2027-03-07",
+        "estimatedMinutes": 250,
+        "logisticsMinutes": 0,
+        "capMinutes": 240,
+        "calendarFeasible": false
+      }
+    ]
+  },
+  "browsers": {
+    "playwright": "1.56.1",
+    "chromium": "/usr/bin/chromium",
+    "results": [
+      {
+        "name": "today-flow",
+        "exitCode": 0
+      },
+      {
+        "name": "shared-preview",
+        "exitCode": 0
+      },
+      {
+        "name": "onboarding-athletes",
+        "exitCode": 0
+      },
+      {
+        "name": "garmin-import",
+        "exitCode": 0
+      },
+      {
+        "name": "running-flow",
+        "exitCode": 0
+      },
+      {
+        "name": "release",
+        "exitCode": 0
+      },
+      {
+        "name": "bench-exposure",
+        "exitCode": 0
+      },
+      {
+        "name": "general-coaching",
+        "exitCode": 0
+      },
+      {
+        "name": "coaching-intake-v2",
+        "exitCode": 0
+      },
+      {
+        "name": "preview-intake-v2",
+        "exitCode": 0
+      },
+      {
+        "name": "shared-update",
+        "exitCode": 0
+      }
+    ],
+    "affectedFlowsRepeatedOnFinalSource": [
+      {
+        "name": "coaching-intake-v2",
+        "exitCode": 0
+      },
+      {
+        "name": "preview-intake-v2",
+        "exitCode": 0
+      },
+      {
+        "name": "general-coaching",
+        "exitCode": 0
+      }
+    ]
+  },
+  "originalThreeAcceptance": [
+    {
+      "cases": 3,
+      "passed": 0,
+      "blocked": 0,
+      "conditionalReview": 3,
+      "gates": 26,
+      "blockedGates": 0
+    }
+  ],
+  "completeProgrammeWeeks": 149,
+  "profiles": [
+    {
+      "id": "O1",
+      "weeks": 26,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Mon",
+        "Tue",
+        "Wed"
+      ],
+      "afterLiftingDays": [
+        "Mon",
+        "Wed",
+        "Fri"
+      ],
+      "beforeAdjacentHardLowerPairs": 11,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ],
+      "changedStrengthDoseWeeks": [
+        12
+      ],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "savedProgrammeExactlyPreserved": true
+    },
+    {
+      "id": "O2",
+      "weeks": 17,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Tue",
+        "Fri"
+      ],
+      "afterLiftingDays": [
+        "Tue",
+        "Fri"
+      ],
+      "beforeAdjacentHardLowerPairs": 0,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [],
+      "changedStrengthDoseWeeks": [],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "savedProgrammeExactlyPreserved": true
+    },
+    {
+      "id": "O3",
+      "weeks": 26,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Mon",
+        "Tue",
+        "Wed"
+      ],
+      "afterLiftingDays": [
+        "Mon",
+        "Wed",
+        "Fri"
+      ],
+      "beforeAdjacentHardLowerPairs": 29,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "changedStrengthDoseWeeks": [
+        26
+      ],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "savedProgrammeExactlyPreserved": true
+    },
+    {
+      "id": "P",
+      "weeks": 12,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Mon",
+        "Thu"
+      ],
+      "afterLiftingDays": [
+        "Mon",
+        "Thu"
+      ],
+      "beforeAdjacentHardLowerPairs": 0,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [],
+      "changedStrengthDoseWeeks": [],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "savedProgrammeExactlyPreserved": true
+    },
+    {
+      "id": "Q",
+      "weeks": 10,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Mon",
+        "Wed",
+        "Fri"
+      ],
+      "afterLiftingDays": [
+        "Mon",
+        "Wed",
+        "Fri"
+      ],
+      "beforeAdjacentHardLowerPairs": 0,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [],
+      "changedStrengthDoseWeeks": [],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "savedProgrammeExactlyPreserved": true
+    },
+    {
+      "id": "R",
+      "weeks": 8,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Tue",
+        "Thu"
+      ],
+      "afterLiftingDays": [
+        "Tue",
+        "Thu"
+      ],
+      "beforeAdjacentHardLowerPairs": 0,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [],
+      "changedStrengthDoseWeeks": [],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": false,
+      "beforeBlockedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "afterBlockedWeeks": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "savedProgrammeExactlyPreserved": true
+    },
+    {
+      "id": "S",
+      "weeks": 16,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Mon",
+        "Wed",
+        "Sat"
+      ],
+      "afterLiftingDays": [
+        "Mon",
+        "Wed",
+        "Sat"
+      ],
+      "beforeAdjacentHardLowerPairs": 0,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [],
+      "changedStrengthDoseWeeks": [],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "savedProgrammeExactlyPreserved": true
+    },
+    {
+      "id": "T",
+      "weeks": 18,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Mon",
+        "Thu"
+      ],
+      "afterLiftingDays": [
+        "Mon",
+        "Thu"
+      ],
+      "beforeAdjacentHardLowerPairs": 0,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [],
+      "changedStrengthDoseWeeks": [],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": true,
+      "beforeBlockedWeeks": [
+        18
+      ],
+      "afterBlockedWeeks": [
+        18
+      ],
+      "savedProgrammeExactlyPreserved": true
+    },
+    {
+      "id": "Taylor",
+      "weeks": 16,
+      "captureChecks": {
+        "sourceInputUnchanged": true,
+        "generationInputUnchanged": true,
+        "historicalInputUnchanged": true,
+        "deterministic": true,
+        "nativeSessionParity": true,
+        "reviewDoesNotMutate": true
+      },
+      "beforeLiftingDays": [
+        "Tue",
+        "Sat"
+      ],
+      "afterLiftingDays": [
+        "Tue",
+        "Sat"
+      ],
+      "beforeAdjacentHardLowerPairs": 0,
+      "afterAdjacentHardLowerPairs": 0,
+      "changedNumericOrDayWeeks": [],
+      "changedStrengthDoseWeeks": [],
+      "allRunningDosesUnchanged": true,
+      "ordinaryVisitsProvenFeasible": true,
+      "beforeBlockedWeeks": [],
+      "afterBlockedWeeks": [],
+      "savedProgrammeExactlyPreserved": true
+    }
+  ],
+  "preservation": {
+    "protectedBaseFiles": {
+      "checked": 227,
+      "changed": []
+    },
+    "immediatePreviousSavedCaptures": 9,
+    "immediatePreviousSavedWeeks": 149,
+    "earlierSavedPolicySnapshots": 23,
+    "earlierSavedPolicyWeeks": 339,
+    "athletesOverlapAcrossPolicySnapshots": true,
+    "syntheticLogsApprovalsSchedulesAndUnfinishedWorkImmutable": true,
+    "realAthleteStoreOpened": false
+  },
+  "independentAssessment": {
+    "newHighSeverityRegressionFoundInNineReplays": false,
+    "eligibleForControlledCoachSupervisedValidation": true,
+    "automaticAthleteClearance": false,
+    "remainingConditions": [
+      "Confirm actual athlete availability, experience and training history",
+      "Review O1 long-run duration/tolerance and O1/O2 marathon recovery",
+      "Sofia remains blocked pending performance/duration evidence",
+      "Keiko remains blocked on race time and needs recovery review",
+      "Idris later endurance preparation remains conditional on completed training"
+    ]
+  }
+}
