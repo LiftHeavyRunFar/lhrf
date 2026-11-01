@@ -3,6 +3,15 @@ const fs=require('node:fs'),path=require('node:path');
 const {run}=require('./test-five-scenarios.cjs');
 const trainingRuns=w=>w.sessions.flatMap(s=>s.runs||[]).filter(r=>r.role!=='race');
 const liftVisits=w=>w.sessions.filter(s=>(s.ex||[]).some(e=>!(e[5]?.optional))).length;
+// Stage 7 visits expose inclusive ranges; prove the cap against the upper bound.
+const visitUpperMinutes=v=>{
+ if(v.rangeMinutes!==undefined){
+  const {min,max}=v.rangeMinutes||{};
+  if(!Number.isFinite(min)||!Number.isFinite(max)||min<0||max<min)return NaN;
+  return Number.isFinite(v.totalMinutes)?Math.max(max,v.totalMinutes):max;
+ }
+ return v.totalMinutes;
+};
 function audit(report){
  const expectedVisits={A:2,B:2,C:3,D:3,E:2};
  const cases=report.cases.map(row=>{
@@ -29,7 +38,7 @@ function audit(report){
    const budget=s.timeBudget,cap=minuteLimit[s.day.slice(0,3)];
    const common=budget?.includesWarmups===true&&budget?.includesRest===true&&budget?.includesTransitions===true&&Number.isFinite(budget.totalMinutes)&&Number.isFinite(cap)&&budget.feasible!==false;
    const separate=source.availability.separate_double_days?.includes(s.day.slice(0,3))&&(s.ex||[]).length&&(s.runs||[]).length;
-   if(separate)return common&&budget.separate===true&&Array.isArray(budget.visits)&&budget.visits.length===2&&budget.visits.every(v=>Number.isFinite(v.totalMinutes)&&v.totalMinutes<=source.availability.separate_double_each_session_minutes)&&budget.minimumGapHours>=source.availability.separate_double_minimum_gap_hours;
+   if(separate)return common&&budget.separate===true&&Array.isArray(budget.visits)&&budget.visits.length===2&&budget.visits.every(v=>Number.isFinite(visitUpperMinutes(v))&&visitUpperMinutes(v)<=source.availability.separate_double_each_session_minutes)&&budget.minimumGapHours>=source.availability.separate_double_minimum_gap_hours;
    return common&&budget.totalMinutes<=cap;
   }));
   add('inclusive-visit-minute-contract',!unsupportedMinutes&&proof,'Source minute caps require auditable inclusive session budgets; no run-only estimate or unsupported mapping is a pass.');
