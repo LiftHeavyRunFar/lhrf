@@ -64,6 +64,14 @@ test('separated visits are checked individually and must retain the promised rec
  const t=c.programme.weeks[0].sessions.find(s=>s.day==='Tue');t.runs=[{role:'easy-run',minutes:70,distanceKm:8}];
  t.timeBudget={includesWarmups:true,includesRest:true,includesTransitions:true,totalMinutes:130,separate:true,minimumGapHours:6,visits:[{kind:'run',totalMinutes:70},{kind:'strength',totalMinutes:60}]};
  assert.equal(gate(audit(fixture),'C','inclusive-visit-minute-contract').status,'pass');
+ const visits=t.timeBudget.visits;
+ t.timeBudget.visits=[{kind:'run',rangeMinutes:{min:60,max:70}},{kind:'strength',rangeMinutes:{min:45,max:60}}];
+ assert.equal(gate(audit(fixture),'C','inclusive-visit-minute-contract').status,'pass','Range upper bounds prove each separate cap');
+ t.timeBudget.visits[0].rangeMinutes.max=76;
+ assert.equal(gate(audit(fixture),'C','inclusive-visit-minute-contract').status,'blocked','A fitting minimum cannot excuse an excessive upper bound');
+ t.timeBudget.visits[0].rangeMinutes={min:70,max:60};
+ assert.equal(gate(audit(fixture),'C','inclusive-visit-minute-contract').status,'blocked','Invalid ranges cannot prove feasibility');
+ t.timeBudget.visits=visits;
  t.timeBudget.minimumGapHours=2;
  assert.equal(gate(audit(fixture),'C','inclusive-visit-minute-contract').status,'blocked');
 });
