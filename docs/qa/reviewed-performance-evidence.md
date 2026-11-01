@@ -14,7 +14,7 @@ Reviewed same-purpose speed practice is exposed beside the percentage suggestion
 
 ## API
 
-Only explicit new-proposal callers provide the review option. It is not inferred from free-text notes or automatically applied by the production UI.
+Only explicit new-proposal callers provide the review option. The private `review-athlete-programme.cjs` CLI forwards `performanceReviews` from its options JSON through the same engine validation and records the validated audit in its input/confirmation and provenance outputs. It is not inferred from free-text notes or automatically applied by the production UI. Use one confirmation mechanism per reviewed record; a legacy `confirmedPerformances` enrichment combined with a conflicting original-value review is rejected.
 
 ```js
 adapters.buildNewProgramme(config, {
@@ -39,5 +39,7 @@ Competition-specific practice, effort ceilings, purposeful support work and tape
 ## Regression assessment using Priya criteria
 
 Tests cover multiple absolute strength levels, absent experience, novice status, unresolved fatigue, corrupt selectors, wrong original values, missing/future records, duplicate reviews, unreliable/approximate effort, exercise isolation, failed/warm-up/optional work, stale corroboration, non-compounding reviews, frozen saved outputs, and browser-global/Node parity. Private checks additionally compare reviewed real-case prescriptions with the released engine given the same explicitly confirmed evidence, verify deterministic generation and source bytes, and exercise preservation in a pure in-memory replacement preview.
+
+The CLI integration test executes both private review and existing packaging commands using synthetic data. It verifies the Stage 8 fingerprint, original training anchors, source-byte preservation, unchanged saved-policy baseline, correction/uncertainty provenance and adjacent-event recovery restriction. Invalid reviews fail before files are written; fingerprint verification rejects altered provenance.
 
 Rowan and Priya are assessment criteria here; no separate human review is claimed. Full software and frozen scenario/depth checks are required before integration. This API correction does not supply a validated speed-to-load model, new bar-velocity evidence, race PB evidence, or a production correction UI.
