@@ -41,3 +41,13 @@ The event-time gate correctly credits explicit fail-closed behavior while retain
 - `git diff --check`: clean.
 
 Stop here: clearing the remaining replay requires a separately scoped scheduling/feasibility review or genuine athlete changes to availability/priorities, beyond this minimal CI/evaluator correction. No scheduler redesign, merge, deployment or programme activation was performed. Release hold remains. Changes are local; no branch push or GitHub comment was made.
+
+## Follow-up: separate CI safety acceptance from programme feasibility
+
+Following PR #108 comment 6560600614, `npm run test:coaching:safety` runs all three replay stages and exits on engine safety acceptance. The original `test:coaching:rounds` retains its feasibility exit status and early stop. Both retain detailed per-athlete captures and feasibility gates. The workflow uploads these reports even on failure; no frozen fixture, hash, athlete restriction or engine prescription changed. The main test job retains Node 24.19.0.
+
+Safety acceptance requires complete captures/horizons, deterministic unmutated native outputs, original hard caps and recovery evidence, independently refitted session time proofs, explicit blocked session/week restrictions, and rejection of blocked programmes by reviewed-package validation. Unexpected non-time coaching failures still fail CI. Frozen-five must retain exactly five blocked programmes, zero passes and the original 10/44 blocked gates, including B's unresolved event time/permission and D's recovery reassessment.
+
+The safety mode continues past correctly blocked proposals: frozen-five remains 5 blocked / 10 blocked gates; fresh-five reports 5 blocked / 10 blocked gates; original-three reports 2 blocked / 4 blocked gates and 1 conditional review. `executionComplete:true` describes completed replay execution only, `engineSafetyPassed:true` describes safety invariants only, and `coachingCodeGatesPassed:false` plus `athleteApproval:false` remain explicit.
+
+Local checks: 340 software tests pass, including 17 new safety checks with malicious mutations; original feasibility command still exits 1 with the same frozen-five outcomes; safety mode exits 0 after all three stages; prescription depth passes 18/18. Missing captures, replay errors, unsafe feasibility labels, changed caps/permissions, missing time proofs and lost recovery restrictions fail safety validation. The fix branch is to be pushed for GitHub CI validation only; no merge, deployment or athlete activation is authorized.
