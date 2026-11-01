@@ -57,15 +57,16 @@ test('package fingerprint binds athlete identity and reviewed evidence, while pe
 test('native adjacent-competition recovery conditions and RPE progression survive installation without reinterpretation',async()=>{
  const p=require('./replacement-fixtures.cjs').eventProgramme();assert.ok(p.weeks.every(w=>w.feasible));const state=athlete(),packet=await api.createPackage(p,state,{reviewedCommit:'233f09e'}),n=api.createReplacement(state,packet,engine,{now}).next;const race=n.reviewedProgramme.weeks.flatMap(w=>w.sessions).find(s=>s.eventType==='running');assert.equal(race.eventDate,'2026-11-29');assert.equal(race.recoveryReviewRequired,true);assert.equal(race.runs[0].recoveryReviewRequired,true);assert.deepEqual(race.runs,p.weeks.at(-1).sessions.find(s=>s.eventType==='running').runs);assert.equal(n.customRoadmap.strengthModes.Squat,'maintenance');assert.equal(n.customRoadmap.strengthModes.Deadlift,'maintenance');
 });
-test('all nine latest Stage 7 native programmes remain exactly unchanged across 149 weeks',()=>{
+test('all nine saved Stage 7 native programmes remain exactly unchanged across 149 weeks',()=>{
  // Compare complete native objects, including undefined own properties, against
- // the actual frozen engine. Separately verify its original persisted capture.
+ // the actual frozen engine. Replay its saved config: new proposals may opt into
+ // newer policies. Separately verify the original persisted capture.
  const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),cp=require('node:child_process');
  const referenceRoot=fs.mkdtempSync(path.join(os.tmpdir(),'lhrf-stage-seven-reference-'));
  try{
   for(const name of ['coach-engine','coach-constraints','coach-adapters','running-preparation','running-workouts'])fs.writeFileSync(path.join(referenceRoot,name+'.js'),cp.execFileSync('git',['show','233f09e:src/'+name+'.js'],{cwd:path.join(__dirname,'..')}));
   const reference=require(path.join(referenceRoot,'coach-adapters.js'));
-  let weeks=0;for(const id of ['O1','O2','O3','P','Q','R','S','T','Taylor']){const r=require('../docs/qa/stage-seven/regressions/'+id+'.json'),options={data:r.historicalData,now:()=>Date.parse(require('../docs/qa/stage-six/regressions/'+id+'.json').provenance.clock)},expected=reference.buildNewProgramme(r.input,options),p=adapters.buildNewProgramme(r.input,options);assert.deepEqual(p,expected,id+' complete native structure');assert.deepEqual(JSON.parse(JSON.stringify(expected)),r.programme,id+' frozen persisted capture');weeks+=p.weeks.length}assert.equal(weeks,149);
+  let weeks=0;for(const id of ['O1','O2','O3','P','Q','R','S','T','Taylor']){const r=require('../docs/qa/stage-seven/regressions/'+id+'.json'),options={data:r.historicalData,now:()=>Date.parse(require('../docs/qa/stage-six/regressions/'+id+'.json').provenance.clock)},expected=reference.buildNewProgramme(r.input,options),p=adapters.buildProgramme(expected.config,options);assert.deepEqual(p,expected,id+' complete native structure');assert.deepEqual(JSON.parse(JSON.stringify(expected)),r.programme,id+' frozen persisted capture');weeks+=p.weeks.length}assert.equal(weeks,149);
  }finally{fs.rmSync(referenceRoot,{recursive:true,force:true})}
 });
 test('complete preview includes existing approved overrides, while new reviewed work is not silently altered',async()=>{
