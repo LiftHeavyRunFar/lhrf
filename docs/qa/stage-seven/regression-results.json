@@ -1,0 +1,140 @@
+{
+  "baseCommit": "5d27f31",
+  "software": {
+    "command": "node --test --test-isolation=none tests/*.test.cjs",
+    "passed": 302,
+    "failed": 0,
+    "newStageSevenTests": 13,
+    "logSha256": "86747450597ab632ea62d5bcad50ae1dfbe9a41864828344a1dc6adcf8b11e8f"
+  },
+  "frozenComparison": {
+    "athletes": 9,
+    "weeks": 149,
+    "savedPoliciesExactlyUnchanged": true,
+    "allLatestCalendarsMainLoadsRepsRPEAndRecoveryMarkersPreserved": true,
+    "latestTimeFlagsNotWaived": true,
+    "details": "regressions/comparison.json"
+  },
+  "simulation": {
+    "profiles": 7,
+    "trajectories": 42,
+    "simulatedWeeks": 468,
+    "checks": 9994,
+    "regressionFailures": 0,
+    "coachingGaps": 0,
+    "coachingGatesPassed": true,
+    "readyForLiveUse": false
+  },
+  "browserSuites": [
+    {
+      "name": "today-flow",
+      "exitCode": 0
+    },
+    {
+      "name": "shared-preview",
+      "exitCode": 0
+    },
+    {
+      "name": "onboarding-athletes",
+      "exitCode": 0
+    },
+    {
+      "name": "garmin-import",
+      "exitCode": 0
+    },
+    {
+      "name": "running-flow",
+      "exitCode": 0
+    },
+    {
+      "name": "release",
+      "exitCode": 0
+    },
+    {
+      "name": "bench-exposure",
+      "exitCode": 0
+    },
+    {
+      "name": "general-coaching",
+      "exitCode": 0
+    },
+    {
+      "name": "coaching-intake-v2",
+      "exitCode": 0
+    },
+    {
+      "name": "preview-intake-v2",
+      "exitCode": 0
+    },
+    {
+      "name": "shared-update",
+      "exitCode": 0
+    },
+    {
+      "name": "experience-calibration",
+      "exitCode": 0
+    },
+    {
+      "name": "flexible-session-time",
+      "exitCode": 0
+    }
+  ],
+  "browserLimitations": [
+    "Chromium with mobile viewport/touch emulation; no physical Android certification.",
+    "Two historical intake browser suites replay their frozen duration policy, with unchanged assertions. Latest onboarding and shortening have a separate application-browser suite."
+  ],
+  "stageThreeHistoricalReplay": {
+    "durationPolicy": 0,
+    "checks": {
+      "unchangedFrozenFacts": true,
+      "nativeImmutableDeterministicCapture": true,
+      "leilaAndHugoPrescriptionsUnchanged": true,
+      "sofiaStillBlocked": true,
+      "hardTimeConflictBlocksKeiko": true,
+      "aspirationDoesNotChangeRacePrescription": true,
+      "affectedMaintenanceBoundedWithoutRemovingStrength": true,
+      "unaffectedBenchRetained": true,
+      "partialWeekHasNoEarlyHardWork": true,
+      "idrisDayNineIsLightWithReview": true,
+      "fatigueChangesMaintenance": true,
+      "noUnaddressedEngineFinding": true
+    }
+  },
+  "compatibility": {
+    "existingTestAssertionsOrFrozenCriteriaWeakened": false,
+    "historicalPolicyExplicitlyPinnedInTestHarnesses": true,
+    "latestPolicyTestedSeparately": true,
+    "protectedBaseFilesByteIdentical": 248,
+    "modifiedExistingFiles": [
+      ".github/workflows/coaching-v2.yml",
+      "coaching-preview.html",
+      "index.html",
+      "scripts/review-athlete-programme.cjs",
+      "src/coach-constraints.js",
+      "src/coach-engine.js",
+      "src/coach-intake.js",
+      "sw.js",
+      "tests/coaching-intake-v2.browser.cjs",
+      "tests/coaching-policy-v2.integration.test.cjs",
+      "tests/preview-intake-v2.browser.cjs",
+      "tests/stage-three-safeguards.test.cjs",
+      "tests/taylor-scheduling.test.cjs",
+      "tests/weekly-stress-scheduling.test.cjs"
+    ]
+  },
+  "sourceSha256": {
+    "coaching-preview.html": "727a82a74e04013e808c661629dfa6aeadc974743030257979b351b7c3ae37f6",
+    "index.html": "044c5f632bf06f2082f931efb69b8f979a40736bea510920528587f2defbf355",
+    "scripts/review-athlete-programme.cjs": "6e6a1dee8127262e795a46a62d475a507661e8266ffc537e596e90e4154ac425",
+    "src/coach-constraints.js": "885422f15f8bd6e21b748fde3c358a1f996546337dccaedcb4d729ff642d2e1f",
+    "src/coach-engine.js": "ddd6133bb09566acbeb1f72a5dd773bd2b31991f66725bdeca90b8c546abc1be",
+    "src/coach-intake.js": "a59be666da0565ad8b2ac571a76e6d4e6fa9fae967ac24296cf9a1708b4dc498",
+    "sw.js": "20b4a484082f0338a47b6f6ba491d285c5a959dcc0f06744fca9357e8482f75a"
+  },
+  "personalDataCommitted": false,
+  "storedProgrammesOrLogsChanged": false,
+  "merged": false,
+  "published": false,
+  "deployed": false,
+  "activated": false
+}

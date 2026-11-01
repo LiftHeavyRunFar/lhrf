@@ -49,7 +49,7 @@ function weeklyStress(c,slots,context={}){
 function allocate(c,warnings=[],activities=[],context={}){
  const cfg=c.visitConstraints||{},allowed=DAYS.filter(d=>(c.availableDays?.length?c.availableDays.map(short):DAYS).includes(d)),slots=()=>DAYS.map(day=>({day,items:[]}));
  const work=activities.map((x,i)=>({...x,componentId:'component-'+i})),strength=work.filter(x=>x.type==='strength'),runs=work.filter(x=>x.type==='run');
- const combined=new Set((cfg.combinedDays||[]).map(short)),separate=new Set((cfg.separateDays||[]).map(short));
+ const combined=new Set((cfg.combinedDays||(Number(c.sessionTimeVersion)>=1?c.doubleDays:[])||[]).map(short)),separate=new Set((cfg.separateDays||[]).map(short));
  // New strength-first health programmes use the available lifting windows.
  // Their easy runs do not need race-quality placement or long-run leg protection.
  // Saved proposals without this marker keep their original calendar.
@@ -114,9 +114,10 @@ function strengthMinutes(ex){
  return {warmups,workAndRest,support,setup:ex.length?2:0,total:warmups+workAndRest+support+(ex.length?2:0)};
 }
 function fitSessions(c,input){
+ if(Number(c.sessionTimeVersion)>=1)return fitFlexibleSessions(c,input);
  const cfg=c.visitConstraints||{},sessions=clone(input),warnings=[],issues=[];
  const trainingKm=list=>list.flatMap(s=>s.runs||[]).filter(r=>r.role!=='race').reduce((n,r)=>n+(Number(r.distanceKm)||0),0),beforeKm=trainingKm(sessions);
- const ordinary=new Set((c.availableDays||DAYS).map(short)),combined=new Set((cfg.combinedDays||[]).map(short)),separate=new Set((cfg.separateDays||[]).map(short));
+ const ordinary=new Set((c.availableDays||DAYS).map(short)),combined=new Set((cfg.combinedDays||(Number(c.sessionTimeVersion)>=1?c.doubleDays:[])||[]).map(short)),separate=new Set((cfg.separateDays||[]).map(short));
  for(const session of sessions){
   const sessionBeforeKm=(session.runs||[]).filter(r=>r.role!=='race').reduce((n,r)=>n+(Number(r.distanceKm)||0),0);
   const day=short(session.day),cap=Number(cfg.minutes?.[day]),permission=cfg.eventDays?.[session.eventDate];
@@ -187,6 +188,132 @@ function fitSessions(c,input){
  if(reviewRequired)warnings.push('Visit windows reduce actual running from '+beforeKm.toFixed(2)+' to '+afterKm.toFixed(2)+' km. Review endurance adequacy before approving this block; removed kilometres are not automatically made up.');
  warnings.push(...issues);return {sessions,warnings,blockingIssues:issues.slice(),feasible:!issues.length,reviewRequired,runningAdjustments:{beforeKm:Number(beforeKm.toFixed(3)),afterKm:Number(afterKm.toFixed(3)),trimmedKm,reviewRequired}};
 }
-const api={allocate,fitSessions,strengthMinutes,weeklyStress};
+// Versioned estimates for new proposals only. Minutes are ranges, not promises.
+const priorities=['essential','supporting','optional'];
+function exercisePriority(e){
+ const m=e[5]||{};
+ // Explicit session purpose overrides the exercise name; optional never inferred from name.
+ if(priorities.includes(m.priority))return m.priority;
+ return m.optional||m.category==='optional'?'optional':primary(e)?'essential':'supporting';
+}
+function classifySession(input){
+ const s=clone(input);
+ s.ex=(s.ex||[]).map(e=>{const p=exercisePriority(e);e[5]={...e[5],priority:p,priorityReason:e[5]?.priorityReason||(p==='essential'?'Programmed main stimulus or specific practice':p==='supporting'?'Secondary volume or balance supporting this session':'Discretionary extra; skipping has no adherence penalty'),adherenceRequired:p!=='optional',plannedFatigueIncluded:p!=='optional',optional:p==='optional'};return e});
+ s.runs=(s.runs||[]).map(r=>{const p=priorities.includes(r.priority)?r.priority:'essential';return {...r,priority:p,adherenceRequired:p!=='optional',plannedFatigueIncluded:p!=='optional',optional:p==='optional'}});
+ return s;
+}
+const range=(min=0,max=min)=>({min:Math.floor(min),max:Math.ceil(max)}),plus=(a,b)=>({min:a.min+b.min,max:a.max+b.max});
+function strengthDuration(ex){
+ if(!ex.length)return {rangeMinutes:range(),components:[]};
+ let total={min:5,max:8};const components=[{purpose:'General preparation',rangeMinutes:range(5,8)}],seen=new Set();
+ for(const e of ex){
+  const m=e[5]||{},main=primary(e)||m.priority==='essential',sets=Math.max(0,Number(e[1])||0),reps=Math.max(1,Number(e[2])||1),rpe=Number(e[4])||6;
+  if(!sets)continue;
+  const heavy=main&&rpe>=8,technical=['speed','technique','recovery'].includes(m.trainingRole),key=String(e[0]).toLowerCase();
+  let warm={min:0,max:0},rampSets=0;
+  if(!seen.has(key)){
+   // Heavy work: unloaded pattern plus 4–6 progressive approaches, including
+   // plate changes and increasing rests. Lighter main work: 2–4 approaches.
+   if(main){rampSets=heavy?(reps<=2?6:5):technical?2:3;warm=heavy?(reps<=2?{min:18,max:25}:{min:14,max:21}):technical?{min:5,max:8}:{min:8,max:12};}
+   else warm={min:1,max:2};
+   seen.add(key);
+  }
+  const rest=heavy?{min:3,max:5}:main?(technical?{min:1,max:1.5}:{min:2,max:3}):{min:1,max:1.5};
+  // Last-set recovery is not charged as a full between-set rest. Different
+  // movement/setup includes transition; same-lift backoffs include plate change.
+  const transition=components.length===1?{min:1,max:2}:seen.has(key)&&warm.max===0?(m.role==='backoff'?{min:3,max:5}:{min:1,max:2}):{min:2,max:3};
+  const execution=sets*(reps*(heavy?.08:.06)+.35),between=Math.max(0,sets-1);
+  const work={min:execution+between*rest.min,max:execution+between*rest.max};
+  const duration=plus(plus(warm,transition),work);total=plus(total,duration);
+  components.push({exercise:e[0],priority:exercisePriority(e),progressiveWarmupSets:rampSets,warmupRangeMinutes:range(warm.min,warm.max),betweenSetRestMinutes:rest,rangeMinutes:range(duration.min,duration.max)});
+ }
+ return {rangeMinutes:range(total.min,total.max),components};
+}
+function runDuration(r){
+ const a=r.durationRangeMinutes,known=a&&Number.isFinite(a.min)&&Number.isFinite(a.max)&&a.min>=0&&a.max>0;
+ const n=Number(r.minutes),timed=r.minutes!==null&&r.minutes!==undefined&&Number.isFinite(n)&&n>0;
+ if(!known&&!timed)return null;
+ // Prescribed run duration already includes its warm-up, repetitions, recoveries
+ // and cooldown. Add preparation/changeover, never duplicate interval steps.
+ return range((known?a.min:n)+3,(known?a.max:n)+5);
+}
+function estimateSession(input){
+ const s=classifySession(input);
+ const estimate=ps=>{
+  const ex=s.ex.filter(e=>ps.includes(e[5].priority)),runs=s.runs.filter(r=>ps.includes(r.priority)),strength=strengthDuration(ex);let run=range();
+  for(const r of runs){const d=runDuration(r);if(!d)return {rangeMinutes:null,strength,runRangeMinutes:null};run=plus(run,d)}
+  const transition=ex.length&&runs.length&&!s.separateVisits?range(4,7):range();
+  return {rangeMinutes:plus(plus(strength.rangeMinutes,run),transition),strength,runRangeMinutes:run,transitionRangeMinutes:transition};
+ };
+ const essential=estimate(['essential']),baseline=estimate(['essential','supporting']),total=estimate(priorities);
+ return {estimated:true,essentialRangeMinutes:essential.rangeMinutes,baselineRangeMinutes:baseline.rangeMinutes,totalRangeMinutes:total.rangeMinutes,components:total,includesWarmups:true,includesRest:true,includesTransitions:true,estimateBasis:'General preparation 5–8 min; heavy main-lift ramp 5–6 progressive approaches / 14–25 min; other main ramps 2–3 approaches / 5–12 min; heavy rests 3–5 min, main 2–3, speed 1–1.5, accessories 1–1.5; work execution and equipment changes counted. Run duration includes prescribed warm-up/recovery/cool-down plus 3–5 min preparation; mixed transition 4–7 min. Queueing and individual variation may extend the range.'};
+}
+function plannedStress(input){
+ const s=classifySession(input),sets=s.ex.filter(e=>e[5].plannedFatigueIncluded),runs=s.runs.filter(r=>r.plannedFatigueIncluded);
+ return {strengthSets:sets.reduce((n,e)=>n+Number(e[1]),0),strengthEffortUnits:sets.reduce((n,e)=>n+Number(e[1])*Number(e[2])*(Number(e[4])||6),0),runningKm:runs.reduce((n,r)=>n+(Number(r.distanceKm)||0),0),optionalExcluded:true,physiologicalScore:false};
+}
+function completedStress(records={}){
+ // Actual completed optional work counts exactly like other actual work.
+ const sets=(records.sets||[]).filter(e=>e.completed!==false&&e.skipped!==true),runs=(records.runs||[]).filter(r=>r.completed!==false&&r.skipped!==true);
+ return {strengthSets:sets.length,strengthEffortUnits:sets.reduce((n,e)=>n+(Number(e.reps)||0)*(Number(e.rpe)||6),0),runningKm:runs.reduce((n,r)=>n+(Number(r.km??r.distanceKm)||0),0),optionalIncluded:true,physiologicalScore:false};
+}
+function fitFlexibleSessions(c,input){
+ const cfg=c.visitConstraints||{},ordinary=new Set((c.availableDays||DAYS).map(short)),warnings=[],issues=[],sessions=[];
+ const validCap=x=>typeof x==='number'&&Number.isFinite(x)&&x>0;
+ for(const original of input){
+  if(original.eventDate){const event=fitSessions({...c,sessionTimeVersion:0},[original]);sessions.push(...event.sessions);warnings.push(...event.warnings);issues.push(...event.blockingIssues);continue}
+  const s=classifySession(original),day=short(s.day),raw=cfg.minutes?.[day],hasCap=validCap(raw),cap=hasCap?raw:null,mixed=!!s.ex.length&&!!s.runs.length,separate=mixed&&(cfg.separateDays||[]).includes(day),changes=[];
+  const oldTimeIssues=new Set((s.constraintIssues||[]).filter(i=>i.kind==='visit-time').map(i=>i.detail));
+  if(oldTimeIssues.size){s.constraintIssues=s.constraintIssues.filter(i=>i.kind!=='visit-time');s.constraintWarnings=(s.constraintWarnings||[]).filter(w=>!oldTimeIssues.has(w));if(!s.constraintIssues.length)delete s.constraintIssues;if(!s.constraintWarnings.length)delete s.constraintWarnings;}
+  const fail=detail=>{issues.push(detail);s.constraintWarnings=[...(s.constraintWarnings||[]),detail];s.constraintIssues=[...(s.constraintIssues||[]),{kind:'visit-time',detail,requiresAthleteInput:true}]};
+  if(!ordinary.has(day))fail(day+' is not an available training day.');
+  if(raw!==null&&raw!==undefined&&raw!==''&&!hasCap)fail(day+' has an invalid hard time limit.');
+  if(mixed&&!separate&&!(cfg.combinedDays||c.doubleDays||[]).includes(day))fail(day+' combines running and lifting without permission.');
+  if(separate&&!(Number(cfg.minimumGapHours)>=6))fail(day+' separate visits require at least six hours recovery.');
+  const sc=cfg.separateMinutes?.[day],strengthCap=separate?(sc==null?cap:validCap(sc)?sc:null):cap;
+  if(separate&&sc!=null&&!validCap(sc))fail(day+' has an invalid separate strength limit.');
+  s.separateVisits=separate;
+  const estimate=()=>estimateSession(s);
+  const fits=()=>{const t=estimate();if(separate){const sr=strengthDuration(s.ex.filter(e=>e[5].priority!=='optional')).rangeMinutes;let rr=range();for(const r of s.runs.filter(r=>r.priority!=='optional')){const d=runDuration(r);if(!d)return false;rr=plus(rr,d)}return (!strengthCap||sr.max<=strengthCap)&&(!cap||rr.max<=cap)}return !!t.baselineRangeMinutes&&(!cap||t.baselineRangeMinutes.max<=cap)};
+  const topRefs=new Map(s.ex.filter(e=>Number.isInteger(e[5]?.topIndex)).map(e=>[e,s.ex[e[5].topIndex]]));
+  const prescribed=clone({ex:s.ex,runs:s.runs}),before=estimate();
+  // Optional is never required for the baseline. Omit it first under an actual
+  // hard constraint; then reduce support only. Essential dose/rest never rushed.
+  const constrained=hasCap||separate&&validCap(strengthCap);
+  const optionalFits=separate?(!strengthCap||before.components.strength.rangeMinutes.max<=strengthCap)&&(!cap||(before.components.runRangeMinutes&&before.components.runRangeMinutes.max<=cap)):before.totalRangeMinutes&&(!cap||before.totalRangeMinutes.max<=cap);
+  if(constrained&&(!fits()||!optionalFits)){
+   for(let i=s.ex.length-1;i>=0;i--)if(s.ex[i][5].priority==='optional'){changes.push({kind:'omit-optional',exercise:s.ex[i][0],sets:s.ex[i][1],adherencePenalty:false});s.ex.splice(i,1)}
+   s.runs=s.runs.filter(r=>{if(r.priority!=='optional')return true;changes.push({kind:'omit-optional-run',name:r.name,adherencePenalty:false});return false});
+  }
+  const strengthOver=()=>separate?strengthCap!==null&&strengthDuration(s.ex.filter(e=>e[5].priority!=='optional')).rangeMinutes.max>strengthCap:!fits();
+  for(let i=s.ex.length-1;i>=0&&strengthOver()&&constrained;i--){const e=s.ex[i];if(e[5].priority!=='supporting')continue;while(e[1]>0&&strengthOver()){e[1]--;changes.push({kind:'reduce-support',exercise:e[0],sets:1})}if(!e[1])s.ex.splice(i,1)}
+  const runningOver=()=>{if(!separate)return !fits();if(cap===null)return false;let n=0;for(const r of s.runs.filter(r=>r.priority!=='optional')){const d=runDuration(r);if(!d)return true;n+=d.max}return n>cap};
+  for(let i=s.runs.length-1;i>=0&&runningOver()&&constrained;i--)if(s.runs[i].priority==='supporting'){changes.push({kind:'omit-support-run',name:s.runs[i].name});s.runs.splice(i,1)}
+  for(const [e,top]of topRefs)if(s.ex.includes(e))e[5].topIndex=s.ex.indexOf(top);
+  const t=estimate(),known=!!t.baselineRangeMinutes;
+  if(!known)fail(day+' has unknown prescribed running duration; confirm representative pace or a timed prescription.');
+  else if(!fits()){const er=t.essentialRangeMinutes,tooShort=separate?visitsTooShort():cap!==null&&er&&er.min>cap;fail(day+(tooShort?' essential work cannot fit':' essential work may exceed')+' the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.');}
+  function visitsTooShort(){const sr=strengthDuration(s.ex.filter(e=>e[5].priority==='essential')).rangeMinutes;let rr=0;for(const r of s.runs.filter(r=>r.priority==='essential'))rr+=runDuration(r)?.min||0;return (strengthCap!==null&&sr.min>strengthCap)||(cap!==null&&rr>cap)}
+  const visits=separate?[{kind:'strength',rangeMinutes:strengthDuration(s.ex.filter(e=>e[5].priority!=='optional')).rangeMinutes,capMinutes:strengthCap},{kind:'run',rangeMinutes:estimateSession({...s,ex:[]}).baselineRangeMinutes,capMinutes:cap}]:[{kind:mixed?'combined':s.ex.length?'strength':'run',rangeMinutes:t.baselineRangeMinutes,capMinutes:cap}];
+  s.timeBudget={...t,totalMinutes:t.baselineRangeMinutes?.max??null,capMinutes:cap,hardLimit:hasCap,availability:hasCap?'hard-limit':'unspecified-flexible',feasible:!s.constraintWarnings?.length,visits,separate,minimumGapHours:separate?cfg.minimumGapHours:null,adjustments:changes};
+  s.plannedStress=plannedStress(s);
+  if(changes.length){s.timeAdaptation={originalPrescription:prescribed,adjustedPrescription:clone({ex:s.ex,runs:s.runs}),reason:'hard-time-limit',changes,completedWorkChanged:false,makeUpWorkScheduled:false};s.hybridNotes=[...(s.hybridNotes||[]),'Time adjustment: supporting/optional work reduced; essential work protected. Removed work is not stacked onto later days.'];}
+  if(c.sessionDurationPreference?.mode==='typical'&&t.baselineRangeMinutes?.max>c.sessionDurationPreference.minutes)warnings.push(day+': estimate exceeds the typical duration preference; this is not a hard limit. Review supporting volume if desired.');
+  if(!hasCap)warnings.push(day+': session duration is estimated; no hard time limit was supplied.');
+  sessions.push(s);
+ }
+ return {sessions,warnings:[...warnings,...issues],blockingIssues:issues,feasible:!issues.length,reviewRequired:!!issues.length};
+}
+function adaptSessionToTime(c,session,minutes){
+ if(!Number.isFinite(minutes)||minutes<=0)throw new RangeError('Supply a positive actual time limit.');
+ if(session.eventDate)throw new RangeError('An event requires an event-specific timing review.');
+ const day=short(session.day),copy=clone(c);copy.sessionTimeVersion=1;copy.visitConstraints={...copy.visitConstraints,minutes:{...copy.visitConstraints?.minutes,[day]:minutes}};
+ const result=fitFlexibleSessions(copy,[session]);return {...result,originalPrescription:clone(session),requiresAthleteApproval:true,applied:false,makeUpWorkScheduled:false,reason:'unexpected-time-limit'};
+}
+function reviewTimeHistory(records=[]){
+ const dates=new Set(records.filter(r=>r.reason==='unexpected-time-limit'||r.reason==='hard-time-limit').map(r=>r.date).filter(Boolean));
+ return {distinctModifiedDays:dates.size,recommendation:dates.size>=3?'Review typical duration or supporting volume with the athlete.':'Keep the approved programme; record actual changes.',requiresAthleteApproval:dates.size>=3,appliedChanges:[]};
+}
+const api={allocate,fitSessions,strengthMinutes,weeklyStress,classifySession,estimateSession,plannedStress,completedStress,adaptSessionToTime,reviewTimeHistory};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoachConstraints=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

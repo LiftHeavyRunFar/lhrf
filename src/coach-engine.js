@@ -106,6 +106,9 @@ function prepareNewProgramme(input={},options={}){
   c.coachingSafeguardsVersion=1;
   c.strengthEvidenceVersion=1;
   c.runningEvidenceVersion=1;
+  c.sessionTimeVersion=input.sessionTimeVersion===0?0:1;
+  if(c.sessionDurationPreference){const p=c.sessionDurationPreference;if(!['typical','varies','unspecified'].includes(p.mode)||(p.mode==='typical'&&(!Number.isFinite(p.minutes)||p.minutes<=0)))throw new RangeError('Invalid typical session duration preference.');}
+  for(const limits of [c.visitConstraints?.minutes,c.visitConstraints?.separateMinutes])for(const n of Object.values(limits||{}))if(n!==null&&n!==undefined&&n!==''&&(!Number.isFinite(n)||n<=0))throw new RangeError('Invalid hard session limit.');
   if(c.runningPersonalBestSeconds!==undefined&&c.runningPersonalBestSeconds!==null&&(!Number.isInteger(c.runningPersonalBestSeconds)||c.runningPersonalBestSeconds<=0))throw new RangeError('Invalid running personal best duration.');
   if(!c.strengthExposureRoles&&c.benchExposureVersion===1&&Number(c.bench)===3)c.strengthExposureRoles={Bench:['volume','heavy','speed']};
   if(c.strengthExposureRoles&&(typeof c.strengthExposureRoles!=='object'||Array.isArray(c.strengthExposureRoles)))throw new RangeError('Invalid strength exposure roles.');
@@ -281,7 +284,7 @@ function variationChoice(c,lift,w){const b=variationBlock(w,c.weeks,c),specific=
 
 // Component capacity is a hard constraint. Unplaced work is returned explicitly.
 function constrainedPlan(c,warnings,activities){
- if(Number(c.coachingRulesVersion)>=2&&c.visitConstraints){
+ if(Number(c.coachingRulesVersion)>=2&&(c.visitConstraints||Number(c.sessionTimeVersion)>=1)){
   const dates=new Map();
   return visitPlanner.allocate(c,warnings,activities,{recoveryLifts:Number(c.weeklyStressVersion)>=1?['Squat','Bench','Deadlift'].filter(lift=>generalStrengthRecovery(c,lift)):[],finalHeavyDates:slots=>{
    const key=slots.map(s=>s.items.filter(i=>i.type==='strength').map(i=>i.name).join(',')).join('|');
@@ -1396,7 +1399,7 @@ function generatedSessions(c,w){
   if(c.runningTargetDate)for(let i=out.length-1;i>=0;i--){const session=out[i];if(session.eventDate)continue;const date=generalSessionDate(c,w,session.day),after=(Date.parse(date+'T12:00:00Z')-Date.parse(c.runningTargetDate+'T12:00:00Z'))/86400000;const raceGoal=String(c.runGoal).toLowerCase(),restDays=raceGoal==='marathon'?7:raceGoal==='half'?3:1;if(after>0&&after<=restDays){session.runs=[];session.run=false;session.hybridNotes.push('Post-race recovery: omit scheduled running and reassess recovery before returning.');if(raceGoal==='marathon')session.ex=[];if(!session.ex.length)out.splice(i,1)}}
   // A strength meet is a whole-athlete event. Its immediate recovery also protects running.
   if(c.strengthTargetDate)for(let i=out.length-1;i>=0;i--){const session=out[i];if(session.eventDate)continue;const date=generalSessionDate(c,w,session.day),after=(Date.parse(date+'T12:00:00Z')-Date.parse(c.strengthTargetDate+'T12:00:00Z'))/86400000;if(after>0&&after<=2){session.runs=[];session.run=false;session.hybridNotes.push('Post-meet rest: review actual recovery before returning to running.');if(!session.ex.length)out.splice(i,1)}}
-  const fitted=c.visitConstraints?visitPlanner.fitSessions(c,ensureKnownLiftLoads(out,c)):{sessions:ensureKnownLiftLoads(out,c),warnings:['Confirm complete visit windows before approving this new coaching policy.'],blockingIssues:['Complete visit windows are unconfirmed.'],feasible:false};
+  const fitted=c.visitConstraints||Number(c.sessionTimeVersion)>=1?visitPlanner.fitSessions(c,ensureKnownLiftLoads(out,c)):{sessions:ensureKnownLiftLoads(out,c),warnings:['Confirm complete visit windows before approving this new coaching policy.'],blockingIssues:['Complete visit windows are unconfirmed.'],feasible:false};
   if(Number(c.strengthEvidenceVersion)>=1){
    const unresolved=['Squat','Bench','Deadlift'].filter(l=>Number(c[l.toLowerCase()])>0&&!maintenancePolicy(c,l)&&!(c.lightLifts||[]).some(x=>String(x).toLowerCase()===l.toLowerCase())&&(c.strengthCalibration?.lifts?.[l]?.trainingLevel==='clarification-required'||!hasTrainingExperience(c)&&c.strengthCalibration?.lifts?.[l]?.trainingLevel!=='performance-supported'));
    if(unresolved.length){const issue='Clarify experience/current main-lift evidence for '+unresolved.join(', ')+'. Missing experience is not proof of beginner status; this provisional draft is not approved.';fitted.feasible=false;fitted.blockingIssues.push(issue);fitted.warnings.push(issue);}

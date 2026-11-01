@@ -1,5 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
-const {buildNewProgramme}=require('../src/coach-adapters.js');
+// Frozen Stage 1–6 duration contract. Latest-policy feasibility is tested separately.
+const adapters=require('../src/coach-adapters.js'),buildNewProgramme=(c,o)=>adapters.buildNewProgramme({...c,sessionTimeVersion:0},o);
 const {prepareNewProgramme}=require('../src/coach-engine.js');
 const clock={now:()=>Date.parse('2026-10-30T12:00:00Z')};
 const fresh=require('./fixtures/five-scenario-round-two-inputs.json');
@@ -35,7 +36,7 @@ test('browser-global modules generate the exact same v2 prescriptions as Node ca
  const vm=require('node:vm'),sandbox=vm.createContext({Date,console});
  for(const file of ['running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+file+'.js','utf8'),sandbox,{filename:file+'.js'});
  const config=fresh.cases.find(c=>c.id==='H').config;
- const browser=sandbox.LHRFCoachAdapters.buildNewProgramme(config,clock),native=buildNewProgramme(config,clock);
+ const browser=sandbox.LHRFCoachAdapters.buildNewProgramme(config,clock),native=adapters.buildNewProgramme(config,clock);
  assert.equal(JSON.stringify(browser),JSON.stringify(native));
 });
 test('version-two progression excludes approved load changes from an older programme',()=>{

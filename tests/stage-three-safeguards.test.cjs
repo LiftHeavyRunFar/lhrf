@@ -1,8 +1,9 @@
+// Replay the frozen Stage 1–6 duration policy; Stage 7 latest-policy checks live in flexible-session-time.test.cjs.
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const coach=require('../src/coach-engine.js'),adapters=require('../src/coach-adapters.js'),intake=require('../src/coach-intake.js');
 const {fitSessions}=require('../src/coach-constraints.js'),{dateOf,inspect}=require('../scripts/audit-stage-two.cjs');
 const fixture=require('./fixtures/stage-two-new-athletes.json'),copy=x=>JSON.parse(JSON.stringify(x)),now=()=>Date.parse(fixture.clock);
-const profile=id=>copy(fixture.cases.find(p=>p.id===id)),previous=id=>require('../docs/qa/stage-two/programmes/'+id+'.json');
+const profile=id=>{const p=copy(fixture.cases.find(p=>p.id===id));p.config.sessionTimeVersion=0;return p},previous=id=>require('../docs/qa/stage-two/programmes/'+id+'.json');
 const generate=(id,patch={})=>{const p=profile(id);return adapters.buildNewProgramme({...p.config,...patch},{data:p.historicalData,now})};
 const doses=p=>p.weeks.map(w=>w.sessions.map(s=>[s.day,s.ex,s.runs]));
 const main=(w,lift)=>w.sessions.flatMap(s=>s.ex||[]).filter(e=>e[5]?.category==='primary'&&(!lift||e[0]===lift));

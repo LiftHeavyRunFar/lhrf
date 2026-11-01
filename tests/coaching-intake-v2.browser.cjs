@@ -24,7 +24,9 @@ async function contextFor(browser){
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date(stamp)});
  await page.route('http://intake.test/**',route=>{const p=new URL(route.request().url()).pathname,file=path.join(__dirname,'..',p==='/'?'index.html':p);return route.fulfill({body:fs.readFileSync(file),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.png')?'image/png':'text/html'})});
  await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture:legacy()});
- await page.goto('http://intake.test/');const before=await read(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
+ await page.goto('http://intake.test/');
+ // Preserve frozen Stage 1–6 UI acceptance under its original duration policy. Latest policy has a separate mobile suite.
+ await page.evaluate(()=>{const prepare=LHRFCoach.prepareNewProgramme;LHRFCoach.prepareNewProgramme=(c,o)=>prepare({...c,sessionTimeVersion:0},o)});const before=await read(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
  await page.evaluate(()=>document.getElementById('restartOnboardingLink').click());return {context,page,before,errors};
 }
 async function enter(page,id){
@@ -37,6 +39,7 @@ async function enter(page,id){
  await page.locator('#frNext').click();
  for(const [field,value]of Object.entries({frDays:c.availableDays.length,frSquat:c.squat,frBench:c.bench,frDeadlift:c.deadlift,frRuns:c.runs,frStrengthVisits:v.strengthVisits,frLongDay:c.longRunDay||'Sun'}))await set(page,field,value);
  for(const day of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])await page.locator('.fr-day[value="'+day+'"]').setChecked(c.availableDays.includes(day));
+ await page.getByText('Hard time limits and separate visits (optional)',{exact:true}).click();
  for(const day of c.availableDays){await page.locator('.fr-double[value="'+day+'"]').setChecked(v.combinedDays.includes(day));await page.locator('.fr-separate[value="'+day+'"]').setChecked(v.separateDays.includes(day));await page.locator('.fr-minute[data-day="'+day+'"]').fill(String(v.minutes[day]));}
  await set(page,'frGapHours',v.minimumGapHours||6);
  if(c.orderedGoals){if(!await page.locator('#frAfterWrap').evaluate(el=>el.open))await page.locator('#frAfterWrap > summary').click();const next=c.orderedGoals[1];for(const [key,field]of [['runs','Runs'],['bench','Bench'],['squat','Squat'],['deadlift','Deadlift'],['strengthVisits','StrengthVisits']])await set(page,'frAfter'+field,next[key]);}

@@ -1,10 +1,11 @@
+// Replay the frozen Stage 1–6 duration policy; Stage 7 latest-policy checks live in flexible-session-time.test.cjs.
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const coach=require('../src/coach-engine.js'),adapters=require('../src/coach-adapters.js');
 const {allocate}=require('../src/coach-constraints.js');
 const fixture=require('./fixtures/five-scenario-round-three-inputs.json');
 const saved=require('./fixtures/pre-taylor-saved-programmes.json');
 const clone=x=>JSON.parse(JSON.stringify(x)),now=()=>Date.parse(fixture.clock);
-const taylor=()=>clone(fixture.cases.find(p=>p.id==='O'));
+const taylor=()=>{const p=clone(fixture.cases.find(p=>p.id==='O'));p.config.sessionTimeVersion=0;return p};
 const mains=s=>(s.ex||[]).filter(e=>e[5]?.category==='primary');
 
 test('Taylor uses the longer visits, separates lower lifts and retains the full health-running dose',()=>{

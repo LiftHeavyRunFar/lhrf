@@ -1,7 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const adapters=require('../src/coach-adapters.js'),constraints=require('../src/coach-constraints.js');
-const original=require('./fixtures/original-three-engine-inputs.json'),fresh=require('./fixtures/stage-two-new-athletes.json');
+const original=freeze(require('./fixtures/original-three-engine-inputs.json')),fresh=freeze(require('./fixtures/stage-two-new-athletes.json'));
 const {dateOf}=require('../scripts/audit-stage-two.cjs');
+// Replay the frozen Stage 1–6 duration policy; Stage 7 latest-policy checks live in flexible-session-time.test.cjs.
+function freeze(f){return ({...f,cases:f.cases.map(r=>({...r,config:{...r.config,sessionTimeVersion:0}}))})}
+
 const clone=x=>JSON.parse(JSON.stringify(x)),now=f=>()=>Date.parse(f.clock),lower=s=>(s.ex||[]).filter(e=>e[5]?.category==='primary'&&/squat|deadlift/i.test(e[0])&&e[4]>=8);
 test('original strength benchmarks regain weekly recovery without losing complete visits, progression or competition preparation',()=>{
  for(const id of ['O1','O3']){
