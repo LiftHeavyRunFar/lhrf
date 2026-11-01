@@ -31,6 +31,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -146,3 +148,7 @@ jobs:
       - name: Test flexible time estimates and shortened workouts on mobile
         if: ${{ !cancelled() }}
         run: node tests/flexible-session-time.browser.cjs
+
+      - name: Test verified replacement, interruption, rollback and race consent on mobile
+        if: ${{ !cancelled() }}
+        run: node tests/programme-replacement.browser.cjs
