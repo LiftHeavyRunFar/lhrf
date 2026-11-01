@@ -141,6 +141,12 @@ function prepareNewProgramme(input={},options={}){
   c.coachingSafeguardsVersion=1;
   c.strengthEvidenceVersion=1;
   c.runningEvidenceVersion=1;
+  c.marathonTaperRhythmVersion=1;
+  // Freeze current recovery signals for this proposal; projected sessions are
+  // never evidence of completed practice or recovery. Saved plans do not ingest.
+  const taperRecovery=createEngine({data:options.data,now:options.now}).reviewRecovery();
+  const taperNow=typeof options.now==='function'?Number(options.now()):Number(options.now)||Date.now();
+  c.marathonTaperRhythmRecovery={symptoms:taperRecovery.symptoms||!!(options.data?.sessionFeedback||[]).some(x=>x.discomfort==='yes'&&Date.parse(x.date)<=taperNow&&Date.parse(x.date)>=taperNow-10*86400000),repeatedLowRecovery:taperRecovery.lowDays>=2};
   c.sessionTimeVersion=input.sessionTimeVersion===0?0:1;
   if(c.sessionDurationPreference){const p=c.sessionDurationPreference;if(!['typical','varies','unspecified'].includes(p.mode)||(p.mode==='typical'&&(!Number.isFinite(p.minutes)||p.minutes<=0)))throw new RangeError('Invalid typical session duration preference.');}
   for(const limits of [c.visitConstraints?.minutes,c.visitConstraints?.separateMinutes])for(const n of Object.values(limits||{}))if(n!==null&&n!==undefined&&n!==''&&(!Number.isFinite(n)||n<=0))throw new RangeError('Invalid hard session limit.');
