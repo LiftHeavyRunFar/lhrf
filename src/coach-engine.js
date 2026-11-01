@@ -20,11 +20,46 @@ function beginnerPolicy(c,lift){
  return broaderPolicy(c)&&(['beginner','novice','returning'].includes(age)||(generalPolicy(c)&&!['intermediate','advanced'].includes(age)));
 }
 function effortFraction(reps,rpe){const curve=[1,.955,.922,.892,.863,.837,.811,.786,.762,.739,.707,.68],n=Math.max(1,Math.min(12,reps+10-rpe)),i=Math.floor(n)-1;return curve[i]+((curve[Math.min(i+1,11)]-curve[i])*(n-Math.floor(n)))}
+// Explicit proposal-only review. Original logs are never rewritten; an approximate
+// retrospective effort can describe practice but cannot establish a maximum.
+function reviewedStrengthOptions(c,options){
+ if(options.performanceReviews===undefined)return options;
+ if(!Array.isArray(options.performanceReviews))throw new RangeError('Performance reviews must be an array.');
+ const sets=JSON.parse(JSON.stringify(options.data?.sets||[])),audit=[],used=new Set();
+ const now=typeof options.now==='function'?Number(options.now()):Number(options.now)||Date.now();
+ for(const review of options.performanceReviews){
+  const m=review?.match;
+  if(!review||!['rpe','execution'].includes(review.kind)||review.source!=='athlete-confirmation'||!m||
+   typeof m.date!=='string'||!Number.isFinite(Date.parse(m.date))||Date.parse(m.date)>now||
+   typeof m.exercise!=='string'||!Number.isFinite(m.weight)||!Number.isInteger(m.reps)||typeof m.role!=='string'||
+   Object.keys(m).some(k=>!['date','exercise','weight','reps','role','set'].includes(k))||!Object.hasOwn(review,'original'))throw new RangeError('A review requires an exact original performance and explicit athlete confirmation.');
+  if(review.kind==='rpe'&&(review.value!==null&&(!Number.isFinite(review.value)||review.value<1||review.value>10)||typeof review.approximate!=='boolean'||review.purpose!==undefined&&!['speed','practice'].includes(review.purpose)))throw new RangeError('Supply a valid reviewed RPE, uncertainty and purpose.');
+  if(review.kind==='execution'&&!['competition-paused','touch-and-go','unconfirmed'].includes(review.value))throw new RangeError('Invalid reviewed execution.');
+  const matched=sets.map((row,i)=>({row,i})).filter(({row})=>Object.entries(m).every(([key,value])=>row[key]===value));
+  if(!matched.length)throw new RangeError('Reviewed performance was not found in the original logs.');
+  for(const {row,i}of matched){
+   const key=i+':'+review.kind;
+   if(used.has(key)||(row[review.kind]??null)!==review.original)throw new RangeError('Review is duplicate or does not match the original logged value.');
+   used.add(key);
+   row.evidenceReview={...row.evidenceReview,[review.kind]:{source:review.source,original:review.original,value:review.value,...(review.kind==='rpe'?{approximate:review.approximate,purpose:review.purpose||'practice'}:{})}};
+   row[review.kind]=review.value;
+   if(review.kind==='execution')row.competition=review.value==='competition-paused';
+  }
+  audit.push({...JSON.parse(JSON.stringify(review)),matchedRows:matched.length});
+ }
+ // A fresh explicit review must not reuse corroboration or practice cached in a
+ // previous proposal when the newly reviewed evidence is insufficient.
+ delete c.strengthPractice;
+ c.strengthEvidenceReview={version:1,reviews:audit,originalLogsUnchanged:true};
+ return {...options,data:{...options.data,sets}};
+}
 // Per-lift evidence is captured at proposal creation, never learned on saved-plan reload.
 function calibrateStrengthEvidence(c,options){
  const now=typeof options.now==='function'?Number(options.now()):Number(options.now)||Date.now(),byLift={};
+ const priorCalibration=c.strengthCalibration;
+ if(options.performanceReviews!==undefined)delete c.strengthCalibration;
  const practice={};
- for(const row of options.data?.sets||[]){const lift=['Squat','Bench','Deadlift'].find(l=>l.toLowerCase()===String(row.exercise).toLowerCase()),when=Date.parse(row.date),kg=Number(row.weight),reps=Number(row.reps),rpe=Number(row.rpe);if(!lift||row.role!=='straight'||row.failed||row.completed===false||!Number.isFinite(when)||when>now||now-when>28*86400000||!(kg>0)||!Number.isInteger(reps)||reps<1||reps>8||!(rpe>=3&&rpe<=6))continue;const previous=practice[lift];if(!previous||row.date.slice(0,10)>previous.date.slice(0,10)||row.date.slice(0,10)===previous.date.slice(0,10)&&Math.abs(rpe-5.5)<Math.abs(previous.rpe-5.5))practice[lift]={kg,reps,rpe,date:row.date,method:'Recent light practice only; not a maximum or an experience classification'};}
+ for(const row of options.data?.sets||[]){const lift=['Squat','Bench','Deadlift'].find(l=>l.toLowerCase()===String(row.exercise).toLowerCase()),when=Date.parse(row.date),kg=Number(row.weight),reps=Number(row.reps),rpe=Number(row.rpe);if(!lift||row.role!=='straight'||row.failed||row.warmup||row.optional||row.techniqueFailed||row.completed===false||!Number.isFinite(when)||when>now||now-when>28*86400000||!(kg>0)||!Number.isInteger(reps)||reps<1||reps>8||!(rpe>=3&&rpe<=6))continue;const previous=practice[lift];if(!previous||row.date.slice(0,10)>previous.date.slice(0,10)||row.date.slice(0,10)===previous.date.slice(0,10)&&Math.abs(rpe-5.5)<Math.abs(previous.rpe-5.5))practice[lift]={kg,reps,rpe,date:row.date,method:'Recent light practice only; not a maximum or an experience classification',...(row.evidenceReview?.rpe?{reviewEvidence:row.evidenceReview.rpe}:{})};}
  if(Object.keys(practice).length)c.strengthPractice=practice;
  for(const lift of ['Squat','Bench','Deadlift']){
   if(c.recoveryEvidence&&!c.recoveryEvidence.cleared&&!c.recoveryEvidence.resolved&&(c.recoveryEvidence.affectedLifts||[]).includes(lift))continue;
@@ -32,15 +67,15 @@ function calibrateStrengthEvidence(c,options){
   for(const row of options.data?.sets||[]){
    const when=typeof row.date==='string'?Date.parse(row.date):NaN,kg=Number(row.weight),reps=Number(row.reps),rpe=Number(row.rpe),name=String(row.exercise||'').trim().toLowerCase(),role=row.role||row.category;
    const exact=name===lift.toLowerCase(),confirmedAlias=lift==='Bench'&&/^(competition.paused bench|competition bench|paused bench press)$/.test(name)&&row.competition===true;
-   if(!(exact||confirmedAlias)||['backoff','back-off','accessory','optional','warmup','warm-up','speed'].includes(role)||row.optional||row.completed===false||row.failed===true||row.warmup===true||row.techniqueFailed===true||!Number.isFinite(when)||when>now||now-when>42*86400000||!(kg>0)||!Number.isInteger(reps)||reps<1||reps>8||!Number.isFinite(rpe)||rpe<6||rpe>9.5)continue;
-   const estimate=kg/effortFraction(reps,rpe),day=new Date(when).toISOString().slice(0,10),entry={date:row.date,exercise:row.exercise,kg,reps,rpe,role:role||'unspecified',estimate,execution:row.execution||null,competitionConfirmed:row.competition===true||row.execution==='competition-paused'};
+   if(!(exact||confirmedAlias)||row.evidenceReview?.rpe?.approximate||['backoff','back-off','accessory','optional','warmup','warm-up','speed'].includes(role)||row.optional||row.completed===false||row.failed===true||row.warmup===true||row.techniqueFailed===true||!Number.isFinite(when)||when>now||now-when>42*86400000||!(kg>0)||!Number.isInteger(reps)||reps<1||reps>8||!Number.isFinite(rpe)||rpe<6||rpe>9.5)continue;
+   const estimate=kg/effortFraction(reps,rpe),day=new Date(when).toISOString().slice(0,10),entry={date:row.date,exercise:row.exercise,kg,reps,rpe,role:role||'unspecified',estimate,execution:row.execution||null,competitionConfirmed:row.competition===true||row.execution==='competition-paused',...(row.evidenceReview?{reviewEvidence:row.evidenceReview}:{})};
    const previous=sessions.get(day);
    if(!previous||entry.role==='top'&&previous.role!=='top'||(entry.role==='top')===(previous.role==='top')&&entry.estimate>previous.estimate)sessions.set(day,entry);
   }
   const evidence=[...sessions.values()].sort((a,b)=>a.date.localeCompare(b.date)).slice(-3);
   if(evidence.length<2)continue;
   const estimates=evidence.map(e=>e.estimate).sort((a,b)=>a-b),observed=estimates[Math.floor(estimates.length/2)],consistent=estimates.at(-1)/estimates[0]<=1.2;
-  const previous=c.strengthCalibration?.lifts?.[lift];
+  const previous=priorCalibration?.lifts?.[lift];
   const originalSource=previous&&JSON.stringify(previous.evidence)===JSON.stringify(evidence)?previous.sourceBaseline:source;
   const typedMainEvidence=evidence.every(e=>e.role==='top'||e.role==='straight'&&e.competitionConfirmed);
   const adopted=consistent?Number((originalSource>0&&!typedMainEvidence?Math.min(originalSource*1.05,observed):observed).toFixed(3)):null;
@@ -122,7 +157,7 @@ function prepareNewProgramme(input={},options={}){
    c.strengthModes={...Object.fromEntries(['Squat','Bench','Deadlift'].filter(lift=>lift!==primary).map(lift=>[lift,'maintenance'])),...explicit};
    c.strengthModePolicy='Single-lift competition defaults other lifts to maintenance; explicit per-lift objectives override this default.';
   }
-  calibrateProposalStrength(c,options);
+  calibrateProposalStrength(c,reviewedStrengthOptions(c,options));
   calibrateRunningReturn(c,options);
  }
  if(c.coachingRulesVersion>=2&&c.strengthTargetDate&&c.strengthTargetDate===c.runningTargetDate)throw new RangeError('Strength and running events on the same date need an individual timing review before generating this programme.');
@@ -1097,6 +1132,11 @@ function generalStrengthExposureV2(c,w,lift,occurrence,day,baseline,deload,phase
  if(['speed','technique'].includes(role)&&!finalHeavy){
   meta.trainingRole=role;
   const wave=[.50,.55,.60][Math.max(0,w-1)%3];
+  const practice=c.strengthPractice?.[lift];
+  if(role==='speed'&&practice?.reviewEvidence?.purpose==='speed'){
+   meta.practiceEvidence={...practice,suggestionBasis:'fixed-percentage-wave',waveFraction:wave,velocityMeasured:false,automaticIncrease:false};
+   meta.calibrationReview='Recent same-exercise speed practice is shown as evidence, not a new maximum or measured bar speed. The percentage wave is not calibrated to that practice; review warm-ups, speed and fatigue rather than automatically increasing the load.';
+  }
   return {role,reducedSupport:near&&days<=14,ex:[entry(near&&days<=14?3:5,2,5.5,'straight',lift==='Bench'?wave:wave+.05)],note:'Speed / technique: '+(near?'competition setup and commands':'repeatable positions')+', then accelerate every double. Use 60–90 seconds between sets; extend rest if needed for quality. Load is a starting suggestion, not a speed test. Stop the set or reduce load when speed or position deteriorates; no grinders.'};
  }
  const single=near&&!variation&&['heavy','strength'].includes(role)&&(hasTrainingExperience(c)||!Number(c.strengthEvidenceVersion)||proof?.singlesSupported);
