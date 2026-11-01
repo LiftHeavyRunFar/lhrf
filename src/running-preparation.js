@@ -123,6 +123,7 @@ function qualityRun(km,total,p,c,w,until,phase){
  // Marathon and half pace are slower than threshold but are still counted as
  // quality kilometres. A faster aspiration does not set prescribed work pace.
  let kind=library.selectKind({week:w,goal,weeksToRace:until});
+ if(Number(c.runningEvidenceVersion)>=1&&Number(c.runs)===2&&['5k','10k'].includes(goal))kind='race-pace-repeats';
  if(goal==='marathon'&&phase==='Specific preparation')kind='race-pace-repeats';
  const raceSpecific=kind==='race-pace-repeats';
  const warm=round(Math.min(2,km*.25)),cool=round(Math.min(1.5,km*.18));
@@ -202,6 +203,11 @@ function assess(c,w=1,options={}){
  if(lowerFatigue)factor=Math.min(factor,.65);
  const base=h.base||Math.min(6,count*2);
  let requestedKm=round(base*factor);
+ if(Number(c.runningEvidenceVersion)>=1&&c.runningReturnObservation){
+  const observation=c.runningReturnObservation,cap=Math.min(base,Number(observation.initialWeeklyCeilingKm)*1.05**Math.max(0,w-1));
+  requestedKm=Math.min(requestedKm,round(cap));
+  warnings.push('Post-marathon running return is provisional: '+observation.observedWeekKm+' km was recorded versus '+observation.reportedHabitualKm+' km reported habitual mileage. The low recovery week is not a normal-capacity estimate; confirm actual recovery before quality and review completed training before extending the return.');
+ }
  if(goal==='fitness'&&!supportEndurance)requestedKm=round(Math.min(requestedKm,count*(lowerFatigue?8:6)));
  if(lowerFatigue)warnings.push('Lower-body fatigue remains unresolved: keep running easy with a reduced dose, and confirm recovery before restoring normal running volume. The week number does not clear this evidence.');
  const enduranceSpecific=(goal==='marathon'&&raceWeek!==null&&w>=Math.max(5,priorityFrom+4)&&until<=10)||(goal==='half'&&w>=5&&until!==null&&until<=8);
@@ -241,9 +247,10 @@ function assess(c,w=1,options={}){
  const distances=Array.from({length:count},(_,i)=>count===1?round(Math.min(requestedKm,longDistanceLimit,longTimeKm)):i===1?longKm:otherKm);
  // Exact rounding stays on an ordinary easy run rather than inflating the long run.
  if(count>1)distances[count-1]=round(distances[count-1]+requestedKm-sum(distances));
- const qualityAllowed=baselineCurrent&&h.base>=12&&count>=3&&!noLong&&!deload&&(!refined||!recovery.longRunRecoveryReview&&!recovery.longRunDurationReview&&!blocking.length)&&goal!=='fitness'&&phase!=='Recovery';
+ const shortTwoRun=Number(c.runningEvidenceVersion)>=1&&count===2&&['5k','10k'].includes(goal);
+ const qualityAllowed=baselineCurrent&&h.base>=12&&(count>=3||shortTwoRun)&&!noLong&&!deload&&(!refined||!recovery.longRunRecoveryReview&&!recovery.longRunDurationReview&&!blocking.length)&&goal!=='fitness'&&phase!=='Recovery';
  const runs=distances.map((km,i)=>easyRun(km,p,i===1&&!noLong?'long-run':'easy-run'));
- if(qualityAllowed){const q=qualityRun(distances[0],sum(distances),p,c,w,until,phase);if(q)runs[0]=q;}
+ if(qualityAllowed){const q=qualityRun(distances[0],sum(distances),p,c,w,until,phase);if(q){if(c.runningReturnObservation){q.recoveryReviewRequired=true;q.coachNote=(q.coachNote||'')+' This is conditional on comfortable easy running and actual post-marathon recovery. If not confirmed, replace this session with easy running of no greater duration; do not make the work up.';}runs[0]=q;}}
  // Specific long-run pace rehearsal replaces the midweek quality, so this is
  // still one demanding running stimulus. Retain meaningful easy support.
  if(goal==='marathon'&&phase==='Specific preparation'&&qualityAllowed&&w%3===1&&longKm>=20){
