@@ -1,0 +1,86 @@
+Priya independent QA: Garmin local activity import
+================================================
+Reviewer identity: Priya is an independent AI QA agent, not a human sign-off.
+Baseline: production main 2511fe2a53270d3b88c34359c588462f789acb4f.
+Branch under test: fix/garmin-local-import. Synthetic fixtures only.
+No Garmin credentials, personal activities, account requests or watch transfers used.
+
+Result: PASS for the bounded local importer scope and all eight requested scenarios.
+
+Reproduce before
+----------------
+node scripts/reproduce-local-import-baseline.cjs
+This deliberately asserts known defects from git show of the pinned baseline in an
+isolated VM. It does not execute the fixed importer or change training storage.
+The same synthetic paused FIT contains Oct30 07:00 UTC, 6km, timer30min, elapsed40min,
+moving28.333min, averageHR180. Baseline returns5.9km,40min,nullHR; imports dated Nov1;
+identical bytes create2 rows; save(false) still reports success; corrupt CRC accepted.
+
+Reproduce after
+---------------
+node --test tests/local-activity-import.test.cjs
+Result:10 passed,0 failed,0 skipped after the final parser change.
+Cases:
+1. Historical paused FIT retains actual UTC date, session totals, timer/elapsed/moving,
+   pace based on timer, unsigned180bpm average and190bpm maximum.
+2. Exact-byte SHA-256 remains stable after filename change; duplicate merge rejected.
+3. Corrupt/truncated, compressed timestamp, developer-field and workout FIT rejected.
+4. Missing optional FIT totals use labelled record/elapsed/HR fallbacks; missing timer
+   and moving values remain null. No distance undercount from first recorded100m.
+5. Multiple FIT sessions rejected instead of silently combining/selecting totals.
+6. Unsupported extension, unavailable secure hashing and size limit fail safely.
+7. Friday activity can associate with Saturday; unconfirmed/partial/interrupted/
+   modified outcomes create no completion. Explicit completion retains actual Friday.
+8. Existing similar Garmin API/manual entries require review; originals preserved.
+9. Persistence false/exception leaves stored and in-memory records unchanged; retry
+   publishes one cloned state only after successful persistence.
+10. Stale/occupied targets and invalid outcomes cannot mutate state; mixed-day run
+    completion uses run component, never strength parent.
+
+node --test tests/local-activity-import.test.cjs tests/garmin-import.test.cjs
+  tests/garmin-planned-links.test.cjs tests/training-review.test.cjs
+Run as one command line. Result:26 passed,0 failed,0 skipped.
+Existing API dedup/manual enrichment, early/same/late links, DST, mixed-day strength
+isolation, atomic batch collision handling and history integrity remain passing.
+
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/local-activity-import.browser.cjs
+Result:PASS after the final TCX zero-lap HR change.
+Real Chromium at390x844, touch/mobile, Europe/London, localhost service worker.
+Tests actual Settings UI/file selection/review/save; no training changes before save;
+actual TCX/GPX DOMParser parsing; historical dates; pause semantics;180bpm HR;
+storage quota failure/retry comparing both storage and app state; renamed duplicate;
+one-day-early partial association versus explicit full completion; original API,
+strength, programme, overrides, decisions and history preservation; corrupt/truncated/
+developer FIT rejected; missing HR null; malformed XML/date/coordinates rejected;
+zero-duration paused lap keeps authoritative totals and valid HR; missing lap totals
+rejected; GPX segment gaps not bridged. New modules are cached; offline reload and
+GPX parse/review/save succeed without completing the planned session.
+
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/garmin-import.browser.cjs
+Result:PASS. Existing secure mocked API handoff, review, planned linking, early date,
+reload/unlink, strength isolation, duplicates and storage failure behavior preserved.
+
+QA-discovered corrections
+------------------------
+The old local file card was unreachable: final legacy navigation maps Running to
+Train. The implementation now moves that same card into Settings; mobile gate uses
+the visible Settings controls. No alternate hidden test-only route is needed.
+Zero-duration TCX laps without HR originally erased valid weighted lap HR; corrected
+and now asserted180bpm with a zero-duration final lap.
+
+Scope/limitations accepted
+-------------------------
+The FIT decoder deliberately supports a strict bounded subset. Unsupported compressed
+timestamps/developer fields/multisession are safe rejections, not promised support;
+export a single running TCX instead. This trade-off avoids a full SDK/profile payload.
+TCX elapsed is a trackpoint span and moving is unavailable. A span shorter than the
+authoritative timer is deliberately rejected rather than guessed. GPX distance is an
+estimate and its pace uses elapsed time, including pauses. Raw files are not archived.
+Exact-byte identity cannot prove cross-format identity: near matches require manual
+acknowledgement, preserving existing data. No migration, refresh or post-save outcome/
+link editor is included. Explicit completed is athlete confirmation, not compliance
+analysis. No physical Garmin/Forerunner165 end-to-end claim is made.
+
+The parent implementation agent separately records whole-suite and other browser
+regressions, final source-scope verification and final commit SHA. This report's
+counts above are the independent checks actually executed by Priya.

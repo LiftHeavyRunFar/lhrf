@@ -1,0 +1,117 @@
+Garmin local activity import correctness
+=======================================
+Scope
+-----
+Baseline: production main 2511fe2a53270d3b88c34359c588462f789acb4f.
+Only the local FIT/TCX/GPX import path, its presentation, persistence adapter,
+offline shell and regression gates change. No coaching-engine, generation,
+November programme, private Garmin bridge, API-import logic or credentials change.
+No existing activity records are migrated or rewritten.
+
+Workflow
+--------
+Settings -> Import Garmin activity -> choose file -> Import activity -> review
+actual timestamp, distance, duration semantics and HR -> optional planned run
+association (within seven calendar days) -> choose outcome -> Save reviewed activity.
+The old file card was unreachable through legacy Running navigation, which redirects
+to Train. The existing card is now moved into Settings rather than duplicated.
+
+Parsing and identity
+--------------------
+FIT: strict single running activity/session, 12/14-byte header, supported protocol,
+exact declared length, header/file CRC, bounded field definitions and message sizes.
+Unsigned HR is decoded correctly. Prefer session start/distance/timer/elapsed/moving
+and HR totals. Record cumulative distance/start/elapsed/HR are fallbacks with
+warnings where appropriate. Lap summaries are retained when usable. Missing moving
+time remains null. Average HR fallback is explicitly an unweighted sample mean.
+Compressed timestamp and developer-field FIT, multi-session/multisport, workout,
+course, concatenated and corrupt files fail closed; export a running TCX instead.
+No partial data from a failed parse is offered for saving.
+
+TCX: single Running activity, start from first lap (then activity ID/trackpoint),
+authoritative lap distance and timer sums, separate trackpoint-derived elapsed
+span, null moving time. Explicit zero laps are allowed; missing or negative totals
+are rejected. Inconsistent short trackpoint spans fail rather than inventing time.
+GPX: one timed track; coordinate distance calculated within segments only. Elapsed
+span includes pauses/gaps; timer/moving are unavailable. GPX cannot certify sport.
+XML entities/DOCTYPE, malformed XML, missing timezone/timestamp and invalid GPX
+coordinates are rejected. Original UTC timestamp is retained after normalisation.
+
+SHA-256 of exact bytes supplies sourceFileHash and sha256: sourceActivityId.
+Renaming identical bytes cannot bypass duplicate prevention. A duplicate is checked
+at review and again at commit. Existing similar API/manual/cross-format activities
+require acknowledgement before a separate row can be added; they are never updated.
+Legacy imports with the same filename also trigger review because the old importer
+stored import date instead of activity date. Hashes cannot identify all alternate
+exports of an activity; cross-format reconciliation remains manual.
+
+Atomic review and planned outcomes
+---------------------------------
+Parsing/review do not change training data. Save merges into a cloned current state,
+revalidates duplicates and planned target, and persists in one existing localStorage
+write. The global app state is published only after persistence succeeds. The shared
+save helper accepts an optional candidate while retaining transaction and other-tab
+guards. Failed storage leaves disk and in-memory training state unchanged; review
+stays available for retry/cancel. File changes invalidate an open review.
+
+Association is stored in activityAssociation with planned date/prescription snapshot;
+the actual date remains the recorded activity timestamp. unconfirmed, partial,
+interrupted and modified outcomes create no sessionId or completion. Only the explicit
+full prescribed-run confirmation creates a run-only completedWorkouts entry, with
+actual date and separate plannedDate. Existing completion occupancy is rechecked;
+combined-day strength is not completed. Linking is blocked during live/pending runs.
+The history UI displays the saved local outcome, association and separate durations.
+
+Dependency and offline assessment
+---------------------------------
+Assessed maintained official garmin/fit-javascript-sdk (@garmin/fitsdk 21.218.0).
+Its source is approximately 1.1 MB; profile.js alone is 1,027,322 bytes. It can run
+locally, but vendoring the full profile/decoder and integrating its module loading
+would substantially enlarge this bounded patch. No SDK code/package is added.
+The strict limited decoder fails unsupported variants clearly instead. The two new
+browser/Node modules total about 20 KB unminified, add no runtime packages, make no
+network requests, and are included in the versioned PWA shell. File identity requires
+WebCrypto in a secure context (production HTTPS or localhost). XML uses DOMParser.
+
+Validation and reproduction
+---------------------------
+Use only synthetic fixtures in tests/local-activity-fixtures.cjs.
+node scripts/reproduce-local-import-baseline.cjs  (asserts baseline defects)
+node --test tests/local-activity-import.test.cjs
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/local-activity-import.browser.cjs
+npm test
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/garmin-import.browser.cjs
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/running-flow.browser.cjs
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/programme-replacement.browser.cjs
+For the real service-worker upgrade regression, archive the baseline outside the
+checkout and set LHRF_PREVIOUS_ROOT to that directory before running
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/shared-update.browser.cjs.
+The dedicated local import browser test also checks offline parsing and saving.
+
+Before: fixture session6km/timer30min/elapsed40min/HR180 became5.9km/40min/nullHR;
+timestamp became import date; duplicate bytes created two rows; failed save reported
+success; corrupt CRC was accepted.
+After:6km/timer30min/elapsed40min/moving28.333min/HR180; actual Oct30 timestamp;
+renamed duplicate rejected; failed persistence changes nothing; corrupt FIT rejected.
+A Friday activity associated with Saturday remains Friday. Partial association does
+not complete Saturday; explicit full completion does. See independent Priya QA report
+for final regression counts and checks. Priya is an AI QA agent, not a human sign-off.
+
+Remaining limitations / integration route
+----------------------------------------
+Local imports are summaries, not a raw-file archive or full interval compliance
+analysis. Original files should be retained separately; hashes/provenance and usable
+lap summaries are saved. No automatic cross-format merge, existing-record migration,
+re-import refresh or post-save outcome/link editor is added. Confirm a full outcome
+only when justified; correcting an already saved outcome needs a separate reviewed
+edit feature. Large files remain capped at25MB and parse in the foreground.
+Unsupported FIT variants require TCX; TCX elapsed spans may omit final unrecorded time;
+GPX has coordinate estimates and elapsed-only pace. No moving duration is invented.
+Existing private API importer behavior and existing records remain unchanged.
+
+Personal use: Garmin Connect export -> reviewed local import is an offline fallback;
+the owner-private API importer remains the convenient foreground summary route once
+its authenticated live operation is verified. Keep Intervals.icu -> Garmin Connect for
+planned workout export. No live account/watch delivery is tested by these fixtures.
+Commercial direct integration should separately use Garmin-approved APIs/agreements;
+this local correctness patch needs no external account registration or API access.
