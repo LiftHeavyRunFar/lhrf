@@ -1,5 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const coach=require('../src/coach-engine'),adapters=require('../src/coach-adapters'),install=require('../src/programme-install');
+const {fullInventory,typedAnchors}=require('./equipment-fixtures.cjs');
 const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const base={startDate:'2027-01-04',weeks:12,event:'bench',priority:'Bench',trainingAge:'advanced',bench:3,squat:1,deadlift:1,runs:2,runGoal:'fitness',maxes:{bench:120,squat:150,deadlift:180},tenKTime:'50:00',runningBaselineMinutes:120,availableDays:days,doubleDays:days,days:7,maxSessionsPerDay:2};
 const create=input=>{const p=adapters.buildNewProgramme({...base,...input});return {...p,engine:coach.createEngine({data:{customRoadmap:p.config}})}};
@@ -79,9 +80,10 @@ test('support movements respect preferences, remain stable within blocks and rot
  for(const s of e.generatedSessions(c,1))assert.ok(s.ex.every(x=>!['Incline dumbbell press','Lat pulldown','Seated dumbbell shoulder press'].includes(x[0])));
 });
 test('approval gives a new programme independent completion IDs and filters older programme load increases',()=>{
- const proposal=coach.prepareNewProgramme(adapters.normalizeProfile(base)),a=coach.approveProgrammeConfig(proposal,'2026-10-30T10:00:00Z'),b=coach.approveProgrammeConfig(proposal,'2026-10-30T10:00:00Z');
+ const proposal=coach.prepareNewProgramme({...adapters.normalizeProfile(base),equipmentInventory:fullInventory()}),a=coach.approveProgrammeConfig(proposal,'2026-10-30T10:00:00Z'),b=coach.approveProgrammeConfig(proposal,'2026-10-30T10:00:00Z');
  assert.notEqual(a.sessionNamespace,b.sessionNamespace);assert.equal(proposal.approvedAt,undefined);
- const stale={customRoadmap:a,decisions:[{approved:true,kind:'adaptive-progression',exercise:'Bench',week:1,factor:1.075,date:'2026-10-01T10:00:00Z'}]},e=coach.createEngine({data:stale}),s=e.generatedSessions(a,2),snapshot=JSON.stringify(s);assert.equal(JSON.stringify(e.carryForwardApprovedProgression(s,2)),snapshot);
+ const anchors=typedAnchors(coach.createEngine().generatedSessions({...a,equipmentPolicyVersion:undefined},2),a.equipmentInventory);
+ const stale={customRoadmap:a,sets:anchors,decisions:[{approved:true,kind:'adaptive-progression',exercise:'Bench',week:1,factor:1.075,date:'2026-10-01T10:00:00Z'}]},e=coach.createEngine({data:stale}),s=e.generatedSessions(a,2),snapshot=JSON.stringify(s);assert.equal(JSON.stringify(e.carryForwardApprovedProgression(s,2)),snapshot);
  stale.decisions.push({approved:true,kind:'adaptive-progression',exercise:'Bench',week:1,factor:1.025,date:'2026-10-31T10:00:00Z'});assert.notEqual(JSON.stringify(e.carryForwardApprovedProgression(e.generatedSessions(a,2),2)),snapshot);
  assert.ok(e.generatedSessions(a,1).every(s=>s.id.startsWith(a.sessionNamespace)));
 });

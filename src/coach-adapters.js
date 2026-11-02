@@ -46,7 +46,7 @@ function buildProgramme(input,options={}){
   const constraints=engine.customPlan(c,week),warnings=constraints.warnings.slice();
   if(described.constraints)warnings.push(...described.constraints.warnings.filter(x=>!warnings.includes(x)));
   if([3,4].includes(c.runningGuidanceVersion)){const running=engine.runningAssessment(c,week);warnings.push(...running.warnings.filter(x=>!warnings.includes(x)));}
-  weeks.push({week,phase,deload:described.deload??cycle.deload,sessions,warnings,...(Number(c.coachingRulesVersion)>=2?{priority:described.priority,runningPhase:described.runningSummary?.phase,hybridFocus:described.hybridFocus,activeGoal:described.activeGoal,coachingInstructions:described.coachingInstructions,blockingIssues:[...(constraints.runningReview?.blocking||[]),...(described.constraints?.blockingIssues||[])]}:{}),...(described.runningSummary?{runningSummary:described.runningSummary}:{}),...(constraints.unscheduled?{unscheduled:constraints.unscheduled,feasible:constraints.feasible&&described.constraints?.feasible!==false&&(![3,4].includes(c.runningGuidanceVersion)||engine.runningAssessment(c,week).feasible)}:{}),reviewRequired:warnings.length>0});
+  weeks.push({week,phase,deload:described.deload??cycle.deload,sessions,warnings,...(Number(c.coachingRulesVersion)>=2||c.equipmentPolicyVersion===1?{priority:described.priority,runningPhase:described.runningSummary?.phase,hybridFocus:described.hybridFocus,activeGoal:described.activeGoal,coachingInstructions:described.coachingInstructions,blockingIssues:[...(constraints.runningReview?.blocking||[]),...(described.constraints?.blockingIssues||[])]}:{}),...(described.runningSummary?{runningSummary:described.runningSummary}:{}),...(constraints.unscheduled?{unscheduled:constraints.unscheduled,feasible:constraints.feasible&&described.constraints?.feasible!==false&&(![3,4].includes(c.runningGuidanceVersion)||engine.runningAssessment(c,week).feasible)}:{}),reviewRequired:warnings.length>0});
  }
  return {schema:'lhrf-shared-programme-v1',config:c,framework:engine.selectTrainingFramework(c),weeks,
   requiresAthleteApproval:true,limitations:Number(c.coachingRulesVersion)>=1?['Versioned coaching heuristics; tests do not establish individual competition readiness.','Existing approved programmes keep their saved policy until explicitly replaced.']:['Current live coaching rules, not a new programme-policy rollout.','Known programme acceptance gaps remain; generation alone does not establish coaching quality.']};
@@ -62,7 +62,7 @@ function previewProgramme(input,options={}){
     const meta=ex[5]||{};if(!['top','straight'].includes(meta.role)||meta.optional)return;
     const lift=Object.keys(names).find(k=>String(ex[0]).toLowerCase().includes(k));if(!lift)return;
     const back=meta.role==='top'?session.ex.find(e=>e[5]?.role==='backoff'&&e[5]?.topIndex===i):ex;
-    const group=(e,role)=>e?{role,sets:e[1],reps:e[2],suggestedWeight:e[3]||null,rpe:e[4]}:null;
+    const group=(e,role)=>e?{role,sets:e[1],reps:e[2],suggestedWeight:e[3]||null,rpe:e[4],...(e[5]?.equipmentPolicyVersion===1?{exercise:e[0],metadata:clone(e[5])}:{})}:null;
     const index=strengths.length,exposure=exposures[lift]=(exposures[lift]||0)+1;
     strengths.push({lift,exposure,exercise:ex[0],top:meta.role==='top'?group(ex,'top'):null,backoff:group(back,meta.role==='top'?'backoff':'straight')});
     calendar.push({id:'s'+index,kind:'strength',lift,exposure,exercise:ex[0],day:session.day});

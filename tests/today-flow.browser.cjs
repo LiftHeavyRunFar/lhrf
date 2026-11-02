@@ -7,7 +7,7 @@ const root=path.join(__dirname,'..');
 const DATA='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
 const baseConfig={event:'powerlifting',weeks:6,date:'2026-11-28',priority:'Bench',squat:1,bench:3,deadlift:1,runs:2,rungoal:'10k',days:5,noDate:false,startDate:'2026-10-19',strengthTargetDate:'2026-11-28',runningTargetDate:'2026-11-29',baselines:{Squat:120,Bench:160,Deadlift:160},liftProfiles:{Squat:{kg:120,reps:1,recency:'recent'},Bench:{kg:160,reps:1,recency:'recent'},Deadlift:{kg:160,reps:1,recency:'recent'}},runProfile:{distance:10,seconds:3900,time:'1:05:00',recency:'recent',weeklyKm:20},variations:{Squat:{choice:'auto'},Bench:{choice:'auto'},Deadlift:{choice:'auto'}},availableDays:['Tue','Thu','Fri','Sat','Sun'],longRunDay:'Sat',doubleDays:['Tue']};
 const run={name:'Easy run',minutes:20,rpe:4,distanceKm:3,role:'easy'};
-const fixture={onboardingComplete:true,customRoadmap:baseConfig,activeCustomWeek:1,activeSchedule:[
+const fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInventory(),onboardingComplete:true,customRoadmap:baseConfig,activeCustomWeek:1,activeSchedule:[
 {id:'tue',day:'Tuesday',name:'Completed bench',ex:[['Bench press',1,5,100,7]]},
 {id:'thu',day:'Thursday',name:'Past lower',ex:[['Squat',1,3,60,5]]},
 {id:'fri',day:'Friday',name:'Bench + run',ex:[['Bench press',1,3,120,8,{role:'top'}],['Bench press',2,5,100,7,{role:'backoff',topIndex:0}]],runs:[run]},

@@ -40,8 +40,9 @@ test('browser-global modules generate the exact same v2 prescriptions as Node ca
  assert.equal(JSON.stringify(browser),JSON.stringify(native));
 });
 test('version-two progression excludes approved load changes from an older programme',()=>{
- const coach=require('../src/coach-engine.js'),config=coach.approveProgrammeConfig(fresh.cases.find(c=>c.id==='J').config,'2026-10-30T12:00:00Z');
- const data={customRoadmap:config,decisions:[{approved:true,kind:'adaptive-progression',exercise:'Bench',week:1,factor:1.075,date:'2026-10-01T12:00:00Z'}]};
+ const {fullInventory,typedAnchors}=require('./equipment-fixtures.cjs');
+ const coach=require('../src/coach-engine.js'),config=coach.approveProgrammeConfig({...fresh.cases.find(c=>c.id==='J').config,equipmentInventory:fullInventory()},'2026-10-30T12:00:00Z');
+ const data={customRoadmap:config,sets:typedAnchors(coach.createEngine().generatedSessions({...config,equipmentPolicyVersion:undefined},2),config.equipmentInventory),decisions:[{approved:true,kind:'adaptive-progression',exercise:'Bench',week:1,factor:1.075,date:'2026-10-01T12:00:00Z'}]};
  const engine=coach.createEngine({data,now:clock.now}),before=engine.generatedSessions(config,2),snapshot=JSON.stringify(before);
  assert.equal(JSON.stringify(engine.carryForwardApprovedProgression(before,2)),snapshot);
  data.decisions.push({approved:true,kind:'adaptive-progression',exercise:'Bench',week:1,factor:1.025,date:'2026-10-31T12:00:00Z'});
