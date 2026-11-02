@@ -61,7 +61,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 </div><label>Notes (optional) <input type="text" name="notes" maxlength="300" style="max-width:100%;width:100%" placeholder="How did it feel?"></label>
 <div id="setLogger"><h3>Working sets (optional)</h3><p class="muted">Add each completed set and tick Completed. Suggested sets must be confirmed individually before saving. For running, record actual distance and duration above.</p><div id="setRows"></div><button type="button" id="addSet">+ Add set</button></div><p><button type="submit">Save genuine session</button></p></form>
 <p id="logMessage" role="status"></p><div id="logHistory"></div><div id="performanceReview" aria-live="polite"></div></section>
-<script src="./src/running-workouts.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/coach-engine.js"></script>
+<script src="./src/running-workouts.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script>
 <script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script>
 <script>
 (function(){
@@ -236,11 +236,11 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     const updated=LHRFCoachIntake.build(base,{sessionTimeVersion:1,strengthVisits:value('v2StrengthVisits'),minutes:Object.fromEntries(days.map(d=>[d,value('v2Minutes'+d)])),combinedDays:days.filter(d=>value('v2Mode'+d)==='combined'),separateDays:days.filter(d=>value('v2Mode'+d)==='separate'),minimumGapHours:value('v2Gap'),eventDays:events,weeklyKmHistory:history,longRun:{km:value('v2LongKm'),minutes:value('v2LongMinutes'),recoveryHours:value('v2LongRecovery')},recentMarathonDate:value('v2RecentMarathon'),recoveryEvidence:recovery});
     Object.assign(c,updated);
    }
-   Object.assign(c,LHRFCoach.prepareNewProgramme(c));const p=LHRFCoachAdapters.previewProgramme(c);const blocked=p.weeks.some(w=>w.feasible===false);
+   c.equipmentPolicyVersion=1;c.equipmentInventory=readPreviewEquipment();Object.assign(c,LHRFCoach.prepareNewProgramme(c));const p=LHRFCoachAdapters.previewProgramme(c);const blocked=p.weeks.some(w=>w.feasible===false);
    if(p.valid===false)throw Error(p.errors.join(' '));
    const header='<div class="panel"><h2>Programme preview</h2><p>'+esc(p.outcome.description)+'</p><p>Coaching policy '+esc(p.config.coachingRulesVersion)+'</p>'+
     '<p>Structural checks: <strong>'+esc(p.passesStructuralChecks?'passed':'review needed')+'</strong>. These do not establish coaching safety.</p>'+
-    '<p class="warn">'+esc(p.issues.length)+' scheduling or approval flags across the programme.</p>'+(blocked?'<p class="error">This programme needs changes before training. Resolve the running or schedule warnings below.</p>':'')+'</div>';
+    '<p class="warn">'+esc(p.issues.length)+' scheduling or approval flags across the programme.</p>'+(blocked?'<p class="error">This programme needs changes before training. Resolve the equipment, running or schedule warnings below.</p>':'')+'</div>';
    const prescription=entry=>{
     if(entry.kind==='event')return esc(entry.sport+' EVENT — '+entry.date+' (training withheld pending review)');
     if(entry.kind==='strength'){
@@ -322,4 +322,8 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   }catch(err){out.innerHTML='<p class="error">Could not generate preview: '+esc(err.message)+'</p>';}
  });
 })();
-</script></body></html>
+</script><script>
+function readPreviewEquipment(){const p=document.getElementById('previewEquipment');return {version:1,venueId:p.querySelector('[data-venue]').value.trim(),confirmedAt:new Date().toISOString(),source:'athlete-confirmed',items:Object.fromEntries([...p.querySelectorAll('[data-equipment]')].map(x=>[x.dataset.equipment,x.value])),setups:Object.fromEntries([...p.querySelectorAll('[data-setup]:checked')].map(x=>[x.dataset.setup,x.value]))}}
+(function(){const p=document.createElement('details');p.id='previewEquipment';p.className='card';p.innerHTML='<summary>Confirmed venue equipment</summary><p>Unknown equipment cannot be prescribed. Confirm components and the actual exercise setups.</p><label>Venue identity <input data-venue value="preview-venue"></label>';for(const key of LHRFExercises.equipment){const l=document.createElement('label');l.style.display='block';l.textContent=key.replaceAll('-',' ')+' ';const s=document.createElement('select');s.dataset.equipment=key;for(const state of ['unknown','available','unavailable']){const o=document.createElement('option');o.value=state;o.textContent=state;s.appendChild(o)}l.appendChild(s);p.appendChild(l)}for(const e of LHRFExercises.exercises.filter(x=>x.setup!=='fixed'&&x.setup!=='execution-review')){const l=document.createElement('label');l.style.display='block';const x=document.createElement('input');x.type='checkbox';x.dataset.setup=e.id;x.value=e.setup;l.append(x,document.createTextNode('Confirm '+e.label+' uses '+e.setup));p.appendChild(l)}document.querySelector('main')?.prepend(p)})();
+</script>
+</body></html>

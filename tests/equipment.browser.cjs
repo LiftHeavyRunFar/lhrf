@@ -1,0 +1,28 @@
+// Local, synthetic equipment UI + frozen-session + offline gate.
+const assert=require('node:assert/strict');
+const {chromium}=require('playwright');
+const {fullInventory}=require('./equipment-fixtures.cjs');
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||'/usr/bin/chromium',args:['--no-sandbox','--disable-dev-shm-usage']});
+ try{
+  const context=await browser.newContext(),page=await context.newPage(),errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss()});
+  await page.goto('http://localhost:8765/');
+  assert.equal(await page.locator('#firstRun [data-step="2"] summary').filter({hasText:/^Equipment$/}).count(),1);
+  assert.equal(await page.locator('#settings select[aria-label="safety-squat-bar"]').inputValue(),'unknown');
+  const inv=fullInventory();await page.evaluate(inv=>{data.onboardingComplete=true;data.equipmentInventory=inv;data.customRoadmap={programmeId:'synthetic-frozen',weeks:1};data.activeSchedule=[{id:'saved',day:'Tue',name:'Frozen bench',ex:[['Bench press',3,5,100,7]],runs:[]}];schedule=data.activeSchedule;save();document.getElementById('firstRun').hidden=true;go('settings')},inv);
+  await page.reload();await page.evaluate(()=>go('settings'));
+  await page.locator('#settings summary').filter({hasText:/^Equipment$/}).click();
+  const before=await page.evaluate(()=>JSON.stringify({sets:data.sets,customRoadmap:data.customRoadmap,activeSchedule:data.activeSchedule}));
+  await page.locator('#settings select[aria-label="straight-bar"]').selectOption('unavailable');await page.locator('#settings').getByRole('button',{name:'Save confirmed equipment',exact:true}).click();
+  assert.match(await page.locator('#settings details [aria-live]').innerText(),/requires review/);
+  const allowed=await page.evaluate(()=>equipmentStartAllowed(data.activeSchedule[0]));assert.equal(allowed,false);assert.ok(dialogs.some(x=>x.includes('straight-bar')));
+  assert.equal(await page.evaluate(()=>JSON.stringify({sets:data.sets,customRoadmap:data.customRoadmap,activeSchedule:data.activeSchedule})),before);
+  await page.evaluate(async()=>{await navigator.serviceWorker.register('./sw.js');await navigator.serviceWorker.ready});
+  await page.waitForFunction(async()=>{const c=await caches.open('lhrf-shell-v1.26.0');return !!(await c.match('./src/exercise-registry.js'))});
+  await page.reload();await page.waitForFunction(()=>!!navigator.serviceWorker.controller);await context.setOffline(true);await page.reload();
+  assert.equal(await page.evaluate(()=>LHRFExercises.eligibility('Bench press',currentEquipmentInventory()).eligible),false);
+  assert.equal(await page.evaluate(()=>equipmentStartAllowed(data.activeSchedule[0])),false);
+  assert.deepEqual(errors,[]);console.log('PASS onboarding inventory, Settings removal, frozen-record preservation, start rejection and offline reload');
+  await context.close();
+ }finally{await browser.close()}
+})().catch(e=>{console.error(e);process.exitCode=1});

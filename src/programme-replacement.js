@@ -63,6 +63,13 @@ function previewRows(before,bc,after,ac,cutoff){
  return [...rows.values()].sort((a,b)=>a.date.localeCompare(b.date)).map(r=>{if(r.date===cutoff&&!r.after.length)r.after=clone(r.before).map(s=>({...s,preservedFromProgrammeId:bc.programmeId||'previous',preservationReason:'Retained in history and the archive; not replaced'}));return {...r,status:r.after.some(s=>s.preservedFromProgrammeId)?'protected':r.date===cutoff?'unchanged-today':'future-replacement'}});
 }
 function effectivePreview(rows,before,after,engine){return rows.map(row=>({...row,...Object.fromEntries([['before',before],['after',after]].map(([key,state])=>[key,row[key].map(s=>{const ex=engine.createEngine({data:state,schedule:[s]}).effectiveSession(s.id)?.ex;return {...s,displayEx:clone(ex||s.ex),hasApprovedAdjustment:!same(ex||s.ex,s.ex)}})]))}))}
+function equipmentReview(state,weeks,c,cutoff){
+ const registry=typeof module==='object'&&module.exports?require('./exercise-registry.js'):root.LHRFExercises;
+ const inventory=Object.prototype.hasOwnProperty.call(state,'equipmentInventory')?state.equipmentInventory:c.equipmentInventory;
+ const future=weeks.flatMap(w=>w.sessions.filter(s=>dateOf(c,w.week,s)>cutoff&&!s.preservedFromProgrammeId));
+ for(const session of future)registry.assertStart(session,inventory);
+ const review=registry.audit(future,inventory);if(!review.eligible)throw Error('Equipment review required before programme replacement. '+review.messages.join(' '));return review;
+}
 function createReplacement(state,packet,engine,{now,liveWorkout=null,pendingRun=null}={}){
  validateProgramme(packet.programme);const c=packet.programme.config,cutoff=today(now),id='reviewed-'+packet.programmeDigest.slice(0,24);
  if(state.programmeReplacementHistory?.some(x=>x.id===id))return {alreadyApplied:true,next:clone(state),rows:[],id};
@@ -72,6 +79,7 @@ function createReplacement(state,packet,engine,{now,liveWorkout=null,pendingRun=
  const rawWeeks=packet.programme.weeks.map(w=>({...clone(w),sessions:w.sessions.map((s,i)=>({...clone(s),id:id+'-w'+w.week+'-'+i,scheduledDate:dateOf(c,w.week,s)}))}));
  const weeks=mergeCalendar(rawWeeks,config,protectedDates,cutoff),week=Math.min(config.weeks,Math.max(1,weekAt(config,cutoff)));
  if(!weeks.some(w=>w.sessions.some(s=>!s.preservedFromProgrammeId&&s.scheduledDate>cutoff)))throw Error('No unfinished future sessions remain in this reviewed programme.');
+ equipmentReview(state,weeks,config,cutoff);
  const next=clone(state);next.programmeArchive=[...(next.programmeArchive||[]),{...oldContext,archivedAt:now,replacementId:id,reason:'Explicit reviewed replacement'}];
  next.customRoadmap=config;next.reviewedProgramme={id,config:clone(config),weeks,sourceDigest:packet.programmeDigest,originalNative:clone(packet.programme),approvalContext:clone(packet.approvalContext||[])};
  next.activeCustomWeek=week;next.activeSchedule=clone(weeks[week-1].sessions);next.programmeActivation={id,at:now,status:'active',sourceDigest:packet.programmeDigest};next.programmeReplacementHistory=[...(next.programmeReplacementHistory||[]),{id,at:now,status:'active'}];
@@ -93,7 +101,7 @@ function commit(storage,preview,{expectedRaw,backup,backupVerified=false,confirm
  if(!confirmed||!backupVerified||!backup?.digest)throw Error('Verified fresh backup and explicit athlete confirmation are required.');
  if(storage.getItem(DATA_KEY)!==expectedRaw)throw Error('Training data changed after preview. Create a new preview and fresh backup.');
  const live=liveFrom(storage);if(live.liveWorkout||live.pendingRun)throw Error('A workout is now active. Nothing was replaced.');
- const before=JSON.parse(expectedRaw);if(backup.sourceCanonical!==canonical(before))throw Error('The backup does not match the current preview. Create a fresh backup.');verifyPreservation(before,preview.next);if(preview.alreadyApplied)return before;
+ const before=JSON.parse(expectedRaw);if(backup.sourceCanonical!==canonical(before))throw Error('The backup does not match the current preview. Create a fresh backup.');verifyPreservation(before,preview.next);if(preview.alreadyApplied)return before;equipmentReview(before,preview.next.reviewedProgramme.weeks,preview.next.customRoadmap,today(now));
  if(today(now)!==preview.asOfDate)throw Error('The preview is from another day. Create a fresh preview and backup.');
  if(!preview.id.startsWith('rollback-')&&today(now)<preview.activationNotBefore)throw Error('Activation is available from '+preview.activationNotBefore+'. Preview only today.');
  const afterRaw=JSON.stringify(preview.next),backupKey='lhrf_replacement_backup_v1:'+preview.id+':'+Date.parse(now),journal={id:preview.id,phase:'prepared',backupKey,backupDigest:backup.digest,at:now,programmeId:preview.next.customRoadmap.programmeId};

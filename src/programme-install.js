@@ -1,9 +1,12 @@
 /* Explicit approved-programme activation. No athlete logs are removed. */
 (function(root){
 'use strict';
+const equipment=()=>typeof module==='object'&&module.exports?require('./exercise-registry.js'):root.LHRFExercises;
 function install(state,config,engineModule,now=new Date().toISOString()){
  if(!config?.programmeId||!config.sessionNamespace||!config.startDate||config.weeks!==5)throw Error('Invalid approved programme.');
  const next=JSON.parse(JSON.stringify(state));if(next.customRoadmap?.programmeId===config.programmeId)return next;
+ const inventory=Object.prototype.hasOwnProperty.call(state,'equipmentInventory')?state.equipmentInventory:config.equipmentInventory;
+ for(let week=1;week<=config.weeks;week++){const sessions=engineModule.createEngine({data:state}).generatedSessions(config,week),review=equipment().audit(sessions,inventory);for(const session of sessions)equipment().assertStart(session,inventory);if(!review.eligible)throw Error('Equipment review required before activation. '+review.messages.join(' '));}
  const archive={programme:next.customRoadmap||null,schedule:next.activeSchedule||[],week:next.activeCustomWeek||1,overrides:next.overrides||{},decisions:next.decisions||[],archivedAt:now};
  next.programmeArchive=[...(next.programmeArchive||[]),archive];
  next.customRoadmap={...JSON.parse(JSON.stringify(config)),approvedAt:now};next.activeCustomWeek=1;next.overrides={};next.decisions=[];
