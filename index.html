@@ -5,7 +5,7 @@
  try{
   if(new URLSearchParams(location.search).get('fresh')!=='1')return;
   ['lhrf_beta_v1118_clean','lhrf-v2-genuine-training-log','lhrf-v2-coach-decisions',
-   'lhrf-v2-approved-load-overrides','lhrf-v2-preview-athlete-inputs'].forEach(k=>localStorage.removeItem(k));
+   'lhrf-v2-approved-load-overrides','lhrf-v2-preview-athlete-inputs','lhrf-v2-preview-equipment'].forEach(k=>localStorage.removeItem(k));
   ['lhrf-v2-live-handoff','lhrf_onboarding_test_last_tab_v194'].forEach(k=>sessionStorage.removeItem(k));
   history.replaceState(null,'',location.pathname+location.hash);
  }catch(err){alert('Fresh start could not clear local training data. Please check browser storage before onboarding.');}
@@ -554,7 +554,7 @@ function approxKm(minutes,paceSeconds){return paceSeconds>0?'≈ '+distanceLabel
 function paceText(...args){return coachEngine().paceText(...args)}
 function estimatedMax(...args){return coachEngine().estimatedMax(...args)}
 function currentEquipmentInventory(){return Object.prototype.hasOwnProperty.call(data,'equipmentInventory')?data.equipmentInventory:data.customRoadmap?.equipmentInventory}
-function equipmentStartAllowed(session){try{LHRFExercises.assertStart(session,currentEquipmentInventory());return true}catch(error){alert(error.message+' Open Settings → Equipment to confirm availability. Saved prescriptions and records are unchanged.');return false}}
+function equipmentStartAllowed(session,inventory=currentEquipmentInventory()){try{LHRFExercises.assertStart(session,inventory);return true}catch(error){alert(error.message+' Open Settings → Equipment to confirm availability. Saved prescriptions and records are unchanged.');return false}}
 function customConfig(){const c=data.customRoadmap?JSON.parse(JSON.stringify(data.customRoadmap)):{};for(const k of customFields)c[k.toLowerCase()]=$('custom'+k).value;const dated=['powerlifting','running'].includes(c.event)&&!$('customNoDate').checked;if(dated&&c.date){const d=(new Date(c.date+'T12:00:00')-new Date())/86400000;c.weeks=Math.max(1,Math.ceil(d/7))}else c.weeks=Math.max(4,Math.min(52,+c.weeks||20));c.noDate=$('customNoDate').checked;if($('customExperience'))c.trainingAge=$('customExperience').value||c.trainingAge;if(!data.customRoadmap)c.runningPaceVersion=2;
  c.liftProfiles={};c.baselines={};for(const k of ['Squat','Bench','Deadlift']){const kg=+$('baseline'+k).value,reps=+$('reps'+k).value,recency=$('recency'+k).value;c.liftProfiles[k]={kg,reps,recency};c.baselines[k]=estimatedMax(kg,reps)}
  c.runProfile={distance:+$('runPbDistance').value,seconds:pbSeconds($('runPbTime').value),time:$('runPbTime').value,recency:$('runPbRecency').value,weeklyKm:+$('runWeeklyKm').value,resultDate:$('runResultDate')?.value||null,effort:$('runResultEffort')?.value||'performance',environment:$('runResultEnvironment')?.value||'unknown'};
@@ -1057,7 +1057,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
     const k=i+'_'+j,entry=live.entries[k]||{weight:e[3]||'',reps:e[2],rpe:'',done:false};
     const row=document.createElement('div');row.className='live-set';row.innerHTML=`<span class="set-num">${j+1}</span><div><label>${e[5]?.loadType==='assistance-kg'?'Assistance kg':e[5]?.loadType==='per-hand-kg'?'kg per hand':'kg'}</label><input type="number" min="0" step=".5" data-field="weight" value="${esc(entry.weight)}"></div><div><label>${e[5]?.doseUnit==='seconds'?'Seconds':'Reps'}</label><input type="number" min="1" step="1" data-field="reps" value="${esc(entry.reps)}"></div><div><label>RPE</label><input type="number" min="1" max="10" step=".5" data-field="rpe" value="${esc(entry.rpe)}"></div><button class="set-check ${entry.done?'checked':''}" aria-label="Mark set ${j+1} complete">${entry.done?'✓':'○'}</button>`;
     row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{const v=live.entries[k]||(live.entries[k]={...entry});v[input.dataset.field]=input.value;if(v.done){v.done=false;row.querySelector('button').classList.remove('checked');row.querySelector('button').textContent='○'}persist();updateHeader()}));
-    row.querySelector('button').onclick=()=>{if(!equipmentStartAllowed({id:live.id,ex:[e]}))return;const v=live.entries[k]||(live.entries[k]={...entry});if(!v.done){const w=Number(row.querySelector('[data-field="weight"]').value),r=Number(row.querySelector('[data-field="reps"]').value),rpe=Number(row.querySelector('[data-field="rpe"]').value);if(!((e[5]?.loadType==='bodyweight'||e[5]?.loadType==='assistance-kg'?w>=0:w>0)&&r>0&&rpe>=1&&rpe<=10)){alert('Enter weight, reps and RPE before logging this set.');return}v.weight=w;v.reps=r;v.rpe=rpe}v.done=!v.done;
+    row.querySelector('button').onclick=()=>{if(!equipmentStartAllowed({id:live.id,ex:[e]},live.v2Trial?.profile?.equipmentInventory||currentEquipmentInventory()))return;const v=live.entries[k]||(live.entries[k]={...entry});if(!v.done){const w=Number(row.querySelector('[data-field="weight"]').value),r=Number(row.querySelector('[data-field="reps"]').value),rpe=Number(row.querySelector('[data-field="rpe"]').value);if(!((e[5]?.loadType==='bodyweight'||e[5]?.loadType==='assistance-kg'?w>=0:w>0)&&r>0&&rpe>=1&&rpe<=10)){alert('Enter weight, reps and RPE before logging this set.');return}v.weight=w;v.reps=r;v.rpe=rpe}v.done=!v.done;
      if(v.done&&e[5]?.role==='top'){
       const topWeight=Number(v.weight),topRpe=Number(v.rpe),topReps=Number(v.reps);
       // RIR-adjusted e1RM; solve back-off load from target reps and RPE.
@@ -1157,8 +1157,9 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   if(live){alert('Finish or discard your active workout before starting a v2 trial.');return}
   const groups=trial.kind==='run'?[]:(trial.planned.sets||[]).filter(x=>Number.isInteger(x.sets)&&x.sets>0&&x.sets<=10&&Number(x.reps)>0&&Number(x.rpe)>=1&&Number(x.rpe)<=10);
   if(trial.kind!=='run'&&!groups.length)return;
-  const ex=groups.map(x=>[trial.kind[0].toUpperCase()+trial.kind.slice(1),x.sets,x.reps,Number(x.weight)||0,x.rpe,{role:x.role,topIndex:0}]);
+  const ex=groups.map(x=>[x.exercise||trial.kind[0].toUpperCase()+trial.kind.slice(1),x.sets,x.reps,Number(x.weight)||0,x.rpe,{...(x.metadata||{}),role:x.role,topIndex:0}]);
   const runs=trial.kind==='run'?[JSON.parse(JSON.stringify(trial.planned.run||{name:trial.planned.type||'Run',minutes:trial.planned.minutes||0,distanceKm:trial.planned.distanceKm||null,pace:trial.planned.pace||null,steps:trial.planned.steps||[],role:trial.planned.type||'run'}))]:[];
+  if(!equipmentStartAllowed({ex},trial.profile?.equipmentInventory||currentEquipmentInventory()))return;
   live={id:'v2-trial-'+trial.week+'-'+trial.kind,day:trial.day,name:'V2 trial · '+trial.kind,ex,runs,runLogged:false,runEntry:null,entries:{},notes:'',started:new Date().toISOString(),v2Trial:trial};
   sessionStorage.removeItem('lhrf-v2-live-handoff');expanded=0;persist();go('train');status();
  }
@@ -1169,7 +1170,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const stamp=new Date().toISOString();const note=live.notes||'';
   if(live.v2Trial){
    const trial=live.v2Trial,sets=[];
-   live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)sets.push({weight:+v.weight,reps:+v.reps,rpe:+v.rpe,role:e[5]?.role||null})}});
+   live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)sets.push({weight:+v.weight,reps:+v.reps,rpe:+v.rpe,role:e[5]?.role||null,...(e[5]?.exerciseId?{exerciseId:e[5].exerciseId,variantId:e[5].variantId,loadType:e[5].loadType,doseUnit:e[5].doseUnit}:{})})}});
    try{const key='lhrf-v2-genuine-training-log',old=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(old))throw Error('Invalid log');
     old.push({date:stamp.slice(0,10),kind:trial.kind,...(trial.kind==='run'?{}:{rpe:sets.at(-1)?.rpe??null}),weight:sets[0]?.weight||null,reps:sets[0]?.reps||null,minutes:live.runEntry?.min||null,km:live.runEntry?.km||null,sets,notes:note,plannedSession:trial,recordedAt:stamp,source:'genuine-athlete-entry',via:'original-live-train'});
     localStorage.setItem(key,JSON.stringify(old));

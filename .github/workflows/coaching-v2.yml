@@ -154,3 +154,11 @@ jobs:
       - name: Test verified replacement, interruption, rollback and race consent on mobile
         if: ${{ !cancelled() }}
         run: node tests/programme-replacement.browser.cjs
+
+      - name: Test equipment eligibility, Settings removal and offline start rejection
+        if: ${{ !cancelled() }}
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/lhrf-equipment-http.log 2>&1 &
+          equipment_server_pid=$!
+          trap 'kill "$equipment_server_pid"' EXIT
+          node tests/equipment.browser.cjs

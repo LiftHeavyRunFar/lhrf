@@ -62,7 +62,7 @@ function previewProgramme(input,options={}){
     const meta=ex[5]||{};if(!['top','straight'].includes(meta.role)||meta.optional)return;
     const lift=Object.keys(names).find(k=>String(ex[0]).toLowerCase().includes(k));if(!lift)return;
     const back=meta.role==='top'?session.ex.find(e=>e[5]?.role==='backoff'&&e[5]?.topIndex===i):ex;
-    const group=(e,role)=>e?{role,sets:e[1],reps:e[2],suggestedWeight:e[3]||null,rpe:e[4]}:null;
+    const group=(e,role)=>e?{role,sets:e[1],reps:e[2],suggestedWeight:e[3]||null,rpe:e[4],...(e[5]?.equipmentPolicyVersion===1?{exercise:e[0],metadata:clone(e[5])}:{})}:null;
     const index=strengths.length,exposure=exposures[lift]=(exposures[lift]||0)+1;
     strengths.push({lift,exposure,exercise:ex[0],top:meta.role==='top'?group(ex,'top'):null,backoff:group(back,meta.role==='top'?'backoff':'straight')});
     calendar.push({id:'s'+index,kind:'strength',lift,exposure,exercise:ex[0],day:session.day});
