@@ -19,6 +19,10 @@ let fixture = install.install({equipmentInventory: inventory, sets: [], runs: []
 fixture = install.refreshApprovedThresholdPaces(fixture, coach, '2026-11-03T08:00:00Z');
 fixture.activeCustomWeek = 2;
 fixture.activeSchedule = coach.createEngine({data: fixture}).generatedSessions(fixture.customRoadmap, 2);
+// Model an already-installed production week, including its existing revision markers.
+// A freshly generated legacy week would exercise production's old migrations before this release loads.
+fixture = install.refreshApprovedBenchProgramme(fixture, coach, '2026-11-03T08:00:00Z');
+fixture = install.refreshApprovedBenchPeak(fixture, coach, '2026-11-03T08:00:00Z');
 fixture.onboardingManualSplit = {Tue: ['bench'], Thu: ['lower', 'run']};
 fixture.onboardingFacts = {retain: 'existing athlete answers'};
 const strength = fixture.activeSchedule.find(s => s.ex.length);
