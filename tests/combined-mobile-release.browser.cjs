@@ -68,12 +68,17 @@ const live = {id: strengthId, parentId: strength.id, component: 'strength', name
     const page = await context.newPage(), errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await context.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
-    await page.addInitScript(({fixture, live, DATA, LIVE}) => {
+    const storageSeeds = {lhrf_release_115_sentinel: 'synthetic unrelated device preference',
+      [LIVE + '_pendingRun']: JSON.stringify({parentId: strength.id, week: 2, runLogged: true, runEntry: {km: 5, min: 32}}),
+      'lhrf-v2-genuine-training-log': JSON.stringify([{source: 'synthetic-release-test', rpe: 8.5}])};
+    await page.addInitScript(({fixture, live, DATA, LIVE, storageSeeds}) => {
       if (!localStorage.getItem(DATA)) localStorage.setItem(DATA, JSON.stringify(fixture));
       if (!localStorage.getItem(LIVE)) localStorage.setItem(LIVE, JSON.stringify(live));
-    }, {fixture, live, DATA, LIVE});
+      for (const [key, value] of Object.entries(storageSeeds)) if (!localStorage.getItem(key)) localStorage.setItem(key, value);
+    }, {fixture, live, DATA, LIVE, storageSeeds});
     const snapshot = () => page.evaluate(({DATA, LIVE}) => ({
-      data: JSON.parse(localStorage.getItem(DATA)), live: JSON.parse(localStorage.getItem(LIVE))
+      data: JSON.parse(localStorage.getItem(DATA)), live: JSON.parse(localStorage.getItem(LIVE)),
+      storage: Object.fromEntries(Object.keys(localStorage).sort().map(key => [key, localStorage.getItem(key)]))
     }), {DATA, LIVE});
     await page.goto(origin);
     await page.evaluate(() => navigator.serviceWorker.ready);
