@@ -15,6 +15,7 @@ function modal(dialog){
 }
 function comparable(state,live,history){
  const week=Number(live.sourceProgrammeWeek||state.activeCustomWeek||1),main=live.ex?.find(e=>!e[5]?.optional),identity=e=>String(e.exerciseId||e.exercise||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ if(week<=1)return null;
  return history.filter(row=>Number(row.week||row.sets[0]?.week||row.runs[0]?.week||0)===week-1&&((row.day&&row.day===live.day)||(row.id&&row.id===live.id)||(row.name&&row.name===live.name))&&
   (main?row.sets.some(s=>identity(s)===identity({exerciseId:main[5]?.exerciseId,exercise:main[0]})&&(!main[5]?.role||s.role===main[5].role)&&(!main[5]?.loadType||s.loadType===main[5].loadType)&&(!main[5]?.variantId||s.variantId===main[5].variantId)):row.runs.some(r=>!live.runs?.[0]?.role||r.type===live.runs[0].role)))
  .sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]||null;
