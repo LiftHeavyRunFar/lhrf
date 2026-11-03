@@ -48,10 +48,11 @@ sets:[{date:'2026-10-21T12:00:00Z',exercise:'Bench press',weight:100,reps:5,rpe:
  const masthead=await page.locator('#appHeader').evaluate(e=>({border:getComputedStyle(e).borderTopWidth,shadow:getComputedStyle(e).boxShadow,logoWidth:e.querySelector('img').getBoundingClientRect().width}));
  assert.equal(masthead.border,'0px');assert.equal(masthead.shadow,'none');assert.ok(masthead.logoWidth>=220,'Logo is larger than the previous scaled wordmark');
  await page.locator('nav [data-screen="train"]').click();assert.equal(await page.locator('#preWorkoutReadiness').isVisible(),false);
- await page.getByRole('button',{name:'Choose workout →',exact:true}).click();assert.equal(await page.locator('.screen.active').getAttribute('id'),'today');
- // Arrow controls use the same scroll-snap rail as touch swiping.
- await page.locator('#dayPrev').click();assert.match(await page.locator('#dayPosition').innerText(),/Thursday/);
- await page.locator('#dayNext').click();assert.match(await page.locator('#dayPosition').innerText(),/Friday/);
+ await page.getByRole('link',{name:'Back to Today',exact:true}).click();assert.equal(await page.locator('.screen.active').getAttribute('id'),'today');
+ await page.clock.runFor(150);
+ // Keyboard controls use the same scroll-snap rail as touch swiping.
+ await page.locator('#dayCarousel').focus();await page.keyboard.press('ArrowLeft');assert.match(await page.locator('#dayPosition').innerText(),/Thursday/);
+ await page.keyboard.press('ArrowRight');assert.match(await page.locator('#dayPosition').innerText(),/Friday/);
  assert.equal(await page.locator('#dayCarousel').evaluate(e=>e.scrollWidth>e.clientWidth),true);
  await page.locator('[data-session-id="tue"]').click();assert.match(await page.locator('#livePreview').innerText(),/Completed/);assert.equal(await page.locator('#previewStart').count(),0);await page.locator('#previewClose').click();
  let previewText;

@@ -2,6 +2,29 @@
 (function(root){'use strict';
 function weekKey(state){const c=state.customRoadmap||{};return [state.reviewedProgramme?.fingerprint||c.programmeId||c.startDate||'programme',c.startDate||'',Number(state.activeCustomWeek||1)].join('|')}
 function weekComplete(state,parts=x=>[x]){const sessions=(state.activeSchedule||[]).flatMap(parts);return sessions.length>0&&sessions.every(s=>(state.completedWorkouts||[]).some(w=>Number(w.week||1)===Number(s.sourceProgrammeWeek||state.activeCustomWeek||1)&&(w.id===s.id||w.id===s.parentId)))}
+let closeModal=null;
+function modal(dialog){
+ if(closeModal)closeModal();
+ const previous=document.activeElement,scrollY=root.scrollY,scrollX=root.scrollX,bodyStyle=document.body.getAttribute('style'),siblings=[...document.body.children].filter(e=>e!==dialog&&!['SCRIPT','STYLE','LINK'].includes(e.tagName)).map(e=>[e,e.inert]);
+ dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-label',dialog.querySelector('h2')?.textContent||'Workout preview');dialog.tabIndex=-1;dialog.classList.add('workout-dialog');
+ document.body.style.position='fixed';document.body.style.top=-scrollY+'px';document.body.style.left='0';document.body.style.right='0';document.body.style.overflow='hidden';siblings.forEach(([e])=>e.inert=true);
+ const nativeRemove=dialog.remove.bind(dialog);let closed=false;
+ const close=()=>{if(closed)return;closed=true;observer.disconnect();document.removeEventListener('keydown',keys,true);siblings.forEach(([e,value])=>e.inert=value);if(bodyStyle===null)document.body.removeAttribute('style');else document.body.setAttribute('style',bodyStyle);root.scrollTo({left:scrollX,top:scrollY,behavior:'instant'});if(previous?.isConnected)previous.focus({preventScroll:true});closeModal=null};
+ const keys=e=>{if(e.key==='Escape'){e.preventDefault();dialog.remove();return}if(e.key!=='Tab')return;const focusable=[...dialog.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex="0"]')].filter(e=>!e.disabled&&e.getClientRects().length);const first=focusable[0]||dialog,last=focusable.at(-1)||dialog;if(e.shiftKey&&(document.activeElement===first||document.activeElement===dialog)){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){e.preventDefault();first.focus()}};
+ const observer=new MutationObserver(()=>{if(!dialog.isConnected)close()});observer.observe(document.body,{childList:true});dialog.remove=()=>{close();nativeRemove()};document.addEventListener('keydown',keys,true);closeModal=close;requestAnimationFrame(()=>{if(dialog.isConnected)dialog.focus({preventScroll:true})});
+}
+function comparable(state,live,history){
+ const week=Number(live.sourceProgrammeWeek||state.activeCustomWeek||1),main=live.ex?.find(e=>!e[5]?.optional),identity=e=>String(e.exerciseId||e.exercise||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ return history.filter(row=>Number(row.week||row.sets[0]?.week||row.runs[0]?.week||0)===week-1&&((row.day&&row.day===live.day)||(row.id&&row.id===live.id)||(row.name&&row.name===live.name))&&
+  (main?row.sets.some(s=>identity(s)===identity({exerciseId:main[5]?.exerciseId,exercise:main[0]})&&(!main[5]?.role||s.role===main[5].role)&&(!main[5]?.loadType||s.loadType===main[5].loadType)&&(!main[5]?.variantId||s.variantId===main[5].variantId)):row.runs.some(r=>!live.runs?.[0]?.role||r.type===live.runs[0].role)))
+ .sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]||null;
+}
+function reference(host,live,state){
+ host.querySelector('#previousWorkout')?.remove();const detail=document.createElement('details');detail.className='card previous-workout';detail.id='previousWorkout';const summary=document.createElement('summary');summary.textContent="Last week's comparable workout";detail.append(summary);
+ const make=(tag,text)=>{const el=document.createElement(tag);el.textContent=text;detail.append(el);return el},row=comparable(state,live,root.LHRFTrainingReview.history(state));
+ if(!row)make('p','No comparable recorded session from last week.');else{make('p',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name+' · Recorded work');for(const s of row.sets)make('p',s.exercise+' · set '+(s.set??'—')+' · '+(s.weight??'—')+(s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg')+' × '+(s.reps??'—')+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'—'));for(const r of row.runs)make('p',Number(r.km).toFixed(2)+' km · '+Number(r.min).toFixed(1)+' min'+(r.rpe!=null?' · RPE '+r.rpe:''));for(const note of new Set([row.notes,...row.sets.map(s=>s.notes),...row.runs.map(r=>r.notes||r.note)].filter(Boolean)))make('p',note)}
+ make('small','Reference only. Your current workout inputs stay as entered.');host.firstElementChild.after(detail);
+}
 function mount({getData,commit,parts}){
  const $=id=>document.getElementById(id),make=(tag,text,parent)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(parent)parent.append(e);return e};
  const settings=$('settings'),old=[...settings.children];const header=make('div',null,settings);settings.prepend(header);header.className='ux-intro';make('h2','Settings',header);make('p','Your athlete, training and connected services.',header);
@@ -39,5 +62,5 @@ function mount({getData,commit,parts}){
  // Legacy links to recovery now open its visible destination.
  document.addEventListener('click',e=>{if(e.target.closest('#progressReviewBtn')&&$('progressReviewBtn').textContent&&root.LHRFTrainingReview.assess(getData()).proposals.length)reopen()});
 }
-const api={weekKey,weekComplete,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
+const api={weekKey,weekComplete,modal,comparable,reference,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
