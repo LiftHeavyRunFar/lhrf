@@ -34,7 +34,9 @@ function mount({getData,applyState,getLive,storage=root.localStorage,engine=root
  rollback.onclick=()=>{const generated=document.getElementById('generatedProgrammeReview');if(generated)generated.hidden=true;host.append(message,result,actions);try{reset();const {raw,state}=readState();expectedRaw=raw;preview=api.createRollback(state,engine,{now:new Date().toISOString(),...live()});render()}catch(e){message.textContent=e.message}};
  root.LHRFReviewGeneratedProgramme=async programme=>{
   reset();const {raw,state}=readState();const active=live();if(active.liveWorkout||active.pendingRun)throw Error('Finish the active workout and pending run before programme review.');
-  const generated=await api.createPackage(programme,state,{reviewedCommit:'athlete-onboarding-review',approvalContext:['Athlete requested a new programme through the existing onboarding workflow.']});
+  // Use the same JSON snapshot boundary as imported native packages before hashing.
+  const native=JSON.parse(JSON.stringify(programme));
+  const generated=await api.createPackage(native,state,{reviewedCommit:'athlete-onboarding-review',approvalContext:['Athlete requested a new programme through the existing onboarding workflow.']});
   await api.verifyPackage(generated,generated.reviewFingerprint,state);expectedRaw=raw;preview=api.createReplacement(state,generated,engine,{now:new Date().toISOString(),...active});
   const target=document.getElementById('generatedProgrammeReview');if(!target)throw Error('Programme review is unavailable. Your current programme is unchanged.');target.hidden=false;target.replaceChildren();make('h3','Review your new programme',target);target.append(message,result,actions);render();
  };
