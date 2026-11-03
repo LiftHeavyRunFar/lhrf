@@ -61,6 +61,7 @@ function mount({getData,commit,parts}){
  }
  const refresh=root.refresh;root.refresh=function(){refresh();render()};render();
  const oldGo=root.go;root.go=function(id){oldGo(id);if(id==='today'||id==='train')render()};
+ const restored=root.LHRFLive?.get?.();if(restored)reference($('liveTrainRoot'),restored,getData());
 
 }
 const api={weekKey,weekComplete,modal,comparable,reference,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
