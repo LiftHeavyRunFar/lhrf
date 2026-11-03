@@ -45,13 +45,13 @@ test('no specialist bars, chains or bands: eligible upright squat alternative, n
  for(let w=1;w<=20;w++){const s=e.generatedSessions(c,w);assert.ok(s.every(x=>x.ex.every(x=>!kit.resolve(x[0]).required.includes('safety-squat-bar'))));assert.equal(kit.audit(s,inv).eligible,true)}
 });
 
-test('unknown, missing attachment, arbitrary locked names and no equivalent fail closed',()=>{
+test('ordinary defaults are usable; explicit absence, locked names and missing specialist kit fail closed',()=>{
  const inv=inventory();delete inv.items.rope;
- assert.equal(kit.eligibility('Face pull',inv).eligible,false);
- assert.equal(kit.eligibility('Bench',undefined).eligible,false);
+ assert.equal(kit.eligibility('Face pull',inv).eligible,true);inv.items.rope='unavailable';assert.equal(kit.eligibility('Face pull',inv).eligible,false);
+ assert.equal(kit.eligibility('Bench',undefined).eligible,true);assert.equal(kit.eligibility('Safety-bar squat',undefined).eligible,false);
  assert.equal(kit.eligibility('Imaginary exercise',inventory()).eligible,false);
- const {engine:e,config:c}=engine(undefined,{squat:2,variations:{Squat:{choice:'Imaginary exercise',lock:true}}});const s=e.generatedSessions(c,1);assert.equal(s.constraintResult.feasible,false);assert.deepEqual(s.flatMap(x=>x.ex),[]);
- assert.throws(()=>coach.approveProgrammeConfig({...adapters.normalizeProfile(profile),equipmentInventory:undefined}),/Equipment|equipment|unconfirmed|Confirm/);
+ const {engine:e,config:c}=engine(undefined,{squat:2,variations:{Squat:{choice:'Imaginary exercise',lock:true}}});const s=e.generatedSessions(c,1);assert.equal(s.constraintResult.feasible,false);assert.ok(!s.flatMap(x=>x.ex).some(e=>e[0]==='Imaginary exercise'));
+ assert.doesNotThrow(()=>coach.approveProgrammeConfig({...adapters.normalizeProfile(profile),equipmentInventory:undefined}));
  const noCurls=inventory();noCurls.items['seated-leg-curl']='unavailable';noCurls.items['lying-leg-curl']='unavailable';const a=engine(noCurls);const sessions=a.engine.generatedSessions(a.config,1);assert.ok(sessions.some(s=>s.equipmentLimitations.some(x=>x.purpose==='knee flexion')));
 });
 

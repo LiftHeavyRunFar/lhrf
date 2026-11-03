@@ -17,7 +17,7 @@ const fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInvent
  assert.equal(await page.locator('.trainPrescribed:not([disabled])').count(),0);
  for(const [name,value] of Object.entries({bench:'1',squat:'0',deadlift:'0',runs:'2',runningBaselineMinutes:'120'}))await page.locator(`[name="${name}"]`).fill(value);
  await page.locator('[name="trainingAge"]').selectOption('intermediate');await page.locator('[name="runGoal"]').selectOption('10k');
- await page.getByRole('button',{name:'Generate preview',exact:true}).click();assert.match(await page.locator('#output').innerText(),/unconfirmed/);assert.equal(await page.locator('.trainPrescribed:not([disabled])').count(),0,'Preview cannot train with unknown equipment');
+ await page.getByRole('button',{name:'Generate preview',exact:true}).click();assert.equal(await page.locator('#previewEquipment').count(),1,'Advanced equipment controls remain available');
  await require('./equipment-browser-fixtures.cjs').confirmPreviewEquipment(page);await page.getByRole('button',{name:'Generate preview',exact:true}).click();
  assert.match(await page.locator('#output').innerText(),/strength EVENT — 2026-11-28/);
  const week=page.locator('#output .week').filter({has:page.getByRole('heading',{name:'Week 3 — development',exact:true})});

@@ -26,28 +26,44 @@ function reference(host,live,state){
  if(!row)make('p','No comparable recorded session from last week.');else{make('p',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name+' · Recorded work');for(const s of row.sets)make('p',s.exercise+' · set '+(s.set??'—')+' · '+(s.weight??'—')+(s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg')+' × '+(s.reps??'—')+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'—'));for(const r of row.runs)make('p',root.LHRFRunPresentation.distance(r.km)+' · '+root.LHRFRunPresentation.duration(r.min)+(r.rpe!=null?' · RPE '+r.rpe:''));for(const note of new Set([row.notes,...row.sets.map(s=>s.notes),...row.runs.map(r=>r.notes||r.note)].filter(Boolean)))make('p',note)}
  make('small','Reference only. Your current workout inputs stay as entered.');host.firstElementChild.after(detail);
 }
+function carousel(rail,dots){
+ if(!rail||!dots||rail.dataset.paginationReady)return;rail.dataset.paginationReady='true';const cards=[...rail.children];dots.replaceChildren();dots.hidden=cards.length<2;
+ const select=index=>{const card=cards[index];if(!card)return;rail.scrollTo({left:rail.scrollLeft+card.getBoundingClientRect().left-rail.getBoundingClientRect().left,behavior:'smooth'})};
+ cards.forEach((card,i)=>{const button=document.createElement('button');button.type='button';button.className='day-dot';button.setAttribute('aria-label','Upcoming session '+(i+1)+': '+card.innerText.replace(/\s+/g,' '));button.onclick=()=>select(i);dots.append(button)});
+ const update=()=>{let index=0,best=Infinity;cards.forEach((card,i)=>{const d=Math.abs(card.getBoundingClientRect().left-rail.getBoundingClientRect().left);if(d<best){best=d;index=i}});[...dots.children].forEach((dot,i)=>{dot.classList.toggle('active',i===index);dot.setAttribute('aria-current',i===index?'true':'false')})};
+ rail.addEventListener('scroll',update,{passive:true});rail.addEventListener('keydown',event=>{if(event.target!==rail||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const index=[...dots.children].findIndex(d=>d.getAttribute('aria-current')==='true');select(event.key==='Home'?0:event.key==='End'?cards.length-1:Math.max(0,Math.min(cards.length-1,index+(event.key==='ArrowRight'?1:-1))))});update();
+}
 function mount({getData,commit,parts}){
  const $=id=>document.getElementById(id),make=(tag,text,parent)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(parent)parent.append(e);return e};
- const settings=$('settings'),old=[...settings.children];const header=make('div',null,settings);settings.prepend(header);header.className='ux-intro';make('h2','Settings',header);make('p','Your athlete, training and connected services.',header);
- const section=(id,title,description)=>{const d=make('details',null,settings);d.id=id;d.className='card settings-section';const summary=make('summary',null,d);make('strong',title,summary);make('span',description,summary);return d};
- const athlete=section('settingsAthlete','Athlete profile','Your current goals and training background');
- const preferences=section('settingsPreferences','Training preferences','Priorities, frequency and available days');
- const equipment=section('settingsEquipment','Gym equipment','Confirm what is available at your venue');
- const services=section('settingsServices','Garmin and connected services','Import runs and manage connections');
- const programme=section('settingsProgramme','Programme management','Review configuration, replacement and rollback');
- const backups=section('settingsData','Data, backups and recovery','Export and restore device records');
- const advanced=section('settingsAdvanced','Advanced settings','Technical controls and intentional setup restart');
- const openProgramme=()=>{root.go('settings');programme.open=true;programme.scrollIntoView({block:'start'});};
- root.togglePlanSettings=()=>{openProgramme();$('planAdvanced').open=true};
- const c=getData().customRoadmap||{};make('p',[c.strengthGoal||c.event,c.runningTarget||c.runGoal||c.rungoal,c.trainingAge].filter(Boolean).join(' · ')||'Your profile is stored on this device.',athlete);
- make('p',[c.days?c.days+' training days':'',c.bench!=null?c.bench+' bench sessions':'',c.runs!=null?c.runs+' runs':'',(c.availableDays||[]).join(', ')].filter(Boolean).join(' · ')||'Review your programme to see training preferences.',preferences);
- for(const host of [athlete,preferences]){const b=make('button','Review in programme management',host);b.className='secondary';b.onclick=openProgramme}
- programme.append($('planAdvanced'));$('planAdvanced').querySelector('summary').textContent='Review goals & programme configuration';programme.append($('programmeReplacement'));
- const exportButton=$('exportTrainingData');backups.prepend(exportButton.closest('.card')); // preserve existing export handler and description
- services.append($('garminIncoming'));const recoveryControl=document.querySelector('input[onchange="importBackup(event)"]');if(recoveryControl)backups.append(recoveryControl.closest('.card')); const kit=settings.querySelector('.equipment-panel')||old.find(e=>e.classList.contains('equipment-panel'));if(kit){equipment.append(kit);kit.open=true;kit.querySelector('summary').textContent='Equipment inventory'}
- const account=$('lhrfSettings');if(account){advanced.append(account);account.open=false}
- for(const item of old){if(item.querySelector('#activityFile')){services.append(item);continue}if(item.id==='garminIncoming'||item.id==='programmeReplacement'||item===kit||item.contains(exportButton))continue;if(item.querySelector('#settingsContent')){const b=make('button','Open Garmin & Intervals.icu tools',services);b.className='secondary';b.onclick=()=>root.openRunningTools();item.remove();continue}if(!settings.contains(item))advanced.append(item)}
- const planLink=make('button','Programme management →',$('plan'));planLink.className='secondary';planLink.onclick=openProgramme;
+ const settings=$('settings'),nodes={builder:$('planAdvanced'),replacement:$('programmeReplacement'),garmin:$('garminIncoming'),export:$('exportTrainingData'),manual:$('activityFile')?.closest('.card'),account:$('lhrfSettings'),equipmentPanel:settings.querySelector('.equipment-panel'),restore:document.querySelector('input[onchange="importBackup(event)"]')};
+ const exportCard=nodes.export.closest('.card'),restoreLabel=nodes.restore?.closest('label'),oldRecovery=nodes.restore?.closest('.card'),clear=oldRecovery?.querySelector('[onclick="clearLog()"]');
+ settings.replaceChildren();const header=make('div',null,settings);header.className='ux-intro';make('h2','Settings',header);
+ const section=(id,title,description)=>{const d=make('details',null,settings);d.id=id;d.className='card settings-section';const summary=make('summary',null,d);make('strong',title,summary);if(description)make('span',description,summary);return d};
+ const programme=section('settingsProgramme','Programme management','Review your plan or prepare a new one');
+ const equipment=section('settingsEquipment','Gym equipment','Standard gym included; select specialist kit');
+ const services=section('settingsServices','Garmin and connected services','Import and link recorded runs');
+ const backups=section('settingsData','Data and backups','Download a backup or restore this device');
+ const advanced=section('settingsAdvanced','Advanced settings','Recovery and technical controls');
+ const recovery=make('details',null,advanced);recovery.id='advancedRecovery';make('summary','Advanced recovery',recovery);recovery.append(nodes.replacement);
+ advanced.append(nodes.builder);nodes.builder.hidden=true;
+ if(nodes.account){advanced.append(nodes.account);nodes.account.hidden=true;}
+ const openProgramme=()=>{root.go('settings');programme.open=true;programme.scrollIntoView({block:'start'})};root.togglePlanSettings=openProgramme;
+ const reviewButton=make('button','Review current programme',programme);reviewButton.id='reviewCurrentProgramme';reviewButton.className='secondary';
+ const startButton=make('button','Start a new programme',programme);startButton.id='startNewProgramme';
+ const overview=make('section',null,programme);overview.id='currentProgrammeReview';overview.hidden=true;
+ reviewButton.onclick=()=>{overview.replaceChildren();overview.hidden=!overview.hidden;if(overview.hidden)return;const state=getData(),c=state.customRoadmap||{};make('h3','Current programme',overview);make('p',[c.strengthGoal||c.event,c.priority?c.priority+' priority':'',c.runGoal||c.rungoal].filter(Boolean).join(' · ')||'No active programme saved.',overview);make('p','Week '+(state.activeCustomWeek||1)+' of '+(c.weeks||'—')+' · '+(c.availableDays||state.onboardingDraftDays||[]).join(', '),overview);for(const s of state.activeSchedule||[]){const card=make('details',null,overview);card.className='entry';make('summary',s.day+' · '+s.name,card);for(const e of s.ex||[])make('p',e[0]+' · '+e[1]+' × '+e[2]+' · '+(e[3]>0?e[3]+' kg':'load by RPE')+' · RPE '+e[4],card);for(const r of s.runs||[])make('p',r.name+' · '+(r.distanceKm?r.distanceKm.toFixed(2)+' km':r.minutes+' min')+' · '+(r.pace||'follow prescribed effort'),card)}make('small','Read only. Reviewing this plan does not generate or change workouts.',overview)};
+ startButton.onclick=()=>{if(root.LHRFStartNewProgramme)root.LHRFStartNewProgramme();else alert('Programme setup is unavailable in this cached version. Reopen when online.')};
+ const generated=make('section',null,programme);generated.id='generatedProgrammeReview';generated.hidden=true;
+ services.append(nodes.garmin);nodes.garmin.querySelector('h2').textContent='Garmin';nodes.garmin.querySelector('p').textContent='Review recorded runs before saving or linking them to planned sessions.';$('garminImportOpen').textContent='Import Garmin runs';
+ const serviceAdvanced=make('details',null,services);serviceAdvanced.id='garminAdvanced';make('summary','Advanced imports and connections',serviceAdvanced);if(nodes.manual)serviceAdvanced.append(nodes.manual);const tools=make('button','Connected workout tools',serviceAdvanced);tools.className='secondary';tools.onclick=()=>root.openRunningTools();
+ nodes.export.textContent='Download backup';exportCard.querySelector('h2').textContent='Backups';exportCard.querySelector('p').textContent='Keep a safe copy before changing devices. Connection credentials are excluded.';backups.append(exportCard);
+ if(restoreLabel){for(const node of [...restoreLabel.childNodes])if(node.nodeType===3)node.textContent='Restore from backup ';backups.append(restoreLabel);}
+ const inventoryRecovery=make('details',null,recovery);make('summary','Equipment recovery',inventoryRecovery);make('p','Existing explicit missing-equipment choices and load identities are retained. Reset ordinary equipment only when it is genuinely available.',inventoryRecovery);
+ const resetGym=make('button','Use standard commercial gym defaults',inventoryRecovery);resetGym.className='secondary';resetGym.onclick=()=>{if(root.LHRFLive?.get?.()){alert('Finish the active workout first.');return}if(!confirm('Confirm ordinary commercial gym equipment is available. Specialist selections and load identities will be retained.'))return;const next=JSON.parse(JSON.stringify(getData())),raw=next.equipmentInventory||next.customRoadmap?.equipmentInventory;next.equipmentInventory=LHRFGymEquipment.effective(raw,LHRFExercises.exercises,LHRFExercises.equipment);for(const key of LHRFGymEquipment.standard)next.equipmentInventory.items[key]='available';if(commit(next))root.LHRFRefreshEquipmentForms?.()};
+ const legacy=(getData().activeSchedule||[]).flatMap(s=>s.ex||[]).map(e=>LHRFExercises.resolve(e[0])).filter(e=>e?.setup==='execution-review');for(const e of [...new Map(legacy.map(e=>[e.id,e])).values()]){const confirmSetup=make('button','Review '+e.label+' setup',inventoryRecovery);confirmSetup.className='secondary';confirmSetup.onclick=()=>{if(root.LHRFLive?.get?.())return alert('Finish the active workout first.');if(!confirm('Confirm this saved exercise uses the prescribed cable/rope execution and kg load convention. If your execution differs, cancel and request a programme review.'))return;const next=JSON.parse(JSON.stringify(getData())),raw=next.equipmentInventory||next.customRoadmap?.equipmentInventory;next.equipmentInventory=LHRFGymEquipment.effective(raw,LHRFExercises.exercises,LHRFExercises.equipment);next.equipmentInventory.setups[e.id]=e.setup;commit(next)}}
+ if(clear){clear.textContent='Clear training data';recovery.append(clear);}if(oldRecovery)oldRecovery.remove();document.querySelector('#progressDetails .foot')?.remove();
+ // Its event handlers and explicit selections must survive the layout change.
+ const equipmentPanel=nodes.equipmentPanel||root.LHRFEquipmentPanel;if(equipmentPanel){equipment.append(equipmentPanel);equipmentPanel.open=true;equipmentPanel.querySelector('summary').textContent='Specialist equipment'}else make('p','Reopen online to finish updating equipment controls.',equipment)
  // Keep the original weekly questions and commit path; give them a discoverable home.
  const checkin=$('weeklyCheckin'),checkDetails=make('details',null,$('today'));checkDetails.id='weeklyRecovery';checkDetails.className='card';make('summary','Weekly check-in & recovery',checkDetails);checkDetails.append(checkin);
  const history=make('details',null,checkin);make('summary','Previous check-ins',history);
@@ -61,8 +77,9 @@ function mount({getData,commit,parts}){
  }
  const refresh=root.refresh;root.refresh=function(){refresh();render()};render();
  const oldGo=root.go;root.go=function(id){oldGo(id);if(id==='today'||id==='train')render()};
+ carousel($('upcomingSessions'),$('upcomingDots'));
  const restored=root.LHRFLive?.get?.();if(restored)reference($('liveTrainRoot'),restored,getData());
 
 }
-const api={weekKey,weekComplete,modal,comparable,reference,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
+const api={weekKey,weekComplete,modal,comparable,reference,carousel,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

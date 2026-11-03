@@ -191,6 +191,16 @@ jobs:
         env:
           LHRF_PRODUCTION_ROOT: /tmp/lhrf-production-115
         run: node tests/combined-mobile-release.browser.cjs
+      - name: Prepare current production baseline for Android acceptance
+        if: ${{ !cancelled() && github.head_ref == 'fix/android-equipment-and-ux' }}
+        run: |
+          mkdir -p /tmp/lhrf-android-production
+          git archive e92e843e72482ecaf754672c5eac1aba733ea50b | tar -x -C /tmp/lhrf-android-production
+      - name: Verify Android workout-start and settings corrections
+        if: ${{ !cancelled() && github.head_ref == 'fix/android-equipment-and-ux' }}
+        env:
+          LHRF_ANDROID_BASE: /tmp/lhrf-android-production
+        run: node tests/android-corrections.browser.cjs
       - name: Retain synthetic mobile UX evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -199,4 +209,5 @@ jobs:
           path: |
             docs/ux-115/*.png
             docs/ux-115/combined-release.md
+            docs/ux-115/android-corrections.md
             docs/ux-115/combined-integrity.json
