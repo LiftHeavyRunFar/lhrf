@@ -23,7 +23,7 @@ function comparable(state,live,history){
 function reference(host,live,state){
  host.querySelector('#previousWorkout')?.remove();const detail=document.createElement('details');detail.className='card previous-workout';detail.id='previousWorkout';const summary=document.createElement('summary');summary.textContent="Last week's comparable workout";detail.append(summary);
  const make=(tag,text)=>{const el=document.createElement(tag);el.textContent=text;detail.append(el);return el},row=comparable(state,live,root.LHRFTrainingReview.history(state));
- if(!row)make('p','No comparable recorded session from last week.');else{make('p',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name+' · Recorded work');for(const s of row.sets)make('p',s.exercise+' · set '+(s.set??'—')+' · '+(s.weight??'—')+(s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg')+' × '+(s.reps??'—')+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'—'));for(const r of row.runs)make('p',Number(r.km).toFixed(2)+' km · '+Number(r.min).toFixed(1)+' min'+(r.rpe!=null?' · RPE '+r.rpe:''));for(const note of new Set([row.notes,...row.sets.map(s=>s.notes),...row.runs.map(r=>r.notes||r.note)].filter(Boolean)))make('p',note)}
+ if(!row)make('p','No comparable recorded session from last week.');else{make('p',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name+' · Recorded work');for(const s of row.sets)make('p',s.exercise+' · set '+(s.set??'—')+' · '+(s.weight??'—')+(s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg')+' × '+(s.reps??'—')+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'—'));for(const r of row.runs)make('p',root.LHRFRunPresentation.distance(r.km)+' · '+root.LHRFRunPresentation.duration(r.min)+(r.rpe!=null?' · RPE '+r.rpe:''));for(const note of new Set([row.notes,...row.sets.map(s=>s.notes),...row.runs.map(r=>r.notes||r.note)].filter(Boolean)))make('p',note)}
  make('small','Reference only. Your current workout inputs stay as entered.');host.firstElementChild.after(detail);
 }
 function mount({getData,commit,parts}){
@@ -52,6 +52,7 @@ function mount({getData,commit,parts}){
  const checkin=$('weeklyCheckin'),checkDetails=make('details',null,$('today'));checkDetails.id='weeklyRecovery';checkDetails.className='card';make('summary','Weekly check-in & recovery',checkDetails);checkDetails.append(checkin);
  const history=make('details',null,checkin);make('summary','Previous check-ins',history);
  const reopen=()=>{root.go('today');checkDetails.open=true;checkDetails.scrollIntoView({block:'start'});checkDetails.querySelector('select')?.focus({preventScroll:true})};
+ root.LHRFMobileUX.openRecovery=reopen;
  const progressLink=make('button','Weekly check-in & recovery',$('progress'));progressLink.className='secondary';progressLink.onclick=reopen;
  const banners=[$('today'),$('train')].map(host=>{const box=make('aside',null,host);box.className='card weekly-prompt';box.setAttribute('aria-live','polite');return box});
  function render(){const state=getData(),key=weekKey(state),complete=weekComplete(state,parts),latest=(state.weeklyCheckins||[]).some(x=>x.programmeWeekKey===key),handled=state.uxWeeklyPrompts?.[key];
@@ -61,8 +62,7 @@ function mount({getData,commit,parts}){
  const refresh=root.refresh;root.refresh=function(){refresh();render()};render();
  const oldGo=root.go;root.go=function(id){oldGo(id);if(id==='today'||id==='train')render()};
  const restored=root.LHRFLive?.get?.();if(restored)reference($('liveTrainRoot'),restored,getData());
- // Legacy links to recovery now open its visible destination.
- document.addEventListener('click',e=>{if(e.target.closest('#progressReviewBtn')&&$('progressReviewBtn').textContent&&root.LHRFTrainingReview.assess(getData()).proposals.length)reopen()});
+
 }
 const api={weekKey,weekComplete,modal,comparable,reference,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
