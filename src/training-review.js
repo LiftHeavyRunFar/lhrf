@@ -8,6 +8,13 @@ function history(state){
  for(const r of runs)if(!rows.some(w=>w.runs.includes(r)))rows.push({date:r.date,name:r.name||r.session||r.type||'Run',kind:'run',sets:[],runs:[r],feedback:[]});
  return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
 }
+function strengthGroups(row){
+ const groups=new Map(),key=(name,variant)=>name+'|'+(variant||'');
+ const get=(name,variant)=>{const id=key(name,variant);if(!groups.has(id))groups.set(id,{name,variant,prescribed:[],actual:[]});return groups.get(id)};
+ for(const ex of row.prescription?.ex||[])get(ex[0],ex[5]?.variantId).prescribed.push(ex);
+ for(const set of row.sets||[])get(set.exercise,set.variantId).actual.push(set);
+ return [...groups.values()];
+}
 function assess(state,now=new Date()){
  const since=+now-14*86400000,recent=(state.runs||[]).filter(r=>Date.parse(r.date)>=since&&Date.parse(r.date)<=+now),messages=[],proposals=[];
  const reviews=(state.weeklyCheckins||[]).filter(c=>Date.parse(c.date)>=+now-7*86400000).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)),check=reviews[0];
@@ -34,8 +41,14 @@ function mount({getData,commit}){
  if(!items.length)make('p','No recorded workouts match these dates.',list);
  for(const row of items.slice(0,limit)){const detail=make('details',null,list);detail.className='entry';detail.dataset.historyKey=[row.date,row.id||row.name].join('|');detail.open=expanded.has(detail.dataset.historyKey);make('summary',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name,detail);
  if(row.plannedDate)make('p','Completed '+new Date(row.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · planned '+new Date(row.plannedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}),detail).className='muted small';
- if(row.prescription){make('h3','Prescribed',detail);for(const e of row.prescription.ex||[])make('p',e[0]+' · '+e[1]+' × '+e[2]+' · '+e[3]+' kg · RPE '+e[4],detail);for(const r of row.prescription.runs||[])make('p',r.name+' · '+(r.structure||r.minutes+' min'),detail)}else make('p','Original prescription was not saved with this historical record.',detail).className='muted small';
- for(const s of row.sets)make('p',s.exercise+' · set '+s.set+' · '+s.weight+' kg × '+s.reps+' · RPE '+s.rpe+(s.target?' / target '+s.target:''),detail);
+ for(const group of strengthGroups(row)){const section=make('section',null,detail);section.className='strength-comparison';make('h3',group.name,section);const table=make('table',null,section),head=make('tr',null,make('thead',null,table));make('th','Prescribed',head);make('th','Actual',head);const tr=make('tr',null,make('tbody',null,table)),target=make('td',null,tr),actual=make('td',null,tr);
+ const units=meta=>meta?.loadType==='per-hand-kg'?'kg / hand':meta?.loadType==='assistance-kg'?'kg assistance':'kg';
+ if(!group.prescribed.length)make('p','Original prescription unavailable',target);
+ for(const ex of group.prescribed)make('p',ex[1]+' × '+ex[2]+(ex[5]?.doseUnit==='seconds'?' sec':' reps')+' · '+ex[3]+' '+units(ex[5])+' · RPE '+ex[4]+(ex[5]?.role?' · '+ex[5].role:''),target);
+ if(!group.actual.length)make('p','No recorded sets',actual);
+ for(const set of group.actual)make('p','Set '+(set.set??'—')+' · '+(set.weight??'—')+' '+units(set)+' × '+(set.reps??'—')+(set.doseUnit==='seconds'?' sec':' reps')+' · RPE '+(set.rpe??'—')+(set.target?' / target '+set.target:''),actual);
+ }
+ if(!row.prescription&&row.sets.length)make('p','Original prescription was not saved with this historical record.',detail).className='muted small';
  for(const r of row.runs){
  const actual=make('section',null,detail);actual.className='run-comparison';make('h3','Prescribed vs actual',actual);
  const prescribed=r.plannedSession?.prescription||r.activityAssociation?.prescription||row.prescription,comparison=format.comparison(r,prescribed);
@@ -59,9 +72,9 @@ function mount({getData,commit}){
  const notes=make('textarea',null,make('label','Anything affecting training? Heat, hills, sleep, illness or sensor problems',review));notes.rows=2;
  const actions=make('div',null,review);actions.className='actions';const save=make('button','Save weekly check-in',actions),sync=make('button','Pull recent Garmin runs',actions);sync.className='secondary';const status=make('p',null,review);status.setAttribute('aria-live','polite');const evidence=make('div',null,review);
  function renderAssessment(){evidence.replaceChildren();const state=getData(),result=assess(state);make('p',state.garminSync?.savedAt?'Last Garmin import reviewed: '+new Date(state.garminSync.savedAt).toLocaleString('en-GB'):'Garmin import has not been reviewed yet.',evidence).className='muted small';if(state.garminSync?.truncated)make('p','The last import was partial. Older runs may be missing; review coverage before drawing conclusions.',evidence);const latest=(state.weeklyCheckins||[]).slice(-1)[0];if(latest){make('p','Latest check-in: '+new Date(latest.date).toLocaleDateString('en-GB')+' · fatigue '+latest.fatigue+' · soreness '+latest.soreness+' · discomfort '+latest.discomfort,evidence);if(latest.notes)make('p','Context: '+latest.notes,evidence)}for(const text of result.messages)make('p',text,evidence);for(const text of result.proposals)make('p','Proposed for discussion: '+text,evidence).className='warn';make('p','No programme changes applied. These signals support the existing coach review; any prescription change still requires approval.',evidence).className='muted small'}
- save.onclick=()=>{if(Object.values(controls).some(x=>!x.value)){status.textContent='Choose fatigue, soreness and discomfort before saving.';return}const next=JSON.parse(JSON.stringify(getData()));next.weeklyCheckins=next.weeklyCheckins||[];next.weeklyCheckins.push({date:new Date().toISOString(),...Object.fromEntries(Object.entries(controls).map(([k,v])=>[k,v.value])),notes:notes.value.slice(0,2000),...(root.LHRFMobileUX?{programmeWeekKey:root.LHRFMobileUX.weekKey(getData())}:{})});if(!commit(next)){status.textContent='Could not save the check-in. Please try again.';return}status.textContent='Check-in saved. Pull recent Garmin runs to bring this assessment up to date.';renderAssessment()};
+ save.onclick=()=>{if(Object.values(controls).some(x=>!x.value)){status.textContent='Choose fatigue, soreness and discomfort before saving.';return}const next=JSON.parse(JSON.stringify(getData()));next.weeklyCheckins=next.weeklyCheckins||[];next.weeklyCheckins.push({date:new Date().toISOString(),...Object.fromEntries(Object.entries(controls).map(([k,v])=>[k,v.value])),notes:notes.value.slice(0,2000),...(root.LHRFMobileUX?{programmeWeekKey:root.LHRFWeeklyReviewKey||root.LHRFMobileUX.weekKey(getData())}:{})});if(!commit(next)){status.textContent='Could not save the check-in. Please try again.';return}delete root.LHRFWeeklyReviewKey;status.textContent='Check-in saved. Pull recent Garmin runs to bring this assessment up to date.';renderAssessment()};
  sync.onclick=()=>{if(typeof root.go==='function')root.go('settings');const services=document.getElementById('settingsServices');if(services)services.open=true;document.getElementById('garminImportOpen')?.click();document.getElementById('garminIncoming')?.scrollIntoView({behavior:'smooth'})};
  const oldRefresh=root.refresh;if(typeof oldRefresh==='function')root.refresh=function(){oldRefresh();renderHistory();renderAssessment()};renderHistory();renderAssessment();
 }
-const api={history,assess,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFTrainingReview=api;
+const api={history,strengthGroups,assess,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFTrainingReview=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

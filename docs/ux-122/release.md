@@ -1,0 +1,24 @@
+# Final Android polish — Issue 122
+
+Production baseline: da1d8babd9fabbe5f5bb29e43269f44a1aae4914, tree b55430367af19881c5b7b810daffd11cf4465ed2. Owner session: Thursday 5 November 2026, 06:00 Europe/London. No merge/deployment/activation authorised.
+
+## Corrections
+
+- Owner reference received in conversation: compact navy Upcoming cards, fine restrained blue outline, muted round dots and subtle blue active dots. Both horizontal rails, tap/keyboard navigation and completion indicators retained. Android-width synthetic screenshots are captured against the exact production baseline.
+- Today Sync Garmin opens the existing private integration and visible review area. The unique nearest unoccupied planned run is suggested within the existing early/late window; ties remain unselected. Nothing is saved/linked before explicit review/save. Existing deduplication, actual timestamps, credentials and advanced local-file fallback remain.
+- Practical entry suggestions round known kg equipment to 2.5 kg. Per-hand and assistance conventions remain explicit. Unknown equipment retains its existing value. Original saved prescriptions and target RPE remain intact and are labelled when a suggestion differs. Manually entered/recorded loads are never rounded or rewritten; entry allows arbitrary actual equipment increments. Different gym stacks may require athlete correction.
+- Live rationale is collapsed with short cues retained. Finish session? shows completed-set count, Keep training and Finish & save. Duplicate dialog opening is prevented. Save failure restores the in-memory athlete, retains the active workout/draft and permits a clean retry. Other existing destructive recovery/discard confirmations remain unchanged.
+- History groups prescribed and recorded sets per exercise/variant, retaining every recorded set, load units, reps and actual/target RPE. Missing historical prescriptions are labelled, not reconstructed.
+- Progress completion previously counted all records with the same numeric week, regardless of programme identity, against only active scheduled components. It now counts exact matched scheduled identities/source weeks once, preserving raw records rather than capping a misleading percentage. Synthetic duplicate/archived records no longer produce 7/6 or 117%.
+- Weekly review uses the same component-completion rule, including completed prior weeks after late imports. Deferral/dismissal persists without repeat prompts; deferred reviews can be reopened for their original week. The redundant permanent Progress check-in shortcut is removed. Actual coaching/safety proposals and immediate readiness/injury/fatigue safeguards remain. Review still proposes changes for explicit approval; no automatic next-week prescription adjustment is introduced.
+- Plan retains its approved weekly-session layout. The original rep-weighted average is labelled precisely, alongside a distinct peak bench top-set series on a fixed 0–110% scale. Weekly numerical values make the taper/final single auditable. In the approved synthetic November installation, 22 November's 152.5 kg single at a 160 kg baseline is 95.3%; an average can fall while this top-set intensity rises. Neither series changes prescriptions.
+
+## Validation and limitations
+
+Focused policy/history/syntax checks pass locally. PR records final exact SHA and CI outcome; do not release with unresolved failures. Full CI includes coaching safety/acceptance, Node, mobile browser, Garmin review/dedupe, Stage 8 interruption/replacement/rollback and offline/PWA regressions. Added acceptance performs a production same-origin update, immutable November/history/equipment checks, real Upcoming touch gestures, keyboard navigation, finish cancellation/storage failure and graph checks. All data is synthetic.
+
+Physical Android, TalkBack, font scaling, native keyboard/address-bar/back gesture and owner comparison to the attached image remain necessary. Automated browser checks cannot certify owner-phone visual acceptance. Historical missing prescriptions/variant identities are not guessed. Loading defaults are entry aids, not a new equipment-generation policy. Coach review remains conservative and approval-based; no new coaching architecture or credentials introduced.
+
+## Safe release route
+
+Ella and owner review exact SHA, green CI, screenshots and phone acceptance before the Thursday session. Check whether merging main auto-publishes before approving a merge. Take a verified backup, update via the existing same-origin PWA between workouts, then confirm original November bench, RPE history, Garmin associations, equipment selections and offline reopen. Do not clear site data, rerun onboarding, regenerate programmes or manually import a programme. Retain previous app commit for code-only rollback preserving device storage.
