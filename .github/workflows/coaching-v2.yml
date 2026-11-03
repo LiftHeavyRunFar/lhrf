@@ -175,9 +175,28 @@ jobs:
       - name: Test Progress hierarchy, recorded runs and source preservation
         if: ${{ !cancelled() }}
         run: node tests/mobile-progress.browser.cjs
+      - name: Prepare production main for combined release upgrade acceptance
+        if: ${{ !cancelled() && github.head_ref == 'release/mobile-ux-115-rc' }}
+        run: |
+          mkdir -p /tmp/lhrf-production-115
+          git archive 49433e748dd1090c205e954e915a4490cb820a56 | tar -x -C /tmp/lhrf-production-115
+      - name: Verify protected production files and record candidate identity
+        if: ${{ !cancelled() && github.head_ref == 'release/mobile-ux-115-rc' }}
+        env:
+          LHRF_PRODUCTION_ROOT: /tmp/lhrf-production-115
+          LHRF_RELEASE_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/mobile-release-integrity.cjs
+      - name: Test combined production update, late check-ins and history integrity
+        if: ${{ !cancelled() && github.head_ref == 'release/mobile-ux-115-rc' }}
+        env:
+          LHRF_PRODUCTION_ROOT: /tmp/lhrf-production-115
+        run: node tests/combined-mobile-release.browser.cjs
       - name: Retain synthetic mobile UX evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mobile-ux-115-evidence
-          path: docs/ux-115/*.png
+          path: |
+            docs/ux-115/*.png
+            docs/ux-115/combined-release.md
+            docs/ux-115/combined-integrity.json

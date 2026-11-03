@@ -3,3 +3,6 @@ docs/qa/five-scenario-engine-baseline/
 docs/qa/coaching-rounds-current/
 __pycache__/
 work/
+docs/ux-115/combined-integrity.json
+docs/ux-115/combined-before-*.png
+docs/ux-115/combined-after-*.png
