@@ -8,8 +8,9 @@ async function confirmOnboardingEquipment(page){
   if(!panel)throw Error('Missing onboarding equipment controls');
   panel.querySelector('input[aria-label]').value=inv.venueId;
   panel.querySelectorAll('select[aria-label]').forEach(x=>x.value=inv.items[x.getAttribute('aria-label')]||'unknown');
+  panel.querySelectorAll('input[type="checkbox"][aria-label]').forEach(x=>{x.equipmentState=inv.items[x.getAttribute('aria-label')]||'unknown'});
   panel.querySelectorAll('input[type="checkbox"]').forEach(x=>{if(!x.disabled)x.checked=true});
-  panel.querySelector('button').click();return data.equipmentInventory;
+  [...panel.querySelectorAll('button')].find(b=>b.textContent==='Save confirmed equipment').click();return data.equipmentInventory;
  },fullInventory());
  assert.equal(inventory.source,'athlete-confirmed');assert.equal(inventory.items['straight-bar'],'available');
 }
