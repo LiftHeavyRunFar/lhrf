@@ -4,6 +4,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const coach=require('../src/coach-engine'),install=require('../src/programme-install');
 const approved=require('./fixtures/approved-peak-v2.json').config;
 const cases=[...require('./fixtures/five-scenario-engine-inputs.json').cases,...require('./fixtures/original-three-engine-inputs.json').cases];
+const approveGeneratedProgramme=require('./generated-programme-browser-fixtures.cjs');
 const KEY='lhrf_beta_v1118_clean',stamp='2026-10-30T12:00:00Z';
 const clone=x=>JSON.parse(JSON.stringify(x));
 function legacy(){
@@ -37,6 +38,7 @@ async function enter(page,id){
  if(!await page.getByText('Event-day availability',{exact:true}).evaluate(el=>el.parentElement.open))await page.getByText('Event-day availability',{exact:true}).click();
  for(const [kind,date]of [['Strength',c.strengthTargetDate],['Running',c.runningTargetDate]])if(date){const event=v.eventDays[date];await page.locator('#fr'+kind+'EventConfirmed').setChecked(event?.confirmed===true);await set(page,'fr'+kind+'EventMinutes',event?.minutes??'');}
  await page.locator('#frNext').click();
+ await page.locator('#frModeCoach').click();
  for(const [field,value]of Object.entries({frDays:c.availableDays.length,frSquat:c.squat,frBench:c.bench,frDeadlift:c.deadlift,frRuns:c.runs,frStrengthVisits:v.strengthVisits,frLongDay:c.longRunDay||'Sun'}))await set(page,field,value);
  for(const day of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])await page.locator('.fr-day[value="'+day+'"]').setChecked(c.availableDays.includes(day));
  await page.getByText('Hard time limits and separate visits (optional)',{exact:true}).click();
@@ -59,7 +61,7 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
    const {context,page,before,errors}=await contextFor(browser);await enter(page,'A');preserved(await read(page),before);
    assert.equal(await page.locator('#frNext').isEnabled(),true);
    await page.getByText('Explore weekly sessions',{exact:true}).click();await page.locator('#frPreview details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));assert.match(await page.locator('#frPreview').innerText(),/Squat|Bench/);
-   await page.locator('#frNext').click();assert.equal(await page.locator('#firstRun').isVisible(),false);
+   await page.locator('#frNext').click();assert.equal(await page.locator('#firstRun').isVisible(),false);await approveGeneratedProgramme(page);
    const after=await read(page);preserved(after,before,true);assert.equal(after.customRoadmap.coachingRulesVersion,2);assert.equal(after.customRoadmap.visitConstraints.strengthVisits,2);assert.deepEqual(after.customRoadmap.visitConstraints.minutes,{Tue:75,Thu:75,Sun:105});assert.deepEqual(after.customRoadmap.runningHistory.weeklyKm,[20,22,23,24,22,25]);assert.notEqual(after.customRoadmap.programmeId,before.customRoadmap.programmeId);
    assert.deepEqual(after.programmeArchive.at(-1).programme,before.customRoadmap);assert.deepEqual(after.programmeArchive.at(-1).schedule,before.activeSchedule);assert.ok(after.activeSchedule.every(s=>s.id.startsWith(after.customRoadmap.sessionNamespace)));
    const native=await page.evaluate(c=>LHRFCoachAdapters.buildNewProgramme(c,{now:()=>Date.parse('2026-10-30T12:00:00Z')}),after.customRoadmap);assert.ok(native.weeks.every(w=>w.feasible));assert.ok(native.weeks[0].sessions.every(s=>s.timeBudget?.feasible));
@@ -68,22 +70,22 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
   // B: a future event outside the stated time window blocks approval, not only week-one preview.
   {
    const {context,page,before,errors}=await contextFor(browser);await enter(page,'B');assert.equal(await page.locator('#frNext').isDisabled(),true);preserved(await read(page),before);
-   assert.match(await page.locator('#frWarnings').innerText(),/event|availability|participation|time/i);
-   await backToGoals(page);await page.locator('#frRunningEventConfirmed').check();await set(page,'frRunningEventMinutes',130);await returnToPreview(page);assert.equal(await page.locator('#frNext').isDisabled(),true,'Confirmed attendance cannot override an insufficient hard event allowance');assert.match(await page.locator('#frWarnings').innerText(),/hard event window of 130/);preserved(await read(page),before);
+   assert.match(await page.locator('#frWarnings').textContent(),/event|availability|participation|time/i);
+   await backToGoals(page);await page.locator('#frRunningEventConfirmed').check();await set(page,'frRunningEventMinutes',130);await returnToPreview(page);assert.equal(await page.locator('#frNext').isDisabled(),true,'Confirmed attendance cannot override an insufficient hard event allowance');assert.match(await page.locator('#frWarnings').textContent(),/hard event window of 130/);preserved(await read(page),before);
    await backToGoals(page);await set(page,'frRunningEventMinutes',150);await returnToPreview(page);assert.equal(await page.locator('#frNext').isEnabled(),true);preserved(await read(page),before);
-   await page.locator('#frNext').click();const after=await read(page);preserved(after,before,true);assert.deepEqual(after.customRoadmap.visitConstraints.eventDays['2027-03-21'],{confirmed:true,minutes:150});assert.deepEqual(errors,[]);await context.close();
+   await page.locator('#frNext').click();await approveGeneratedProgramme(page);const after=await read(page);preserved(after,before,true);assert.deepEqual(after.customRoadmap.visitConstraints.eventDays['2027-03-21'],{confirmed:true,minutes:150});assert.deepEqual(errors,[]);await context.close();
   }
   // C: the real intake creates a dated sport handover and protects two separate Tuesday visits.
   {
    const {context,page,before,errors}=await contextFor(browser);await enter(page,'C');assert.equal(await page.locator('#frNext').isDisabled(),true);preserved(await read(page),before);
-   await backToGoals(page);await page.locator('#frStrengthEventConfirmed').check();await returnToPreview(page);assert.equal(await page.locator('#frNext').isEnabled(),true);await page.locator('#frNext').click();
+   await backToGoals(page);await page.locator('#frStrengthEventConfirmed').check();await returnToPreview(page);assert.equal(await page.locator('#frNext').isEnabled(),true);await page.locator('#frNext').click();await approveGeneratedProgramme(page);
    const after=await read(page);preserved(after,before,true);const c=after.customRoadmap;assert.equal(c.orderedGoals.length,2);assert.equal(c.orderedGoals[0].priority,'Running');assert.equal(c.orderedGoals[1].priority,'Squat');assert.equal(c.orderedGoals[1].runs,2);assert.deepEqual(c.visitConstraints.separateDays,['Tue']);assert.equal(c.visitConstraints.minimumGapHours,6);
    const p=await page.evaluate(c=>LHRFCoachAdapters.buildNewProgramme(c,{now:()=>Date.parse('2026-10-30T12:00:00Z')}),c);assert.equal(p.weeks[0].priority,'Running');assert.equal(p.weeks[7].priority,'Squat');const runs=p.weeks[7].sessions.flatMap(s=>s.runs||[]);assert.equal(runs.length,2);assert.ok(runs.every(r=>r.role==='easy-run'));
    const separate=p.weeks[0].sessions.find(s=>s.day==='Tue').timeBudget;assert.equal(separate.separate,true);assert.equal(separate.visits.length,2);assert.ok(separate.visits.every(v=>v.totalMinutes<=75));assert.deepEqual(errors,[]);await context.close();
   }
   // O3: unknown pace remains a timed health run throughout preview, timer and actual logging.
   {
-   const {context,page,before,errors}=await contextFor(browser);await enter(page,'O3');assert.equal(await page.locator('#frNext').isEnabled(),true);preserved(await read(page),before);await page.locator('#frNext').click();
+   const {context,page,before,errors}=await contextFor(browser);await enter(page,'O3');assert.equal(await page.locator('#frNext').isEnabled(),true);preserved(await read(page),before);await page.locator('#frNext').click();await approveGeneratedProgramme(page);
    const accepted=await read(page),health=accepted.activeSchedule.find(s=>s.runs?.some(r=>r.distanceKnown===false));assert.ok(health);assert.ok(health.runs.every(r=>r.minutes===20&&r.distanceKnown===false));
    await page.locator('nav [data-screen="today"]').click();await page.locator(`[data-session-id="${health.id}"]`).first().click();assert.match(await page.locator('#livePreview').innerText(),/20 min|20:00/i);await page.locator('#previewStart').click();
    if(await page.locator('#readinessModal').count()){await page.getByRole('button',{name:'Review readiness',exact:true}).click();await page.locator('#readinessContinue').click();}

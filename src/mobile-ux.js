@@ -28,7 +28,7 @@ function reference(host,live,state){
 }
 function carousel(rail,dots){
  if(!rail||!dots||rail.dataset.paginationReady)return;rail.dataset.paginationReady='true';const cards=[...rail.children];dots.replaceChildren();dots.hidden=cards.length<2;
- const select=index=>{const card=cards[index];if(!card)return;rail.scrollTo({left:rail.scrollLeft+card.getBoundingClientRect().left-rail.getBoundingClientRect().left,behavior:'smooth'})};
+ const select=index=>{const card=cards[index];if(!card)return;rail.scrollTo({left:rail.scrollLeft+card.getBoundingClientRect().left-rail.getBoundingClientRect().left,behavior:'instant'})};
  cards.forEach((card,i)=>{const button=document.createElement('button');button.type='button';button.className='day-dot';button.setAttribute('aria-label','Upcoming session '+(i+1)+': '+card.innerText.replace(/\s+/g,' '));button.onclick=()=>select(i);dots.append(button)});
  const update=()=>{let index=0,best=Infinity;cards.forEach((card,i)=>{const d=Math.abs(card.getBoundingClientRect().left-rail.getBoundingClientRect().left);if(d<best){best=d;index=i}});[...dots.children].forEach((dot,i)=>{dot.classList.toggle('active',i===index);dot.setAttribute('aria-current',i===index?'true':'false')})};
  rail.addEventListener('scroll',update,{passive:true});rail.addEventListener('keydown',event=>{if(event.target!==rail||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const index=[...dots.children].findIndex(d=>d.getAttribute('aria-current')==='true');select(event.key==='Home'?0:event.key==='End'?cards.length-1:Math.max(0,Math.min(cards.length-1,index+(event.key==='ArrowRight'?1:-1))))});update();
