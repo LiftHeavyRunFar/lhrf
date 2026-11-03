@@ -121,6 +121,7 @@ const live = {id: strengthId, parentId: strength.id, component: 'strength', name
       hasTouch: true, serviceWorkers: 'block'});
     const recovery = await recoveryContext.newPage(), recoveryErrors = [];
     recovery.on('pageerror', e => recoveryErrors.push(e.message));
+    await recovery.clock.install({time: new Date('2026-11-10T12:00:00Z')});
     await recovery.addInitScript(({DATA, fixture}) => {
       if (!localStorage.getItem(DATA)) localStorage.setItem(DATA, JSON.stringify(fixture));
     }, {DATA, fixture});
