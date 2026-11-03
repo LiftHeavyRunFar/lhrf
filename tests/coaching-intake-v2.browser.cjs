@@ -23,9 +23,9 @@ function preserved(after,before,approval=false){
 async function contextFor(browser){
  const context=await browser.newContext({viewport:{width:390,height:844},timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date('2026-11-02T12:00:00Z')});
- await page.route('http://intake.test/**',route=>{const p=new URL(route.request().url()).pathname,file=path.join(__dirname,'..',p==='/'?'index.html':p);return route.fulfill({body:fs.readFileSync(file),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.png')?'image/png':'text/html'})});
+ await page.route('https://intake.test/**',route=>{const p=new URL(route.request().url()).pathname,file=path.join(__dirname,'..',p==='/'?'index.html':p);return route.fulfill({body:fs.readFileSync(file),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.png')?'image/png':'text/html'})});
  await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture:legacy()});
- await page.goto('http://intake.test/');
+ await page.goto('https://intake.test/');
  // Preserve frozen Stage 1–6 UI acceptance under its original duration policy. Latest policy has a separate mobile suite.
  await page.evaluate(()=>{const prepare=LHRFCoach.prepareNewProgramme;LHRFCoach.prepareNewProgramme=(c,o)=>prepare({...c,sessionTimeVersion:0},o)});const before=await read(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
  await page.evaluate(()=>document.getElementById('restartOnboardingLink').click());return {context,page,before,errors};
