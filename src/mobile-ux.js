@@ -1,7 +1,7 @@
 /* Presentation helpers. No prescription generation or storage migration. */
 (function(root){'use strict';
 function weekKey(state){const c=state.customRoadmap||{};return [state.reviewedProgramme?.fingerprint||c.programmeId||c.startDate||'programme',c.startDate||'',Number(state.activeCustomWeek||1)].join('|')}
-function weekCompletion(state,parts=x=>[x]){const sessions=(state.activeSchedule||[]).flatMap(parts);const matched=sessions.filter(s=>(state.completedWorkouts||[]).some(w=>Number(w.week||1)===Number(s.sourceProgrammeWeek||state.activeCustomWeek||1)&&(w.id===s.id||(s.parentId&&w.id===s.parentId))));return {planned:sessions.length,completed:matched.length,percent:sessions.length?Math.round(matched.length/sessions.length*100):0}}
+function weekCompletion(...args){return (typeof module==='object'&&module.exports?require('./android-polish'):root.LHRFAndroidPolish).weekCompletion(...args)}
 function weekComplete(state,parts=x=>[x]){const counts=weekCompletion(state,parts);return counts.planned>0&&counts.completed===counts.planned}
 
 let closeModal=null;
