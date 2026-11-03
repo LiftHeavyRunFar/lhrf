@@ -60,6 +60,7 @@ function mount({getData,commit,parts}){
  }
  const refresh=root.refresh;root.refresh=function(){refresh();render()};render();
  const oldGo=root.go;root.go=function(id){oldGo(id);if(id==='today'||id==='train')render()};
+ const restored=root.LHRFLive?.get?.();if(restored)reference($('liveTrainRoot'),restored,getData());
  // Legacy links to recovery now open its visible destination.
  document.addEventListener('click',e=>{if(e.target.closest('#progressReviewBtn')&&$('progressReviewBtn').textContent&&root.LHRFTrainingReview.assess(getData()).proposals.length)reopen()});
 }
