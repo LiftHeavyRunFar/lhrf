@@ -1385,7 +1385,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const split=readManual();const counts={bench:0,lower:0,run:0,long:0};
   for(const vals of Object.values(split))for(const v of vals)counts[v]++;
   get('frManualStatus').textContent='Bench '+counts.bench+' · Lower body '+counts.lower+' · Runs '+(counts.run+counts.long)+' (including '+counts.long+' long run)';
-  data.onboardingManualSplit=split;
+  // Status rendering must not mutate an existing athlete draft. sync() captures deliberate onboarding edits.
   updateVisitWindows();
  }
  get('frManualDays').innerHTML=dayLabels.map(d=>'<div class="fr-splitday"><strong>'+d+'</strong><div class="fr-chips">'+choices.map(([key,label])=>'<label><input class="fr-activity" data-day="'+d+'" type="checkbox" value="'+key+'" '+(manualState[d].includes(key)?'checked':'')+'>'+label+'</label>').join('')+'</div></div>').join('');
