@@ -1,4 +1,4 @@
-const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{
  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const KEY='lhrf_beta_v1118_clean',config=require('../programmes/november-2026.json'),fixture={customRoadmap:config,activeCustomWeek:1,activeSchedule:require('../src/coach-engine').createEngine().generatedSessions(config,1),sets:[{exercise:'Bench',weight:120,reps:3}],runs:[],checkins:[],decisions:[],overrides:{},completedWorkouts:[],plannedRuns:[],goals:{},onboardingComplete:true,sentinel:'preserve'};
@@ -11,7 +11,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.locator('#garminImportOpen').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});assert.match(await page.locator('#garminIncomingList').innerText(),/150 bpm/);assert.equal(await page.locator('#garminIncomingList img').count(),0);
  await page.locator('#garminIncomingSave').click();assert.match(await page.locator('#garminIncomingStatus').innerText(),/1 runs saved/);const after=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(after.runs.length,1);assert.equal(after.runs[0].avgHr,150);for(const k of Object.keys(before).filter(k=>k!=='runs'))assert.deepEqual(after[k],before[k]);
  await page.locator('#garminImportOpen').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});assert.match(await page.locator('#garminIncomingList').innerText(),/Already imported/);await page.locator('#garminIncomingSave').click();assert.equal(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)).runs.length,KEY),1);await page.locator('nav [data-screen="progress"]').click();
- await page.locator('#trainingHistory details').filter({hasText:'6 km'}).locator('summary').click();
+ await page.locator('#trainingHistory details').filter({hasText:'6.00 km'}).first().locator(':scope > summary').click();
  assert.match(await page.locator('#trainingHistory').innerText(),/average HR 150 bpm/);
  await page.locator('nav [data-screen="today"]').click();await page.locator('#weeklyRecovery>summary').click();await page.locator('#weeklyCheckin select').nth(0).selectOption('low');await page.locator('#weeklyCheckin select').nth(1).selectOption('low');await page.locator('#weeklyCheckin select').nth(2).selectOption('no');
  await page.getByRole('button',{name:'Save weekly check-in',exact:true}).click();

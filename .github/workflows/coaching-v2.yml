@@ -165,3 +165,19 @@ jobs:
           equipment_server_pid=$!
           trap 'kill "$equipment_server_pid"' EXIT
           node tests/equipment.browser.cjs
+
+      - name: Test mobile settings, equipment persistence and weekly recovery
+        if: ${{ !cancelled() }}
+        run: node tests/mobile-ux.browser.cjs
+      - name: Test preview touch scroll, focus and prior-week reference
+        if: ${{ !cancelled() }}
+        run: node tests/mobile-workout.browser.cjs
+      - name: Test Progress hierarchy, recorded runs and source preservation
+        if: ${{ !cancelled() }}
+        run: node tests/mobile-progress.browser.cjs
+      - name: Retain synthetic mobile UX evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-ux-115-evidence
+          path: docs/ux-115/*.png
