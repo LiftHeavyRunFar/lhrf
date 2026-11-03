@@ -6,11 +6,11 @@ async function confirmOnboardingEquipment(page){
  const inventory=await page.evaluate(inv=>{
   const panel=[...document.querySelectorAll('#firstRun details')].find(p=>p.querySelector('summary')?.textContent==='Equipment');
   if(!panel)throw Error('Missing onboarding equipment controls');
-  panel.querySelector('input[aria-label]').value=inv.venueId;
+  // The specialist inventory intentionally has no venue input.
   panel.querySelectorAll('select[aria-label]').forEach(x=>x.value=inv.items[x.getAttribute('aria-label')]||'unknown');
   panel.querySelectorAll('input[type="checkbox"][aria-label]').forEach(x=>{x.equipmentState=inv.items[x.getAttribute('aria-label')]||'unknown'});
   panel.querySelectorAll('input[type="checkbox"]').forEach(x=>{if(!x.disabled)x.checked=true});
-  [...panel.querySelectorAll('button')].find(b=>b.textContent==='Save confirmed equipment').click();return data.equipmentInventory;
+  [...panel.querySelectorAll('button')].find(b=>b.textContent==='Save equipment').click();return data.equipmentInventory;
  },fullInventory());
  assert.equal(inventory.source,'athlete-confirmed');assert.equal(inventory.items['straight-bar'],'available');
 }

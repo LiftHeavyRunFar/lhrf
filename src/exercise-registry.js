@@ -2,6 +2,7 @@
  * Labels remain intact in historical records; IDs never depend on array position. */
 (function(root){
 'use strict';
+const gym=typeof module==='object'&&module.exports?require('./gym-equipment.js'):(root.LHRFGymEquipment||{specialists:[],effective:inv=>({items:inv?.items||{},setups:inv?.setups||{}})});
 /** @typedef {'reps'|'seconds'} DoseUnit */
 /** @typedef {'external-kg'|'per-hand-kg'|'assistance-kg'|'bodyweight'} LoadType */
 /** @typedef {{id:string,label:string,purpose:string,required:string[],doseUnit:DoseUnit,loadType:LoadType,setup:string,alternatives:string[]}} Exercise */
@@ -83,17 +84,16 @@ function resolve(name){return byId.get(name)||byLabel.get(String(name).trim().to
 // Deliberately narrow graph. Preserve dose units and the training job; disclose
 // changed setup and recalibrate kilograms. No curl-to-hinge or pulldown-to-row.
 for(const e of exercises)e.alternatives=exercises.filter(x=>x.id!==e.id&&x.purpose===e.purpose&&x.doseUnit===e.doseUnit&&x.loadType!=='assistance-kg'&&e.loadType!=='assistance-kg').map(x=>x.id);
-const equipment=[...new Set([...exercises.flatMap(e=>e.required),'bands','band-anchor','chains','chain-attachments','trap-bar','deadlift-bar'])].sort();
+const equipment=[...new Set([...exercises.flatMap(e=>e.required),'bands','band-anchor','chains','chain-attachments','trap-bar','deadlift-bar',...gym.specialists.map(s=>s.key)])].sort();
 function validInventory(inv){
  return !!inv&&inv.version===1&&typeof inv.venueId==='string'&&inv.venueId.length>0&&Number.isFinite(Date.parse(inv.confirmedAt))&&inv.items&&typeof inv.items==='object'&&!Array.isArray(inv.items);
 }
 function eligibility(name,inv){
  const e=resolve(name);if(!e)return {eligible:false,exerciseId:null,reasons:['Unregistered exercise: '+name]};
- const reasons=[];
- if(!validInventory(inv))reasons.push('Confirm an equipment inventory for this venue.');
- for(const key of e.required)if(!validInventory(inv)||inv.items[key]!=='available')reasons.push(key+': '+(inv?.items?.[key]==='unavailable'?'unavailable':'unconfirmed'));
- // Ambiguous historical names need the actual implementation selected explicitly.
- if(e.setup!=='fixed'&&inv?.setups?.[e.id]!==e.setup)reasons.push('Confirm '+e.setup+' setup for '+e.label+'.');
+ const reasons=[],available=gym.effective(inv,exercises,equipment);
+ for(const key of e.required)if(available.items[key]!=='available')reasons.push(key+': unavailable');
+ // Ordinary named execution conventions are defaults; ambiguous legacy implementations still need review.
+ if(e.setup!=='fixed'&&available.setups[e.id]!==e.setup)reasons.push('Confirm '+e.setup+' setup for '+e.label+'.');
  return {eligible:!reasons.length,exerciseId:e.id,reasons};
 }
 function identity(name,inv){const e=resolve(name);return e?{exerciseId:e.id,variantId:e.id+'@'+(inv?.venueId||'unknown')+':'+e.setup,loadType:e.loadType,doseUnit:e.doseUnit}:null}
