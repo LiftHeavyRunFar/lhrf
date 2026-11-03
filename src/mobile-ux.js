@@ -1,7 +1,9 @@
 /* Presentation helpers. No prescription generation or storage migration. */
 (function(root){'use strict';
 function weekKey(state){const c=state.customRoadmap||{};return [state.reviewedProgramme?.fingerprint||c.programmeId||c.startDate||'programme',c.startDate||'',Number(state.activeCustomWeek||1)].join('|')}
-function weekComplete(state,parts=x=>[x]){const sessions=(state.activeSchedule||[]).flatMap(parts);return sessions.length>0&&sessions.every(s=>(state.completedWorkouts||[]).some(w=>Number(w.week||1)===Number(s.sourceProgrammeWeek||state.activeCustomWeek||1)&&(w.id===s.id||w.id===s.parentId)))}
+function weekCompletion(state,parts=x=>[x]){const sessions=(state.activeSchedule||[]).flatMap(parts);const matched=sessions.filter(s=>(state.completedWorkouts||[]).some(w=>Number(w.week||1)===Number(s.sourceProgrammeWeek||state.activeCustomWeek||1)&&(w.id===s.id||(s.parentId&&w.id===s.parentId))));return {planned:sessions.length,completed:matched.length,percent:sessions.length?Math.round(matched.length/sessions.length*100):0}}
+function weekComplete(state,parts=x=>[x]){const counts=weekCompletion(state,parts);return counts.planned>0&&counts.completed===counts.planned}
+
 let closeModal=null;
 function modal(dialog){
  if(closeModal)closeModal();
@@ -67,13 +69,15 @@ function mount({getData,commit,parts}){
  // Keep the original weekly questions and commit path; give them a discoverable home.
  const checkin=$('weeklyCheckin'),checkDetails=make('details',null,$('today'));checkDetails.id='weeklyRecovery';checkDetails.className='card';make('summary','Weekly check-in & recovery',checkDetails);checkDetails.append(checkin);
  const history=make('details',null,checkin);make('summary','Previous check-ins',history);
- const reopen=()=>{root.go('today');checkDetails.open=true;checkDetails.scrollIntoView({block:'start'});checkDetails.querySelector('select')?.focus({preventScroll:true})};
- root.LHRFMobileUX.openRecovery=reopen;
- const progressLink=make('button','Weekly check-in & recovery',$('progress'));progressLink.className='secondary';progressLink.onclick=reopen;
+ const reopen=key=>{root.LHRFWeeklyReviewKey=typeof key==='string'?key:weekKey(getData());root.go('today');checkDetails.open=true;checkDetails.scrollIntoView({block:'start'});checkDetails.querySelector('select')?.focus({preventScroll:true})};
+ root.LHRFMobileUX.openRecovery=reopen;checkDetails.querySelector('summary').addEventListener('click',()=>{root.LHRFWeeklyReviewKey=weekKey(getData())});
+ const sync=make('button','Sync Garmin',$('today'));sync.id='todaySyncGarmin';sync.className='secondary compact-sync';$('today').insertBefore(sync,$('today').firstChild);sync.onclick=()=>{root.go('settings');services.open=true;$('garminImportOpen').click();$('garminIncoming').scrollIntoView({block:'start'})};
  const banners=[$('today'),$('train')].map(host=>{const box=make('aside',null,host);box.className='card weekly-prompt';box.setAttribute('aria-live','polite');return box});
- function render(){const state=getData(),key=weekKey(state),complete=weekComplete(state,parts),latest=(state.weeklyCheckins||[]).some(x=>x.programmeWeekKey===key),handled=state.uxWeeklyPrompts?.[key];
-  for(const box of banners){box.replaceChildren();box.hidden=!complete||latest||!!handled;if(box.hidden)continue;make('h3','Week complete. How are you recovering?',box);const review=make('button','Weekly check-in',box);review.onclick=reopen;for(const [value,label]of [['deferred','Later'],['dismissed','Dismiss']]){const b=make('button',label,box);b.className='secondary';b.onclick=()=>{const next=JSON.parse(JSON.stringify(getData()));next.uxWeeklyPrompts={...next.uxWeeklyPrompts,[key]:value};if(commit(next))render()}}}
-  history.querySelectorAll('p').forEach(e=>e.remove());for(const row of [...(state.weeklyCheckins||[])].reverse()){make('p',new Date(row.date).toLocaleDateString('en-GB')+' · fatigue '+row.fatigue+' · soreness '+row.soreness+' · discomfort '+row.discomfort+(row.notes?' · '+row.notes:''),history)}
+ function render(){const state=getData(),current=Number(state.activeCustomWeek||1),weeks=[...new Set([current,...(state.completedWorkouts||[]).map(w=>Number(w.week||1)).filter(w=>w<current)])].sort((a,b)=>b-a);let reviewState=state;
+  for(const week of weeks){let sessions=week===current?state.activeSchedule:state.reviewedProgramme?.weeks?.find(w=>w.week===week)?.sessions;if(!sessions&&root.generatedSessions)try{sessions=root.generatedSessions(state.customRoadmap,week)}catch{}const candidate={...state,activeCustomWeek:week,activeSchedule:sessions||[]},k=weekKey(candidate);if(weekComplete(candidate,parts)&&!(state.weeklyCheckins||[]).some(x=>x.programmeWeekKey===k)&&!state.uxWeeklyPrompts?.[k]){reviewState=candidate;break}}
+  const key=weekKey(reviewState),complete=weekComplete(reviewState,parts),latest=(state.weeklyCheckins||[]).some(x=>x.programmeWeekKey===key),handled=state.uxWeeklyPrompts?.[key];
+  for(const box of banners){box.replaceChildren();box.hidden=!complete||latest||!!handled;if(box.hidden)continue;make('h3','Week complete. How are you recovering?',box);const review=make('button','Weekly check-in',box);review.onclick=()=>reopen(key);for(const [value,label]of [['deferred','Later'],['dismissed','Dismiss']]){const b=make('button',label,box);b.className='secondary';b.onclick=()=>{const next=JSON.parse(JSON.stringify(getData()));next.uxWeeklyPrompts={...next.uxWeeklyPrompts,[key]:value};if(commit(next))render()}}}
+  history.querySelectorAll('p,button').forEach(e=>e.remove());for(const [k,value]of Object.entries(state.uxWeeklyPrompts||{})){if(value==='deferred'&&!(state.weeklyCheckins||[]).some(x=>x.programmeWeekKey===k)){const b=make('button','Complete deferred week '+k.split('|').at(-1),history);b.className='secondary';b.onclick=()=>reopen(k)}}for(const row of [...(state.weeklyCheckins||[])].reverse()){make('p',new Date(row.date).toLocaleDateString('en-GB')+' · fatigue '+row.fatigue+' · soreness '+row.soreness+' · discomfort '+row.discomfort+(row.notes?' · '+row.notes:''),history)}
  }
  const refresh=root.refresh;root.refresh=function(){refresh();render()};render();
  const oldGo=root.go;root.go=function(id){oldGo(id);if(id==='today'||id==='train')render()};
@@ -81,5 +85,5 @@ function mount({getData,commit,parts}){
  const restored=root.LHRFLive?.get?.();if(restored)reference($('liveTrainRoot'),restored,getData());
 
 }
-const api={weekKey,weekComplete,modal,comparable,reference,carousel,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
+const api={weekKey,weekCompletion,weekComplete,modal,comparable,reference,carousel,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

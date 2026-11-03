@@ -201,6 +201,14 @@ jobs:
         env:
           LHRF_ANDROID_BASE: /tmp/lhrf-android-production
         run: node tests/android-corrections.browser.cjs
+      - name: Final Android polish acceptance against production main
+        if: ${{ !cancelled() && github.head_ref == 'fix/final-android-polish-122' }}
+        env:
+          LHRF_ANDROID_BASE: /tmp/lhrf-polish-production
+        run: |
+          mkdir -p /tmp/lhrf-polish-production
+          git archive da1d8babd9fabbe5f5bb29e43269f44a1aae4914 | tar -x -C /tmp/lhrf-polish-production
+          node tests/final-polish.browser.cjs
       - name: Retain synthetic mobile UX evidence
         if: always()
         uses: actions/upload-artifact@v4
