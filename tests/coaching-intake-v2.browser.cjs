@@ -22,7 +22,7 @@ function preserved(after,before,approval=false){
 }
 async function contextFor(browser){
  const context=await browser.newContext({viewport:{width:390,height:844},timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
- page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date(stamp)});
+ page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date('2026-11-02T12:00:00Z')});
  await page.route('http://intake.test/**',route=>{const p=new URL(route.request().url()).pathname,file=path.join(__dirname,'..',p==='/'?'index.html':p);return route.fulfill({body:fs.readFileSync(file),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.png')?'image/png':'text/html'})});
  await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture:legacy()});
  await page.goto('http://intake.test/');
@@ -61,7 +61,7 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
    const {context,page,before,errors}=await contextFor(browser);await enter(page,'A');preserved(await read(page),before);
    assert.equal(await page.locator('#frNext').isEnabled(),true);
    await page.getByText('Explore weekly sessions',{exact:true}).click();await page.locator('#frPreview details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));assert.match(await page.locator('#frPreview').innerText(),/Squat|Bench/);
-   await page.locator('#frNext').click();assert.equal(await page.locator('#firstRun').isVisible(),false);await approveGeneratedProgramme(page);
+   await page.locator('#frNext').click();await approveGeneratedProgramme(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
    const after=await read(page);preserved(after,before,true);assert.equal(after.customRoadmap.coachingRulesVersion,2);assert.equal(after.customRoadmap.visitConstraints.strengthVisits,2);assert.deepEqual(after.customRoadmap.visitConstraints.minutes,{Tue:75,Thu:75,Sun:105});assert.deepEqual(after.customRoadmap.runningHistory.weeklyKm,[20,22,23,24,22,25]);assert.notEqual(after.customRoadmap.programmeId,before.customRoadmap.programmeId);
    assert.deepEqual(after.programmeArchive.at(-1).programme,before.customRoadmap);assert.deepEqual(after.programmeArchive.at(-1).schedule,before.activeSchedule);assert.ok(after.activeSchedule.every(s=>s.id.startsWith(after.customRoadmap.sessionNamespace)));
    const native=await page.evaluate(c=>LHRFCoachAdapters.buildNewProgramme(c,{now:()=>Date.parse('2026-10-30T12:00:00Z')}),after.customRoadmap);assert.ok(native.weeks.every(w=>w.feasible));assert.ok(native.weeks[0].sessions.every(s=>s.timeBudget?.feasible));
