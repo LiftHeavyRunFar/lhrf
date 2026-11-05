@@ -1,16 +1,16 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const bridge=require('../src/intervals-sync');
-const structured={target:'PACE',workout_doc:{steps:[{distance:1000,pace:{start:465,end:420,units:'secs/km'}},{distance:400,pace:{start:400,end:385,units:'secs/km'}},{distance:200,pace:{value:420,units:'secs/km'}}]}};
+const structured={target:'PACE',workout_doc:{steps:[{intensity:'warmup',distance:1000,pace:{start:465,end:420,units:'secs/km'}},{intensity:'active',distance:400,pace:{start:400,end:385,units:'secs/km'}},{intensity:'rest',distance:200,pace:{value:420,units:'secs/km'}}]}};
 const fixture={name:'Intervals',steps:[{name:'Warm-up',distanceKm:1,pace:'7:00 to 7:45/km'},{name:'Interval',distanceKm:.4,pace:'6:25 to 6:40/km'},{name:'Recovery',distanceKm:.2,pace:'7:00/km'}],sessionId:'november-2026-tue:0',date:'2026-10-27'};
 test('planned calendar payload carries absolute pace steps, local date and stable upsert identity',()=>{
  const before=JSON.stringify(fixture),a=bridge.workoutEvent(fixture),b=bridge.workoutEvent(fixture);
  assert.equal(a.external_id,b.external_id);assert.notEqual(a.external_id,bridge.workoutEvent({...fixture,date:'2026-10-28'}).external_id);
  assert.equal(a.start_date_local,'2026-10-27T00:00:00');assert.equal(a.category,'WORKOUT');assert.equal(a.type,'Run');assert.equal(a.target,'PACE');assert.equal(a.filename,undefined);assert.equal(a.file_contents_base64,undefined);assert.equal(a.workout_doc,undefined);
- assert.equal(a.description,'- Warmup 1km 7:45-7:00/km Pace\n- Interval 0.4km 6:40-6:25/km Pace\n- Recovery 0.2km 7:00/km Pace');assert.equal(JSON.stringify(fixture),before);
+ assert.equal(a.description,'- Warmup 1km 7:45-7:00/km Pace intensity=warmup\n- Interval 0.4km 6:40-6:25/km Pace intensity=active\n- Recovery 0.2km 7:00/km Pace intensity=rest');assert.equal(JSON.stringify(fixture),before);
  assert.throws(()=>bridge.workoutEvent({...fixture,date:'2026-02-30'}),/valid/);assert.throws(()=>bridge.workoutEvent({...fixture,sessionId:''}),/scheduled/);
 });
 test('API requests use fixed host, private auth headers and one explicit upsert; no retries or credential leakage',async()=>{
- const calls=[],key='fake-test-key-123';const fetchImpl=async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>options.method==='GET'?{id:'i123',name:'Test athlete'}:[{id:77,...structured}]}};
+ const calls=[],key='fake-test-key-123';const fetchImpl=async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>options.method==='GET'?{id:'i123',name:'Test athlete'}:[{...JSON.parse(options.body)[0],id:77,...structured}]}};
  assert.deepEqual(await bridge.checkConnection(key,{fetchImpl}),{id:'i123',name:'Test athlete'});assert.equal(calls.length,1);assert.equal(calls[0].options.method,'GET');
  const event=bridge.workoutEvent(fixture);assert.deepEqual(await bridge.sendWorkout(key,event,{fetchImpl}),{id:77,date:'2026-10-27'});
  assert.equal(calls.length,2);assert.equal(calls[1].url,'https://intervals.icu/api/v1/athlete/0/events/bulk?upsert=true');assert.deepEqual(JSON.parse(calls[1].options.body),[event]);
@@ -31,8 +31,8 @@ test('short nonempty keys reach the service; invalid credentials are decided by 
 
 test('native export preserves each distance and pace regardless of display environment',()=>{
  assert.equal(bridge.workoutEvent({...fixture,environment:'treadmill'}).description,bridge.workoutEvent(fixture).description);
- assert.equal(bridge.workoutDescription([{label:'Threshold interval 1 of 3',distanceKm:.8,pace:'6:30–6:40/km'}]),'- Threshold interval of 0.8km 6:40-6:30/km Pace');
- assert.equal(bridge.workoutDescription([{label:'Easy',distanceKm:2,pace:''}]),'- Easy 2km');
+ assert.equal(bridge.workoutDescription([{label:'Threshold interval 1 of 3',distanceKm:.8,pace:'6:30–6:40/km'}]),'- Threshold interval of 0.8km 6:40-6:30/km Pace intensity=active');
+ assert.equal(bridge.workoutDescription([{label:'Easy',distanceKm:2,pace:''}]),'- Easy 2km intensity=active');
  for(const pace of ['88-90% Pace','9 km/h','6:30/mi','bad pace','0:00/km'])assert.throws(()=>bridge.workoutDescription([{distanceKm:1,pace}]));
  for(const distanceKm of [0,-1,NaN,Infinity])assert.throws(()=>bridge.workoutDescription([{distanceKm,pace:'7:00/km'}]));
  assert.throws(()=>bridge.workoutDescription([]));
@@ -42,6 +42,35 @@ test('upload confirmation requires parsed distances and absolute pace ranges, no
  const event=bridge.workoutEvent(fixture);
  assert.doesNotThrow(()=>bridge.verifyStructuredPaces(event,structured));
  for(const saved of [{id:77},{...structured,target:'POWER'},{workout_doc:{steps:[]}},{workout_doc:{steps:structured.workout_doc.steps.map(s=>({...s,pace:null}))}},{workout_doc:{steps:structured.workout_doc.steps.map(s=>({...s,distance:99}))}},{workout_doc:{steps:structured.workout_doc.steps.map(s=>({...s,pace:{start:70,end:80,units:'%pace'}}))}}]){
-  await assert.rejects(bridge.sendWorkout('fake-test-key',event,{fetchImpl:async()=>({ok:true,json:async()=>[{id:77,...saved}]})}),/structured pace targets were not confirmed/);
+  await assert.rejects(bridge.sendWorkout('fake-test-key',event,{fetchImpl:async()=>({ok:true,json:async()=>[{...event,id:77,...saved}]})}),/structured pace targets were not confirmed/);
  }
 });
+
+test('moving a prescribed occurrence updates its existing key; different weeks and run components remain distinct',()=>{
+ const first=bridge.workoutEvent({...fixture,scheduledDate:'2026-10-27'}),moved=bridge.workoutEvent({...fixture,scheduledDate:'2026-10-27',date:'2026-10-29'});
+ assert.equal(first.external_id,moved.external_id);assert.notEqual(first.start_date_local,moved.start_date_local);
+ assert.equal(first.external_id,bridge.workoutEvent({...fixture,sessionId:'november-2026-tue::run:0'}).external_id);
+ assert.notEqual(first.external_id,bridge.workoutEvent({...fixture,sessionId:'november-2026-tue:1'}).external_id);
+ assert.notEqual(first.external_id,bridge.workoutEvent({...fixture,date:'2026-11-03'}).external_id);
+});
+
+test('explicit recovery roles survive identical pace and distance; swapped recovery/work is rejected',()=>{
+ const event=bridge.workoutEvent({...fixture,steps:[{name:'Jog',role:'work',distanceKm:.2,pace:'7:00/km'},{name:'Jog',role:'recovery',distanceKm:.2,pace:'7:00/km'}]});
+ const steps=[{intensity:'active',distance:200,pace:{value:420,units:'secs/km'}},{intensity:'rest',distance:200,pace:{value:420,units:'secs/km'}}];
+ assert.doesNotThrow(()=>bridge.verifyStructuredPaces(event,{target:'PACE',workout_doc:{steps}}));
+ assert.throws(()=>bridge.verifyStructuredPaces(event,{target:'PACE',workout_doc:{steps:[...steps].reverse()}}),/step order/);
+ assert.match(bridge.workoutDescription([{name:'No recovery in label',role:'work',distanceKm:.4,pace:'6:30/km'}]),/intensity=active$/);
+});
+
+test('no time-to-distance approximation or malformed target silently becomes a distance workout',()=>{
+ assert.throws(()=>bridge.workoutDescription([{name:'Work',timeOnly:true,seconds:120,distanceKm:.3,pace:'6:30/km'}]),/Time-based/);
+ for(const pace of ['6:30-6:99/km','6:30/km garbage','6:30/km 8:00/km','6:30 mph','6:30%','6:30 HR'])assert.throws(()=>bridge.workoutDescription([{distanceKm:1,pace}]),pace);
+ assert.equal(bridge.workoutDescription([{name:'Easy',distanceKm:1,pace:'7:00/km to 7:45/km'}]),'- Easy 1km 7:45-7:00/km Pace intensity=active');
+});
+
+test('wrong-date or wrong-identity receipts cannot confirm export',async()=>{
+ const event=bridge.workoutEvent(fixture);
+ for(const patch of [{external_id:'another'},{start_date_local:'2026-10-28T00:00:00'}])await assert.rejects(bridge.sendWorkout('synthetic',event,{fetchImpl:async()=>({ok:true,json:async()=>[{...event,...structured,id:77,...patch}]})}),/identity and date/);
+});
+
+test('a parsed workout must confirm Pace target mode and cannot invent a recovery pace',()=>{const event=bridge.workoutEvent({...fixture,steps:[{name:'Recovery',role:'recovery',distanceKm:.2,pace:''}]});assert.throws(()=>bridge.verifyStructuredPaces(event,{workout_doc:{steps:[{distance:200,intensity:'rest'}]}}));assert.throws(()=>bridge.verifyStructuredPaces(event,{target:'PACE',workout_doc:{steps:[{distance:200,intensity:'rest',pace:{value:420,units:'secs/km'}}]}}));});

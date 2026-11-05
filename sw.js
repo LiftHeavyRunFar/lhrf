@@ -1,4 +1,4 @@
-const CACHE = 'lhrf-shell-v1.30.0-history';
+const CACHE = 'lhrf-shell-v1.31.0-history-garmin';
 const SHELL = ['./src/performance-history.js','./src/android-polish.js','./src/gym-equipment.js','./src/run-presentation.js','./src/mobile-ux.js','./src/mobile-ux.css','./','./index.html','./manifest.webmanifest','./icon-lhrf.svg','./icon-lhrf-192-v2.png','./icon-lhrf-512-v2.png','./icon-lhrf-maskable-v2.png','./src/training-review.js','./src/garmin-import.js','./src/local-activity-import.js','./src/local-activity-import-ui.js','./src/intervals-sync.js','./src/garmin-workout.js','./src/workout-tools.js','./src/workout-tools.css','./src/running-workouts.js','./src/coach-constraints.js','./src/running-preparation.js','./src/exercise-registry.js','./src/coach-engine.js','./src/coach-adapters.js','./src/coach-intake.js','./src/programme-install.js','./src/programme-replacement.js','./src/programme-replacement-ui.js','./src/training-backup.js','./programmes/november-2026.json'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
 self.addEventListener('activate', event => event.waitUntil((async () => {

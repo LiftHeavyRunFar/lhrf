@@ -128,6 +128,9 @@ jobs:
       - name: Test reviewed local Garmin files and atomic saves
         if: ${{ !cancelled() }}
         run: node tests/local-activity-import.browser.cjs
+      - name: Test prescribed-run export dates, recovery roles and safe failures
+        if: ${{ !cancelled() }}
+        run: node tests/garmin-export.browser.cjs
       - name: Test canonical running preview, timer, export and logging
         if: ${{ !cancelled() }}
         run: node tests/running-flow.browser.cjs
