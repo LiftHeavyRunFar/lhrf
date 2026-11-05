@@ -74,3 +74,5 @@ test('wrong-date or wrong-identity receipts cannot confirm export',async()=>{
 });
 
 test('a parsed workout must confirm Pace target mode and cannot invent a recovery pace',()=>{const event=bridge.workoutEvent({...fixture,steps:[{name:'Recovery',role:'recovery',distanceKm:.2,pace:''}]});assert.throws(()=>bridge.verifyStructuredPaces(event,{workout_doc:{steps:[{distance:200,intensity:'rest'}]}}));assert.throws(()=>bridge.verifyStructuredPaces(event,{target:'PACE',workout_doc:{steps:[{distance:200,intensity:'rest',pace:{value:420,units:'secs/km'}}]}}));});
+
+test('malformed parsed steps produce actionable uncertainty instead of raw property errors',()=>{const event=bridge.workoutEvent(fixture);assert.throws(()=>bridge.verifyStructuredPaces(event,{target:'PACE',workout_doc:{steps:[null,null,null]}}),/Open the workout editor/);});

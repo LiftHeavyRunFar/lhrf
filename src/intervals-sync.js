@@ -59,6 +59,7 @@ function verifyStructuredPaces(event,saved){
  const failure='Saved to Intervals.icu, but structured pace targets were not confirmed, or step order/recovery roles changed. Open the workout editor, select Pace as its target and check the steps before syncing Garmin. Do not assume watch pace alerts are ready.';
  if(!Array.isArray(steps)||steps.length!==expected.length||saved.target!=='PACE')throw Error(failure);
  steps.forEach((step,i)=>{
+  if(!step||typeof step!=='object')throw Error(failure);
   const wanted=expected[i];if(step.intensity!==wanted.intensity)throw Error(failure);if(Math.abs(Number(step.distance)-wanted.distance)>.1||!Number.isFinite(Number(step.distance)))throw Error(failure);
   if(!wanted.times.length&&step.pace)throw Error(failure);
   if(wanted.times.length){const pace=step.pace,actual=pace&&[pace.start??pace.value,pace.end??pace.value].map(Number).sort((a,b)=>a-b);if(!pace||pace.units!=='secs/km'||actual.some((n,j)=>!Number.isFinite(n)||Math.abs(n-wanted.times[j])>1))throw Error(failure);}

@@ -706,7 +706,7 @@ async function sendIntervalsWorkout(){
  try{
   if(!window.LHRFIntervals)throw Error('Connection tools have not loaded. Reopen LHRF online once.');
   if(!selectedCanonicalRun||!selectedCanonicalSession||!plannedSteps.length)throw Error('Select a running session first.');
-  if(!selectedCanonicalRun.steps?.length&&/\d+\s*[×xX]\s*\d+\s*min/i.test(selectedCanonicalRun.structure||''))throw Error('This legacy prescription has time-based intervals without explicit export steps. Recreate the exact prescription in Garmin Connect; no estimated distances will be exported.');
+  if(!selectedCanonicalRun.steps?.length&&(selectedCanonicalRun.role==='quality-run'||/\d+\s*[×xX]\s*\d+\s*min/i.test(selectedCanonicalRun.structure||'')))throw Error('This legacy prescription has structured or time-based intervals without explicit export steps. Recreate the exact prescription in Garmin Connect; no estimated distances will be exported.');
   const event=LHRFIntervals.workoutEvent({name:selectedCanonicalRun.name,steps:structuredClone(plannedSteps),sessionId:selectedCanonicalRunId==='current-workout'?selectedCanonicalSession.id+':'+(canonicalRunOverride?.runIndex||0):selectedCanonicalRunId,date:$('intervalsWorkoutDate').value,environment:runEnvironment(),scheduledDate:canonicalRunOverride&&selectedCanonicalRunId==='current-workout'?canonicalRunOverride.scheduledDate:runDateKey(scheduledDate(selectedCanonicalSession))});
   status.textContent='Checking connection…';const account=await LHRFIntervals.checkConnection(key);
   if(!intervalsConnection||key!==intervalsConnection.key)throw Error('Connection changed before sending. Test the connection and try again.');
@@ -738,7 +738,7 @@ function buildRunPlan(){
  selector.replaceChildren();options.forEach(option=>{const el=document.createElement('option');el.value=option.id;el.textContent=option.session.day+' · '+option.run.name;selector.appendChild(el)});
  if(!intervalsSending&&previousRunId!==selected?.id)$('intervalsSendStatus').textContent='';
  selectedCanonicalRunId=selected?.id||null;selectedCanonicalRun=selected?.run||null;selectedCanonicalSession=selected?.session||null;selector.disabled=intervalsSending||!selected;selector.value=selectedCanonicalRunId||'';
- plannedSteps=selected?runStepRows(selected.run).map(step=>{const pace=runningStepPace(step,selected.run),secondsPerKm=timingPace(pace),timeOnly=Number(step.minutes)>0&&!(Number(step.distanceKm)>0);return {name:step.label,role:step.role,distanceKm:Number(step.distanceKm)||0,pace,...(timeOnly?{timeOnly:true}:{}),seconds:timeOnly?Math.round(Number(step.minutes)*60):secondsPerKm?Math.max(1,Math.round(Number(step.distanceKm)*secondsPerKm)):null}}):[];
+ plannedSteps=selected?runStepRows(selected.run).map(step=>{const pace=runningStepPace(step,selected.run),secondsPerKm=timingPace(pace),timeOnly=Number(step.minutes)>0&&!(Number(step.distanceKm)>0);return {name:step.label||step.name,role:step.role,distanceKm:Number(step.distanceKm)||0,pace,...(timeOnly?{timeOnly:true}:{}),seconds:timeOnly?Math.round(Number(step.minutes)*60):secondsPerKm?Math.max(1,Math.round(Number(step.distanceKm)*secondsPerKm)):null}}):[];
  const canTime=plannedSteps.length>0&&plannedSteps.every(step=>(step.timeOnly||step.distanceKm>0)&&step.seconds>0);
  $('startCanonicalTimer').disabled=!canTime;
  const timeOnly=plannedSteps.length>0&&plannedSteps.every(step=>step.timeOnly);

@@ -4,7 +4,7 @@
   "nodeVersion": "24.19.0",
   "chromiumVersion": "154.0.8037.57",
   "nodeTests": {
-    "passed": 396,
+    "passed": 397,
     "failed": 0
   },
   "browserSuites": {

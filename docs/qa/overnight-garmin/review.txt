@@ -22,7 +22,8 @@ B1 diagnosis: source findings versus physical evidence
    is checked to 1e-9km and parsed confirmation to0.1m /1sec per km. No interval,
    pace, recovery or coaching prescription is simplified. Time-only or mixed
    time/distance steps remain unsupported with an actionable explanation. Legacy
-   text-based timed repeats cannot export estimated distance approximations.
+   quality prescriptions without explicit steps cannot export a simplified run or
+   estimated distance approximations.
 4. Baseline identity included the user-selected export date. Moving quality:0
    from2026-11-07 to2026-11-08 changed lhrf-run-v1:quality:0:2026-11-07 to
    lhrf-run-v1:quality:0:2026-11-08, creating another event. Now identity is based
@@ -58,11 +59,12 @@ Older date-shifted or component-ID exports may still need manual duplicate clean
 There is no migration, event deletion or new external service.
 
 Automated QA and coaching verification
-396/396 Node tests on Node24.19.0. 23/23 browser/PWA suites on Chromium154, including
+397/397 Node tests on Node24.19.0. 23/23 browser/PWA suites on Chromium154, including
 all existing suites and the new export acceptance. 7/7 unchanged private Garmin
 bridge tests. Synthetic athlete acceptance, coaching safety and coaching depth
 commands pass. Final full Node and focused export browser acceptance reran after
-strict receipt/mixed-time error checks. Canonical running regression also reran
+strict receipt/mixed-time error checks, malformed parsed responses and blocked
+legacy quality-run simplification. Canonical running regression also reran
 successfully after replacing a brittle decimal-string assertion with independent
 numeric distance/exact pace comparison. One initial harness bridge path typo was
 corrected; its seven tests pass. Initial sandbox subprocess errors reproduced on
