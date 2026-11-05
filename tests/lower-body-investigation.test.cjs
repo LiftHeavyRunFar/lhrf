@@ -20,3 +20,7 @@ test('exact setup anchors can be available yet capped by the provisional recover
  const registry=require('../src/exercise-registry'),s=fixture(),inventory=require('./equipment-fixtures.cjs').fullInventory();s.equipmentInventory=inventory;s.customRoadmap.equipmentInventory=inventory;s.customRoadmap.equipmentPolicyVersion=1;s.sets=s.sets.map(row=>({...row,...registry.identity(row.exercise,inventory)}));const before=clone(s),session=thursday(s);
  assert.deepEqual(session.ex.map(e=>e.slice(0,5)),[['Squat',2,3,100,6],['Deadlift',2,3,102.5,6]]);assert.equal(session.ex[0][5].loadAnchor.weight,110);assert.equal(session.ex[1][5].loadAnchor.weight,140);assert.deepEqual(s,before);
 });
+test('native adapter only sees raw historical fallback when its caller explicitly passes data',()=>{
+ const adapters=require('../src/coach-adapters'),s=fixture();delete s.customRoadmap.baselines.Squat;delete s.customRoadmap.baselines.Deadlift;for(const lift of ['Squat','Deadlift'])s.customRoadmap.liftProfiles[lift]={kg:0,reps:1};const before=clone(s),get=p=>p.weeks[1].sessions.find(s=>s.day==='Thu').ex;
+ assert.equal(get(adapters.buildProgramme(s.customRoadmap))[1][3],0);assert.equal(get(adapters.buildProgramme(s.customRoadmap,{data:s}))[1][3],102.5);assert.deepEqual(s,before);
+});
