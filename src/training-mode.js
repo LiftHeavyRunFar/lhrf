@@ -13,7 +13,7 @@ function mount({getData}){
  }
  function refresh(){
   sync();const live=getLive(),header=$('trainingSessionHeader');if(!live||!header)return;
-  
+
   const total=(live.ex||[]).reduce((n,ex)=>n+(ex[5]?.optional?0:ex[1]),0);
   const requiredDone=Object.entries(live.entries||{}).filter(([k,v])=>v.done&&!live.ex?.[Number(k.split('_')[0])]?.[5]?.optional).length;
   header.querySelector('.live-status').textContent=total?requiredDone+' of '+total+' sets completed':live.runLogged?'Run logged':'Running session';
