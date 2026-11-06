@@ -50,9 +50,9 @@ if(!previous)throw Error('Set LHRF_COMBINED_BASE to an archive of production mai
   const previousShellKeys=await page.evaluate(async()=>(await caches.keys()).filter(key=>key.startsWith('lhrf-shell-')));
   const expected=await state();assert.equal(expected[KEY],JSON.stringify(fixture));assert.equal(expected[LIVE],JSON.stringify(live));
   const checkHistory=async()=>{
-   await page.locator('nav [data-screen=train]').click();await page.locator('#previousWorkout').evaluate(el=>el.open=true);
-   const text=await page.locator('#previousWorkout').innerText();
-   for(const pattern of [/Squat/,/Deadlift/,/29\/10\/2026/,/112.5 kg × 5 reps · RPE 7.5/,/140 kg × 5 reps · RPE 8/,/Context only/])assert.match(text,pattern);
+   await page.locator('nav [data-screen=train]').click();if(!upgraded){await page.locator('#previousWorkout').evaluate(el=>el.open=true)}else await page.locator('.exercise-history details').evaluateAll(nodes=>nodes.forEach(el=>el.open=true));
+   const text=upgraded?(await page.locator('.exercise-history').allTextContents()).join(' '):await page.locator('#previousWorkout').innerText();
+   for(const pattern of [/Squat/i,/Deadlift/i,/29\/10\/2026/,/112.5 kg × 5 reps · RPE 7.5/,/140 kg × 5 reps · RPE 8/,/Context only/])assert.match(text,pattern);
    assert.equal(await page.locator('.live-set [data-field=weight]').first().inputValue(),'119');assert.deepEqual(await state(),expected);
   };
   const preview=()=>page.evaluate(run=>previewPlannedWorkout(run,new Date('2026-11-06T12:00:00'),2),run);

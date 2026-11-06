@@ -110,7 +110,7 @@ const live = {id: strengthId, parentId: strength.id, component: 'strength', name
     await page.reload();
     await page.waitForFunction(() => !!window.LHRFMobileUX?.openRecovery);
     assert.equal(await page.locator('#firstRun').isVisible(), false);
-    assert.equal(await page.locator('#previousWorkout').count(), 1);
+    assert.ok(await page.locator('.exercise-history').count() > 0);
     assert.deepEqual(await snapshot(), before, 'Offline resume retains November prescriptions, RPE and Garmin associations');
     assert.equal(await page.evaluate(() => LHRFExercises.eligibility('Bench', data.equipmentInventory).eligible), true);
     assert.deepEqual(errors, []);
