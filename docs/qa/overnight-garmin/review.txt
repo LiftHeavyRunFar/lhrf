@@ -1,0 +1,128 @@
+LHRF prescribed-run Garmin export — Ella review
+
+Original implementation baseline: 776df9c21d2e96ca506e4e40d27988565d03efbf.
+Combined integration baseline: production main
+719ef246d27f40796beaec194c5ffc2db986aa75, including merged PR125.
+Branch: fix/garmin-prescribed-export. Exact candidate SHA is in the PR description.
+No authenticated Intervals/Garmin requests or private athlete exports were made.
+
+B1 diagnosis: source findings versus physical evidence
+1. Existing LHRF sends native Intervals description steps, target PACE, Run workout,
+   local calendar date and external_id via events/bulk?upsert=true. This is a
+   structured-workout route, not an activity upload. It retains array order and
+   absolute secs/km targets; its existing response validator checks parsed pace
+   bounds and distances. Source/mocks prove representation; they do not prove
+   that a particular live Intervals account parsed or forwarded it correctly.
+2. Explicit work/recovery roles were discarded before serialization. Labels alone
+   left intensity to parser heuristics, and equal-distance/equal-pace steps could
+   be reversed without the response validator noticing. This defect is reproduced
+   against the exact baseline module. The fix serializes active/rest/warmup/
+   cooldown explicitly and validates the returned intensity at each position.
+3. Exact min/km ranges and all distances/recoveries are retained. Malformed or
+   non-pace targets now fail instead of accepting an embedded mm:ss substring.
+   Decimal distances avoid scientific-notation ambiguity; numeric preservation
+   is checked to 1e-9km and parsed confirmation to0.1m /1sec per km. No interval,
+   pace, recovery or coaching prescription is simplified. Time-only or mixed
+   time/distance steps remain unsupported with an actionable explanation. Legacy
+   quality prescriptions without explicit steps cannot export a simplified run or
+   estimated distance approximations.
+4. Baseline identity included the user-selected export date. Moving quality:0
+   from2026-11-07 to2026-11-08 changed lhrf-run-v1:quality:0:2026-11-07 to
+   lhrf-run-v1:quality:0:2026-11-08, creating another event. Now identity is based
+   on the original prescribed occurrence date, while start_date_local follows
+   the selected export date. Weeks remain distinct; component/preview/tools
+   paths normalize the same occurrence; multiple runs retain separate indices.
+5. The Forerunner165 manual documents receiving Connect workouts. Intervals
+   documents onward Garmin upload, but physical receipt/execution on this owner's
+   account/watch is NOT verified. API success never confirms watch delivery.
+6. Manual actions: existing one-time Intervals Garmin upload authorization/Run
+   filter/threshold pace setup; select date and confirm LHRF send; sync Connect;
+   inspect the actual watch workout. Upload horizon is normally the next week,
+   subject to current account settings. Garmin may show third-party workouts as
+   formatted text rather than an editable native workout; this alone is not
+   proof of lost structure. If needed, use Connect's Send to Device action.
+7. The real owner failure cannot conclusively be assigned without account/watch
+   evidence. LHRF defects above are demonstrated. A successful structured receipt
+   plus missing Connect workout points to Intervals upload settings/export or
+   Garmin ingestion; Connect present/watch absent points to device sync; watch
+   steps without targets despite parsed pace points to downstream pace setup or
+   export handling. The checklist separates these stages without guessing.
+
+B2 implementation and before/after evidence
+before.png: prescribed-run preview has no Garmin action.
+after.png: Send to Garmin opens existing date-selectable export tools without
+starting or logging a workout. Future preview dates are retained. In-flight date/
+run controls and duplicate sends are locked. Explicit upsert has no automatic
+retry. HTTP/auth/rate-limit/network/ambiguous receipts give actionable messages;
+wrong identity/date, changed step roles/order and absent Pace mode cannot claim
+confirmation. Success says Sent to Intervals.icu and watch delivery unconfirmed.
+The original v1 ID format is reused for prescribed dates to reduce migration risk.
+Older date-shifted or component-ID exports may still need manual duplicate cleanup.
+There is no migration, event deletion or new external service.
+
+Automated QA and coaching verification
+For the combined current-main validation, see integration-main-719ef24.txt and
+validation.json. The original isolated validation below is retained as provenance.
+Original isolated validation: 397/397 Node tests on Node24.19.0 and 23/23
+browser/PWA suites on Chromium154, including
+all existing suites and the new export acceptance. 7/7 unchanged private Garmin
+bridge tests. Synthetic athlete acceptance, coaching safety and coaching depth
+commands pass. Final full Node and focused export browser acceptance reran after
+strict receipt/mixed-time error checks, malformed parsed responses and blocked
+legacy quality-run simplification. Canonical running regression also reran
+successfully after replacing a brittle decimal-string assertion with independent
+numeric distance/exact pace comparison. One initial harness bridge path typo was
+corrected; its seven tests pass. Initial sandbox subprocess errors reproduced on
+unchanged main and cleared using existing Cloud permissions outside the sandbox.
+
+Coverage: easy runs, repeated work/recovery, explicit pace ranges, malformed pace,
+time-only and mixed time steps, repeated/moved dates, multiple runs, future preview,
+double-submit, API401/403/429/500, interrupted operations, changed account checks,
+wrong receipt identity/date, missing targets, parsed role/order rejection and
+existing Garmin imports/activity IDs/planned links. Production same-origin PWA,
+Stage8 replacement/interruption/rollback, history/equipment preservation and full
+coaching/browser regressions pass. No API mock is treated as real-watch evidence.
+
+Reproduce
+npm test
+node --test services/garmin-bridge/tests.mjs
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/garmin-export.browser.cjs
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/running-flow.browser.cjs
+npm run test:athletes
+npm run test:coaching:safety
+npm run test:coaching:depth
+For screenshots, set LHRF_PREVIOUS_ROOT to an archive of baseline main and
+LHRF_EVIDENCE_DIR to a disposable directory. New acceptance is in browser CI.
+
+Remaining limitations / smallest alternative / release route
+No live Intervals parser, Garmin connection, phone or watch is certified. Strict
+receipt confirmation deliberately reports uncertainty if the service omits the
+expected fields. Repeat/upsert is source/API-contract evidence; confirm actual
+calendar duplicate removal and Garmin rescheduling with the device checklist.
+No background sync or automatic completion is added. Private import credentials,
+services, stored activity identities and planned-run linking code remain unchanged.
+For unsupported timed prescriptions or an account/device route that still fails,
+use the existing Copy workout steps and recreate the EXACT prescription once in
+Garmin Connect, then Send to Device. JSON export is explicitly not a Connect
+workout-import file. Do not build another bridge or alter training to fit export.
+
+Ready for Ella's code/CI review and controlled Forerunner165 verification. After
+separate owner release approval, use the normal same-origin PWA route with backup,
+between workouts. PR125 is now integrated through a rebase onto 719ef24. The service-worker
+conflict retains the history-module precache and all Garmin assets under the new
+lhrf-shell-v1.31.0-history-garmin cache. The production-main-to-combined PWA test
+verifies both features together, active draft/storage preservation and offline use. Do not clear storage or activate
+programmes. Retain previous app commit for code-only rollback. No production merge,
+deployment, activation or live athlete modification performed.
+
+Public evidence consulted 5November2026 (no authenticated records)
+https://forum.intervals.icu/t/workout-builder/1163
+https://forum.intervals.icu/t/workout-builder-syntax-quick-guide/123701
+https://forum.intervals.icu/t/support-for-running-pace-or-speed-in-workout-builder-syntax-done/91362
+https://forum.intervals.icu/t/upload-planned-workouts-to-garmin-connect/1521
+https://forum.intervals.icu/t/structured-running-workouts-from-intervals-to-garmin-connect/130705
+https://forum.intervals.icu/t/workout-builder/1163/1123
+https://www8.garmin.com/manuals-apac/webhelp/forerunner165series/EN-SG/GUID-546CD10F-FE18-4A80-809C-426C498A7ABF-3584.html
+Official Garmin manual establishes model capability; Intervals guide establishes
+syntax/route. Forum user reports about No Target/threshold pace are diagnostic
+leads, not verification of this owner's configuration or watch behavior.

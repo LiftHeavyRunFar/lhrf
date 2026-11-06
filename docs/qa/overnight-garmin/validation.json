@@ -1,0 +1,147 @@
+{
+  "baseline": "719ef246d27f40796beaec194c5ffc2db986aa75",
+  "integratedHistoryPR": 125,
+  "previousGarminHead": "be6e08370ed0f4a27533fc037e5113effe989506",
+  "date": "2026-11-06",
+  "data": "synthetic only",
+  "nodeVersion": "24.19.0",
+  "chromiumVersion": "154.0.8037.57",
+  "nodeTests": {
+    "passed": 403,
+    "failed": 0
+  },
+  "browserSuites": {
+    "passed": 25,
+    "failed": 0
+  },
+  "privateGarminServiceTests": {
+    "passed": 7,
+    "failed": 0
+  },
+  "watchDeliveryConfirmed": false,
+  "checks": [
+    {
+      "name": "node-regressions",
+      "exit": 0
+    },
+    {
+      "name": "athletes",
+      "exit": 0
+    },
+    {
+      "name": "coaching-safety",
+      "exit": 0
+    },
+    {
+      "name": "coaching-depth",
+      "exit": 0
+    },
+    {
+      "name": "private-garmin-service",
+      "exit": 0
+    },
+    {
+      "name": "android-corrections",
+      "exit": 0
+    },
+    {
+      "name": "bench-exposure",
+      "exit": 0
+    },
+    {
+      "name": "coaching-intake-v2",
+      "exit": 0
+    },
+    {
+      "name": "combined-mobile-release",
+      "exit": 0
+    },
+    {
+      "name": "equipment",
+      "exit": 0
+    },
+    {
+      "name": "experience-calibration",
+      "exit": 0
+    },
+    {
+      "name": "final-polish",
+      "exit": 0
+    },
+    {
+      "name": "flexible-session-time",
+      "exit": 0
+    },
+    {
+      "name": "garmin-export",
+      "exit": 0
+    },
+    {
+      "name": "garmin-import",
+      "exit": 0
+    },
+    {
+      "name": "general-coaching",
+      "exit": 0
+    },
+    {
+      "name": "history-garmin-update",
+      "exit": 0
+    },
+    {
+      "name": "local-activity-import",
+      "exit": 0
+    },
+    {
+      "name": "mobile-progress",
+      "exit": 0
+    },
+    {
+      "name": "mobile-ux",
+      "exit": 0
+    },
+    {
+      "name": "mobile-workout",
+      "exit": 0
+    },
+    {
+      "name": "onboarding-athletes",
+      "exit": 0
+    },
+    {
+      "name": "performance-history",
+      "exit": 0
+    },
+    {
+      "name": "preview-intake-v2",
+      "exit": 0
+    },
+    {
+      "name": "programme-replacement",
+      "exit": 0
+    },
+    {
+      "name": "release",
+      "exit": 0
+    },
+    {
+      "name": "running-flow",
+      "exit": 0
+    },
+    {
+      "name": "shared-preview",
+      "exit": 0
+    },
+    {
+      "name": "shared-update",
+      "exit": 0
+    },
+    {
+      "name": "today-flow",
+      "exit": 0
+    }
+  ],
+  "combinedAcceptance": "Real production 719ef24 -> combined PWA update; history plus structured Garmin export/moved-date identity; offline reopen; original sets/RPE, completed workouts, programme, equipment, Garmin links, connection and active draft byte-preserved",
+  "protectedSources": "History matching/presentation, programme, coaching, Stage 8, equipment and Garmin/local import sources unchanged from current main; Garmin export logic unchanged from the prior reviewed PR126 head",
+  "githubCI": "Final exact candidate SHA and CI results are recorded in the PR description after push"
+}
