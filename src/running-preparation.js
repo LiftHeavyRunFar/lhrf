@@ -224,6 +224,7 @@ function assess(c,w=1,options={}){
  if(supportEndurance)warnings.push('Maintain an easy aerobic base for the later '+futureEnduranceGoal.runGoal+' while strength has priority. Race-specific running starts after the dated handover and recovery review.');
  if(handoverEnduranceBuild)warnings.push('The post-meet marathon build is conditional on restored recovery and completed aerobic support. Confirm actual mileage at the handover before progressing; proposed future kilometres are not evidence that those runs were completed.');
  const easy=km=>easyRun(km,p),noLong=taper||postRace||recoveringMarathon||strengthEventWeek||(strengthRecoveryWeek&&supportEndurance)||(goal==='fitness'&&!supportEndurance)||lowerFatigue;
+ if(!count&&goal==='marathon'&&taper&&Number(c.marathonTaperRhythmVersion)===1)warnings.push('Marathon taper race rhythm suppressed: no running visits are prescribed.');
  if(!count)return {runs:[],warnings,blocking,feasible:!blocking.length,reviewRequired:!!warnings.length,requestedKm:0,allocatedKm:0,km:0,longKm:0,longShare:0,phase,deload,taper,remaining:until===null?null:until+1};
  if(!p&&goal==='fitness'){
   const minutes=lowerFatigue||strengthEventWeek?15:20;
@@ -263,7 +264,25 @@ function assess(c,w=1,options={}){
  // This replaces easy metres, never adds a second full quality workout or
  // borrows a faster aspiration. Race-day insertion remains the engine's job.
  const established=goal==='marathon'?h.base>=25&&longReference>=16:goal==='half'?h.base>=20&&longReference>=10:h.base>=12;
- const taperReminderAllowed=!!(refined&&taper&&eventPace&&baselineCurrent&&established&&count>=3&&!blocking.length&&!lowerFatigue&&!recoveringMarathon&&!postRace&&!strengthEventWeek&&!recovery.longRunRecoveryReview&&!recovery.longRunDurationReview);
+ const marathonRhythm=goal==='marathon'&&Number(c.marathonTaperRhythmVersion)===1;
+ const rhythmReasons=[];
+ if(marathonRhythm&&taper){
+  if(!eventPace||!baselineCurrent)rhythmReasons.push('A representative current performance is missing, stale or invalid.');
+  // Familiarity comes from supplied performance, never future generated runs.
+  if(!established&&!(Number(c.runProfile?.distance)>=40&&c.runProfile?.effort==='performance'))rhythmReasons.push('Familiar marathon rhythm is not established: supply a current marathon performance or the existing endurance evidence.');
+  if(h.base<25)rhythmReasons.push('Reported running volume does not establish the existing 25 km/week marathon entry baseline.');
+  if(count<3)rhythmReasons.push('Fewer than three running visits are prescribed.');
+  if(blocking.length)rhythmReasons.push(...blocking);
+  if(lowerFatigue)rhythmReasons.push('Lower-body or running fatigue remains unresolved.');
+  if(c.marathonTaperRhythmRecovery?.symptoms)rhythmReasons.push('Pain, symptoms or discomfort require review.');
+  if(c.marathonTaperRhythmRecovery?.repeatedLowRecovery)rhythmReasons.push('Repeated poor recovery requires review.');
+  if(recoveringMarathon||postRace)rhythmReasons.push('Post-event running recovery remains restricted.');
+  if(strengthEventWeek)rhythmReasons.push('Strength competition week restricts running to easy work.');
+  if(recovery.longRunRecoveryReview)rhythmReasons.push('Reported long-run recovery exceeds 48 hours and remains under review.');
+  if(recovery.longRunDurationReview)rhythmReasons.push('Reported long-run duration exceeds the existing 210-minute review threshold.');
+ }
+ const taperReminderAllowed=marathonRhythm?!!(refined&&taper&&!rhythmReasons.length):!!(refined&&taper&&eventPace&&baselineCurrent&&established&&count>=3&&!blocking.length&&!lowerFatigue&&!recoveringMarathon&&!postRace&&!strengthEventWeek&&!recovery.longRunRecoveryReview&&!recovery.longRunDurationReview);
+ let rhythmPrescribed=false;
  if(taperReminderAllowed){
   const km=distances[0],warm=round(Math.min(1.5,km*.3)),cool=round(Math.min(1,km*.2)),recoveryKm=.2;
   const fraction=event?.04:until===1?.06:.08,ceiling=event?1.5:until===1?3:4;
@@ -276,10 +295,14 @@ function assess(c,w=1,options={}){
    let reminder=buildRun('Taper race-rhythm reminder','quality-run',steps,p,{workoutFamily:'taper-race-rhythm',paceBasis:{method:'current-performance-equivalent',racePaceSeconds:eventPace,goalPaceSeconds:Number(c.runningGoalSeconds)>0?Number(c.runningGoalSeconds)/eventDistance:null,goalSupported:Number(c.runningGoalSeconds)>0?Number(c.runningGoalSeconds)/eventDistance>=eventPace:null},reason:'A short current-fitness pace reminder inside reduced easy volume; finish fresh, with no extra repetitions or faster goal-pace testing.'});
    const window=(c.runVisitWindows||[]).find(x=>x.kind==='quality');
    if(Number(window?.minutes)>0){const fitted=fitRunToMinutes(reminder,Number(window.minutes));reminder=fitted.feasible?fitted.run:null;}
-   if(reminder)runs[0]=reminder;
+   if(reminder){
+    if(marathonRhythm){reminder.rpe=5;reminder.recoveryReviewRequired=true;reminder.coachNote='Conditional short practice based on the supplied current marathon performance, not completion of this projected programme. Confirm comfortable easy running and recovery before this session; if unresolved, use easy running instead and do not make up the repetitions.';}
+    runs[0]=reminder;rhythmPrescribed=true;
+   }else if(marathonRhythm)rhythmReasons.push('The short reminder does not fit the existing quality-visit window.');
   }
  }
 
+ if(marathonRhythm&&taper&&!rhythmPrescribed){if(!rhythmReasons.length)rhythmReasons.push('The session has insufficient distance for warm-up, recovery, cool-down and at least 400 m of pace practice.');warnings.push('Marathon taper race rhythm suppressed: '+rhythmReasons.join(' '));}
  if(eventPace&&Number(c.runningGoalSeconds)>0&&Number(c.runningGoalSeconds)/eventDistance<eventPace)warnings.push('Goal pace is faster than the current performance estimate. Quality uses current fitness; reassess after comparable training or a recent race.');
  if(longCapLimited)warnings.push('Long-run duration/history limits redistribute distance into supporting runs. Confirm those visits fit; do not silently add distance to the long run.');
  if(goal==='marathon'&&phase==='Specific preparation'&&!deload&&!taper&&(requestedKm<40||longKm<20))warnings.push('Marathon endurance review: this specific block is not yet supported by substantial weekly mileage and long-run capacity. Review a completion-led run/walk approach, more suitable availability or the race date.');
@@ -293,7 +316,7 @@ function assess(c,w=1,options={}){
  const longest=Math.max(...runs.map(r=>r.minutes||0));
  const longDurationReview=goal==='marathon'&&runs.some(r=>r.role==='long-run'&&r.minutes>210);
  if(longDurationReview)warnings.push('This long-run rehearsal exceeds 3.5 hours. Its use is conditional on recovery, fuelling tolerance and an agreed visit window; review duration versus distance instead of forcing 30 km or a fixed percentage.');
- return {runs,warnings:[...warnings,...blocking],blocking,feasible:!blocking.length,reviewRequired:!!(warnings.length||blocking.length),requestedKm,allocatedKm:actualKm,actualKm,km:requestedKm,factor,phase,preparationMode:supportEndurance?'endurance-support':raceWeek?'dated-event':'base-building',supportEndurance,...(refined?{recoveryContext:recovery}:{}),progressionLimited:longCapLimited,deload,taper,remaining:until===null?null:until+1,longShare:actualKm&&!noLong?longKm/actualKm:0,longKm:noLong?0:longKm,qualityAllowed,
+ return {runs,warnings:[...warnings,...blocking],blocking,feasible:!blocking.length,reviewRequired:!!(warnings.length||blocking.length),requestedKm,allocatedKm:actualKm,actualKm,km:requestedKm,factor,phase,preparationMode:supportEndurance?'endurance-support':raceWeek?'dated-event':'base-building',supportEndurance,...(marathonRhythm&&taper?{taperRaceRhythm:{prescribed:rhythmPrescribed,reasons:rhythmReasons,evidence:baselineCurrent?(established?'current-performance-and-existing-endurance-evidence':Number(c.runProfile?.distance)>=40?'supplied-current-marathon-performance':null):null,recoveryConfirmationRequired:true}}:{}),...(refined?{recoveryContext:recovery}:{}),progressionLimited:longCapLimited,deload,taper,remaining:until===null?null:until+1,longShare:actualKm&&!noLong?longKm/actualKm:0,longKm:noLong?0:longKm,qualityAllowed,
   reviewGates:{baselineConfirmed:!!h.base,longRunHistoryConfirmed:!!longReference,recoveryCheckRequired:recoveringMarathon||postRace||strengthEventWeek||(strengthRecoveryWeek&&supportEndurance)||(refined&&recovery.longRunRecoveryReview),...(refined?{longRunRecoveryReview:recovery.longRunRecoveryReview,longRunDurationReview:recovery.longRunDurationReview}:{}),marathonEnduranceReview:goal==='marathon'&&phase==='Specific preparation'&&!deload&&!taper&&(requestedKm<40||longKm<20),halfEnduranceReview,handoverProgressionReview:handoverEnduranceBuild,longDurationReview},
   fuelling:longest>=75?['Practise carbohydrate and fluid intake during long runs, rather than introducing it on race day. Start with familiar small portions totalling about 30 g carbohydrate/hour; progress towards 45–60 g/hour on longer rehearsals if tolerated.','Drink to conditions and thirst; record what you actually tolerate. Use the same foods/drinks in later race rehearsals.']:[],
   qualityBudget:{workKm:Number(hard.toFixed(3)),weeklyKm:actualKm,maximumShare:qualityLimit,domain:goal==='marathon'&&phase==='Specific preparation'?'marathon-pace rehearsal':'threshold and faster'},

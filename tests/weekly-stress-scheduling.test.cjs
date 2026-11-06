@@ -4,11 +4,13 @@ const original=freeze(require('./fixtures/original-three-engine-inputs.json')),f
 const {dateOf}=require('../scripts/audit-stage-two.cjs');
 // Replay the frozen Stage 1–6 duration policy; Stage 7 latest-policy checks live in flexible-session-time.test.cjs.
 function freeze(f){return ({...f,cases:f.cases.map(r=>({...r,config:{...r.config,sessionTimeVersion:0}}))})}
+// A historical policy replay must not opt into the new marathon taper policy.
+function buildFrozen(input,options){const c=require('../src/coach-engine.js').prepareNewProgramme(input,options);delete c.marathonTaperRhythmVersion;delete c.marathonTaperRhythmRecovery;return adapters.buildProgramme(c,options)}
 
 const clone=x=>JSON.parse(JSON.stringify(x)),now=f=>()=>Date.parse(f.clock),lower=s=>(s.ex||[]).filter(e=>e[5]?.category==='primary'&&/squat|deadlift/i.test(e[0])&&e[4]>=8);
 test('original strength benchmarks regain weekly recovery without losing complete visits, progression or competition preparation',()=>{
  for(const id of ['O1','O3']){
-  const row=original.cases.find(r=>r.id===id),p=adapters.buildNewProgramme(row.config,{data:row.historicalData,now:now(original)}),old=require('../docs/qa/stage-four/current/'+id+'.json').programme;
+  const row=original.cases.find(r=>r.id===id),p=buildFrozen(row.config,{data:row.historicalData,now:now(original)}),old=require('../docs/qa/stage-four/current/'+id+'.json').programme;
   assert.equal(p.config.weeklyStressVersion,1);assert.ok(p.weeks.every(w=>w.feasible&&w.sessions.every(s=>s.timeBudget.feasible!==false)));
   assert.deepEqual(p.weeks[2].sessions.filter(s=>s.ex.length).map(s=>s.day),['Mon','Wed','Fri']);
   const hard=p.weeks.flatMap(w=>w.sessions.filter(s=>lower(s).length).map(s=>({date:dateOf(row.config,w.week,s.day),s}))).sort((a,b)=>a.date.localeCompare(b.date));
