@@ -1,3 +1,7 @@
+Original Training Mode implementation note (candidate 305adc9).
+The current stronger-identity and working-set-flow revision is documented in
+../training-flow/review.txt and ../training-flow/validation.json.
+
 LHRF Training Mode and purpose-aware history — Ella review
 
 Production baseline: 385a4bc66c14e47e2b7c3ed668b9037462a7e3a9,

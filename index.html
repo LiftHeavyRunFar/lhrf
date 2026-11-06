@@ -210,7 +210,7 @@ button{border-radius:12px!important}button:not(.ghost):not(.secondary){backgroun
 .lhrf-run-prescription>p{color:#b4d4e9;font-size:13px}
 
 #programmeReplacement{overflow-wrap:anywhere}#programmeReplacement section{min-width:0}#programmeReplacement input[type="checkbox"]{width:auto;margin-right:8px}#programmeReplacement label{display:block;margin:12px 0}
-</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/android-polish.js"></script><script src="./src/run-presentation.js"></script><script src="./src/programme-replacement.js"></script><script src="./src/training-backup.js"></script><script src="./src/running-workouts.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/gym-equipment.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script><script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script><script src="./src/garmin-workout.js"></script><script src="./src/intervals-sync.js"></script><style>
+</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/training-flow.js"></script><script src="./src/android-polish.js"></script><script src="./src/run-presentation.js"></script><script src="./src/programme-replacement.js"></script><script src="./src/training-backup.js"></script><script src="./src/running-workouts.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/gym-equipment.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script><script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script><script src="./src/garmin-workout.js"></script><script src="./src/intervals-sync.js"></script><style>
 /* A single, unboxed masthead; the original logo blends into the page surface. */
 body{background:#03070e!important}
 header#appHeader{position:sticky!important;top:0;z-index:20;max-width:none;min-height:0;margin:0!important;padding:calc(4px + env(safe-area-inset-top)) 16px 4px!important;background:#03070e;border:0;border-radius:0;box-shadow:none;text-align:center}
@@ -992,11 +992,11 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
 // v1.6.10: persistent live workout, separate from prescription preview.
 (function(){
  const KEY='lhrf_fresh_beta_live_v1114';
- let live=null, preview=null, expanded=0;
+ let live=null, preview=null, expanded=0, lastSetAction=null;
  try{live=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){live=null}
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function persist(){try{if(live)localStorage.setItem(KEY,JSON.stringify(live));else localStorage.removeItem(KEY)}catch(e){}}
- window.LHRFLive={get:()=>live,persist:()=>persist(),render:()=>status()};
+ function persist(){try{if(live){const raw=JSON.stringify(live);localStorage.setItem(KEY,raw);return localStorage.getItem(KEY)===raw}localStorage.removeItem(KEY);return localStorage.getItem(KEY)===null}catch(e){return false}}
+ window.LHRFLive={get:()=>live,persist:()=>persist(),render:()=>status(),selectExercise:index=>{expanded=index}};
  if(live?.ex?.length&&live?.runs?.length&&!live.component){
   live.parentId=live.id;live.id+='::strength';live.component='strength';
   try{localStorage.setItem(KEY+'_pendingRun',JSON.stringify({parentId:live.parentId,week:Number(data.activeCustomWeek)||1,runs:live.runs,runLogged:!!live.runLogged,runEntry:live.runEntry||null}))}catch(e){}
@@ -1059,8 +1059,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    for(let j=0;j<e[1];j++){
     const k=i+'_'+j,entry=live.entries[k]||{weight:practical.value||'',reps:e[2],rpe:'',done:false};
     const row=document.createElement('div');row.className='live-set';row.innerHTML=`<span class="set-num">${j+1}</span><div><label>${practical.type==='assistance-kg'?'Assistance kg':practical.type==='per-hand-kg'?'kg per hand':'kg'}</label><input type="number" min="0" step="any" data-field="weight" value="${esc(entry.weight)}"></div><div><label>${e[5]?.doseUnit==='seconds'?'Seconds':'Reps'}</label><input type="number" min="1" step="1" data-field="reps" value="${esc(entry.reps)}"></div><div><label>RPE</label><input type="number" min="1" max="10" step=".5" data-field="rpe" value="${esc(entry.rpe)}"></div><button class="set-check ${entry.done?'checked':''}" aria-label="Mark set ${j+1} complete">${entry.done?'✓':'○'}</button>`;
-    row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{const v=live.entries[k]||(live.entries[k]={...entry});v[input.dataset.field]=input.value;if(v.done){v.done=false;row.querySelector('button').classList.remove('checked');row.querySelector('button').textContent='○'}persist();updateHeader()}));
-    row.querySelector('button').onclick=()=>{if(!equipmentStartAllowed({id:live.id,ex:[e]},live.v2Trial?.profile?.equipmentInventory||currentEquipmentInventory()))return;const v=live.entries[k]||(live.entries[k]={...entry});if(!v.done){const w=Number(row.querySelector('[data-field="weight"]').value),r=Number(row.querySelector('[data-field="reps"]').value),rpe=Number(row.querySelector('[data-field="rpe"]').value);if(!((e[5]?.loadType==='bodyweight'||e[5]?.loadType==='assistance-kg'?w>=0:w>0)&&r>0&&rpe>=1&&rpe<=10)){alert('Enter weight, reps and RPE before logging this set.');return}v.weight=w;v.reps=r;v.rpe=rpe}v.done=!v.done;
+    row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{const fresh=!live.entries[k],v=live.entries[k]||(live.entries[k]={...entry});if(fresh)v.weightEdited=false;if(v.done)v.correcting=true;v[input.dataset.field]=input.value;if(input.dataset.field==='weight'){v.weightEdited=true;delete v.weightHint}if(v.done){v.done=false;row.querySelector('button').classList.remove('checked');row.querySelector('button').textContent='○'}if(lastSetAction?.key===k)lastSetAction=null;if(!persist())document.getElementById('liveError').textContent='Changes could not be saved. Your entries remain here; retry recording when storage is available.';updateHeader()}));
+    row.querySelector('button').onclick=()=>{if(!row.isConnected||lastSetAction?.key===k&&Date.now()-lastSetAction.at<300)return;const beforeSet=JSON.parse(JSON.stringify(live));if(!equipmentStartAllowed({id:live.id,ex:[e]},live.v2Trial?.profile?.equipmentInventory||currentEquipmentInventory()))return;const v=live.entries[k]||(live.entries[k]={...entry});const recording=!v.done,correcting=!!v.correcting;if(!v.done){const w=Number(row.querySelector('[data-field="weight"]').value),r=Number(row.querySelector('[data-field="reps"]').value),rpe=Number(row.querySelector('[data-field="rpe"]').value);if(!((e[5]?.loadType==='bodyweight'||e[5]?.loadType==='assistance-kg'?w>=0:w>0)&&r>0&&rpe>=1&&rpe<=10)){alert('Enter weight, reps and RPE before logging this set.');return}v.weight=w;v.reps=r;v.rpe=rpe}if(!live.trainingPrescription)live.trainingPrescription={ex:JSON.parse(JSON.stringify(live.ex))};v.done=!v.done;if(v.done)delete v.correcting;else v.correcting=true;
      if(v.done&&e[5]?.role==='top'){
       const topWeight=Number(v.weight),topRpe=Number(v.rpe),topReps=Number(v.reps);
       // RIR-adjusted e1RM; solve back-off load from target reps and RPE.
@@ -1068,11 +1068,17 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
       live.ex.forEach((back,bi)=>{if(back[5]?.role!=='backoff'||back[5]?.topIndex!==i)return;
        const rounded=back[5]?.backoffProfile?phaseBackoffLoad(topWeight,topReps,topRpe,back[5].backoffProfile):loadFromTopSet(topWeight,topReps,topRpe,back[2],back[4]);
        back[3]=rounded;
-       for(let k=0;k<back[1];k++){const key=bi+'_'+k;if(!live.entries[key]?.done)live.entries[key]={...(live.entries[key]||{}),weight:rounded,reps:back[2],rpe:live.entries[key]?.rpe||'',done:false}}
+       for(let k=0;k<back[1];k++){const key=bi+'_'+k,existing=live.entries[key];if(!existing||!existing.done&&existing.weightEdited===false&&!existing.weightHint)live.entries[key]={...(existing||{}),weight:rounded,reps:existing?.reps??back[2],rpe:existing?.rpe||'',done:false,weightEdited:false}}
        live.lastCoachNote='Top set '+topWeight+' kg × '+topReps+' @ RPE '+topRpe+' → suggested '+rounded+' kg back-offs at target RPE '+back[4]+'.';
       });
      }
-     if(v.done&&Array.from({length:e[1]},(_,j)=>live.entries[i+'_'+j]?.done).every(Boolean))expanded=-1;persist();status()};
+     const flow=window.LHRFTrainingFlow;let advance=null;
+     if(recording&&v.done&&flow){flow.carry(live,i,j,{correcting});advance=flow.nextExercise(beforeSet,live,i,{correcting,indices:[...root.querySelectorAll(':scope > .live-ex')].map(card=>Number(card.dataset.exerciseIndex))})}
+     if(recording&&v.done&&Array.from({length:e[1]},(_,j)=>live.entries[i+'_'+j]?.done).every(Boolean))expanded=correcting?i:advance??(flow?.firstIncomplete(beforeSet)===i?-1:i);else expanded=i;
+     live.trainingView={exerciseIndex:expanded,revision:flow?flow.revision(live):null};
+     if(!persist()){live=beforeSet;expanded=i;status();const message='Set not saved. Check device storage and try again. Your entries are still here.';document.getElementById('liveError').textContent=message;const error=document.createElement('p');error.className='set-save-error';error.setAttribute('role','alert');error.textContent=message;document.getElementById('liveSets_'+i)?.append(error);return}
+     lastSetAction={key:k,at:Date.now()};status();if(advance!==null)window.LHRFTrainingMode?.revealNext(advance);
+    };
     rows.appendChild(row);
    }
   });

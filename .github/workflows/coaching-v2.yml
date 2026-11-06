@@ -126,6 +126,14 @@ jobs:
           mkdir -p /tmp/lhrf-training-production
           git archive 385a4bc66c14e47e2b7c3ed668b9037462a7e3a9 | tar -x -C /tmp/lhrf-training-production
           node tests/training-mode.browser.cjs
+      - name: Test save-gated exercise progression and compatible actual-load carry
+        if: ${{ !cancelled() }}
+        env:
+          LHRF_FLOW_BASE: /tmp/lhrf-training-flow-start
+        run: |
+          mkdir -p /tmp/lhrf-training-flow-start
+          git archive 305adc9570d9df91d4f357c8f0108bd484402ea2 | tar -x -C /tmp/lhrf-training-flow-start
+          node tests/training-flow.browser.cjs
       - name: Test all tabs and workout flow
         if: ${{ !cancelled() }}
         run: node tests/today-flow.browser.cjs
