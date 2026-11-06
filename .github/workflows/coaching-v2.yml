@@ -110,6 +110,14 @@ jobs:
           mkdir -p /tmp/lhrf-history-production
           git archive 776df9c21d2e96ca506e4e40d27988565d03efbf | tar -x -C /tmp/lhrf-history-production
           node tests/performance-history.browser.cjs
+      - name: Test current production update with history and Garmin export together
+        if: ${{ !cancelled() }}
+        env:
+          LHRF_COMBINED_BASE: /tmp/lhrf-history-garmin-production
+        run: |
+          mkdir -p /tmp/lhrf-history-garmin-production
+          git archive 719ef246d27f40796beaec194c5ffc2db986aa75 | tar -x -C /tmp/lhrf-history-garmin-production
+          node tests/history-garmin-update.browser.cjs
       - name: Test all tabs and workout flow
         if: ${{ !cancelled() }}
         run: node tests/today-flow.browser.cjs

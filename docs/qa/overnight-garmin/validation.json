@@ -1,14 +1,17 @@
 {
-  "baseline": "776df9c21d2e96ca506e4e40d27988565d03efbf",
+  "baseline": "719ef246d27f40796beaec194c5ffc2db986aa75",
+  "integratedHistoryPR": 125,
+  "previousGarminHead": "be6e08370ed0f4a27533fc037e5113effe989506",
+  "date": "2026-11-06",
   "data": "synthetic only",
   "nodeVersion": "24.19.0",
   "chromiumVersion": "154.0.8037.57",
   "nodeTests": {
-    "passed": 397,
+    "passed": 403,
     "failed": 0
   },
   "browserSuites": {
-    "passed": 23,
+    "passed": 25,
     "failed": 0
   },
   "privateGarminServiceTests": {
@@ -17,6 +20,10 @@
   },
   "watchDeliveryConfirmed": false,
   "checks": [
+    {
+      "name": "node-regressions",
+      "exit": 0
+    },
     {
       "name": "athletes",
       "exit": 0
@@ -31,8 +38,7 @@
     },
     {
       "name": "private-garmin-service",
-      "exit": 0,
-      "verified": "Correct services/garmin-bridge/tests.mjs invocation: 7 passed"
+      "exit": 0
     },
     {
       "name": "android-corrections",
@@ -79,6 +85,10 @@
       "exit": 0
     },
     {
+      "name": "history-garmin-update",
+      "exit": 0
+    },
+    {
       "name": "local-activity-import",
       "exit": 0
     },
@@ -99,6 +109,10 @@
       "exit": 0
     },
     {
+      "name": "performance-history",
+      "exit": 0
+    },
+    {
       "name": "preview-intake-v2",
       "exit": 0
     },
@@ -112,8 +126,7 @@
     },
     {
       "name": "running-flow",
-      "exit": 0,
-      "verified": "Passed focused rerun after numeric distance assertion correction"
+      "exit": 0
     },
     {
       "name": "shared-preview",
@@ -128,6 +141,7 @@
       "exit": 0
     }
   ],
-  "finalFocusedAcceptance": "Production baseline -> candidate before/after, export safety or history offline/update test passed after final changes",
-  "protectedSources": "Programme files, coach engine, Stage 8, equipment registry/policy, Garmin and local activity import sources and services identical to baseline"
+  "combinedAcceptance": "Real production 719ef24 -> combined PWA update; history plus structured Garmin export/moved-date identity; offline reopen; original sets/RPE, completed workouts, programme, equipment, Garmin links, connection and active draft byte-preserved",
+  "protectedSources": "History matching/presentation, programme, coaching, Stage 8, equipment and Garmin/local import sources unchanged from current main; Garmin export logic unchanged from the prior reviewed PR126 head",
+  "githubCI": "Final exact candidate SHA and CI results are recorded in the PR description after push"
 }

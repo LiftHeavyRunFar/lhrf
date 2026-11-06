@@ -1,0 +1,52 @@
+PR126 combined integration — 6 November 2026
+
+Current production main: 719ef246d27f40796beaec194c5ffc2db986aa75,
+including merged PR125. Previous PR126 head:
+be6e08370ed0f4a27533fc037e5113effe989506.
+The final candidate SHA and GitHub CI run are recorded in the PR description.
+
+Integration
+Rebased both Garmin commits onto current main. The only content conflict was
+sw.js: retain main's full shell list, including src/performance-history.js and
+all Garmin/export assets, and use the new lhrf-shell-v1.31.0-history-garmin cache.
+The history loader, matching/presentation modules and their tests are preserved.
+Both CI acceptance flows remain present; a new combined production-update test
+is added. No coaching, programme, equipment or import behavior was changed.
+
+Combined acceptance
+history-garmin-update.browser.cjs starts from an archive of the exact main SHA
+above and upgrades through the real same-origin service-worker update flow.
+It checks the pre-existing 29 October squat/deadlift references before and after
+upgrade, retaining the active 5 November draft with its entered 119 kg.
+After upgrade it sends the exact synthetic structured run through an intercepted
+Intervals service, checks work/recovery order, original pace ranges and stable
+identity when moving the date, then reloads offline. Both history and export
+modules must be cached; the new cache must replace the old shell cache.
+Original sets/RPE, completed workouts, November programme, equipment, Garmin
+activity identities/planned links and the remembered synthetic private connection
+are compared byte-for-byte. Export must neither start nor complete the run.
+
+Reproduce
+npm test
+node --test services/garmin-bridge/tests.mjs
+npm run test:athletes
+npm run test:coaching:safety
+npm run test:coaching:depth
+Archive 719ef246d27f40796beaec194c5ffc2db986aa75 into a disposable directory.
+Set LHRF_COMBINED_BASE to that directory, then run:
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/history-garmin-update.browser.cjs
+The new check runs in CI alongside historical matching, Garmin export, all existing
+browser/PWA, coaching and Stage 8 interruption/replacement/rollback checks.
+All 25 browser scripts were included in the local combined validation; scripts
+requiring older baseline archives used their original frozen revisions.
+Results: 403/403 Node regressions, 25/25 browser/PWA suites and 7/7 private Garmin
+bridge tests passed. Synthetic athlete acceptance, coaching safety and coaching
+depth all passed. Stage 8 atomic activation, interruption and rollback preservation
+checks passed. See validation.json for the complete combined check list.
+
+Release boundary
+Review PR126 at its exact final SHA and green CI. No merge, deployment, programme
+activation or live athlete modifications are authorised or performed. The prior
+Forerunner 165 checklist remains applicable: Intervals receipt is not confirmed
+watch delivery. No authenticated Garmin/Intervals service or physical watch was
+used in automated validation. This integration requires no new service or keys.

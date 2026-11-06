@@ -1,6 +1,8 @@
 LHRF prescribed-run Garmin export — Ella review
 
-Baseline: production main 776df9c21d2e96ca506e4e40d27988565d03efbf.
+Original implementation baseline: 776df9c21d2e96ca506e4e40d27988565d03efbf.
+Combined integration baseline: production main
+719ef246d27f40796beaec194c5ffc2db986aa75, including merged PR125.
 Branch: fix/garmin-prescribed-export. Exact candidate SHA is in the PR description.
 No authenticated Intervals/Garmin requests or private athlete exports were made.
 
@@ -59,7 +61,10 @@ Older date-shifted or component-ID exports may still need manual duplicate clean
 There is no migration, event deletion or new external service.
 
 Automated QA and coaching verification
-397/397 Node tests on Node24.19.0. 23/23 browser/PWA suites on Chromium154, including
+For the combined current-main validation, see integration-main-719ef24.txt and
+validation.json. The original isolated validation below is retained as provenance.
+Original isolated validation: 397/397 Node tests on Node24.19.0 and 23/23
+browser/PWA suites on Chromium154, including
 all existing suites and the new export acceptance. 7/7 unchanged private Garmin
 bridge tests. Synthetic athlete acceptance, coaching safety and coaching depth
 commands pass. Final full Node and focused export browser acceptance reran after
@@ -103,8 +108,10 @@ workout-import file. Do not build another bridge or alter training to fit export
 
 Ready for Ella's code/CI review and controlled Forerunner165 verification. After
 separate owner release approval, use the normal same-origin PWA route with backup,
-between workouts. If history lands first, rebase and resolve the shared cache
-identifier to a new version; rerun PWA acceptance. Do not clear storage or activate
+between workouts. PR125 is now integrated through a rebase onto 719ef24. The service-worker
+conflict retains the history-module precache and all Garmin assets under the new
+lhrf-shell-v1.31.0-history-garmin cache. The production-main-to-combined PWA test
+verifies both features together, active draft/storage preservation and offline use. Do not clear storage or activate
 programmes. Retain previous app commit for code-only rollback. No production merge,
 deployment, activation or live athlete modification performed.
 
