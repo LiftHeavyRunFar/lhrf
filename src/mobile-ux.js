@@ -17,20 +17,36 @@ function modal(dialog){
 }
 function previousReferences(state,live,history){return (typeof module==='object'&&module.exports?require('./performance-history'):root.LHRFPerformanceHistory).references(state,live,history)}
 function comparable(state,live,history){return previousReferences(state,live,history)[0]?.row||(typeof module==='object'&&module.exports?require('./performance-history'):root.LHRFPerformanceHistory).previousRun(live,history)}
+function exerciseReference(ex,live,state){
+ const model=root.LHRFPerformanceHistory,history=root.LHRFTrainingReview.history(state),ref=model.references(state,{...live,ex:[ex]},history)[0];
+ const box=document.createElement('aside');box.className='exercise-history';box.setAttribute('aria-label','Previous performance for '+ex[0]);
+ const make=(tag,text,parent=box)=>{const node=document.createElement(tag);node.textContent=text;parent.append(node);return node};
+ const current=model.purpose(ex[5]).value,name=ex[0].toLowerCase();
+ if(!ref){make('p','No reliable previous '+(current?current+' ':'')+name+' performance.').className='history-title';return box;}
+ const date=new Date(ref.date+'T12:00:00Z'),label=ref.samePurpose?'Previous '+ref.purpose.value+' '+name:'Alternative '+(ref.purpose.value?ref.purpose.value+' ':'')+name;
+ make('p',label+' — '+date.toLocaleDateString('en-GB',{day:'numeric',month:'long'})).className='history-title';
+ if(ref.alternative)make('small',current&&ref.purpose.value?'Different training purpose; contextual reference only.':'Training purpose is unconfirmed; contextual reference only.').className='history-caution';
+ const units=s=>s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg';
+ const actual=s=>s.weight+units(s)+' × '+s.reps+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'not recorded')+(s.role?' · '+s.role:'');
+ const groups=new Map();for(const set of ref.sets){const key=actual(set);groups.set(key,(groups.get(key)||0)+1)}
+ const selected=[...groups].sort((a,b)=>Number(!/· top$/.test(a[0]))-Number(!/· top$/.test(b[0]))).slice(0,3);
+ for(const [text,count]of selected)make('p',(count>1?count+' sets · ':'')+text).className='history-actual';
+ const related=ref.sets.filter(s=>!ex[5]?.role||s.role===ex[5].role),different=(related.length?related:ref.sets).some(s=>s.reps!==ex[2]);
+ if(different)make('small','Different rep scheme from this prescription; these sets are not directly equivalent.').className='history-caution';
+ const all=make('details','');all.className='history-all';make('summary','All recorded sets ('+ref.sets.length+')',all);
+ for(const set of ref.sets)make('p','Set '+(set.set??'—')+' · '+actual(set),all);
+ for(const note of new Set([ref.row.notes,...ref.sets.map(s=>s.notes)].filter(Boolean)))make('p',note,all);
+ const context=make('details','');context.className='history-context';make('summary','Comparison details',context);
+ make('p','Recorded '+date.toLocaleDateString('en-GB')+' · Purpose evidence: '+ref.purpose.source+'.',context);
+ if(ref.setupMissing)make('p','Legacy record: exact venue/setup was not recorded. Check equipment before comparing.',context);
+ if(ref.purpose.ambiguous)make('p','Preserved purpose metadata conflicts; no classification has been assumed.',context);
+ make('p','Context only. Follow the current prescription and RPE; entered values are unchanged.',context);
+ return box;
+}
 function reference(host,live,state){
- const wasOpen=host.querySelector('#previousWorkout')?.open||false;
- host.querySelector('#previousWorkout')?.remove();const detail=document.createElement('details');detail.className='card previous-workout';detail.id='previousWorkout';detail.open=wasOpen;const summary=document.createElement('summary');summary.textContent='Previous relevant performances';detail.append(summary);
- const make=(tag,text)=>{const el=document.createElement(tag);el.textContent=text;detail.append(el);return el},refs=previousReferences(state,live,root.LHRFTrainingReview.history(state));
- const previousRun=!live.ex?.length?root.LHRFPerformanceHistory.previousRun(live,root.LHRFTrainingReview.history(state)):null;
- if(!refs.length&&!previousRun)make('p','No suitable earlier performance with a comparable exercise and setup.');
- if(previousRun){make('p',new Date(previousRun.date).toLocaleDateString('en-GB')+' · Recorded run');for(const r of previousRun.runs)make('p',root.LHRFRunPresentation.distance(r.km)+' · '+root.LHRFRunPresentation.duration(r.min)+(r.rpe!=null?' · RPE '+r.rpe:''));}
- for(const ref of refs){
-  make('p',ref.exercise+' · '+new Date(ref.date+'T12:00:00Z').toLocaleDateString('en-GB')+' · Recorded work');
-  if(ref.setupMissing)make('small','Legacy record: exact venue/setup was not recorded. Check equipment before comparing.');
-  for(const s of ref.sets)make('p','Set '+(s.set??'—')+' · '+(s.weight??'—')+(s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg')+' × '+(s.reps??'—')+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'not recorded')+(s.role?' · '+s.role:''));
-  for(const note of new Set([ref.row.notes,...ref.sets.map(s=>s.notes)].filter(Boolean)))make('p',note);
- }
- make('small','Context only. Follow the current prescription and RPE; your entered values stay as entered.');host.firstElementChild.after(detail);
+ host.querySelector('#previousWorkout')?.remove();host.querySelectorAll('.exercise-history').forEach(node=>node.remove());
+ host.querySelectorAll('#liveExercises > .live-ex').forEach(card=>{const ex=live.ex?.[Number(card.dataset.exerciseIndex)];if(ex)card.querySelector('.ex-content').append(exerciseReference(ex,live,state))});
+ if(!live.ex?.length){const row=root.LHRFPerformanceHistory.previousRun(live,root.LHRFTrainingReview.history(state));if(row){const box=document.createElement('details');box.id='previousWorkout';box.className='card';const summary=document.createElement('summary');summary.textContent='Previous recorded run';box.append(summary);for(const run of row.runs){const p=document.createElement('p');p.textContent=new Date(run.date||row.date).toLocaleDateString('en-GB')+' · '+root.LHRFRunPresentation.distance(run.km)+' · '+root.LHRFRunPresentation.duration(run.min);box.append(p)}host.firstElementChild.after(box)}}
 }
 function carousel(rail,dots){
  if(!rail||!dots||rail.dataset.paginationReady)return;rail.dataset.paginationReady='true';const cards=[...rail.children];dots.replaceChildren();dots.hidden=cards.length<2;
@@ -89,5 +105,5 @@ function mount({getData,commit,parts}){
  const restored=root.LHRFLive?.get?.();if(restored)reference($('liveTrainRoot'),restored,getData());
 
 }
-const api={weekKey,weekCompletion,weekComplete,modal,comparable,reference,carousel,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
+const api={weekKey,weekCompletion,weekComplete,modal,comparable,reference,exerciseReference,carousel,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMobileUX=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

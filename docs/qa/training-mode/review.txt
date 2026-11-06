@@ -1,0 +1,127 @@
+LHRF Training Mode and purpose-aware history — Ella review
+
+Production baseline: 385a4bc66c14e47e2b7c3ed668b9037462a7e3a9,
+including merged history PR #125 and Garmin export PR #126.
+Branch: feat/training-mode-purpose-history.
+Exact candidate SHA and final GitHub CI run are recorded in the draft PR.
+
+Problem and result
+Start previously retained the large browsing masthead and largely unchanged
+card hierarchy. Historical comparison chose the newest compatible exercise record,
+so Tuesday volume bench could displace the previous Friday heavy session.
+
+Active Training Mode now hides the oversized masthead only on the live training
+screen, with a compact session/purpose/progress header, angular electric-blue
+exercise heading, clear numeric prescription/entry fields and an emphasized open
+exercise card. Other and completed cards remain readable and accessible. Existing
+exercise navigation, correction and set-completion controls remain. Leave & resume
+returns to browsing with a visible Resume training action; completion restores the
+normal browsing/finished identity. Preview retains the original browsing identity
+and includes historical references before Start.
+
+Goldman Bold is the licensed compatible angular face, locally bundled and cached
+under SIL OFL 1.1. Copyright/licence/source are in assets/fonts. It is not claimed
+to be the unknown original font embedded in the raster logo. Headings cap at 30px
+(22px at 320px), with restrained metallic-blue text and no added animation/glow.
+Numerical fields remain standard editable number inputs with larger tabular type,
+accessible names and completion state; 320px spacing accommodates decimal loads.
+
+Presentation is a separate helper and stylesheet. The only new remembered value
+is a tab-scoped exercise index in sessionStorage, keyed by existing workout ID and
+start timestamp. Athlete storage, draft fields and completed-workout schema are
+unchanged. Rest code, controls, persistence and timing are untouched. There are
+no automatic rest prompts, new timers, blocking overlays or rigid set sequencing.
+The original final-set collapse behavior is preserved; the initial regression
+caught a view-restoration interaction and was corrected without weakening its test.
+
+Purpose matching and evidence
+The pure read-only history layer first retains compatible exercise/variation and
+load/setup conventions and excludes unsuitable records. Among these candidates it
+prioritizes the same named training purpose, then the actual latest recorded date.
+Heavy, volume, speed/technique and other existing defined roles are read from
+trainingPurpose/trainingRole/benchRole. Top/backoff/straight are SET roles and are
+never treated as purpose. No purpose is inferred from weights, reps, RPE, weekday,
+Day 3 of 5, numeric programme-week equality or a fresh coaching-engine replay.
+
+Evidence comes from recorded set/session metadata, saved completed-workout
+prescriptions and preserved dated programme snapshots. Original installation
+archives containing a saved schedule/week and Stage 8 full calendar archives are
+supported. Archive week offsets are used only to resolve their recorded calendar
+structure, not to equate different programmes' week identities. Linked legacy sets
+with timestamps differing from their completed workout can recover the saved
+purpose using that historical link and actual day. Current session IDs never
+need to equal historical session IDs. Conflicting evidence stays uncertain.
+
+Each relevant exercise card includes its own compact history summary: recorded
+top sets and backoffs, date and original loads/reps/RPE/roles. Identical recorded
+sets are compacted only for summary display; All recorded sets expands every
+suitable original row. Rep differences are explicitly labelled, not converted to
+an equivalent prescription. Comparison details keep setup uncertainty and evidence
+source available. Without a reliable same-purpose match, alternatives are clearly
+labelled or no reliable comparison is shown. Context never supplies a new load.
+
+Synthetic before/after evidence
+before-active.png: production Start still shows the oversized masthead and the
+newer 3 November volume reference.
+after-active.png: focused 390px Training Mode; previous heavy bench — 30 October,
+137.25 kg x 2 at RPE 8.5, with three 117.25 kg x 3 at RPE 7.5 backoffs, read from the
+fictional fixture rather than hard-coded UI values. Current 1 rep prescription and
+historical 2 reps are explicitly different.
+after-small.png: 320px, full entered 132.75 kg visible; corrected set can be reopened.
+after-offline.png: offline resume/edit/finish-cancellation state retained.
+after-preview.png: completed/preview browsing identity restored; per-exercise
+references remain contextual. These are fictional records, not the owner's
+30 October weights or RPE. No private athlete records were read or uploaded.
+
+Final verification
+412/412 Node tests on Node 24.19.0. 26/26 browser/PWA suites on Chromium 154.
+7/7 existing private Garmin bridge tests. Synthetic athlete acceptance, coaching
+safety and coaching depth commands pass. Full runs include Stage 8 transaction,
+interruption, replacement/rollback, original-RPE/history/equipment preservation,
+Garmin import/export/activity identity, PWA update/offline and existing logging
+regressions. Focused acceptance covers Start/preview/finished identity, licensed
+font offline, active/inactive cards, exercise switching/corrections, rest clock,
+leave/resume, refresh, cancellation/save, 320px inputs, heavy-versus-volume and
+missing/ambiguous purpose. Final Node/history tests also cover timestamp-linked
+legacy evidence. GitHub CI reruns the new acceptance against the exact production
+baseline; existing history and combined Garmin acceptance assertions were updated
+only to follow the requested relocation into exercise cards, retaining original
+value/storage assertions. See validation.json for the complete result list.
+
+Protected code remains byte-identical to production: programme files, coaching
+engine, Garmin bridge/import/export adapters, equipment policy/registry, Stage 8
+install/replacement/rollback and the complete workout-tools/rest-clock module.
+The live logger's validation, backoff calculation, persistence/start/finish/discard
+and recorded values are untouched; only presentation hooks were added.
+
+Reproduce
+npm test
+node --test services/garmin-bridge/tests.mjs
+npm run test:athletes
+npm run test:coaching:safety
+npm run test:coaching:depth
+Archive 385a4bc66c14e47e2b7c3ed668b9037462a7e3a9 into a disposable directory;
+set LHRF_TRAINING_BASE to it, then:
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/training-mode.browser.cjs
+Optional LHRF_EVIDENCE_DIR selects synthetic screenshot output.
+
+Limitations and release route
+Missing or contradictory historical purpose remains unknown; the app does not
+reclassify old data or reconstruct a prescription from current policy. General
+programme intent alone cannot prove a particular historical exposure's purpose.
+Unknown legacy equipment still carries the existing warning. Same-day records
+remain excluded as before. The UI does not certify the actual owner's 30 October
+values; it reads their preserved local records at runtime.
+
+Goldman is a compatible licensed choice, not recovered original logo lettering.
+Final visual acceptance, physical Android keyboard/font scaling/TalkBack and
+native app-switch/back-gesture behavior remain for owner/Ella review. Automated
+Garmin mocks do not confirm watch delivery; the prior Forerunner 165 checklist
+remains applicable. No coaching-policy decision was required or changed.
+
+Ella reviews exact SHA, before/after images, results and green CI. Release only
+after separate owner approval through the existing same-origin PWA update,
+between workouts and with a verified backup. Keep site storage and retain the
+previous app commit for code-only rollback. Do not regenerate or activate any
+programme. This task performs no merge, deployment, activation or live athlete
+modification. All new behavior remains on the draft PR branch until approved.
