@@ -1,0 +1,73 @@
+LHRF historical performance matching — Ella review
+
+Baseline: production main 776df9c21d2e96ca506e4e40d27988565d03efbf,
+verified through GitHub and subsequently fetched with the existing Cloud identity.
+Branch: fix/history-cross-programme. Exact candidate SHA is in the PR description.
+
+Root cause and change
+The former lookup demanded numeric programme week minus one plus a matching
+session day/name/ID. Stage 8 preserves records, but programme replacement changes
+those coordinates. Week one returned no history at all.
+
+A read-only module now selects the latest suitable earlier performance separately
+for each exercise by actual London calendar date, exercise identity, variation,
+load/dose convention and exact recorded setup. It has no programme-week condition.
+Known different variations/venues cannot match. Original records and RPE are used
+without corrections, rounding or feedback into coaching. Top/back-off roles are
+shown when recorded; their actual sets remain together as session context.
+
+Basic legacy Squat/Bench/Bench press/Deadlift rows may be shown without a variant
+ID, explicitly warning that venue/setup was not recorded. Missing setup on other
+variations or machine/accessory exercises prevents comparison. Failed, technically
+failed, optional, warm-up, incomplete, invalid, untrusted-RPE, zero external-load,
+undated, current-day and future rows are excluded. Missing RPE is labelled rather
+than invented. This does not remove or edit any historical records.
+
+Before and after
+before.png: synthetic 5 November, programme week one, new-thu ID: no comparable
+record despite preserved 29 October old-99 ID/week99 sets.
+after.png: Squat: sets 1/2, 112.5kg x5, RPE7.5/8; Deadlift: sets1/2, 140kg x5,
+RPE7.5/8, all dated29/10/2026. Existing entered119kg and prescription100kg remain.
+The test checks underlying storage, including Garmin activity identity, equipment,
+November configuration and live draft. Captures use fictional athlete data only.
+
+Automated QA and coaching verification
+397/397 Node regressions on Node24.19.0; 23/23 browser/PWA suites on Chromium154;
+7/7 existing private Garmin bridge tests; synthetic athlete acceptance, coaching
+safety and coaching depth commands all pass. Source changes after the broad run
+were rechecked by the final full Node suite and production-update/offline browser
+acceptance. Initial sandbox subprocess failures also reproduced on unchanged main;
+routine testing outside that restriction passed. One harness invocation used an
+incorrect bridge-test path; the correct services/garmin-bridge/tests.mjs passes.
+
+Coverage includes replacement boundaries, different IDs/weeks/day names, distinct
+variations/venues/units, missing metadata, original sets/RPE, DST, stored drafts,
+mobile overflow, real service-worker update/offline reopen, Stage8 interruptions,
+rollback and history preservation. Existing run context is retained using dates.
+
+Reproduce
+npm test
+node --test services/garmin-bridge/tests.mjs
+npm run test:athletes
+npm run test:coaching:safety
+npm run test:coaching:depth
+Archive production main into a disposable directory; set LHRF_PREVIOUS_ROOT to it.
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/performance-history.browser.cjs
+Optional: LHRF_EVIDENCE_DIR selects before/after screenshot output.
+The workflow adds this acceptance to existing browser regressions.
+
+Limits and release route
+Calendar-date matching intentionally excludes same-day work, including an active
+session's own records. Stale records show their real date; no freshness-based load
+recommendation is made. Unknown legacy machine setups remain unavailable. A
+reference is contextual evidence, never an automatic load prescription. Physical
+phone/accessibility acceptance remains a useful final check; automation does not
+constitute a human coaching sign-off.
+
+Ella should review the exact SHA, screenshots and green PR CI. Release this
+independently through the existing same-origin PWA update route, only after owner
+approval, between workouts and with a verified backup. Keep storage; do not
+regenerate/activate programmes. Code-only rollback preserves storage. If both
+workstreams are approved, rebase the second PR and resolve its service-worker
+cache version with a new unique value, then rerun upgrade/offline acceptance.
+No merge, deployment, programme activation or live athlete modification performed.

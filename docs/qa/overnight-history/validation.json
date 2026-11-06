@@ -1,0 +1,132 @@
+{
+  "baseline": "776df9c21d2e96ca506e4e40d27988565d03efbf",
+  "data": "synthetic only",
+  "nodeVersion": "24.19.0",
+  "chromiumVersion": "154.0.8037.57",
+  "nodeTests": {
+    "passed": 397,
+    "failed": 0
+  },
+  "browserSuites": {
+    "passed": 23,
+    "failed": 0
+  },
+  "privateGarminServiceTests": {
+    "passed": 7,
+    "failed": 0
+  },
+  "watchDeliveryConfirmed": false,
+  "checks": [
+    {
+      "name": "athletes",
+      "exit": 0
+    },
+    {
+      "name": "coaching-safety",
+      "exit": 0
+    },
+    {
+      "name": "coaching-depth",
+      "exit": 0
+    },
+    {
+      "name": "private-garmin-service",
+      "exit": 0,
+      "verified": "Correct services/garmin-bridge/tests.mjs invocation: 7 passed"
+    },
+    {
+      "name": "android-corrections",
+      "exit": 0
+    },
+    {
+      "name": "bench-exposure",
+      "exit": 0
+    },
+    {
+      "name": "coaching-intake-v2",
+      "exit": 0
+    },
+    {
+      "name": "combined-mobile-release",
+      "exit": 0
+    },
+    {
+      "name": "equipment",
+      "exit": 0
+    },
+    {
+      "name": "experience-calibration",
+      "exit": 0
+    },
+    {
+      "name": "final-polish",
+      "exit": 0
+    },
+    {
+      "name": "flexible-session-time",
+      "exit": 0
+    },
+    {
+      "name": "garmin-import",
+      "exit": 0
+    },
+    {
+      "name": "general-coaching",
+      "exit": 0
+    },
+    {
+      "name": "local-activity-import",
+      "exit": 0
+    },
+    {
+      "name": "mobile-progress",
+      "exit": 0
+    },
+    {
+      "name": "mobile-ux",
+      "exit": 0
+    },
+    {
+      "name": "mobile-workout",
+      "exit": 0
+    },
+    {
+      "name": "onboarding-athletes",
+      "exit": 0
+    },
+    {
+      "name": "performance-history",
+      "exit": 0
+    },
+    {
+      "name": "preview-intake-v2",
+      "exit": 0
+    },
+    {
+      "name": "programme-replacement",
+      "exit": 0
+    },
+    {
+      "name": "release",
+      "exit": 0
+    },
+    {
+      "name": "running-flow",
+      "exit": 0
+    },
+    {
+      "name": "shared-preview",
+      "exit": 0
+    },
+    {
+      "name": "shared-update",
+      "exit": 0
+    },
+    {
+      "name": "today-flow",
+      "exit": 0
+    }
+  ],
+  "finalFocusedAcceptance": "Production baseline -> candidate before/after, export safety or history offline/update test passed after final changes",
+  "protectedSources": "Programme files, coach engine, Stage 8, equipment registry/policy, Garmin and local activity import sources and services identical to baseline"
+}

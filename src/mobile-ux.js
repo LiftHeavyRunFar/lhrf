@@ -15,18 +15,22 @@ function modal(dialog){
  const keys=e=>{if(e.key==='Escape'){e.preventDefault();dialog.remove();return}if(e.key!=='Tab')return;const focusable=[...dialog.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex="0"]')].filter(e=>!e.disabled&&e.getClientRects().length);const first=focusable[0]||dialog,last=focusable.at(-1)||dialog;if(e.shiftKey&&(document.activeElement===first||document.activeElement===dialog)){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){e.preventDefault();first.focus()}};
  const observer=new MutationObserver(()=>{if(!dialog.isConnected)close()});observer.observe(document.body,{childList:true});dialog.remove=()=>{close();nativeRemove()};document.addEventListener('keydown',keys,true);closeModal=close;requestAnimationFrame(()=>{if(dialog.isConnected)dialog.focus({preventScroll:true})});
 }
-function comparable(state,live,history){
- const week=Number(live.sourceProgrammeWeek||state.activeCustomWeek||1),main=live.ex?.find(e=>!e[5]?.optional),identity=e=>String(e.exerciseId||e.exercise||'').toLowerCase().replace(/[^a-z0-9]/g,'');
- if(week<=1)return null;
- return history.filter(row=>Number(row.week||row.sets[0]?.week||row.runs[0]?.week||0)===week-1&&((row.day&&row.day===live.day)||(row.id&&row.id===live.id)||(row.name&&row.name===live.name))&&
-  (main?row.sets.some(s=>identity(s)===identity({exerciseId:main[5]?.exerciseId,exercise:main[0]})&&(!main[5]?.role||s.role===main[5].role)&&(!main[5]?.loadType||s.loadType===main[5].loadType)&&(!main[5]?.variantId||s.variantId===main[5].variantId)):row.runs.some(r=>!live.runs?.[0]?.role||r.type===live.runs[0].role)))
- .sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]||null;
-}
+function previousReferences(state,live,history){return (typeof module==='object'&&module.exports?require('./performance-history'):root.LHRFPerformanceHistory).references(state,live,history)}
+function comparable(state,live,history){return previousReferences(state,live,history)[0]?.row||(typeof module==='object'&&module.exports?require('./performance-history'):root.LHRFPerformanceHistory).previousRun(live,history)}
 function reference(host,live,state){
- host.querySelector('#previousWorkout')?.remove();const detail=document.createElement('details');detail.className='card previous-workout';detail.id='previousWorkout';const summary=document.createElement('summary');summary.textContent="Last week's comparable workout";detail.append(summary);
- const make=(tag,text)=>{const el=document.createElement(tag);el.textContent=text;detail.append(el);return el},row=comparable(state,live,root.LHRFTrainingReview.history(state));
- if(!row)make('p','No comparable recorded session from last week.');else{make('p',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name+' · Recorded work');for(const s of row.sets)make('p',s.exercise+' · set '+(s.set??'—')+' · '+(s.weight??'—')+(s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg')+' × '+(s.reps??'—')+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'—'));for(const r of row.runs)make('p',root.LHRFRunPresentation.distance(r.km)+' · '+root.LHRFRunPresentation.duration(r.min)+(r.rpe!=null?' · RPE '+r.rpe:''));for(const note of new Set([row.notes,...row.sets.map(s=>s.notes),...row.runs.map(r=>r.notes||r.note)].filter(Boolean)))make('p',note)}
- make('small','Reference only. Your current workout inputs stay as entered.');host.firstElementChild.after(detail);
+ const wasOpen=host.querySelector('#previousWorkout')?.open||false;
+ host.querySelector('#previousWorkout')?.remove();const detail=document.createElement('details');detail.className='card previous-workout';detail.id='previousWorkout';detail.open=wasOpen;const summary=document.createElement('summary');summary.textContent='Previous relevant performances';detail.append(summary);
+ const make=(tag,text)=>{const el=document.createElement(tag);el.textContent=text;detail.append(el);return el},refs=previousReferences(state,live,root.LHRFTrainingReview.history(state));
+ const previousRun=!live.ex?.length?root.LHRFPerformanceHistory.previousRun(live,root.LHRFTrainingReview.history(state)):null;
+ if(!refs.length&&!previousRun)make('p','No suitable earlier performance with a comparable exercise and setup.');
+ if(previousRun){make('p',new Date(previousRun.date).toLocaleDateString('en-GB')+' · Recorded run');for(const r of previousRun.runs)make('p',root.LHRFRunPresentation.distance(r.km)+' · '+root.LHRFRunPresentation.duration(r.min)+(r.rpe!=null?' · RPE '+r.rpe:''));}
+ for(const ref of refs){
+  make('p',ref.exercise+' · '+new Date(ref.date+'T12:00:00Z').toLocaleDateString('en-GB')+' · Recorded work');
+  if(ref.setupMissing)make('small','Legacy record: exact venue/setup was not recorded. Check equipment before comparing.');
+  for(const s of ref.sets)make('p','Set '+(s.set??'—')+' · '+(s.weight??'—')+(s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg')+' × '+(s.reps??'—')+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'not recorded')+(s.role?' · '+s.role:''));
+  for(const note of new Set([ref.row.notes,...ref.sets.map(s=>s.notes)].filter(Boolean)))make('p',note);
+ }
+ make('small','Context only. Follow the current prescription and RPE; your entered values stay as entered.');host.firstElementChild.after(detail);
 }
 function carousel(rail,dots){
  if(!rail||!dots||rail.dataset.paginationReady)return;rail.dataset.paginationReady='true';const cards=[...rail.children];dots.replaceChildren();dots.hidden=cards.length<2;

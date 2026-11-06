@@ -102,6 +102,14 @@ jobs:
           else
             npx playwright install --with-deps chromium
           fi
+      - name: Test cross-programme performance references and production PWA update
+        if: ${{ !cancelled() }}
+        env:
+          LHRF_PREVIOUS_ROOT: /tmp/lhrf-history-production
+        run: |
+          mkdir -p /tmp/lhrf-history-production
+          git archive 776df9c21d2e96ca506e4e40d27988565d03efbf | tar -x -C /tmp/lhrf-history-production
+          node tests/performance-history.browser.cjs
       - name: Test all tabs and workout flow
         if: ${{ !cancelled() }}
         run: node tests/today-flow.browser.cjs

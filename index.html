@@ -1689,5 +1689,5 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  const step=document.querySelector('#firstRun [data-step="2"]');if(step)mount(step,true);
 })();
 </script>
-<link rel="stylesheet" href="./src/mobile-ux.css"><script src="./src/mobile-ux.js"></script><script>LHRFMobileUX.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true},parts:workoutParts});</script>
+<link rel="stylesheet" href="./src/mobile-ux.css"><script src="./src/performance-history.js"></script><script src="./src/mobile-ux.js"></script><script>LHRFMobileUX.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true},parts:workoutParts});</script>
 </body></html>
