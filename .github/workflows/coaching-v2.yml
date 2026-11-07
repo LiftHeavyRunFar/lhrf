@@ -134,6 +134,14 @@ jobs:
           mkdir -p /tmp/lhrf-training-flow-start
           git archive 305adc9570d9df91d4f357c8f0108bd484402ea2 | tar -x -C /tmp/lhrf-training-flow-start
           node tests/training-flow.browser.cjs
+      - name: Test production update to corrected coaching engine without changing saved training
+        if: ${{ !cancelled() }}
+        env:
+          LHRF_INTEGRITY_BASE: /tmp/lhrf-integrity-production
+        run: |
+          mkdir -p /tmp/lhrf-integrity-production
+          git archive 0ae327bdb9dfe11e189ff4a9b066d1406bc48f07 | tar -x -C /tmp/lhrf-integrity-production
+          node tests/coaching-integrity-update.browser.cjs
       - name: Test all tabs and workout flow
         if: ${{ !cancelled() }}
         run: node tests/today-flow.browser.cjs
