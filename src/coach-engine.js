@@ -1537,11 +1537,61 @@ function carryForwardApprovedProgression(sessions,week){
  return sessions;
 }
 
+// Approved reductions change the executable run, never its display minutes alone.
+function approvedRunTiming(run){
+ if(run.distanceKnown===false){
+  const minutes=Number(run.minutes),steps=run.steps||[],sum=steps.reduce((n,s)=>n+Number(s.minutes),0);
+  if(run.role==='quality-run'||Number(run.workMinutes)>0||steps.some(s=>isHardStep(s)||s.role==='recovery'||/recovery/i.test(s.label||'')))return null;
+  return minutes>0&&steps.length&&steps.every(s=>Number(s.minutes)>0&&!(Number(s.distanceKm)>0))&&sum===minutes&&(!run.durationRangeMinutes||run.durationRangeMinutes.min===minutes&&run.durationRangeMinutes.max===minutes)?minutes:null;
+ }
+ const steps=run.steps||[],bounds=steps.map(step=>{
+  // FIT exports each step's text target. A numeric centre must describe the
+  // same rounded bounds, rather than silently overriding a conflicting target.
+  const values=[...String(step.pace||'').matchAll(/(\d+):([0-5]\d)/g)].map(m=>Number(m[1])*60+Number(m[2]));
+  if(!values.length||values.some(value=>value<=0))return null;
+  const text={min:Math.min(...values),max:Math.max(...values)};
+  if(Number(step.paceSeconds)>0){const numeric={min:Number(step.paceSeconds)-5,max:Number(step.paceSeconds)+5};return Math.round(numeric.min)===text.min&&Math.round(numeric.max)===text.max?numeric:null;}
+  return text;
+ });
+ if(!steps.length||bounds.some(b=>!b)||steps.some(s=>!(Number(s.distanceKm)>0)))return null;
+ const summary=[...String(run.pace||'').matchAll(/(\d+):([0-5]\d)/g)].map(m=>Number(m[1])*60+Number(m[2]));
+ const hard=steps.map((step,i)=>isHardStep(step)?i:-1).filter(i=>i>=0),targets=hard.length?hard:steps.map((_,i)=>i);
+ if(summary.length&&(Math.min(...summary)!==Math.round(Math.min(...targets.map(i=>bounds[i].min)))||Math.max(...summary)!==Math.round(Math.max(...targets.map(i=>bounds[i].max)))))return null;
+ const km=steps.reduce((n,s)=>n+Number(s.distanceKm),0),minutes=key=>steps.reduce((n,s,i)=>n+Number(s.distanceKm)*bounds[i][key]/60,0);
+ if(Math.round(km*1000)!==Math.round(Number(run.distanceKm)*1000))return null;
+ const range=run.durationRangeMinutes;
+ // Existing builders round or ceil minutes. Neither permits contradictory bounds.
+ if(range&&(range.min>range.max||!Number.isFinite(range.min)||!Number.isFinite(range.max)||range.min<Math.floor(minutes('min'))||range.min>Math.ceil(minutes('min'))||range.max<Math.floor(minutes('max'))||range.max>Math.ceil(minutes('max'))))return null;
+ const upper=range?.max??Math.ceil(minutes('max'));
+ if(run.minutes!==null&&run.minutes!==undefined&&Number(run.minutes)!==upper)return null;
+ return upper>0?upper:null;
+}
+function refreshApprovedRunSummary(session){
+ if(session.plannedStress)session.plannedStress=visitPlanner.plannedStress(session);
+ const previous=session.timeBudget;if(!previous)return;
+ if(previous.estimated){
+  const estimate=visitPlanner.estimateSession(session);
+  session.timeBudget={...previous,...estimate,totalMinutes:estimate.baselineRangeMinutes?.max??null};
+  if(previous.visits)session.timeBudget.visits=previous.visits.map(v=>({...v,rangeMinutes:visitPlanner.estimateSession(v.kind==='run'?{...session,ex:[]}:v.kind==='strength'?{...session,runs:[]}:session).baselineRangeMinutes}));
+ }else{
+  const runMinutes=(session.runs||[]).reduce((n,r)=>n+Number(r.durationRangeMinutes?.max??r.minutes),0),total=runMinutes+Number(previous.strengthMinutes||0)+Number(previous.transitionMinutes||0);
+  session.timeBudget={...previous,runMinutes,totalMinutes:Math.ceil(total)};
+  if(previous.visits)session.timeBudget.visits=previous.visits.map(v=>({...v,totalMinutes:v.kind==='run'?runMinutes:v.kind==='strength'?v.totalMinutes:total}));
+ }
+}
 function applyApprovedHybridRunning(sessions,week){
- const approved=(data.decisions||[]).filter(d=>d.approved&&d.kind==='hybrid-load'&&Number(d.week)===Number(week));
+ const approved=(data.decisions||[]).filter(d=>d.approved===true&&d.kind==='hybrid-load'&&Number(d.week)===Number(week));
  if(!approved.length)return sessions;
  const decision=approved.at(-1),kind=decision.intervention||'running-duration';
- const factor=Math.max(.75,Math.min(1,Number(decision.factor)||1));
+ const factor=Math.max(.75,Math.min(1,Number(decision.factor)||1)),changes=[];
+ if(kind!=='lower-accessory'&&factor>=1)return sessions;
+ const defer=(session,run,reason,requestedMinutes)=>{
+  run.hybridAdjustment={version:1,decisionKey:decision.key||null,status:'not-applied',requestedMinutes:requestedMinutes??null,reason};
+  run.coachNote=(run.coachNote?run.coachNote+' ':'')+'Approved duration reduction not applied: '+reason+' The original workout is retained; review the adjustment before changing this session.';
+  session.constraintWarnings=[...(session.constraintWarnings||[]),run.coachNote];
+  const previous=sessions.constraintResult||{},message='Approved running adjustment needs review: '+reason;
+  Object.defineProperty(sessions,'constraintResult',{value:{...previous,feasible:false,warnings:[...(previous.warnings||[]),message],blockingIssues:[...(previous.blockingIssues||[]),message]},enumerable:false,configurable:true});
+ };
  for(const session of sessions){
   if(kind==='lower-accessory'){
    for(const ex of session.ex||[]){
@@ -1551,12 +1601,37 @@ function applyApprovedHybridRunning(sessions,week){
    }
    continue;
   }
-  for(const run of session.runs||[]){
-   if(run.role==='long-run'||run.sessionType==='long-run'||/long/i.test(run.name||''))continue;
-   if(run.hybridAdjustmentKey===decision.key)continue; // repeat-safe even on same object
-   const before=Number(run.minutes)||0;
-   if(before>0){run.minutes=Math.max(15,Math.round(before*factor));run.hybridAdjustmentKey=decision.key;run.structure=(run.structure||'').replace(/ · Coach-approved adjusted duration.*$/,'')+' · Coach-approved adjusted duration '+run.minutes+' min';run.reason=(run.reason||'')+' Athlete-approved hybrid recovery adjustment.';}
+  if(session.eventDate||session.eventType)continue;
+  const base=id=>String(id||'').replace(/::(?:strength|run)$/,''),completedRun=(data.completedWorkouts||[]).some(done=>Number(done.week)===Number(week)&&base(done.parentId||done.id)===base(session.id)&&(done.completedRun===true||done.component==='run'||String(done.id||'').endsWith('::run')));
+  if(completedRun)continue;
+  for(let i=0;i<(session.runs||[]).length;i++){
+   const run=session.runs[i];
+   if(['long-run','race','event-run'].includes(run.role)||['long-run','race','event-run'].includes(run.sessionType)||/long/i.test(run.name||''))continue;
+   if(decision.key&&(run.hybridAdjustmentKey===decision.key||run.hybridAdjustment?.decisionKey===decision.key))continue;
+   const before=approvedRunTiming(run),target=before===null?null:Math.max(Math.min(15,before),Math.round(before*factor));
+   if(!decision.key||before===null){defer(session,run,!decision.key?'The approved decision has no stable identity.':'Distance, steps, pace and duration do not provide a consistent executable prescription.',target);continue;}
+   if(factor>=1)continue;
+   if(target>=before){defer(session,run,'The existing minimum duration or minute rounding leaves no representable reduction.',target);continue;}
+   const executable=JSON.parse(JSON.stringify(run));
+   // Legacy canonical quality steps use a label instead of an explicit work role.
+   for(const step of executable.steps||[])if(isHardStep(step)&&!step.role)step.role='work';
+   if(run.role==='quality-run'&&!executable.steps.some(isHardStep)){defer(session,run,'The quality work cannot be identified without changing the workout purpose.',target);continue;}
+   const fitted=runningPreparation.fitRunToMinutes(executable,target);
+   if(!fitted.feasible){defer(session,run,fitted.reason,target);continue;}
+   const next=fitted.run;
+   if(next.coachNote)next.coachNote=next.coachNote.replace('Visit time limit:','Approved recovery adjustment:');
+   next.hybridAdjustmentKey=decision.key;
+   next.hybridAdjustment={version:1,decisionKey:decision.key,status:'applied',requestedMinutes:target,originalPrescription:JSON.parse(JSON.stringify(run)),actualMinutes:next.minutes};
+   next.coachNote=(next.coachNote?next.coachNote+' ':'')+'Athlete-approved recovery adjustment: the executable run is '+next.minutes+' minutes at its prescribed pace bounds. Work repetitions and recoveries are retained.';
+   next.reason=(next.reason||'')+' Athlete-approved hybrid recovery adjustment.';
+   changes.push({session,index:i,original:run});session.runs[i]=next;
   }
+ }
+ if(changes.length){
+  const runs=sessions.flatMap(s=>s.runs||[]).filter(r=>r.role!=='race'),total=runs.reduce((n,r)=>n+Number(r.distanceKm||0),0),hard=runs.flatMap(r=>r.steps||[]).filter(isHardStep).reduce((n,s)=>n+Number(s.distanceKm||0),0),limit=runs.some(r=>/marathon-pace/.test(r.workoutFamily||''))?.30:.20;
+  // This is the generator's existing final-calendar intensity guard, after reduction.
+  if(hard>total*limit+.01)for(const change of changes){const adjusted=change.session.runs[change.index];change.session.runs[change.index]=change.original;defer(change.session,change.original,'The reduction would exceed the existing final weekly quality-distance budget.',adjusted.hybridAdjustment.requestedMinutes);}
+  for(const session of new Set(changes.map(x=>x.session)))refreshApprovedRunSummary(session);
  }
  return sessions;
 }
@@ -1570,20 +1645,95 @@ function isTertiaryExercise(name){
 }
 
 function isDesignatedTopSet(x){return x.role==='top'||x.setRole==='top'||x.topSet===true}
+function eligibleReviewRow(row){
+ const when=Date.parse(row.date),c=data.customRoadmap||{},starts=[c.startDate?Date.parse(c.startDate+'T00:00:00Z'):NaN,Date.parse(c.approvedAt)].filter(Number.isFinite);
+ if(!Number.isFinite(when)||when>Date.now()||starts.length&&when<Math.max(...starts))return false;
+ const day=String(row.date||'').slice(0,10),calendar=Date.parse(day+'T12:00:00Z');
+ if(!Number.isFinite(calendar)||new Date(calendar).toISOString().slice(0,10)!==day)return false;
+ if(row.completed===false||row.skipped||row.failed||row.techniqueFailed||row.warmup||row.warmUp||row.optional||row.rpeReliable===false||row.evidenceReview?.rpe?.approximate||row.evidenceReview?.rpe?.value===null||[row.role,row.setRole,row.category].some(value=>['optional','warmup','warm-up','failed'].includes(String(value||'').trim().toLowerCase())))return false;
+ if(row.programmeId&&c.programmeId&&row.programmeId!==c.programmeId)return false;
+ return isPrimaryExercise(row.exercise)&&Number.isFinite(+row.weight)&&+row.weight>0&&Number.isInteger(+row.reps)&&+row.reps>0&&+row.rpe>=1&&+row.rpe<=10&&+row.target>=1&&+row.target<=10;
+}
 function reviewSessions(){
- const grouped=new Map();
- for(const x of data.sets||[]){
-  if(!isPrimaryExercise(x.exercise)||!(+x.weight>0)||!(+x.reps>0)||!(+x.rpe>=1))continue;
-  const day=String(x.date||'').slice(0,10),key=x.exercise.toLowerCase()+'|'+day+'|'+(x.session||'');
-  if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(x);
+ const grouped=new Map(),base=id=>String(id||'').replace(/::strength$/,'');
+ for(const row of data.sets||[]){
+  if(!eligibleReviewRow(row))continue;
+  const day=new Date(row.date).toLocaleDateString('en-CA',{timeZone:'Europe/London'}),key=row.exercise.toLowerCase()+'|'+day+'|'+(base(row.sessionId)||row.session||'');
+  if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(row);
  }
- return [...grouped.values()].map(a=>{
-  const designated=a.filter(isDesignatedTopSet);
-  if(!designated.length)return null; // Never infer top sets from heaviest work sets.
-  const top=designated[designated.length-1];
-  const meanRpe=a.reduce((t,x)=>t+(+x.rpe),0)/a.length;
-  return {exercise:top.exercise,date:top.date,weight:+top.weight,reps:+top.reps,rpe:+top.rpe,target:+top.target||7,meanRpe,estimated:(+top.weight)*(1+(+top.reps+Math.max(0,10-(+top.rpe)))/30),missed:a.some(x=>+x.rpe>=9.5),count:a.length};
- }).filter(Boolean).sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+ return [...grouped.values()].map(rows=>{
+  const designated=rows.filter(row=>isDesignatedTopSet(row)&&(!row.role||row.role==='top')&&(!row.setRole||row.setRole==='top'));
+  if(!designated.length)return null;
+  const top=designated.at(-1),meanRpe=rows.reduce((n,row)=>n+Number(row.rpe),0)/rows.length;
+  return {exercise:top.exercise,date:top.date,weight:+top.weight,reps:+top.reps,rpe:+top.rpe,target:+top.target,meanRpe,estimated:(+top.weight)*(1+(+top.reps+Math.max(0,10-(+top.rpe)))/30),missed:rows.some(row=>+row.rpe>=9.5),count:rows.length,record:top};
+ }).filter(Boolean).sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
+}
+function reviewPurpose(meta={}){
+ const aliases={heavy:'heavy',volume:'volume',speed:'speed/technique',technique:'speed/technique',practice:'speed/technique',recovery:'recovery',hypertrophy:'hypertrophy',strength:'strength',maintenance:'maintenance',endurance:'endurance',power:'power'};
+ const raw=[meta.trainingPurpose,meta.trainingRole,meta.benchRole].filter(value=>value!=null&&String(value).trim()),values=raw.map(value=>aliases[String(value).trim().toLowerCase()]);
+ return {value:values.length&&new Set(values).size===1?values[0]:null,ambiguous:values.some(value=>!value)||new Set(values).size>1};
+}
+// Past purpose comes from preserved prescriptions, never regenerated past weeks.
+function reviewTrendEvidence(name,exposures,targetSession,target){
+ const c=data.customRoadmap||{},start=Date.parse(c.startDate+'T12:00:00Z'),currentWeek=Number(data.activeCustomWeek),base=id=>String(id||'').replace(/::strength$/,''),day=date=>new Date(date).toLocaleDateString('en-CA',{timeZone:'Europe/London'});
+ const unavailable=reason=>({exposures:[],current:false,recurring:false,reason});
+ if(!Number.isFinite(start)||!Number.isInteger(currentWeek)||currentWeek<1||!targetSession||!target)return unavailable('Dated current-programme prescriptions are needed to establish comparable recurring visits.');
+ const origin=start-((new Date(start).getUTCDay()+6)%7)*86400000,calendarWeek=Math.floor((Date.parse(day(Date.now())+'T12:00:00Z')-origin)/604800000)+1;
+ if(currentWeek!==calendarWeek)return unavailable('The activated programme week does not match its dated calendar; review current evidence before proposing extra progression.');
+ const identity=['exerciseId','variantId','loadType','doseUnit','execution'],compatible=entry=>{
+  if(entry[0].toLowerCase()!==name.toLowerCase()||entry[5]?.role!=='top'||Math.abs(Number(entry[2])-Number(target[2]))>2)return false;
+  const a=entry[5]||{},b=target[5]||{};
+  if(identity.filter(key=>key!=='execution').some(key=>a[key]==null||a[key]===''||b[key]==null||b[key]===''))return false;
+  if(identity.some(key=>(a[key]!=null||b[key]!=null)&&a[key]!==b[key]))return false;
+  const purpose=reviewPurpose(a),current=reviewPurpose(b);
+  return !purpose.ambiguous&&!current.ambiguous&&!!purpose.value&&purpose.value===current.value;
+ };
+ const opportunities=[],add=(session,week,source)=>{
+  if(!Number.isInteger(week)||week<1||week>Number(c.weeks||104)||session.eventDate||session.preservedFromProgrammeId&&session.preservedFromProgrammeId!==c.programmeId)return;
+  const date=session.scheduledDate||generalSessionDate(c,week,session.day),when=Date.parse(date+'T12:00:00Z');
+  if(!Number.isFinite(when)||new Date(when).toISOString().slice(0,10)!==date||date<c.startDate)return;
+  const completed=(data.completedWorkouts||[]).find(done=>Number(done.week)===week&&base(done.parentId||done.id)===base(session.id)&&done.prescription?.ex?.length);
+  const preserved={...session,completedAt:session.completedAt||completed?.date};
+  for(const entry of session.ex||[])if(compatible(entry))opportunities.push({session:preserved,entry,week,date,source,key:week+'|'+base(session.id)+'|'+entry[0].toLowerCase(),recurrence:String(session.day).slice(0,3)+'|'+entry[0].toLowerCase()+'|'+(entry[5]?.trainingRole||'top')});
+ };
+ const reviewed=data.reviewedProgramme;
+ if(reviewed&&c.programmeId&&reviewed.config?.programmeId===c.programmeId){for(const w of reviewed.weeks||[])for(const session of w.sessions||[])add(session,w.week,'reviewed-snapshot');}
+ else{
+  for(const completed of data.completedWorkouts||[]){
+   const prescription=completed.prescription;if(!prescription?.ex)continue;
+   const id=base(completed.parentId||completed.id||prescription.id),current=schedule.find(session=>base(session.id)===id);
+   const session={...prescription,id,day:prescription.day||completed.day||current?.day,completedAt:completed.date};
+   add(session,Number(completed.week),'completed-prescription');
+  }
+ }
+ // A partial snapshot cannot establish that recent opportunities did not exist.
+ // The saved active calendar supplies due witnesses, never historical doses.
+ for(let week=Math.max(1,currentWeek-1);week<=currentWeek;week++)for(const session of schedule){
+  const known=opportunities.some(item=>item.week===week&&String(item.session.day).slice(0,3)===String(session.day).slice(0,3));
+  if(!known)add({...session,scheduledDate:week===currentWeek?session.scheduledDate:undefined},week,'current-calendar');
+ }
+ const byOpportunity=new Map();
+ for(const item of opportunities)if(!byOpportunity.has(item.key)||byOpportunity.get(item.key).source==='current-calendar')byOpportunity.set(item.key,item);
+ const unique=[...byOpportunity.values()],matched=[];
+ for(const exposure of exposures){
+  const row=exposure.record,id=base(row.sessionId),actualDay=day(row.date);
+  if(!id||!Number.isInteger(Number(row.week)))continue;
+  const possible=unique.filter(item=>item.source!=='current-calendar'&&base(item.session.id)===id&&item.week===Number(row.week)&&(item.date===actualDay||item.session.completedAt&&day(item.session.completedAt)===actualDay));
+  const explicitPurpose=reviewPurpose(row);
+  const item=possible.find(item=>!explicitPurpose.ambiguous&&(!explicitPurpose.value||explicitPurpose.value===reviewPurpose(item.entry[5]).value)&&Number(row.reps)===Number(item.entry[2])&&Number(row.target)===Number(item.entry[4])&&identity.every(key=>key==='execution'&&row.execution==null||(row[key]??null)===(item.entry[5]?.[key]??null)));
+  if(item)matched.push({...exposure,opportunity:item});
+ }
+ const last=[...new Map(matched.map(item=>[item.opportunity.key,item])).values()].sort((a,b)=>Date.parse(a.date)-Date.parse(b.date)).slice(-4);
+ const today=day(Date.now()),due=unique.filter(item=>item.date<today||item.date===today&&matched.some(x=>x.opportunity.key===item.key)).sort((a,b)=>a.date.localeCompare(b.date));
+ const latest=due.at(-1),current=!!latest&&last.some(item=>item.opportunity.key===latest.key),cycles=new Map();
+ for(const item of last){const key=item.opportunity.recurrence;if(!cycles.has(key))cycles.set(key,[]);cycles.get(key).push(item);}
+ // Source week labels alone cannot turn compressed make-up sessions into
+ // recurring evidence. Actual completions must span their planned recurrence.
+ const recurring=[...cycles.values()].some(items=>items.some((a,i)=>items.slice(i+1).some(b=>{
+  const plannedA=Date.parse(generalSessionDate(c,a.opportunity.week,a.opportunity.session.day)),plannedB=Date.parse(generalSessionDate(c,b.opportunity.week,b.opportunity.session.day)),interval=plannedB-plannedA;
+  return interval>0&&Date.parse(day(b.date))-Date.parse(day(a.date))>=interval;
+ })));
+ return {exposures:last,current,recurring,reason:!current?'The latest due comparable visit has no matching completed prescription and valid top-set evidence.':!recurring?'Comparable visits have not repeated across the actual recurring plan.':last.length<3?'At least three distinct comparable completed visits are needed.':null};
 }
 
 function reviewRecovery(){const recent=(data.checkins||[]).filter(x=>Date.now()-Date.parse(x.date)<10*86400000&&Date.now()>=Date.parse(x.date));const byDay=new Map();for(const c of recent)byDay.set(String(c.date).slice(0,10),c);const vals=[...byDay.values()];const low=vals.filter(c=>+c.sleep<=2||+c.energy<=2||+c.soreness>=4||+c.stress>=4);return {total:vals.length,low:low.length,lowDays:low.length,latest:vals.at(-1),symptoms:vals.some(c=>String(c.symptoms||'').trim())}}
@@ -1643,17 +1793,19 @@ function reviewDecision(){
  const priorFatigueIntervention=!!latestFatigue&&(weeksSinceFatigue<3||lowRecovery);
 
 
- const concerns=[],improvements=[];
+ const concerns=[],improvements=[],evidenceReasons=[];
  for(const [name,all] of Object.entries(groups)){
-  // Compare the most recent two *distinct* exposures of the same lift, not individual sets.
-  const last=all.slice(-4);if(last.length<3)continue;
-  const distinctWeeks=new Set(last.map(x=>Math.floor(Date.parse(x.date)/(7*86400000))));
-  const multiweek=distinctWeeks.size>=2;
+  const targetSession=schedule.find(session=>session.ex?.some(entry=>entry[0].toLowerCase()===name.toLowerCase()&&entry[5]?.role==='top'));
+  const target=targetSession?.ex?.find(entry=>entry[0].toLowerCase()===name.toLowerCase()&&entry[5]?.role==='top');
+  const proof=reviewTrendEvidence(name,all,targetSession,target),last=proof.exposures;
+  if(proof.reason)evidenceReasons.push(name+': '+proof.reason);
+  if(last.length<3)continue;
+  const multiweek=proof.current&&proof.recurring;
   const controlled=last.every(x=>x.rpe<=x.target-.75&&!x.missed&&x.count>=1);
   const comparable=last.every(x=>x.reps>=1&&x.reps<=6)&&Math.max(...last.map(x=>x.reps))-Math.min(...last.map(x=>x.reps))<=2;
   const trend=(last.at(-1).estimated/last[0].estimated-1)*100;
   if(multiweek&&last.slice(-3).every(x=>x.rpe>=x.target+1))concerns.push({name,days:3,trend});
-  if(multiweek&&controlled&&comparable&&trend>=-.5&&last.every(x=>Math.abs(x.rpe-x.target)<=2))improvements.push({name,days:last.length,trend});
+  if(multiweek&&controlled&&comparable&&trend>=-.5&&last.every(x=>Math.abs(x.rpe-x.target)<=2))improvements.push({name,days:last.length,trend,evidence:last.map(item=>({date:item.date,scheduledDate:item.opportunity.date,week:item.opportunity.week,sessionId:item.record.sessionId,source:item.opportunity.source}))});
  }
  if(concerns.length&&lowRecovery&&!locked&&!priorFatigueIntervention){
   const concern=concerns[0],target=/bench/i.test(concern.name)?'upper':'lower';const candidates=[];
@@ -1676,14 +1828,14 @@ function reviewDecision(){
    if((data.decisions||[]).some(d=>d.approved&&d.kind==='adaptive-progression'&&d.exercise===ex[0]&&Number(d.week)>=Number(data.activeCustomWeek)-2))continue;
    const alreadyCompleted=(data.completedWorkouts||[]).some(y=>(y.id===target.id||y.id===target.id+'::strength')&&+y.week===+(data.activeCustomWeek||1));
    if(alreadyCompleted)continue;
-   return {status:'progress',key:`adaptive|${data.activeCustomWeek}|${x.name.toLowerCase()}`,title:'Sustained strong performance — optional progression',summary:`Your recent ${x.name} top sets across multiple weeks were at least 0.75 RPE below target. The coach proposes a modest increase for the active week.`,changes:[{id:target.id,exercise:ex[0],loadFactor:1.025}],why:'Increase only the upcoming top-set suggestion by approximately 2.5%, subject to warm-ups. Back-offs still recalculate from the actual top set and its logged RPE. No deload or taper changes; approval required.'};
+   return {status:'progress',key:`adaptive|${data.activeCustomWeek}|${x.name.toLowerCase()}`,title:'Repeated comparable performances — optional progression',summary:`${x.days} completed ${x.name} top-set visits repeat the same planned practice across recurring programme cycles and were at least 0.75 RPE below target. A modest increase is optional; this is not proof of a physiological adaptation.`,changes:[{id:target.id,exercise:ex[0],loadFactor:1.025}],evidence:x.evidence,why:'Increase only the upcoming top-set suggestion by approximately 2.5%, subject to warm-ups. Back-offs still recalculate from the actual top set and its logged RPE. No deload or taper changes; approval required.'};
   }
  }
- const recent=(data.sets||[]).filter(x=>+x.reps>0&&+x.rpe>=1&&+x.target>=1).slice(-40);
+ const recent=(data.sets||[]).filter(eligibleReviewRow).slice(-40);
  const matched=recent.filter(x=>+x.rpe<=+x.target+.5).length;
  if(maintenancePolicy(data.customRoadmap)&&!lowRecovery)return {status:recent.length>=3?'on-track':'observe',title:'Maintain strength while prioritising running',summary:'Retain the maintenance dose. Strong sets do not automatically change the strength objective.',details:'Review strength retention and running recovery before approving a change of focus.'};
  const onTrack=recent.length>=3&&matched/recent.length>=.75&&!concerns.length;
- return {status:onTrack?'on-track':'observe',title:locked?'Maintain the planned recovery / taper week':onTrack?'On track — continue planned progression':'Building the evidence',summary:locked?'Deload and taper weeks are protected from automatic acceleration.':lowRecovery?'Recovery or post-session feedback raises concerns. Keep the planned load and reassess before accelerating.':onTrack?`Effort was within target on ${matched} of the last ${recent.length} logged sets. Continue the planned progression.`:'Consistent, comparable top-set exposures across multiple weeks are needed before suggesting faster progression.',details:`${sessions.length} main-lift exposures logged. Suggestions remain lift-specific and require approval.`};
+ return {status:onTrack?'on-track':'observe',title:locked?'Maintain the planned recovery / taper week':onTrack?'On track — continue planned progression':'Building the evidence',summary:locked?'Deload and taper weeks are protected from automatic acceleration.':lowRecovery?'Recovery or post-session feedback raises concerns. Keep the planned load and reassess before accelerating.':onTrack?`Effort was within target on ${matched} of the last ${recent.length} logged sets. Continue the planned progression.`:'Consistent, comparable top-set exposures across multiple weeks are needed before suggesting faster progression.',details:`${sessions.length} eligible main-lift exposures logged. Suggestions remain lift-specific and require approval.`+(evidenceReasons.length?' Additional progression needs evidence: '+evidenceReasons.join(' '):'')};
 }
 
 function latestCheckin(){return (data.checkins||[]).slice(-1)[0]}

@@ -4,9 +4,18 @@ const adapters=require('../src/coach-adapters.js');
 const fixtures=require('./fixtures/live-coach-parity.json');
 const {profiles,normalizeProfile,reviewState}=require('./shared-fixtures.cjs');
 const hash=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
-test('shared extraction preserves 28 prior live prescriptions and three review decisions',()=>{
+test('shared extraction preserves 28 prior live prescriptions',()=>{
  for(const fixture of fixtures.cases){const c=normalizeProfile(fixtures.profiles.find(p=>p.id===fixture.profile).config),data={sets:[],runs:[],checkins:[],decisions:[],overrides:{},customRoadmap:c};const before=JSON.stringify(data),engine=createEngine({data,now:()=>fixtures.timestamp});assert.equal(hash(engine.generatedSessions(c,fixture.week)),fixture.sha256,fixture.profile+' W'+fixture.week);assert.equal(JSON.stringify(data),before)}
- for(const fixture of fixtures.reviews){const data=reviewState(fixture.mode),engine=createEngine({data,now:()=>fixtures.timestamp});data.activeSchedule=engine.generatedSessions(data.customRoadmap,3);const withSchedule=createEngine({data,schedule:data.activeSchedule,now:()=>fixtures.timestamp});assert.equal(hash(withSchedule.reviewDecision()),fixture.sha256,fixture.mode)}
+});
+test('legacy review fixtures retain fatigue safeguards but cannot establish extra progression without current provenance',()=>{
+ // Keep the historical hashes as evidence, rather than rewriting the original
+ // fixture to bless a changed decision. These old logs have no linked saved
+ // prescription and their active week does not match the dated calendar.
+ for(const fixture of fixtures.reviews){const data=reviewState(fixture.mode),engine=createEngine({data,now:()=>fixtures.timestamp});data.activeSchedule=engine.generatedSessions(data.customRoadmap,3);const before=JSON.stringify(data),result=createEngine({data,schedule:data.activeSchedule,now:()=>fixtures.timestamp}).reviewDecision();
+  if(fixture.mode==='fatigue')assert.equal(hash(result),fixture.sha256);
+  else{assert.equal(result.status,'on-track');assert.equal(result.changes,undefined);assert.match(result.details,/Additional progression needs evidence/);assert.match(result.summary,/Continue the planned progression/);}
+  assert.equal(JSON.stringify(data),before);
+ }
 });
 test('preview output is a rendering adapter for the exact same native prescriptions',()=>{
  for(const profile of profiles){const p=adapters.previewProgramme(profile.config,{now:()=>fixtures.timestamp});const engine=createEngine({data:{sets:[],runs:[],checkins:[],decisions:[],overrides:{},customRoadmap:p.config},now:()=>fixtures.timestamp});for(const week of p.nativeWeeks){assert.deepEqual(week.sessions,engine.generatedSessions(p.config,week.week));assert.equal(week.phase,engine.describeWeek(p.config,week.week).phase)}}
