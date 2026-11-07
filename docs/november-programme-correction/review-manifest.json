@@ -1,0 +1,204 @@
+{
+  "schema": "lhrf-november-correction-review-v2",
+  "reviewVersion": "november-correction-2026-11-07-v2",
+  "reviewDate": "2026-11-07",
+  "timeZone": "Europe/London",
+  "status": "blocked-owner-package; conditional-coaching-proposal-only",
+  "source": {
+    "kind": "owner-supplied-limited-sanitized-summary",
+    "completePrivateBackupAvailable": false,
+    "completeSavedCalendarAvailable": false,
+    "sourceBackupSha256": null,
+    "sourceProgrammeDigest": null,
+    "ownerProgrammeId": null,
+    "ownerSessionIds": null,
+    "reviewedNativeSha256": null,
+    "reviewFingerprint": null
+  },
+  "confirmedSummary": {
+    "speedPractice": {
+      "date": "2026-11-01",
+      "exercise": "Bench",
+      "sets": 6,
+      "reps": 2,
+      "kg": 100,
+      "originalRpe": 2,
+      "athleteRetrospectiveRpeEstimate": 5,
+      "estimateApproximate": true,
+      "velocityMeasured": false,
+      "newMaximumEstablished": false
+    },
+    "lowerCompleted": [
+      {
+        "date": "2026-11-05",
+        "exercise": "Squat",
+        "prescribed": {
+          "sets": 2,
+          "reps": 3,
+          "kg": 100,
+          "rpe": 6
+        },
+        "completed": {
+          "sets": 2,
+          "reps": 3,
+          "kg": 120,
+          "rpe": 6
+        }
+      },
+      {
+        "date": "2026-11-05",
+        "exercise": "Deadlift",
+        "prescribed": {
+          "sets": 2,
+          "reps": 3,
+          "kg": 102.5,
+          "rpe": 6
+        },
+        "completed": {
+          "sets": 2,
+          "reps": 3,
+          "kg": 140,
+          "rpe": 7.5
+        }
+      }
+    ],
+    "lowerSavedMetadata": {
+      "trainingRole": "recovery",
+      "policy": "endurance-support-v1",
+      "recoveryEventDate": "2026-10-18"
+    },
+    "otherRestrictions": {
+      "lightLifts": [
+        "squat",
+        "deadlift"
+      ],
+      "objectives": {
+        "Squat": "maintenance",
+        "Deadlift": "maintenance"
+      }
+    }
+  },
+  "confirmedFutureRowProposal": {
+    "date": "2026-11-08",
+    "exercise": "Bench",
+    "role": "speed-technique",
+    "before": {
+      "sets": 5,
+      "reps": 2,
+      "kg": 77.5,
+      "rpeCeiling": 5.5
+    },
+    "beforeBasis": {
+      "baselineKg": 154.45,
+      "waveFraction": 0.5,
+      "calibratedToRecentSpeedPractice": false
+    },
+    "proposedStartingCap": {
+      "sets": 5,
+      "reps": 2,
+      "kg": 95,
+      "rpeCeiling": 5.5
+    },
+    "restSeconds": [
+      90,
+      120
+    ],
+    "extendRestForQuality": true,
+    "conditions": [
+      "Dated review of current symptoms, 6 November bench response and intervening activity is still required",
+      "Use only familiar competition setup and pause; do not introduce a new execution standard",
+      "Warm-ups and working doubles must remain crisp and technically stable",
+      "The load is a ceiling, not a required minimum or measured velocity target",
+      "Reduce load, retain the original lighter dose, reduce sets or end work if effort, speed or position warrants",
+      "Do not chase RPE 5.5 or add a sixth set"
+    ],
+    "confidence": "moderate-low for individual starting cap; no guaranteed superiority",
+    "approved": false
+  },
+  "conditionalLowerReviewTargets": [
+    {
+      "provisionalDate": "2026-11-12",
+      "dateBasis": "repository Thursday template; owner future row unconfirmed",
+      "before": null,
+      "startingCaps": [
+        {
+          "exercise": "Squat",
+          "sets": 2,
+          "reps": 3,
+          "kg": 115,
+          "rpeCeiling": 6.5
+        },
+        {
+          "exercise": "Deadlift",
+          "sets": 2,
+          "reps": 3,
+          "kg": 130,
+          "rpeCeiling": 6.5
+        }
+      ],
+      "status": "pending dated recovery and exact source review; no automatic clearance",
+      "addedAccessories": 0,
+      "addedVisits": 0,
+      "conditions": [
+        "Current dated tolerance supports a bounded trial",
+        "No increase over verified source set count; preserve a justified taper reduction",
+        "Loads and effort ceilings are upper limits; reduce or stop when necessary"
+      ]
+    },
+    {
+      "provisionalDate": "2026-11-19",
+      "dateBasis": "repository Thursday template; owner future row unconfirmed",
+      "before": null,
+      "repeatOnlyAfter": "12 November execution and next-day response reviewed; no automatic escalation",
+      "status": "pending; same caps only if justified",
+      "conditions": [
+        "No increase over verified source set count; preserve a justified taper reduction"
+      ]
+    },
+    {
+      "provisionalDate": "2026-11-26",
+      "dateBasis": "repository Thursday template; owner future row unconfirmed",
+      "before": null,
+      "target": "Retain verified agreed light/rest taper; no restoration or catch-up; exact delta unresolved",
+      "status": "taper proposal for source review; may already be rest"
+    }
+  ],
+  "completeExactFutureDiffAvailable": false,
+  "replacementReady": false,
+  "athleteApprovalRecorded": false,
+  "activated": false,
+  "blockers": [
+    "No complete trusted saved/native owner calendar, effective overrides or exact future session IDs",
+    "No original backup bytes/hash, programme/identity binding or protected-session/draft/Garmin context",
+    "No dated current recovery, 6 November bench response or next-day lower-body tolerance observations",
+    "No complete before/after, actual time/equipment feasibility review or approved native candidate",
+    "No independently reviewed package fingerprint or athlete approval for this version"
+  ],
+  "conditionalBenchReviewTargets": [
+    {
+      "provisionalDate": "2026-11-15",
+      "dateBasis": "repository Sunday template; owner future row unconfirmed",
+      "before": null,
+      "target": {
+        "exercise": "Bench",
+        "maximumSets": 5,
+        "reps": 2,
+        "kgStartingCap": 95,
+        "rpeCeiling": 5.5
+      },
+      "conditions": [
+        "Existing speed slot only",
+        "Dated 8 November and intervening response support it",
+        "Do not increase over verified source set count or override a justified taper reduction"
+      ],
+      "approved": false
+    },
+    {
+      "provisionalDate": null,
+      "dateBasis": "verified existing final-heavy slot required; no date or kg assigned",
+      "before": null,
+      "target": "Discuss one familiar competition single at RPE ceiling 8; no repeated attempts to reach the ceiling; at most already-agreed easy back-off",
+      "approved": false
+    }
+  ]
+}
