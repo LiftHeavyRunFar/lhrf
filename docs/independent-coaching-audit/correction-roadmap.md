@@ -1,0 +1,32 @@
+# Smallest justified correction roadmap
+
+For Ella's decision, 7 November 2026. No coaching correction is implemented in this investigation. Preserve the current programme, history, protected drafts and policy versions. Open work should be scoped around the findings below, not a speculative engine replacement.
+
+## Lower policy risk: prescription integrity and evidence validity
+
+1. **IA-01, one accepted dose everywhere.** First agree the intended semantics of an approved running-duration reduction. A small correction should update actual executable work and all derived fields consistently, without redesigning running preparation. Compare run preview, timer/export steps and session/weekly time calculations on the same accepted synthetic decision. Include easy, quality, long/event exclusions, repeated application, missing pace and combined visits; assert history and the previous approved prescription remain recoverable. This is the highest-priority confirmed defect because an accepted reduction can currently leave the original task executable.
+2. **IA-02, stop invalid evidence at proposal entry.** Validate dates and relevant programme/exercise context before calling a performance pattern recent or sustained. Preserve current approval and taper/deload protections. Use an explicit clock consistently and test a positive recent case along with stale, future, duplicate, wrong-programme and dense boundary cases. The minimal correction can reject impossible evidence and stop claiming 48 hours is multiweek; the exact review window needs separate judgment, not a new arbitrary threshold.
+3. **Observability without prescription changes.** Expose the origin and rationale of the delivered dose: original configuration or reviewed snapshot, policy version, recovery cause/report date, baseline/anchor source and any time/equipment omission. Distinguish requested from delivered mileage and heavy from speed/volume set counts. Avoid putting implementation jargon in the athlete's ordinary flow; show useful rationale and review prompts, with detailed provenance in diagnostics.
+
+These changes need focused regression tests plus existing safety/preservation checks. “Lower policy risk” does not mean no risk: rounding, idempotence, legacy steps and consumer disagreement need explicit verification. Do not backfill historical records or reinterpret completed prescriptions.
+
+## Moderate policy risk: one recovery interpretation and stable review
+
+4. **IA-03/04, reconcile recovery sources and scope.** Trace the report through preparation, strength support, late clipping and approval. Define current, dated recovery evidence, what it clears, what remains provisional, and how explicit current fatigue persists beyond a date window. Test fast, slow, unknown and worsening return; upper/lower differences; recent half/marathon; adjacent events and frozen snapshots. The smallest useful change is to remove contradictory interpretations, not to abolish caution or prescribe a full heavy return after any “normal” response.
+5. **IA-08 and UD-03, govern proposals and restrictions.** Single-session feedback ordinarily informs execution/monitoring; weekly reflections collect patterns; roughly 2–4 weeks of comparable performance/adherence/recovery can support normal review. Preserve immediate safety responses. A restriction needs a reason and review point; a frozen snapshot needs a visible request for review when assumptions become stale. It must not silently regenerate. Show the precise change and evidence, obtain athlete approval, then check its response before another material change.
+
+Evaluate this framework against accustomed high-frequency hybrids, dense but brief good/bad clusters, a clear multiweek decline, missed sessions, bad sleep with stable performance, good subjective recovery with worsening performance, a novice's noisy RPE and unresolved response to a previous cut. Do not make a single score, workload ratio, count of hard sessions or review window an automatic trigger. State false-positive and false-negative consequences before selecting thresholds.
+
+## Higher policy risk: training-development decisions requiring coaching review
+
+6. **IA-05/06, explicit progression at stable effort.** Establish how novice straight sets and intermediate repeated prescriptions demonstrate progression. Start with achieved load/repetitions/quality at comparable effort and exact setup; distinguish maintenance from development. A small reviewed extension to evidence coverage may be enough. Do not force linear weekly kg increases, award advanced status from one lift, or add heavy singles just to fit the existing review architecture.
+7. **IA-07, individual running dose and specificity.** For experienced running-priority athletes, compare actual dose against recent tolerated training, race needs and time. Review caps and possible quality progression within existing session types before adding more workout families or a second hard day. Measure time at work as well as hard distance. Respect athlete choice and avoid reducing supporting easy running to fund novelty.
+8. **UD-02 and owner-specific decisions.** Assess the need for a dedicated speed exposure, exact final-heavy timing and meaningful lower-body retention against athlete history and event priority. The owner requires attribution and recovery review first. Near an event, favour stability and familiar work; a larger dose is not inherently an improvement.
+
+Any approved change in this group should be a small, opt-in versioned policy with contrasting synthetic positive/negative cases, independent coaching challenge and a defined real-athlete follow-up. New policies must not silently change saved programmes. Do not bundle all eight actions into one release.
+
+## Definition of readiness for a future correction
+
+The reviewer should be able to answer: what confirmed contradiction or unmet objective is addressed; which evidence supports the decision; how the same change can harm a contrasting athlete; whether execution and derived totals agree; whether the final calendar retains useful training; how approval, source provenance and rollback work; and what outcome will be reviewed. Passing synthetic checks is required software evidence, not a claim of performance benefit.
+
+This investigation stops at the draft PR. No merge, deployment, regeneration, activation, history update, production coaching change or substantial policy implementation is authorised by its recommendations.
