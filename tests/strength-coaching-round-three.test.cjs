@@ -1,5 +1,6 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const coach=require('../src/coach-engine'),adapters=require('../src/coach-adapters'),intake=require('../src/coach-intake');
+const registry=require('../src/exercise-registry'),{fullInventory}=require('./equipment-fixtures.cjs');
 const fixture=require('./fixtures/five-scenario-round-three-inputs.json');
 const clone=x=>JSON.parse(JSON.stringify(x)),now=()=>Date.parse(fixture.clock);
 const profile=id=>clone(fixture.cases.find(x=>x.id===id));
@@ -14,7 +15,9 @@ test('running-first race taper bounds background strength without a strength-del
 test('day after a half marathon does not restore loaded lower-body work and later handover remains conditional',()=>{
  const p=proposal('N');assert.equal(entries(p,7,'Mon','Squat').length,0);assert.ok(entries(p,7,'Mon','Bench').every(e=>e[4]<=6));
  assert.equal(p.weeks[7].priority,'Squat');assert.equal(p.weeks[7].reviewRequired,true);assert.ok(p.weeks[7].warnings.some(x=>/handover review/.test(x)));assert.equal(p.weeks[7].coachingInstructions.handoverRecovery.conditional,true);assert.match(p.weeks[7].coachingInstructions.handoverRecovery.note,/elapsed days alone/);
- assert.ok(entries(p,8,null,'Squat').some(e=>e[4]>=8),'Provisional future preparation remains represented for review, rather than blocked because future recovery is not yet observable.');
+ assert.equal(p.config.coachingRuntimeVersion,1);
+ const later=entries(p,8,null,'Squat');assert.ok(later.length,'A bounded provisional option remains represented');
+ assert.ok(later.every(e=>e[4]<=6.5&&e[5].recoveryReviewRequired),'A future handover date cannot establish recovery or restore heavy loading without completed task evidence.');
 });
 test('bench-only meet defaults other lifts to maintenance and keeps distinct bench exposures',()=>{
  const p=proposal('M');assert.deepEqual(p.config.strengthModes,{Squat:'maintenance',Deadlift:'maintenance'});
@@ -30,23 +33,26 @@ test('per-lift objectives reject malformed modes and are carried by canonical in
  assert.throws(()=>intake.build(p.config,{...raw,strengthModes:{Squat:'hard'}}),/strength modes/);
  const staged=profile('N').config;staged.orderedGoals[1].strengthModes={Squat:'wrong'};assert.throws(()=>coach.prepareNewProgramme(staged),/strengthModes/);
 });
-function improved(){const d=profile('O').historicalData;d.sets=[{date:'2026-10-20T12:00:00Z',exercise:'Squat',weight:140,reps:5,rpe:8},{date:'2026-10-27T12:00:00Z',exercise:'Squat',weight:145,reps:5,rpe:8}];return d}
+function improvedConfig(){return {...profile('O').config,equipmentInventory:fullInventory()}}
+function improved(){const d=profile('O').historicalData,identity=registry.identity('Squat',fullInventory());d.sets=[{...identity,date:'2026-10-20T12:00:00Z',exercise:'Squat',weight:140,reps:5,rpe:8},{...identity,date:'2026-10-27T12:00:00Z',exercise:'Squat',weight:145,reps:5,rpe:8}];return d}
 test('new proposals reconcile two recent same-lift sessions with a bounded attributable change and no history mutation',()=>{
- const config=profile('O').config,data=improved(),before=JSON.stringify({config,data}),p=adapters.buildNewProgramme(config,{data,now}),source=150;
+ // The positive case records the actual venue/setup. Unclassified main-set
+ // roles still retain the existing bounded calibration convention.
+ const config=improvedConfig(),data=improved(),before=JSON.stringify({config,data}),p=adapters.buildNewProgramme(config,{data,now}),source=150;
  assert.equal(JSON.stringify({config,data}),before);assert.equal(p.config.baselines.Squat,source*1.05);assert.ok(entries(p,1,null,'Squat')[0][3]>120);
  const proof=p.config.strengthCalibration.lifts.Squat;assert.equal(proof.sourceBaseline,source);assert.equal(proof.maximumChangeFraction,.05);assert.equal(proof.evidence.length,2);assert.equal(p.config.strengthCalibration.requiresAthleteApproval,true);
  assert.equal(p.config.liftProfiles.Bench.kg,100);assert.equal(p.config.baselines.Bench,undefined);
 });
 test('new-proposal calibration excludes future, stale, undated, missing-effort and other-exercise observations',()=>{
  const cases=[d=>d.sets.forEach(r=>delete r.date),d=>d.sets.forEach(r=>r.date='2027-01-01'),d=>d.sets.forEach(r=>r.date='2026-01-01'),d=>d.sets.forEach(r=>delete r.rpe),d=>d.sets.forEach(r=>r.exercise='Paused squat'),d=>d.sets[1].date=d.sets[0].date,d=>d.sets.forEach(r=>r.failed=true)];
- for(const change of cases){const data=improved();change(data);const p=proposal('O',{},data);assert.equal(p.config.baselines.Squat,undefined);assert.equal(p.config.liftProfiles.Squat.kg,150);assert.equal(p.config.strengthCalibration,undefined)}
+ for(const change of cases){const data=improved();change(data);const p=proposal('O',{equipmentInventory:fullInventory()},data);assert.equal(p.config.baselines.Squat,undefined);assert.equal(p.config.liftProfiles.Squat.kg,150);assert.equal(p.config.strengthCalibration,undefined)}
 });
 test('raw saved version-two generation remains on its saved rules and does not recalibrate from later history',()=>{
  const raw=profile('O').config,before=JSON.stringify(raw),a=adapters.buildProgramme(raw,{now}),b=adapters.buildProgramme(raw,{data:improved(),now});assert.deepEqual(a.weeks,b.weeks);assert.equal(JSON.stringify(raw),before);assert.equal(a.config.coachingRefinementVersion,undefined);assert.equal(a.config.baselines.Squat,undefined);
 });
 
 test('repeated new-proposal preparation with the same evidence does not compound calibration',()=>{
- const data=improved(),a=coach.prepareNewProgramme(profile('O').config,{data,now}),b=coach.prepareNewProgramme(a,{data,now}),c=coach.prepareNewProgramme(b,{data,now});
+ const data=improved(),a=coach.prepareNewProgramme(improvedConfig(),{data,now}),b=coach.prepareNewProgramme(a,{data,now}),c=coach.prepareNewProgramme(b,{data,now});
  assert.equal(a.baselines.Squat,157.5);assert.deepEqual(b,a);assert.deepEqual(c,a);
 });
 
