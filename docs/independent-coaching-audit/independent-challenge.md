@@ -38,6 +38,8 @@ Severity here concerns the demonstrated failure, not an asserted injury. **High/
 
 The novice review-coverage limitation is **IA-05, an evidence-supported improvement**, rather than a confirmed failure to produce overload: B logs improving completed main-lift sets for eight weeks while `reviewSessions()` remains zero. The engine can still show “on-track” from effort matching, and the athlete can increase actual load using RPE. A future policy should consider novice work without treating every easy familiarisation session as a reason to accelerate.
 
+The final source cross-check narrows IA-04's reach: `coach-intake.js:40-45` accepts context independently, whereas the normal onboarding UI supplies matching `recoveryEvidence` as well (`index.html:1448-1462`). Running does honour that matching evidence. The independent reproduction establishes inconsistent context-only routing, not that every UI report misses the guard. No actual owner or production frequency is established.
+
 Source loci: [approved running application](../../src/coach-engine.js#L1540), [top-set evidence eligibility](../../src/coach-engine.js#L1573), [epoch-week comparison](../../src/coach-engine.js#L1649), [unconditional marathon clipping](../../src/coach-engine.js#L1489), [strength recovery interpretation](../../src/coach-engine.js#L1092), and [running fatigue interpretation](../../src/running-preparation.js#L201). The first five table rows correspond to IA-01–04; the two temporal cases share IA-02.
 
 Reproduce the primary findings with:

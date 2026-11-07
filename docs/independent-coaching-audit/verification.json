@@ -72,5 +72,17 @@
     "deployed": false,
     "privateDeviceRecordsAccessed": false
   },
-  "browserValidation": "Existing browser/PWA workflow runs on draft PR; no local browser activation claimed."
+  "browserValidation": "Existing browser/PWA workflow passed on investigation code commit; synthetic CI data, no owner device or live programme activation.",
+  "githubCI": {
+    "codeCommit": "a1c83d444d7599df9269ad3d0bac44bfbc7e1072",
+    "run": "https://github.com/LiftHeavyRunFar/lhrf/actions/runs/42397650447",
+    "allFourJobsPassed": true,
+    "jobs": [
+      "test",
+      "Athlete bots \u2014 coaching acceptance",
+      "Coaching replay safety (programme feasibility reported separately)",
+      "Shared engine \u2014 browser and PWA upgrade"
+    ],
+    "scope": "Following commit changes reports only; no executable code, tests, fixtures or generated evidence changes."
+  }
 }

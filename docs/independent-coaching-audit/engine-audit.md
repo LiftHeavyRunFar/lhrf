@@ -34,6 +34,8 @@ A complete forward preview and a stored programme are distinct evidence. `index.
 
 ## Confirmed versus inferred
 
+Recovery scope matters for IA-04: the canonical intake accepts `recoveryContext` independently (`coach-intake.js:40-45`), while the current onboarding UI normally emits both that context and matching `recoveryEvidence` (`index.html:1448-1462`). Matching fatigue evidence does suppress running. The reproduced defect is inconsistent handling of a supported context-only configuration; it is not evidence that every normal onboarding report bypasses running restrictions or that a particular owner device did so.
+
 Confirmed/reproduced defects: approved-duration inconsistency; temporal/record eligibility and 48-hour “multiweek” progression proposal; resolved-marathon lifting override; lower-recovery cross-sport omission. Successful novice straight sets being excluded from positive performance review is a confirmed coverage limitation, with a coaching improvement proposed rather than demonstrated efficacy failure. The register assigns severities and fix scope. Tests deliberately preserve the current defective result so that an eventual correction must update the characterization.
 
 Evidence-supported improvement, without claiming an efficacy failure: expose a minimum effective intended dose and actual removed volume; define success criteria for stable repeated Development work; offer a novice-appropriate review path; reconcile recovery across sports; calibrate taper and mileage convention to observed tolerance; preserve long-term exercise identity when useful; use velocity language honestly. Do not turn any of these into automatic policy changes from this audit.

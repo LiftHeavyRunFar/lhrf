@@ -2,7 +2,7 @@
 
 **To Ella, Chief of Staff.** Audit date: 7 November 2026, Europe/London. Audited source: `0ae327bdb9dfe11e189ff4a9b066d1406bc48f07`. Rowan evaluated the coaching evidence; Alex traced and tested the implementation; Priya independently challenged both the evidence and findings. This branch contains findings, synthetic fixtures, an offline replay and characterization tests only.
 
-**Verdict: the engine has defensible training components and useful approval/preservation safeguards, but cannot yet be endorsed as a consistently effective, progressive coach across the three needs tested.** Four implementation defects are reproduced: an approved running reduction leaves contradictory executable work; stale/future and briefly clustered evidence can support progression; resolved marathon recovery can be overridden for strength; persistent lower-body recovery can be ignored by running after a time window. Separate coaching gaps concern novice review coverage, progression rationale, fixed quality dose and overlap-driven reduction proposals. Synthetic tests establish behaviour; they do not establish physiological efficacy or actual athlete harm.
+**Verdict: the engine has defensible training components and useful approval/preservation safeguards, but cannot yet be endorsed as a consistently effective, progressive coach across the three needs tested.** Four implementation defects are reproduced: an approved running reduction leaves contradictory executable work; stale/future and briefly clustered evidence can support progression; resolved marathon recovery can be overridden for strength; a supported context-only lower-body recovery report can be ignored by running after a time window. Separate coaching gaps concern novice review coverage, progression rationale, fixed quality dose and overlap-driven reduction proposals. Synthetic tests establish behaviour; they do not establish physiological efficacy or actual athlete harm.
 
 The owner's active November programme cannot be reconstructed from the checked-in configuration alone. That configuration explicitly makes squat/deadlift light. Previously approved bench/running revisions and later frozen reviewed replacements create distinct provenance paths. No private device records were accessed. The documented bench-peak pattern is plausible, but its suitability and the reason for any current restriction require the exact saved snapshot and current athlete evidence.
 
@@ -56,7 +56,7 @@ Local results (machine-readable [verification record](verification.json)):
 | Existing depth checks | 18/18 criteria passed |
 | New runtime or production policy changes | None; no existing tracked file changed |
 
-The existing CI workflow also runs browser/PWA and preservation checks on the draft PR. Local engine tests are not presented as a new device inspection, browser activation, clinical safety test or proof of long-term training effectiveness.
+The existing CI workflow also runs browser/PWA and preservation checks on the draft PR. [All four jobs passed on the investigation-code commit `a1c83d4`](https://github.com/LiftHeavyRunFar/lhrf/actions/runs/42397650447), including browser/PWA upgrades and history preservation. A subsequent report-only clarification narrows the context-only recovery finding; it changes no executable code or tests. Local engine tests are not presented as a new device inspection, browser activation, clinical safety test or proof of long-term training effectiveness.
 
 ## Boundary and next decision
 
