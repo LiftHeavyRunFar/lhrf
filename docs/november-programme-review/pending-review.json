@@ -1,0 +1,24 @@
+{
+  "schema": "lhrf-november-review-manifest-v1",
+  "version": "november-review-v1",
+  "status": "pending source attribution and Ella/Rowan review",
+  "reviewDate": "2026-11-07",
+  "tomorrow": "2026-11-08",
+  "timeZone": "Europe/London",
+  "sourceBackupSha256": null,
+  "sourceProgrammeDigest": null,
+  "exactActivePrescriptionConfirmed": false,
+  "completedOwnerEvidenceVerified": false,
+  "proposedDoseChanges": [],
+  "athleteApprovalRecorded": false,
+  "replacementReady": false,
+  "activated": false,
+  "requiredBeforePackaging": [
+    "Exact saved source calendar and protected-session context",
+    "Current dated recovery and comparable completed performance review",
+    "Explicit smallest future dated prescription delta and rationale",
+    "Whole-horizon time/equipment/competition and preservation review",
+    "Reviewed source-code SHA and native-file SHA-256",
+    "Independent package fingerprint and later device backup/consent gates"
+  ]
+}
