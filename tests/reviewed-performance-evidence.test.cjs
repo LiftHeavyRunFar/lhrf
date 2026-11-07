@@ -1,14 +1,16 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const adapters=require('../src/coach-adapters.js');
+const adapters=require('../src/coach-adapters.js'),registry=require('../src/exercise-registry');
+const {fullInventory}=require('./equipment-fixtures.cjs');
 const copy=x=>JSON.parse(JSON.stringify(x)),now=()=>Date.parse('2026-11-02T08:00:00Z');
 function example(scale=1){
  const config=copy(require('./fixtures/five-scenario-round-three-inputs.json').cases.find(r=>r.id==='M').config);
  delete config.trainingAge;config.startDate='2026-11-02';config.weeks=4;config.strengthTargetDate='2026-11-28';
  config.baselines.Bench=110*scale;config.liftProfiles.Bench={kg:110*scale,reps:1};
- config.strengthExposureRoles={Bench:['volume','heavy','speed']};
+ config.strengthExposureRoles={Bench:['volume','heavy','speed']};config.equipmentInventory=fullInventory();
  const sets=[{date:'2026-10-24T09:00:00Z',exercise:'Bench',role:'top',weight:75*scale,reps:5,rpe:8},
   {date:'2026-10-30T09:00:00Z',exercise:'Bench',role:'top',weight:90*scale,reps:1,rpe:9},
   ...Array.from({length:6},(_,i)=>({date:'2026-11-01T09:00:00Z',exercise:'Bench',role:'straight',weight:60*scale,reps:2,rpe:2,set:i+1}))];
+ for(const row of sets)Object.assign(row,registry.identity(row.exercise,config.equipmentInventory));
  const match=i=>Object.fromEntries(['date','exercise','role','weight','reps'].map(k=>[k,sets[i][k]]));
  const reviews=[{kind:'execution',match:match(1),original:null,value:'competition-paused',source:'athlete-confirmation'},
   {kind:'rpe',match:match(2),original:2,value:5,approximate:true,purpose:'speed',source:'athlete-confirmation'}];
@@ -27,12 +29,12 @@ test('review preserves raw logs, distinguishes retrospective practice and unlock
   assert.equal(p.config.strengthCalibration.lifts.Bench.evidence.length,2,'Six practice sets are not six calibration days');
   assert.equal(p.config.strengthCalibration.lifts.Bench.adoptedBaseline,raw.config.strengthCalibration.lifts.Bench.adoptedBaseline);
   assert.ok(mains(raw).filter(e=>e[2]===1).every(e=>e[4]<=8));
-  assert.ok(mains(p).some(e=>e[2]===1&&e[4]>=8.5));
+  assert.ok(mains(p).some(e=>e[2]===1&&e[4]>=7.5&&e[4]<=8),'Familiar confirmed singles may be practised without inventing advanced experience or a final RPE9');
   const speed=mains(p).find(e=>e[5].trainingRole==='speed');
   assert.ok(speed);assert.equal(speed[5].practiceEvidence.kg,60*scale);
   assert.equal(speed[5].practiceEvidence.velocityMeasured,false);
   assert.equal(speed[5].practiceEvidence.automaticIncrease,false);
-  assert.equal(speed[3],mains(raw).find(e=>e[5].trainingRole==='speed')[3],'No forced kilogram increase from approximate effort');
+  assert.equal(speed[3],60*scale,'Confirmed approximate speed context can repeat familiar typed practice; it cannot create a maximum or increase over the observed load');
   assert.equal(p.config.trainingAge,undefined);
   const saved=copy(p.config),savedBefore=JSON.stringify(saved);
   const a=adapters.buildProgramme(saved,{data:x.data,now}),b=adapters.buildProgramme(saved,{data:{...x.data,sets:[]},now});
@@ -77,7 +79,7 @@ test('novice status and unresolved fatigue retain their conservative gates despi
 });
 test('browser and Node apply the same explicit review without changing source evidence',()=>{
  const fs=require('node:fs'),vm=require('node:vm'),sandbox=vm.createContext({Date,console});
- for(const name of ['running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+name+'.js','utf8'),sandbox);
+ for(const name of ['gym-equipment','exercise-registry','coaching-evidence','running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+name+'.js','utf8'),sandbox);
  const x=example(),before=JSON.stringify(x);
  assert.equal(JSON.stringify(sandbox.LHRFCoachAdapters.buildNewProgramme(x.config,{data:x.data,now,performanceReviews:x.reviews})),JSON.stringify(generate(x)));
  assert.equal(JSON.stringify(x),before);

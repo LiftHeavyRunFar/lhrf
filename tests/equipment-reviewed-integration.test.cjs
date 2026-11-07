@@ -18,15 +18,15 @@ function fixture(){
 }
 const generate=x=>adapters.buildNewProgramme(x.config,{data:x.data,performanceReviews:x.reviews,now});
 const exercises=p=>p.weeks.flatMap(w=>w.sessions.flatMap(s=>s.ex));
-test('equipment policy retains production correction provenance and practice context without treating approximate effort as a load anchor',()=>{
+test('equipment policy retains production correction provenance and practice context while using explicitly reviewed approximate effort only as familiar practice',()=>{
  const x=fixture(),before=JSON.stringify(x),p=generate(x),legacy=adapters.buildNewProgramme({...x.config,equipmentPolicyVersion:undefined,equipmentInventory:undefined},{data:x.data,performanceReviews:x.reviews,now});
- assert.deepEqual(p.config.strengthCalibration,legacy.config.strengthCalibration);
+ assert.ok(p.config.strengthCalibration?.lifts?.Bench);assert.equal(legacy.config.strengthCalibration?.lifts?.Bench,undefined,'Missing recorded venue compatibility is not the same calibration evidence');
  assert.deepEqual(p.config.strengthEvidenceReview,legacy.config.strengthEvidenceReview);
  assert.deepEqual(p.config.strengthPractice,legacy.config.strengthPractice);
  const speed=exercises(p).find(e=>e[5]?.trainingRole==='speed');assert.ok(speed);
- assert.equal(speed[5].practiceEvidence.reviewEvidence.approximate,true);
+ assert.equal(speed[5].practiceEvidence.review.approximate,true);
  assert.equal(speed[5].practiceEvidence.velocityMeasured,false);assert.equal(speed[5].practiceEvidence.automaticIncrease,false);
- assert.equal(speed[3],0);assert.equal(speed[5].loadAnchor,null);assert.equal(speed[5].calibrationRequired,true);
+ assert.equal(speed[3],60);assert.equal(speed[5].loadAnchor.weight,60);assert.equal(speed[5].calibrationRequired,false);assert.equal(speed[5].runtimeLoadEvidence.approximate,true);
  assert.equal(JSON.stringify(x),before);assert.deepEqual(generate(x),p);
 });
 test('unreliable and changed originals cannot anchor exact-setup loads; precise reviews retain their source in anchor metadata',()=>{
@@ -36,7 +36,7 @@ test('unreliable and changed originals cannot anchor exact-setup loads; precise 
   if(value===null){assert.equal(speed[3],0);assert.equal(speed[5].loadAnchor,null)}
   else {assert.ok(speed[3]>0&&speed[3]<=60);assert.equal(speed[5].loadAnchor.reviewEvidence.rpe.original,2);assert.equal(speed[5].loadAnchor.reviewEvidence.rpe.value,5);assert.equal(speed[5].loadAnchor.reviewEvidence.rpe.source,'athlete-confirmation')}
   assert.equal(JSON.stringify(x),before);
-  if(value!==null){const changed=clone(x.data);changed.sets.slice(2).forEach(r=>r.rpe=7);const saved=adapters.buildProgramme(p.config,{data:changed,now});assert.equal(exercises(saved).find(e=>e[5]?.trainingRole==='speed')[5].loadAnchor,null)}
+  if(value!==null){const changed=clone(x.data);changed.sets.slice(2).forEach(r=>r.rpe=7);const saved=adapters.buildProgramme(p.config,{data:changed,now});assert.deepEqual(exercises(saved).find(e=>e[5]?.trainingRole==='speed')[5].loadAnchor,speed[5].loadAnchor,'Later live records cannot rewrite the frozen proposal evidence')}
  }
 });
 test('current equipment removal and venue changes cannot be overridden by reviewed competition evidence',()=>{
@@ -50,7 +50,7 @@ test('current equipment removal and venue changes cannot be overridden by review
 
 test('browser globals match Node when both reviewed-evidence and equipment policies are active',()=>{
  const fs=require('node:fs'),vm=require('node:vm'),sandbox=vm.createContext({Date,console});
- for(const name of ['running-workouts','running-preparation','coach-constraints','exercise-registry','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+name+'.js','utf8'),sandbox);
+ for(const name of ['gym-equipment','exercise-registry','coaching-evidence','running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+name+'.js','utf8'),sandbox);
  const x=fixture(),before=JSON.stringify(x);
  assert.equal(JSON.stringify(sandbox.LHRFCoachAdapters.buildNewProgramme(x.config,{data:x.data,now,performanceReviews:x.reviews})),JSON.stringify(generate(x)));
  assert.equal(JSON.stringify(x),before);
