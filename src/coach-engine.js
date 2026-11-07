@@ -94,9 +94,9 @@ function calibrateRunningReturn(c,options){
  if(Number(c.coachingRuntimeVersion)>=1)delete c.runningReturnObservation;
  const reported=Number(c.runProfile?.weeklyKm),race=c.runningHistory?.recentMarathonDate||c.runProfile?.recentMarathonDate,stamp=Date.parse(race+'T12:00:00Z'),now=typeof options.now==='function'?Number(options.now()):Number(options.now)||Date.now();
  if(!(reported>0)||!Number.isFinite(stamp)||now<stamp||now-stamp>42*86400000||!Array.isArray(options.data?.runs))return;
- const start=Date.parse(c.startDate+'T12:00:00Z');if(!Number.isFinite(start))return;
+ const start=Date.parse(c.startDate+(Number(c.coachingRuntimeVersion)>=1?'T00:00:00Z':'T12:00:00Z'));if(!Number.isFinite(start))return;
  const monday=start-((new Date(start).getUTCDay()+6)%7)*86400000,from=monday-604800000,seen=new Set(),rows=[];
- for(const r of options.data.runs){const when=Date.parse(r.date),km=Number(r.km),id=r.sourceActivityId?'activity:'+r.sourceActivityId:JSON.stringify([r.date,r.km,r.min]);if(!Number.isFinite(when)||when<from||when>=monday||when>now||when<=stamp||!(km>0)||km>=40||r.completed===false||seen.has(id))continue;seen.add(id);rows.push({date:r.date,km,sourceActivityId:r.sourceActivityId||null});}
+ for(const r of Number(c.coachingRuntimeVersion)>=1?(c.runningDoseEvidence?.recentActivities||[]):options.data.runs){const when=Date.parse(r.date),km=Number(r.km),id=r.sourceActivityId?'activity:'+r.sourceActivityId:JSON.stringify([r.date,r.km,r.min??r.minutes]);if(!Number.isFinite(when)||when<from||when>=monday||when>now||when<=stamp||!(km>0)||km>=40||r.completed===false||seen.has(id))continue;seen.add(id);rows.push({date:r.date,km,sourceActivityId:r.sourceActivityId||null});}
  const observed=rows.reduce((n,r)=>n+r.km,0);
  if(rows.length>=2&&observed>0&&observed<reported*.75)c.runningReturnObservation={reportedHabitualKm:reported,observedWeekKm:Number(observed.toFixed(3)),observedActivities:rows,initialWeeklyCeilingKm:Number(Math.min(reported,observed*1.2).toFixed(3)),normalCapacityEstablished:false,requiresRecoveryReview:true,note:'A low post-marathon observation is not a new habitual capacity. Use a provisional staged return while confirming actual recovery and the longer running history.'};
 }
@@ -1362,6 +1362,11 @@ function generatedSessions(c,w){
     if(days!==null&&days>=-2&&days<=2)exposure={role:'technique',reducedSupport:true,ex:[],note:'Rest around the event.'};
     else if(days!==null&&days>=-7&&days<=7)exposure={role:'technique',reducedSupport:true,ex:[[lift,2,3,baseline?roundLoad(baseline*.55):0,5.5,{role:'straight',category:'primary',light:true,trainingRole:'technique'}]],note:'Bounded technique and recovery work around the event; no near-max single.'};
    }
+   const requestedPractice=c.strengthExposureRoles?.[lift]?.[occurrence];
+   if(Number(c.coachingRuntimeVersion)>=1&&!exposure&&!light&&!maintenancePolicy(c,lift)&&beginnerPolicy(c,lift)&&['speed','technique'].includes(requestedPractice)){
+    const rationale='The requested '+requestedPractice+' purpose is retained as bounded doubles. Training experience or task-specific loading is unconfirmed; discover a comfortable load through warm-ups at the RPE 5.5 ceiling. This is not heavy practice or a measured velocity prescription.';
+    exposure={role:requestedPractice,reducedSupport:true,ex:[[exerciseName,2,2,0,5.5,{role:'straight',category:'primary',trainingRole:requestedPractice,policy:'purpose-preserved-practice-v1',loadUnconfirmed:true,rationale}]],note:rationale};
+   }
    const enduranceSupport=runningStrengthSupport(c,w,slot.day,lift,baseline);if(enduranceSupport)exposure=enduranceSupport;
    if(Number(c.coachingSafeguardsVersion)>=1&&maintenancePolicy(c,lift)&&!light&&generalStrengthRecovery(c,lift)){
     if(!exposure||exposure.ex.some(e=>e[4]>6)){
@@ -1385,7 +1390,7 @@ function generatedSessions(c,w){
     else if(readiness.restriction==='bounded'){
      const postEvent=(c.coachingEvidence?.strength?.[exerciseName]?.rows||[]).filter(row=>row.reliable&&row.rpe<=6.5&&!['backoff','back-off'].includes(row.role)&&(!readiness.eventDate||row.date.slice(0,10)>readiness.eventDate)),familiar=postEvent.at(-1),familiarSets=familiar?postEvent.filter(row=>row.date===familiar.date&&row.kg===familiar.kg&&row.reps===familiar.reps).length:0;
      const compatible=exposure&&exposure.ex.every(e=>e[4]<=6.5)&&exposure.ex.reduce((n,e)=>n+e[1],0)<=2;
-     if(familiar){exposure={role:'recovery',reducedSupport:true,recoveryReviewRequired:true,ex:[[exerciseName,Math.min(2,familiarSets),familiar.reps,0,Math.min(6.5,familiar.rpe),{role:'straight',category:'primary',baseline,trainingRole:'recovery',boundedPractice:familiar,recoveryReviewRequired:true}]],note:'Bounded return repeats at most the reported light post-event task. It does not restore habitual volume or heavy readiness.'};}
+     if(familiar&&!['speed','technique'].includes(exposure?.role)){exposure={role:'recovery',reducedSupport:true,recoveryReviewRequired:true,ex:[[exerciseName,Math.min(2,familiarSets),familiar.reps,0,Math.min(6.5,familiar.rpe),{role:'straight',category:'primary',baseline,trainingRole:'recovery',boundedPractice:familiar,recoveryReviewRequired:true}]],note:'Bounded return repeats at most the reported light post-event task. It does not restore habitual volume or heavy readiness.'};}
      else if(!compatible){const noviceReturn=['beginner','novice','returning'].includes(c.trainingAge)&&!maintenancePolicy(c,lift)&&!light,reps=noviceReturn?6:3,target=noviceReturn?6:6.5;exposure={role:'recovery',reducedSupport:true,recoveryReviewRequired:true,ex:[[exerciseName,2,reps,baseline?roundLoad(baseline*effortFraction(reps,target)):0,target,{role:'straight',category:'primary',baseline,trainingRole:'recovery',recoveryReviewRequired:true}]],note:'Provisional bounded return trial; this dose is not established as tolerated. Warm-ups and symptoms can require less work or rest.'};}
      exposure={...exposure,reducedSupport:true,recoveryReviewRequired:true,note:exposure.note+' '+readiness.reasons.join(' '),ex:exposure.ex.map(e=>[...e.slice(0,5),{...e[5],recoveryState:readiness,rationale:readiness.reasons.join(' ')+' '+readiness.reassessment}])};
     }else if(exposure)exposure={...exposure,ex:exposure.ex.map(e=>[...e.slice(0,5),{...e[5],recoveryState:readiness,rationale:(e[5]?.rationale||'')+' '+readiness.reasons.join(' ')}])};
@@ -1606,7 +1611,7 @@ function ensureKnownLiftLoads(sessions,c){
 
 function currentProgrammeDecision(decision){
  const c=data.customRoadmap||{},when=Date.parse(decision.date),approved=Date.parse(c.approvedAt);
- return Number.isFinite(when)&&Number.isFinite(approved)&&when>=approved&&when<=Date.now()&&(!decision.programmeId||decision.programmeId===c.programmeId);
+ return Number.isFinite(when)&&Number.isFinite(approved)&&when>=approved&&when<=Date.now()&&!!decision.programmeId&&decision.programmeId===c.programmeId;
 }
 function carryForwardApprovedProgression(sessions,week){
  const phase=customPhase(week,Number(data.customRoadmap?.weeks)||20,data.customRoadmap);

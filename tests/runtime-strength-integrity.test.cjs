@@ -31,3 +31,25 @@ test('runtime has no unvetted legacy candidate fallback and race pace cannot com
  const a=makeAthletes()[0],p=adapters.buildNewProgramme(a.config,{data:a.data,now}),e=coach.createEngine({data:{...a.data,customRoadmap:p.config,activeSchedule:[]},now});assert.equal(e.coachCandidate(),null);
  const future=clone(a.config);future.runProfile.resultDate='2027-01-01';const programme=adapters.buildNewProgramme(future,{data:a.data,now}),event=programme.weeks.flatMap(w=>w.sessions).find(s=>s.eventType==='running');assert.ok(event);assert.equal(event.runs[0].minutes,null);assert.match(event.runs[0].pace,/Confirm/);assert.equal(event.runs[0].raceStrategy,undefined);
 });
+test('runtime dated app discomfort uses saved task scope and cannot be cleared by older normal context',()=>{
+ const rows=[record('Squat',100,3,8,'top','2026-11-05T12:00:00Z')],data=state(rows);data.completedWorkouts=[{id:'lower::strength',parentId:'lower',week:1,date:'2026-11-05T12:00:00Z',prescription:{ex:[['Squat',1,3,100,8,{role:'top',category:'primary'}]],runs:[]}}];data.sessionFeedback=[{date:'2026-11-06T12:00:00Z',sessionId:'lower::strength',week:1,discomfort:'yes',difficulty:'expected',energy:'good'}];
+ const c={recoveryContext:{status:'normal',reportedAt:'2026-11-03'}},before=JSON.stringify(data);c.coachingEvidence=evidence.capture(c,{data,now});
+ const squat=evidence.recovery(c,{atDate:'2026-11-09',now,sport:'strength',task:'heavy',lift:'Squat'}),bench=evidence.recovery(c,{atDate:'2026-11-09',now,sport:'strength',task:'heavy',lift:'Bench'});
+ assert.equal(squat.canProgress,false);assert.equal(squat.restriction,'bounded');assert.equal(bench.restriction,'none');assert.ok(squat.evidence.some(o=>o.source.includes('session feedback')&&o.lifts.includes('Squat')));assert.equal(JSON.stringify(data),before);
+ const safety=clone(data);safety.sessionFeedback[0].pain=true;const laterEvent={runningTargetDate:'2026-11-22',runGoal:'marathon'};laterEvent.coachingEvidence=evidence.capture(laterEvent,{data:safety,now});assert.equal(evidence.recovery(laterEvent,{atDate:'2026-11-30',now,sport:'strength',task:'heavy',lift:'Squat'}).restriction,'hold','A future event cannot erase an already reported unresolved concern');
+ const negated=state(rows);negated.checkins=[{date:'2026-11-06',symptoms:'No pain or discomfort',notes:'A hard but completed training day'}];const clear={coachingEvidence:evidence.capture({}, {data:negated,now})};assert.equal(evidence.recovery(clear,{atDate:'2026-11-09',now,sport:'strength',task:'heavy',lift:'Squat'}).restriction,'none');
+ const morning=()=>Date.parse('2026-11-07T08:00:00Z'),current=state(rows);current.checkins=[{date:'2026-11-07',pain:true}];const today={coachingEvidence:evidence.capture({}, {data:current,now:morning})};assert.equal(evidence.recovery(today,{atDate:'2026-11-09',now:morning,sport:'strength',task:'heavy',lift:'Squat'}).restriction,'hold','A date-only morning check-in is not a future noon observation');
+});
+test('runtime explicit speed or technique intent survives unknown and novice experience without borrowing heavy kilograms',()=>{
+ for(const trainingAge of [undefined,'beginner'])for(const purpose of ['speed','technique']){
+  const athlete=makeAthletes()[0];athlete.config.trainingAge=trainingAge;athlete.config.strengthExposureRoles.Bench=['heavy','volume',purpose];
+  const programme=adapters.buildNewProgramme(athlete.config,{data:state([]),now}),practice=programme.weeks[0].sessions.flatMap(s=>s.ex).find(ex=>ex[0]==='Bench'&&ex[5]?.trainingRole===purpose);
+  assert.ok(practice,purpose+' / '+trainingAge);assert.equal(practice[2],2);assert.ok(practice[1]<=2);assert.ok(practice[4]<=5.5);assert.equal(practice[3],0);assert.equal(practice[5].loadUnconfirmed,true);assert.match(practice[5].rationale,/purpose|requested|experience/i);
+  assert.ok(!programme.weeks[0].sessions.flatMap(s=>s.ex).some(ex=>ex[0]==='Bench'&&ex[2]===1));
+ }
+});
+test('runtime a current coarse normal intake does not erase an earlier valid task-specific next-day response',()=>{
+ const data=state([]);data.runs=[{date:'2026-11-05T12:00:00Z',km:4,min:30,rpe:3,type:'easy-run'}];const config={runningHistory:{recentMarathonDate:'2026-11-01'},recoveryContext:{status:'normal',reportedAt:'2026-11-07'},recoveryObservations:[{sport:'running',task:'easy',observedAt:'2026-11-06T12:00:00Z',status:'normal',nextDayResponse:'normal',referencePerformanceDate:'2026-11-05',eventDate:'2026-11-01'}]};
+ config.coachingEvidence=evidence.capture(config,{data,now});const supported=evidence.recovery(config,{sport:'running',task:'easy',atDate:'2026-11-09',now});assert.equal(supported.status,'normal');assert.equal(supported.observedAt,'2026-11-06T12:00:00Z');
+ config.recoveryObservations.push({sport:'running',task:'easy',observedAt:'2026-11-07T09:00:00Z',status:'worsening'});config.coachingEvidence=evidence.capture(config,{data,now});assert.equal(evidence.recovery(config,{sport:'running',task:'easy',atDate:'2026-11-09',now}).restriction,'hold');
+});

@@ -2,7 +2,7 @@
 (function(root){'use strict';
 const DAY=86400000,norm=value=>String(value||'').trim().toLowerCase(),clone=value=>JSON.parse(JSON.stringify(value));
 function date(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}(?:$|T)/.test(value)||!Number.isFinite(Date.parse(value)))return null;const day=value.slice(0,10);return new Date(day+'T12:00:00Z').toISOString().slice(0,10)===day?day:null;}
-const time=value=>date(value)?Date.parse(value.length===10?value+'T12:00:00Z':value):NaN;
+const time=value=>date(value)?Date.parse(value.length===10?value+'T00:00:00Z':value):NaN;
 function validSet(row,asOf,{practice=false,generic=false}={}){
  const when=time(row.date),rpe=Number(row.rpe),reps=Number(row.reps),kg=Number(row.weight);
  const validDose=Number.isFinite(reps)&&reps>0&&(generic&&row.doseUnit==='seconds'||Number.isInteger(reps)&&(generic||reps<=8)),validLoad=Number.isFinite(kg)&&(kg>0||generic&&kg===0&&['bodyweight','assistance-kg'].includes(row.loadType));
@@ -44,6 +44,15 @@ function capture(config,{data={},now=Date.now()}={}){
  if(evidence?.lowerBodyFatigue)add({...evidence,status:'fatigue',affectedLifts:undefined},{source:'lower-body fatigue evidence',sport:'all',scope:'lower'});
  for(const entry of evidence?.lifts||[])if(typeof entry==='object')add({...entry,observedAt:entry.observedAt||evidence.observedAt},{source:'lift recovery evidence',sport:'strength'});
  for(const observation of [...(config.recoveryObservations||[]),...(evidence?.observations||[])])add(observation,{source:'task recovery observation'});
+ // Actual app feedback can add a concern, never positive readiness. Scope is
+ // taken only from its preserved completed prescription, not guessed anatomy.
+ for(const [source,rows]of [['session feedback',data.sessionFeedback||[]],['check-in',data.checkins||[]]])for(const row of rows){
+  const text=String(row.symptoms||'').replace(/\bno (?:pain|symptoms|discomfort)(?: or (?:pain|discomfort|symptoms))?\b/ig,'').trim(),safety=row.pain===true||row.injury===true||row.worsening===true||row.illness===true||row.safetyConcern===true||/pain|injur|worsen|illness|severe|limp|dizz/i.test(text),discomfort=norm(row.discomfort)==='yes';
+  if(!safety&&!discomfort)continue;
+  const base=id=>String(id||'').replace(/::(?:strength|run)$/,''),when=time(row.date),linked=(data.completedWorkouts||[]).filter(done=>row.sessionId&&base(done.id)===base(row.sessionId)&&(!row.week||Number(done.week)===Number(row.week))&&time(done.date)<=when).sort((a,b)=>time(a.date)-time(b.date)).at(-1),prescription=linked?.prescription,ex=prescription?.ex||[],runs=prescription?.runs||[],lifts=[...new Set(ex.filter(e=>['Squat','Bench','Deadlift'].includes(e[0])).map(e=>e[0]))];
+  const precise=ex.length===1&&!runs.length&&lifts.length===1,scope=ex.length&&!runs.length?{sport:'strength',affectedLifts:precise?lifts:[]}:runs.length&&!ex.length?{sport:'running'}:{sport:'all'};
+  add({date:row.date,status:safety?'pain':'fatigue',...scope,symptoms:safety?text||'Structured safety concern':null},{source:source+(precise?' linked to saved completed prescription':' with unknown location; clarify the affected activity')});
+ }
  const performances=[];
  const runs=config.runningDoseEvidence?.recentActivities??data.runs??[];
  for(const raw of runs){const when=time(raw.date),minutes=Number(raw.minutes??raw.min);if(!Number.isFinite(when)||when>asOf||asOf-when>42*DAY||raw.completed===false||raw.failed||raw.unreliable||raw.rpeReliable===false||raw.effortReliable===false||raw.evidenceReview?.rpe?.approximate||!(Number(raw.km)>0&&minutes>0))continue;const type=norm(raw.type||raw.role);performances.push({date:raw.date,sport:'running',task:/quality|interval|threshold|tempo|race/.test(type)?'quality':/long/.test(type)?'long':'easy',km:Number(raw.km),minutes,rpe:Number(raw.rpe)||null});}
@@ -61,20 +70,25 @@ function recovery(config,{atDate,now=Date.now(),sport='strength',task='lifting',
  const observations=packet.recovery.observations.filter(o=>time(o.date)<=asOf&&time(o.date)<=when&&relevant(o)).sort((a,b)=>time(a.date)-time(b.date)),latest=observations.at(-1);
  const events=packet.recovery.events.filter(e=>e.sport==='running'&&['marathon','half'].includes(norm(e.goal))&&time(e.date)<when).sort((a,b)=>time(a.date)-time(b.date)),event=events.at(-1),eventDays=event?(when-time(event.date))/DAY:null,eventAge=event?Math.max(0,(asOf-time(event.date))/DAY):null;
  const reasons=[],invalid=packet.recovery.invalid||[];
- const finish=extra=>({...base,...extra,eventDate:event?.date||null,observedAt:latest?.date||null,reasons:[...reasons,...(extra.reasons||[])],evidence:extra.evidence||observations.map(clone)});
+ const finish=extra=>({...base,...extra,eventDate:event?.date||null,observedAt:extra.observedAt??latest?.date??null,reasons:[...reasons,...(extra.reasons||[])],evidence:extra.evidence||observations.map(clone)});
  const uncertain=invalid.filter(o=>relevant(o)&&['safety','adverse'].includes(o.status));
  if(uncertain.length)return finish({status:'review',restriction:uncertain.some(o=>o.status==='safety'&&o.invalidTiming!=='future')?'hold':'bounded',canProgress:false,reviewRequired:true,reasons:['A task-relevant concern has uncertain timing. Clarify its date and current symptoms before loading; missing timing is not recovery clearance.'],evidence:uncertain.map(clone)});
- if(latest&&time(latest.date)>=time(event?.date||'1900-01-01')){
-  const same=observations.filter(o=>date(o.date)===date(latest.date));
-  const afterEvent=!event||time(latest.date)>time(event.date),scoped=latest.task===task||(sport==='strength'&&task==='lifting'&&latest.task==='heavy'),normalResponse=norm(latest.nextDayResponse)==='normal'||norm(latest.nextDayResponse)==='no-worsening';
-  const concern=observations.filter(o=>['safety','adverse'].includes(o.status)).at(-1),completed=packet.recovery.performances.filter(p=>p.sport===sport&&(!lift||p.lift===lift)&&p.task===task&&time(p.date)<=time(latest.date)&&(!concern||time(p.date)>time(concern.date))&&(!event||time(p.date)>time(event.date))&&(!latest.referencePerformanceDate||date(p.date)===date(latest.referencePerformanceDate))).sort((a,b)=>time(a.date)-time(b.date)),performance=completed.at(-1),nextDay=performance&&(time(date(latest.date))-time(date(performance.date)))===DAY,tolerated=!!(performance&&nextDay&&(sport!=='running'||performance.rpe!==null&&performance.rpe<=(task==='easy'?4:8)));
-  const conflicting=same.some(o=>o.status==='safety'||o.status==='adverse');
-  if(latest.status==='normal'&&afterEvent&&scoped&&normalResponse&&tolerated&&sport==='strength'&&task==='lifting'&&performance.rpe<6)return finish({status:'rebuild',restriction:'bounded',canProgress:false,reviewRequired:true,reasons:['Comfortable light practice supports repeating that familiar dose only. It does not establish higher repetitions, more sets or demanding work.']});
-  if(latest.status==='normal'&&afterEvent&&scoped&&normalResponse&&tolerated&&!conflicting&&(!latest.eventDate||latest.eventDate===event?.date))return finish({canProgress:sport!=='strength'||task==='heavy',reviewRequired:sport==='strength'&&task==='lifting',reasons:['A dated task-specific normal subsequent response corroborates completed comparable activity; this supports this familiar task only, not higher volume or intensity.']});
-  const unresolved=observations.filter(o=>(!event||time(o.date)>time(event.date))&&['safety','adverse'].includes(o.status));
-  if(unresolved.some(o=>o.status==='safety'))return finish({status:'restricted',restriction:'hold',canProgress:false,reviewRequired:true,reasons:['A dated task-relevant safety concern needs prompt assessment; an unknown or unsupported normal answer does not clear provoking work.']});
-  if(unresolved.length)return finish({status:'review',restriction:'bounded',canProgress:false,reviewRequired:true,reasons:['The task-relevant recovery concern has not been resolved by later comparable evidence; elapsed event days or an unknown report do not clear it.']});
-  if(latest.status==='normal'&&afterEvent&&event&&!(sport==='strength'&&lift==='Bench'))return finish({status:'rebuild',restriction:'bounded',canProgress:false,reviewRequired:true,reasons:['The normal report is useful context but does not establish this task and dose with a normal next-day response.']});
+ if(latest){
+  const concern=observations.filter(o=>['safety','adverse'].includes(o.status)).at(-1);
+  // A later coarse normal check-in is benign context, not a veto of a valid
+  // task-specific response. A later concern still invalidates the older proof.
+  for(const report of observations.slice().reverse()){
+   const afterEvent=!event||time(report.date)>time(event.date),scoped=report.task===task||(sport==='strength'&&task==='lifting'&&report.task==='heavy'),normalResponse=['normal','no-worsening'].includes(norm(report.nextDayResponse));
+   if(report.status!=='normal'||!afterEvent||!scoped||!normalResponse||report.eventDate&&report.eventDate!==event?.date)continue;
+   const completed=packet.recovery.performances.filter(p=>p.sport===sport&&(!lift||p.lift===lift)&&p.task===task&&time(p.date)<=time(report.date)&&(!concern||time(p.date)>time(concern.date))&&(!event||time(p.date)>time(event.date))&&(!report.referencePerformanceDate||date(p.date)===date(report.referencePerformanceDate))).sort((a,b)=>time(a.date)-time(b.date)),performance=completed.at(-1),nextDay=performance&&(time(date(report.date))-time(date(performance.date)))===DAY,tolerated=!!(performance&&nextDay&&(sport!=='running'||performance.rpe!==null&&performance.rpe<=(task==='easy'?4:8))),conflicting=observations.some(o=>date(o.date)===date(report.date)&&['safety','adverse'].includes(o.status));
+   if(!tolerated||conflicting)continue;
+   if(sport==='strength'&&task==='lifting'&&performance.rpe<6)return finish({observedAt:report.date,status:'rebuild',restriction:'bounded',canProgress:false,reviewRequired:true,reasons:['Comfortable light practice supports repeating that familiar dose only. It does not establish higher repetitions, more sets or demanding work.']});
+   return finish({observedAt:report.date,canProgress:sport!=='strength'||task==='heavy',reviewRequired:sport==='strength'&&task==='lifting',reasons:['A dated task-specific normal subsequent response corroborates completed comparable activity; this supports this familiar task only, not higher volume or intensity.']});
+  }
+  const unresolved=observations.filter(o=>['safety','adverse'].includes(o.status)),unknownLocation=unresolved.some(o=>o.source.includes('unknown location'));
+  if(unresolved.some(o=>o.status==='safety'))return finish({status:'restricted',restriction:'hold',canProgress:false,reviewRequired:true,reasons:['A dated task-relevant safety concern needs prompt assessment; an unknown or unsupported normal answer or later event does not clear provoking work.'+(unknownLocation?' Its location is not recorded; clarify the affected activity without inferring a diagnosis.':'')]});
+  if(unresolved.length)return finish({status:'review',restriction:'bounded',canProgress:false,reviewRequired:true,reasons:['The task-relevant recovery concern has not been resolved by later comparable evidence; elapsed event days or an unknown report do not clear it.'+(unknownLocation?' Its location is not recorded; clarify which activity is affected.':'')]});
+  if(latest.status==='normal'&&event&&time(latest.date)>time(event.date)&&!(sport==='strength'&&lift==='Bench'))return finish({status:'rebuild',restriction:'bounded',canProgress:false,reviewRequired:true,reasons:['The normal report is useful context but does not establish this task and dose with a normal next-day response.']});
  }
  if(event&&eventDays<=2)return finish({status:'restricted',restriction:'hold',canProgress:false,reviewRequired:true,reasons:['Initial post-event rest is a planning precaution; review actual symptoms and task readiness before return.']});
  if(event&&sport==='strength'&&lift==='Bench')return finish({status:'review',restriction:'none',canProgress:false,reviewRequired:true,reasons:['After initial systemic rest, the endurance event alone does not justify a continuing upper-body restriction. Preserve familiar nonprovoking work and review setup, systemic recovery and subsequent response before progression.']});
