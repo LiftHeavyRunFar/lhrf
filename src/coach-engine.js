@@ -1322,7 +1322,7 @@ function generatedSessions(c,w){
   if([3,4].includes(c.runningGuidanceVersion)&&c.startDate){const date=new Date(c.startDate+'T12:00:00');date.setDate(date.getDate()-(date.getDay()+6)%7+(w-1)*7+(dayOffset[slot.day]??0));if(date<new Date(c.startDate+'T12:00:00'))continue;}
   const ex=[],runs=[],variationNotes=[],optionalExercises=[];
   for(const item of slot.items){if(item.type==='strength'){
-   const lift=item.name,occurrence=liftCount[lift]||0;liftCount[lift]=occurrence+1;
+   const lift=item.name,calendarOccurrence=Number(c.coachingRuntimeVersion)>=1?generalCalendar.lifts[lift]?.days.indexOf(slot.day):-1,occurrence=calendarOccurrence>=0?calendarOccurrence:liftCount[lift]||0;liftCount[lift]=occurrence+1;
    const secondary=occurrence>0;
    const sets=Math.max(1,settings.sets-(secondary?1:0));
    const reps=settings.reps+(secondary&&!taper?1:0);

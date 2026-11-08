@@ -64,3 +64,11 @@ test('runtime a final demanding rep slot in taper week cannot gain repetitions j
  const p=adapters.buildNewProgramme(athlete.config,{data:athlete.data,now}),calendar=coach.createEngine({now}).generalStrengthCalendar(p.config).lifts.Bench,dose=week=>p.weeks[week-1].sessions.flatMap(s=>s.ex).filter(ex=>ex[0]==='Bench');
  assert.equal(calendar.peakEvidence.singleSupported,false);assert.equal(calendar.finalHeavyDate,'2026-12-08');assert.ok(dose(5).length);assert.ok(dose(5).every(ex=>ex[2]===2));assert.ok(dose(5).reduce((n,ex)=>n+ex[1]*ex[2],0)<=dose(4).reduce((n,ex)=>n+ex[1]*ex[2],0));assert.ok(dose(5).every(ex=>ex[4]<=8));assert.ok(!p.weeks.flatMap(w=>w.sessions.flatMap(s=>s.ex)).some(ex=>ex[0]==='Bench'&&ex[2]===1));
 });
+test('runtime a Sunday programme start preserves the full-calendar explicit speed purpose when earlier slots are omitted',()=>{
+ for(const [index,age]of [[0,'advanced'],[1,'beginner'],[0,undefined]]){
+  const athlete=makeAthletes()[index],data=age?athlete.data:state([]),config={...athlete.config,trainingAge:age,startDate:'2026-11-02',weeks:4,event:'bench',priority:'Bench',bench:3,squat:0,deadlift:0,runs:0,days:3,availableDays:['Tue','Fri','Sun'],doubleDays:[],manualSplit:{Tue:['bench'],Fri:['bench'],Sun:['bench']},strengthTargetDate:'2026-11-28',runningTargetDate:'',strengthExposureRoles:{Bench:['volume','heavy','speed']},visitConstraints:{strengthVisits:3,minutes:{Tue:120,Fri:120,Sun:120},combinedDays:[],separateDays:[],eventDays:{'2026-11-28':{confirmed:true}}}},before=JSON.stringify({config,data});
+  const full=adapters.buildNewProgramme(config,{data,now}),partial=adapters.buildNewProgramme({...config,startDate:'2026-11-08'},{data,now}),sunday=p=>p.weeks[0].sessions.filter(s=>s.day==='Sun').flatMap(s=>s.ex).filter(ex=>ex[0]==='Bench');
+  assert.ok(sunday(full).length);assert.ok(sunday(partial).length);assert.ok(partial.weeks[0].sessions.every(s=>s.day==='Sun'));assert.ok(sunday(partial).every(ex=>ex[5].trainingRole==='speed'&&ex[2]===2&&ex[4]<=5.5));assert.deepEqual(sunday(partial).map(ex=>ex.slice(0,5)),sunday(full).map(ex=>ex.slice(0,5)),String(age));
+  if(!age)assert.ok(sunday(partial).every(ex=>ex[3]===0&&ex[5].loadUnconfirmed));assert.equal(JSON.stringify({config,data}),before);
+ }
+});
