@@ -60,3 +60,12 @@ body[data-workout-kind="run"] #treadmillControls.card{background:linear-gradient
 .run-location-toolbar .run-environment-choice{width:auto;min-width:140px;max-width:65%;margin:0;padding:8px 10px;font-size:13px;font-weight:650;border-radius:9px}
 
 #tmWakeState{display:block}#tmWakeState:empty{display:none}
+
+/* Focused workout rest countdown: one existing timer, no duplicate clock. */
+#restStopwatch.training-rest-controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-start;margin:2px 0 10px;padding:7px 8px;background:#0b1d30;border:1px solid #2a4964;border-radius:9px;color:#b9d9f1}
+#restStopwatch.training-rest-controls > span{font-size:10px;letter-spacing:.12em;font-weight:800}
+#restStopwatch.training-rest-controls output{font-variant-numeric:tabular-nums;font-size:21px;font-weight:800;color:#e2f7ff;min-width:48px}
+#restStopwatch.training-rest-controls small{font-size:10px;color:#93bad1;flex:1;min-width:70px}
+#restStopwatch.training-rest-controls button{min-height:38px;min-width:42px;width:auto;padding:6px 10px;font-size:11px}
+#restStopwatch.training-rest-controls [hidden]{display:none!important}
+@media(max-width:360px){#restStopwatch.training-rest-controls{gap:5px}#restStopwatch.training-rest-controls button{padding:5px 7px}}
