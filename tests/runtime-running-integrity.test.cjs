@@ -9,6 +9,38 @@ test('established fitness running retains its declared familiar base instead of 
  const legacy={...c};delete legacy.coachingRuntimeVersion;assert.equal(preparation.assess(legacy,1,{now}).requestedKm,18);
  for(const week of [3,7,11])assert.equal(preparation.assess(c,week,{now}).requestedKm,29,'A health-only goal cannot silently add endurance-development kilometres after removing the old cap.');
 });
+test('new 20-week hybrid health build with a pace and no mileage uses progressing time, with no invented kilometres',()=>{
+ const c=config({weeks:20,runs:2,onboardingAerobicBuildVersion:1,strengthTargetDate:'2027-03-27',runProfile:{...base.runProfile,weeklyKm:0},runningHistory:{}});
+ const assess=(week,changes={})=>preparation.assess({...c,...changes},week,{now});
+ const legacy=assess(19,{onboardingAerobicBuildVersion:undefined});
+ assert.deepEqual(legacy.runs.map(r=>r.distanceKm),[2,2]);
+ assert.deepEqual(assess(1).runs.map(r=>r.minutes),[15,15]);
+ assert.ok(assess(19).runs.every(r=>r.distanceKnown===false&&r.minutes>20&&r.workMinutes===0));
+ assert.ok(assess(20).runs.every(r=>r.minutes===15&&!r.conditionalAerobicBuild));
+ const known={...c.runProfile,weeklyKm:4};
+ assert.ok(assess(19,{runProfile:known}).runs.every(r=>r.distanceKm>2&&r.workMinutes===0));
+});
+test('a longer timed run needs two actual easy completions with good feedback and readiness',()=>{
+ const c=config({weeks:20,runs:2,onboardingAerobicBuildVersion:1,runProfile:{},runningHistory:{}});
+ const run=preparation.assess(c,19,{now}).runs[0],starting=preparation.assess(c,1,{now}).runs[0];
+ const data={completedWorkouts:[],runs:[],sessionFeedback:[]};
+ const resolve=(ready=true)=>preparation.resolveAerobicBuild(run,data,{now,ready});
+ assert.equal(resolve().minutes,15);
+ for(const [i,day] of ['2026-11-02','2026-11-05'].entries()){
+  const id='easy-'+i,date=day+'T08:00:00Z';
+  data.completedWorkouts.push({id,date,week:1,completedRun:true,prescription:{runs:[starting]}});
+  data.runs.push({sessionId:id,date,min:25});
+  data.sessionFeedback.push({sessionId:id,date:day+'T08:01:00Z',week:1,difficulty:'expected',energy:'good',discomfort:'no'});
+ }
+ const before=JSON.stringify(data),earned=resolve();
+ assert.equal(earned.minutes,17);
+ assert.equal(earned.steps[0].minutes,17);
+ assert.equal(earned.distanceKnown,false);
+ assert.equal(resolve(false).minutes,15);
+ assert.equal(JSON.stringify(data),before);
+ data.sessionFeedback[1].discomfort='yes';
+ assert.equal(resolve().minutes,15);
+});
 test('running observations reject invalid completion and linked conflicts without counting duplicates as progression',()=>{
  const runs=[{date:'2026-11-01',km:8,min:50,sourceActivityId:'same'},{date:'2026-11-01T10:00:00Z',km:8,min:50,rpe:3,sourceActivityId:'same'},{date:'2026-11-03',km:5,min:30,rpe:3,sourceActivityId:'conflict'},{date:'2026-11-03',km:9,min:30,rpe:3,sourceActivityId:'conflict'},{date:'2026-11-10',km:10,min:60},{date:'2026-02-30',km:10,min:60},{date:'2026-11-04',km:10,min:60,failed:true},{date:'2026-11-05',km:6,min:36,rpe:3,rpeReliable:false}];
  const original=JSON.stringify(runs),result=preparation.prepareEvidence(base,{now,data:{runs}});

@@ -26,13 +26,15 @@ function profile(event, overrides = {}) {
   };
 }
 
-function review(raw) {
-  const config = coach.prepareNewProgramme(raw, {now: NOW});
-  const programme = adapters.buildProgramme(config, {now: NOW});
+function review(raw, {now = NOW, conditional = false} = {}) {
+  const config = coach.prepareNewProgramme(raw, {now});
+  if (!conditional) delete config.competitionConditionalVersion;
+  const programme = adapters.buildProgramme(config, {now});
   const sessions = programme.weeks.flatMap(week => week.sessions);
   const issues = programme.weeks.flatMap(week => week.blockingIssues || []);
   const finalExposures = sessions.flatMap(session => session.ex).filter(ex => ex[5]?.finalHeavyExposure);
-  return {config, programme, sessions, issues, finalExposures};
+  const conditionalExposures = sessions.flatMap(session => session.ex).filter(ex => ex[5]?.conditionalFinalHeavy);
+  return {config, programme, sessions, issues, finalExposures, conditionalExposures};
 }
 
 test('competition types produce only their event lifts and deliver each athlete-chosen single and taper', () => {
@@ -227,4 +229,112 @@ test('pre-marker configs retain their existing output contract and no timing pre
   assert.equal(programme.finalHeavyPlan, undefined);
   assert.equal(sessions.find(session => session.eventType === 'strength').name, 'Strength competition');
   assert.equal(sessions.some(session => session.competitionLifts), false);
+});
+
+const ownerPreferences = {Squat: {mode: 'athlete', date: '2027-03-20'}, Bench: {mode: 'athlete', daysOut: 5},
+  Deadlift: {mode: 'athlete', daysOut: 9}};
+const ownerDates = {Squat: '2027-03-20', Bench: '2027-03-22', Deadlift: '2027-03-18'};
+
+test('fresh 20-week meet reserves all requested dates as safe fallback work and can be approved', () => {
+  const raw = longHybrid({longRunDay: 'Tue', liftProfiles: {}, finalHeavyPreferences: ownerPreferences});
+  const {config, issues, programme, sessions, conditionalExposures, finalExposures} = review(raw, {conditional: true});
+  assert.deepEqual(issues, []);
+  assert.equal(programme.weeks.length, 20);
+  assert.equal(sessions.find(s => s.eventType === 'strength').eventDate, LONG_MEET);
+  assert.equal(conditionalExposures.length, 3);
+  assert.equal(finalExposures.length, 0);
+  for (const lift of LIFTS) {
+    const plan = programme.finalHeavyPlan[lift];
+    assert.equal(plan.kind, 'conditional-single');
+    assert.equal(plan.date, ownerDates[lift]);
+    assert.match(plan.condition, /two recent controlled sessions/);
+    assert.match(plan.alternative, /controlled reps/);
+    const ex = conditionalExposures.find(e => e[0] === lift);
+    assert.deepEqual(ex[5].conditionalFinalHeavy, {lift,date:plan.date,daysOut:plan.daysOut,ceiling:7.5});
+    assert.equal(ex[1], 1);
+    assert.equal(ex[2], 2);
+    assert.equal(ex[4], 7);
+    assert.ok(!ex[5].finalHeavyExposure);
+  }
+  const approved = coach.approveProgrammeConfig(config, new Date(NOW()).toISOString());
+  assert.equal(approved.competitionConditionalVersion, 1);
+  const approvedPlan = adapters.buildProgramme(approved, {now: NOW});
+  assert.deepEqual(approvedPlan.finalHeavyPlan, programme.finalHeavyPlan);
+  assert.ok(!approvedPlan.weeks.flatMap(w => w.sessions).flatMap(s => s.ex).some(ex => LIFTS.includes(ex[0]) && ex[2] === 1));
+  assert.throws(() => coach.prepareNewProgramme({...raw,weeks:19}, {now:NOW}), /include the competition date/);
+  assert.throws(() => coach.prepareNewProgramme({...raw,startDate:'2026-11-08'}, {now:NOW}), /include the competition date/);
+  const sundayStart = review({...raw,startDate:'2026-11-08',weeks:21}, {conditional:true});
+  assert.equal(sundayStart.programme.weeks[20].sessions.find(s=>s.eventType==='strength')?.eventDate,LONG_MEET);
+});
+
+test('short lead time and novice experience retain specific bounded alternatives', () => {
+  const choice = {Bench: {mode: 'athlete', daysOut: 5}};
+  const now = () => Date.parse('2026-11-23T12:00:00Z');
+  const unverified = review(profile('bench', {liftProfiles: {}, finalHeavyPreferences: choice}), {conditional: true, now});
+  assert.deepEqual(unverified.issues, []);
+  assert.equal(unverified.programme.finalHeavyPlan.Bench.kind, 'rep-practice');
+  assert.equal(unverified.programme.finalHeavyPlan.Bench.date, '2026-12-14');
+  assert.equal(unverified.finalExposures[0][2], 2);
+  assert.equal(unverified.finalExposures[0][4], 7);
+  const experienced = review(profile('bench', {finalHeavyPreferences: choice}), {conditional: true, now});
+  assert.equal(experienced.programme.finalHeavyPlan.Bench.kind, 'single');
+  assert.equal(experienced.finalExposures[0][2], 1);
+  assert.doesNotThrow(() => coach.approveProgrammeConfig(unverified.config, new Date(now()).toISOString()));
+  const novice = review(longHybrid({longRunDay:'Tue', trainingAge:'beginner', finalHeavyPreferences:ownerPreferences}), {conditional:true});
+  assert.deepEqual(novice.issues, []);
+  assert.equal(novice.conditionalExposures.length, 0);
+  assert.equal(novice.finalExposures.length, 0);
+  for(const lift of LIFTS){
+    assert.equal(novice.programme.finalHeavyPlan[lift].kind,'technique');
+    const dose=novice.sessions.flatMap(s=>s.ex).find(ex=>ex[5]?.finalHeavyAlternative?.lift===lift);
+    assert.equal(dose[5].finalHeavyAlternative.date,ownerDates[lift]);
+    assert.ok(dose[2]>1&&dose[4]<=6);
+  }
+});
+
+test('conditional rehearsal still blocks a true unavailable or unsafe date and cannot retain a false milestone', () => {
+  const unavailable = review(longHybrid({longRunDay:'Sat', finalHeavyPreferences:ownerPreferences}), {conditional:true});
+  assert.equal(unavailable.programme.finalHeavyPlan.Squat.kind,'none');
+  assert.equal(unavailable.programme.finalHeavyPlan.Squat.date,null);
+  assert.match(unavailable.programme.finalHeavyPlan.Squat.reason,/protected long run/);
+  assert.equal(unavailable.programme.finalHeavyPlan.Bench.kind,'conditional-single');
+  assert.equal(unavailable.programme.finalHeavyPlan.Deadlift.kind,'conditional-single');
+  assert.throws(()=>coach.approveProgrammeConfig(unavailable.config,new Date(NOW()).toISOString()),/protected long run/);
+  const pain = review(longHybrid({longRunDay:'Tue', finalHeavyPreferences:ownerPreferences,
+    recoveryObservations:[{sport:'strength',task:'heavy',lift:'Squat',status:'pain',observedAt:'2026-11-08'}]}), {conditional:true});
+  assert.equal(pain.programme.finalHeavyPlan.Squat.kind,'none');
+  assert.match(pain.programme.finalHeavyPlan.Squat.reason,/recovery/);
+});
+
+test('runtime accepts only comparable controlled completed days for an explicit on-date recheck', () => {
+  const draft = review(longHybrid({longRunDay:'Tue', liftProfiles:{}, finalHeavyPreferences:ownerPreferences}), {conditional:true});
+  const config=coach.approveProgrammeConfig(draft.config,new Date(NOW()).toISOString());
+  const weeks=adapters.buildProgramme(config,{now:NOW}).weeks;
+  const marker=draft.conditionalExposures.find(ex=>ex[0]==='Squat')[5].conditionalFinalHeavy;
+  const anchor=Date.parse('2026-11-09T12:00:00Z'), stamp=(w,day)=>new Date(anchor+((w-1)*7+DAYS.indexOf(day))*86400000).toISOString();
+  const candidates=weeks.flatMap(w=>w.sessions.filter(s=>!s.eventDate).map(s=>({s,w:w.week,date:stamp(w.week,s.day)})))
+    .map(x=>({...x,ex:x.s.ex.find(ex=>ex[0]==='Squat'&&ex[2]<=3&&ex[4]>=6&&ex[4]<=7&&ex[5]?.competition&&['top','straight'].includes(ex[5]?.role))}))
+    .filter(x=>x.ex&&x.date.slice(0,10)>='2027-02-20'&&x.date.slice(0,10)<='2027-03-17').slice(-2);
+  assert.equal(candidates.length,2);
+  const completedWorkouts=candidates.map(({s,w,date})=>({id:s.id,week:w,date,prescription:{ex:s.ex}}));
+  const sets=candidates.map(({s,ex,date},index)=>({date,sessionId:s.id,exercise:ex[0],reps:ex[2],rpe:7,weight:100+index*2.5,
+    role:ex[5].role,...Object.fromEntries(['exerciseId','variantId','loadType','doseUnit'].map(key=>[key,ex[5][key]]))}));
+  const date=marker.date, now=()=>Date.parse(date+'T12:00:00Z'), data={completedWorkouts,sets};
+  const before=JSON.stringify({config,data});
+  assert.deepEqual(coach.reassessConditionalFinalHeavy(config,marker,{data,date,now}),{
+    eligible:true,reason:'Confirm competition technique on both practice dates and normal recovery and warm-ups before choosing one single.',
+    ceiling:7.5,practiceDates:candidates.map(x=>x.date.slice(0,10)),loadKg:100
+  });
+  assert.equal(JSON.stringify({config,data}),before);
+  for(const invalid of [
+    {...data,completedWorkouts:[]},
+    {...data,sets:[sets[0],{...sets[1],variantId:'other-gym'}]},
+    {...data,sets:[sets[0],{...sets[1],techniqueFailed:true}]},
+    {...data,sets:[sets[0],{...sets[1],rpe:8.5}]},
+    {...data,sets:[...sets,{...sets[1],date:date+'T08:00:00Z',rpe:7.5}]},
+    {...data,sessionFeedback:[{date:date+'T10:00:00Z',discomfort:'yes'}]}
+  ])assert.equal(coach.reassessConditionalFinalHeavy(config,marker,{data:invalid,date,now}).eligible,false);
+  assert.equal(coach.reassessConditionalFinalHeavy(config,marker,{data,date:'2027-03-19',now}).eligible,false);
+  assert.equal(coach.reassessConditionalFinalHeavy(config,marker,{data,date,now:()=>Date.parse('2027-03-21T12:00:00Z')}).eligible,false);
+  assert.equal(coach.reassessConditionalFinalHeavy({...config,competitionConditionalVersion:undefined},marker,{data,date,now}).eligible,false);
 });

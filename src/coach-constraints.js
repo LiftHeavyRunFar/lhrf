@@ -72,6 +72,13 @@ function allocate(c,warnings=[],activities=[],context={}){
  }
  let best=null,legacyBest=null;
  const required=context.requiredStrengthDays||{},requiredDays=Object.values(required);
+ const strengthOrder=strength.slice().sort((a,b)=>Number(lower(b))-Number(lower(a)));
+ if(c.competitionConditionalVersion===1&&requiredDays.length){
+  // Reserve each explicit visit before unpinned work occupies it. Repeated
+  // exposures of a pinned lift still use the ordinary scheduling order.
+  const firstPinned=new Set(Object.keys(required).map(lift=>strengthOrder.find(item=>item.name===lift)));
+  strengthOrder.sort((a,b)=>Number(firstPinned.has(b))-Number(firstPinned.has(a)));
+ }
  for(const strengthDays of combinations(allowed,visits))for(const runDays of permutations(allowed,runs.length)){
   if(requiredDays.some(day=>!strengthDays.includes(day)))continue;
   if(longIndex>=0&&c.longRunDay&&runDays[longIndex]!==short(c.longRunDay))continue;
@@ -81,7 +88,7 @@ function allocate(c,warnings=[],activities=[],context={}){
   let score=0,valid=true;
   const pinned=new Set();
   // Place repeated lifts on distinct visits; prefer lower work away from the long run.
-  for(const item of strength.slice().sort((a,b)=>Number(lower(b))-Number(lower(a)))){
+  for(const item of strengthOrder){
    const pin=pinned.has(item.name)?null:required[item.name];
    const choices=strengthDays.map(day=>out.find(s=>s.day===day)).filter(s=>(!pin||s.day===pin)&&!s.items.some(x=>x.type==='strength'&&x.name===item.name));
    choices.sort((a,b)=>{

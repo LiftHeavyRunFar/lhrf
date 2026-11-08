@@ -12,7 +12,7 @@ const media = {'.js':'application/javascript','.css':'text/css','.png':'image/pn
   '.svg':'image/svg+xml','.ttf':'font/ttf','.webmanifest':'application/manifest+json','.json':'application/json'};
 const screenshotDir = process.env.LHRF_QA_SCREENSHOTS;
 const baseline = process.env.LHRF_QA_BASE;
-const timing = {Squat:10, Bench:8, Deadlift:17};
+const timing = {Squat:22, Bench:22, Deadlift:24};
 const pixel = {viewport:{width:393,height:852},isMobile:true,hasTouch:true,timezoneId:'Europe/London',serviceWorkers:'block'};
 const loc = (page, id) => page.locator('#' + id);
 const read = page => page.evaluate(key => localStorage.getItem(key), key);
@@ -31,7 +31,7 @@ async function fillMeet(page) {
   await loc(page,'frGoal').selectOption('powerlifting');
   await loc(page,'frExperience').selectOption('intermediate');
   await loc(page,'frStrengthDate').fill('2027-03-21');
-  await loc(page,'frStrengthEventConfirmed').check();
+  if (await loc(page,'frStrengthEventConfirmed').count()) await loc(page,'frStrengthEventConfirmed').check();
   await next.tap();
   await page.locator('.fr-day[value=Sun]').uncheck();
   for (const [lift, days] of Object.entries(timing)) {
@@ -95,11 +95,11 @@ async function fillMeet(page) {
     for (const [lift, daysOut] of Object.entries(timing)) {
       assert.deepEqual(blocked.config.finalHeavyPreferences[lift], {mode:'athlete', daysOut});
       assert.equal(blocked.finalHeavyPlan[lift].kind, 'none');
-      assert.match(blocked.finalHeavyPlan[lift].reason, /evidence|experience|recovery/i);
+      assert.match(blocked.finalHeavyPlan[lift].reason, /within three weeks|taper/i);
     }
     assert.equal(await loc(page,'frWarnings').isVisible(), true);
     assert.match(await loc(page,'frWarnings').innerText(), /coach timing|single|recovery/i);
-    assert.match(await loc(page,'frFinalHeavyPreview').innerText(), /single withheld|single evidence/i);
+    assert.match(await loc(page,'frFinalHeavyPreview').innerText(), /requested timing unavailable|within three weeks/i);
     assert.equal(await loc(page,'frReviewEdits').evaluate(el => el.open), false);
     assert.equal(await page.locator('#firstRun').getByText('Explore weekly sessions',{exact:true}).isVisible(), false);
     assert.equal(await page.locator('#firstRun').getByText('Weekly volume figures',{exact:true}).isVisible(), false);

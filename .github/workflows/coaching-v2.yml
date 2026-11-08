@@ -193,6 +193,11 @@ jobs:
           LHRF_QA_SCREENSHOTS: /tmp/lhrf-onboarding-145
           LHRF_QA_BASE: /tmp/lhrf-onboarding-production
         run: node tests/onboarding-approval-hotfix.browser.cjs
+      - name: Test conditional meet and aerobic build onboarding through workout entry
+        if: ${{ !cancelled() }}
+        env:
+          LHRF_QA_MEET_SCREENSHOTS: /tmp/lhrf-onboarding-145
+        run: node tests/conditional-meet-onboarding.browser.cjs
       - name: Retain onboarding review evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
