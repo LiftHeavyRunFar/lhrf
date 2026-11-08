@@ -25,7 +25,7 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
  await page.locator('#previewClose').click();
  await page.evaluate(id=>openWorkout(id),fri.id);
  await page.locator('#livePreview .preview-coach-notes').evaluateAll(els=>els.forEach(e=>e.open=true));const preview=await page.locator('#livePreview').innerText();assert.match(preview,/Heavy competition practice/);assert.equal(fri.ex[0][5].benchRole,'heavy');assert.match(preview,/147.5 kg/);assert.match(preview,/paused single/);
- await page.locator('#previewStart').click();await page.getByRole('button',{name:'Review readiness',exact:true}).click();await page.locator('#readinessContinue').click();
+ await page.locator('#previewStart').click();await page.locator('#readinessContinue').click();
  const top=page.locator('.live-ex').first();assert.doesNotMatch(await top.innerText(),/Heavy competition practice/);
  await top.getByRole('button',{name:'Exercise information for Bench',exact:true}).click();
  const exerciseInfo=page.getByRole('dialog',{name:'Bench',exact:true});assert.match(await exerciseInfo.innerText(),/Heavy competition practice/);

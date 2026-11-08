@@ -310,19 +310,25 @@ nav.nav button[data-screen] b{color:inherit!important}
 </div></div>
 <div class="pr-panel"><h3>Strength progress</h3><p class="muted small">Squat · Bench · Deadlift</p><div class="pr-empty pr-empty-short"><strong>Your strength trend starts with logged sets</strong><span>As you train, this area will show your estimated strength over time.</span></div></div>
 <div class="pr-panel"><h3>Running progress</h3><div class="pr-empty pr-empty-short"><strong>Your running history will appear here</strong><span>Record or import a run to begin.</span></div></div>
-</div><details class="card" id="progressDetails"><summary style="cursor:pointer;font-weight:700">Past workouts, coaching decisions & data</summary><div style="padding-top:14px"><div class="grid"><div class="stat"><b id="setCount">0</b><span>Sets logged</span></div><div class="stat"><b id="runCount">0</b><span>Runs logged / imported</span></div></div><div class="card" style="margin-top:13px"><h2>Weekly Coach’s Review</h2><p class="muted small">Checks whether you are on track for planned progression, accelerating, or showing signs of fatigue. Extra changes always require approval.</p><div id="weeklyReview"></div><div id="weeklyReviewActions" class="actions"></div><div id="weeklyReviewStatus" class="small muted" aria-live="polite"></div><h2 style="margin-top:20px">Other coach proposals</h2><p class="muted small">Recovery- and performance-aware example rules. Each proposal is specific, explained and requires your approval before the local plan changes.</p><div id="coachProposal"></div><div id="proposalActions" class="actions"></div><div id="coachDecision" class="small muted"></div><h3 style="margin-top:20px">Active approved changes</h3><div id="activeChanges" class="small muted"></div><h3 style="margin-top:20px">Recent decisions</h3><div id="decisionHistory" class="small muted"></div></div><div class="card"><h3>Your training data · beta safeguard</h3><p class="muted small"><b>Training history survives app updates only when the new HTML is opened in the same browser and origin.</b> Some Android file viewers give each downloaded HTML file separate storage. Export JSON after each workout and before updating, then import that backup into the next version. Do not clear browser site data or delete your only backup. Imported backups restore sets, runs, check-ins, decisions and the approved programme.</p><div class="actions"><button class="secondary" onclick="exportLog()">Export JSON</button><label class="secondary" style="padding:11px 13px;border:1px solid var(--border);border-radius:11px;cursor:pointer">Import backup <input type="file" accept=".json,application/json" style="display:none" onchange="importBackup(event)"></label><button class="ghost" onclick="clearLog()">Clear data</button></div></div><div class="foot">v1.10.8 training beta · Rules-based coaching, no Garmin account sync or medical assessment.</div></div></details></section>
+</div><details class="card" id="progressDetails"><summary style="cursor:pointer;font-weight:700">Past workouts, coaching decisions & data</summary><div style="padding-top:14px"><div class="grid"><div class="stat"><b id="setCount">0</b><span>Sets logged</span></div><div class="stat"><b id="runCount">0</b><span>Runs logged / imported</span></div></div><div class="card" style="margin-top:13px"><h2>Weekly Coach’s Review</h2><p class="muted small">Checks whether you are on track for planned progression, accelerating, or showing signs of fatigue. Extra changes always require approval.</p><div id="weeklyReview"></div><div id="weeklyReviewActions" class="actions"></div><div id="weeklyReviewStatus" class="small muted" aria-live="polite"></div><div class="card" id="challengeCard"><span class="tag">YOU SET THE AMBITION</span><h2 style="margin-top:8px">Want to push harder?</h2><p class="muted small">Ask the coach for a measured challenge. You'll see the exact change before deciding.</p><button onclick="requestChallenge()">Request a Challenge →</button><div id="challengeProposal" style="margin-top:12px" aria-live="polite"></div></div><h2 style="margin-top:20px">Other coach proposals</h2><p class="muted small">Recovery- and performance-aware example rules. Each proposal is specific, explained and requires your approval before the local plan changes.</p><div id="coachProposal"></div><div id="proposalActions" class="actions"></div><div id="coachDecision" class="small muted"></div><h3 style="margin-top:20px">Active approved changes</h3><div id="activeChanges" class="small muted"></div><h3 style="margin-top:20px">Recent decisions</h3><div id="decisionHistory" class="small muted"></div></div><div class="card"><h3>Your training data · beta safeguard</h3><p class="muted small"><b>Training history survives app updates only when the new HTML is opened in the same browser and origin.</b> Some Android file viewers give each downloaded HTML file separate storage. Export JSON after each workout and before updating, then import that backup into the next version. Do not clear browser site data or delete your only backup. Imported backups restore sets, runs, check-ins, decisions and the approved programme.</p><div class="actions"><button class="secondary" onclick="exportLog()">Export JSON</button><label class="secondary" style="padding:11px 13px;border:1px solid var(--border);border-radius:11px;cursor:pointer">Import backup <input type="file" accept=".json,application/json" style="display:none" onchange="importBackup(event)"></label><button class="ghost" onclick="clearLog()">Clear data</button></div></div><div class="foot">v1.10.8 training beta · Rules-based coaching, no Garmin account sync or medical assessment.</div></div></details></section>
 <section class="screen" id="workout"><button class="secondary" onclick="backFromWorkout()" id="workoutBack">← Back</button><div class="card hero" style="margin-top:13px"><span class="tag" id="workoutDay"></span><h2 id="workoutTitle" style="margin-top:7px"></h2><p id="workoutDesc"></p><div class="progress"><div id="bar"></div></div><div id="counter" class="small muted"></div></div><div id="exercises"></div><div class="card"><h3>Session notes</h3><textarea id="notes" rows="3" placeholder="How did it feel?"></textarea><div class="actions"><button onclick="finish()">Finish & save session</button></div><div id="finishMsg" class="muted small"></div><div id="sessionFeedback" class="card" style="display:none;margin-top:12px"><h3>Quick session feedback <span class="muted small">· optional</span></h3><p class="muted small">How did the session compare with expectations?</p><div class="field"><label for="feedbackDifficulty">Overall difficulty</label><select id="feedbackDifficulty"><option value="">Choose…</option><option value="easier">Easier than expected</option><option value="expected">As expected</option><option value="harder">Harder than expected</option></select></div><div class="field"><label for="feedbackEnergy">Energy during training</label><select id="feedbackEnergy"><option value="">Choose…</option><option value="good">Good</option><option value="okay">Okay</option><option value="low">Low</option></select></div><div class="field"><label for="feedbackDiscomfort">Unusual discomfort?</label><select id="feedbackDiscomfort"><option value="">Choose…</option><option value="no">No</option><option value="yes">Yes</option></select></div><div class="actions"><button onclick="saveSessionFeedback()">Save feedback</button><button class="secondary" onclick="skipSessionFeedback()">Skip</button></div><p class="muted small" id="feedbackStatus"></p></div><div id="postWorkoutCoach"></div></div></section>
-<section class="screen" id="train"><details id="preWorkoutReadiness" class="card" style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:750">Pre-workout readiness & challenge</summary><div style="margin-top:12px"><h2 style="margin-top:22px">Recovery check-in</h2><div class="card"><div class="grid">
-<div class="field"><label>Sleep</label><select id="sleep"><option value="1">Poor</option><option value="2">Below average</option><option value="3" selected>Okay</option><option value="4">Good</option><option value="5">Excellent</option></select></div>
-<div class="field"><label>Energy</label><select id="energy"><option value="1">Very low</option><option value="2">Low</option><option value="3" selected>Moderate</option><option value="4">Good</option><option value="5">Excellent</option></select></div>
-<div class="field"><label>Leg soreness</label><select id="soreness"><option value="1">None</option><option value="2">Mild</option><option value="3" selected>Moderate</option><option value="4">High</option><option value="5">Severe</option></select></div>
-<div class="field"><label>Stress</label><select id="stress"><option value="1">Low</option><option value="2">Manageable</option><option value="3" selected>Moderate</option><option value="4">High</option><option value="5">Very high</option></select></div></div>
-<div class="field" style="margin-top:10px"><label>Any pain, illness or unusual symptoms?</label><input id="symptoms" placeholder="Optional notes"></div>
-<div class="actions"><button onclick="saveCheckin()">Review readiness</button></div><div id="readiness" style="margin-top:12px" aria-live="polite"></div><div id="readinessProposal" style="margin-top:12px" aria-live="polite"></div></div>
-<div class="card" id="challengeCard"><span class="tag">YOU SET THE AMBITION</span><h2 style="margin-top:8px">Want to push harder?</h2><p class="muted small">Ask the coach for a measured challenge. You'll see the exact change before deciding.</p><button onclick="requestChallenge()">Request a Challenge →</button><div id="challengeProposal" style="margin-top:12px" aria-live="polite"></div></div>
-</div></details><div id="liveTrainRoot"></div><div class="card" id="v2TrialEntry" hidden style="display:none"><div class="tag">COACHING V2 · ISOLATED TRIAL</div><h2>Try the new coaching engine</h2><p class="muted">Generate a v2 prescription and log genuine sets in the trial workflow. This is not yet connected to your current live Train programme. Your existing workouts and onboarding remain unchanged.</p><a href="./coaching-preview.html" style="display:inline-block;padding:12px 16px;border:1px solid var(--accent);border-radius:10px;color:var(--accent);font-weight:700">Open v2 training trial →</a></div></section>
+<section class="screen" id="train"><div id="readinessProposal" hidden></div><div id="liveTrainRoot"></div><div class="card" id="v2TrialEntry" hidden style="display:none"><div class="tag">COACHING V2 · ISOLATED TRIAL</div><h2>Try the new coaching engine</h2><p class="muted">Generate a v2 prescription and log genuine sets in the trial workflow. This is not yet connected to your current live Train programme. Your existing workouts and onboarding remain unchanged.</p><a href="./coaching-preview.html" style="display:inline-block;padding:12px 16px;border:1px solid var(--accent);border-radius:10px;color:var(--accent);font-weight:700">Open v2 training trial →</a></div></section>
 <section class="screen" id="settings"><div class="card"><h2>Your training data</h2><button id="exportTrainingData" type="button">Export training data JSON</button><p class="muted small">Downloads your programme, history and Garmin records without connection credentials.</p></div><div class="card" id="programmeReplacement"></div><div class="card" id="garminIncoming"><h2>Import runs from Garmin</h2><p class="muted small">Bring in recorded runs and heart rate through your private Garmin connection. Review new runs, match them to a planned session, or keep them as extra runs. Runs completed up to seven days early or late can be linked without changing their actual date.</p><button type="button" id="garminImportOpen">Import recent Garmin runs</button><p class="muted small" id="garminIncomingStatus" role="status" aria-live="polite"></p><div id="garminIncomingList"></div><button type="button" id="garminIncomingSave" hidden>Save reviewed runs</button></div><div class="card"><div class="tag">PREFERENCES</div><h2>Settings</h2><p class="muted small">Manage your account and programme setup. Your saved workouts remain on this device.</p><div id="settingsContent"></div><button type="button" class="secondary" style="margin-bottom:12px" onclick="openRunningTools()">Garmin &amp; Intervals.icu</button><button type="button" class="secondary" onclick="go('plan');document.getElementById('planAdvanced').open=true;document.getElementById('planAdvanced').scrollIntoView({behavior:'smooth'})">Edit programme & goals</button></div></section>
 </main>
+<dialog id="readinessModal" class="training-sheet" aria-labelledby="readinessTitle">
+<form id="preWorkoutReadiness">
+<h2 id="readinessTitle">Pre-workout readiness</h2>
+<p class="muted">A quick check before your first workout today.</p>
+<div class="grid">
+<div class="field"><label for="sleep">Sleep</label><select id="sleep"><option value="1">Poor</option><option value="2">Below average</option><option value="3" selected>Okay</option><option value="4">Good</option><option value="5">Excellent</option></select></div>
+<div class="field"><label for="energy">Energy</label><select id="energy"><option value="1">Very low</option><option value="2">Low</option><option value="3" selected>Moderate</option><option value="4">Good</option><option value="5">Excellent</option></select></div>
+<div class="field"><label for="soreness">Leg soreness</label><select id="soreness"><option value="1">None</option><option value="2">Mild</option><option value="3" selected>Moderate</option><option value="4">High</option><option value="5">Severe</option></select></div>
+<div class="field"><label for="stress">Stress</label><select id="stress"><option value="1">Low</option><option value="2">Manageable</option><option value="3" selected>Moderate</option><option value="4">High</option><option value="5">Very high</option></select></div></div>
+<div class="field" style="margin-top:10px"><label for="symptoms">Any pain, illness or unusual symptoms?</label><input id="symptoms" placeholder="Optional notes"></div>
+<div id="readinessSafety" aria-live="polite"></div>
+<div class="actions"><button type="button" class="secondary" id="readinessBack">Back</button><button id="readinessContinue">Continue</button></div>
+</form>
+</dialog>
 <nav class="nav"><button data-screen="today" class="active" onclick="go('today')"><b>⌂</b>Today</button><button data-screen="train" onclick="go('train')"><b>↗</b>Train</button><button data-screen="plan" onclick="go('plan')"><b>▦</b>Plan</button><button data-screen="progress" onclick="go('progress')"><b>◷</b>Progress</button><button data-screen="settings" onclick="go('settings')"><b>⚙</b>Settings</button></nav>
 <script>
 // Every programme, review, load calculation and preference below delegates to the shared engine.
@@ -486,9 +492,7 @@ function saveSessionFeedback(){
  $('sessionFeedback').querySelectorAll('select,button').forEach(el=>el.disabled=true);
  refresh();
 }
-function saveCheckin(){const x={date:new Date().toISOString(),sleep:+$('sleep').value,energy:+$('energy').value,soreness:+$('soreness').value,stress:+$('stress').value,symptoms:$('symptoms').value};data.checkins.push(x);save();const score=(x.sleep+x.energy+(6-x.soreness)+(6-x.stress))/4;const msg=x.symptoms.trim()?'You reported symptoms. Consider modifying or skipping training; do not push through pain or illness.':score<2.8?'Readiness is low today. One difficult day is not automatically a reason to reduce training; pay attention to warm-ups and recent trends.':score<3.8?'Mixed readiness: you can still train hard if warm-ups feel good. Watch for a developing pattern.':'Readiness looks good: progress confidently while keeping technique and actual RPE in view.';$('readiness').innerHTML='<div class="coach">'+msg+'</div>';refresh();showReadinessProposal()}
 function previewChange(p){if(!p)return null;if(p.kind==='strength'){const s=effectiveSession(p.session),ex=s?.ex?.find(e=>e[0]===p.exercise);if(!ex)return null;const oldSets=ex[1],oldWeight=ex[3],newSets=Math.max(1,oldSets+(p.setDelta||0)),newWeight=Math.max(0,Math.round(oldWeight*(p.loadFactor||1)*2)/2);return {session:s.day+' · '+s.name,exercise:p.exercise,before:oldSets+' × '+ex[2]+' @ '+oldWeight+' kg',after:newSets+' × '+ex[2]+' @ '+newWeight+' kg'}}return null}
-function showReadinessProposal(){const box=$('readinessProposal');if(!box)return;const p=coachCandidate();proposal=p;const reviewed=p&&(data.decisions||[]).some(x=>x.key===p.key);if(!p||reviewed){box.innerHTML='<div class="coach">'+(reviewed?'Your latest suggestion has already been reviewed. Your choice is saved.':'No reduction suggested from this check-in. Your current plan stays in place. Previous accepted changes remain until you choose to revise them.')+'</div>';return}const preview=previewChange(p);box.innerHTML='';const panel=document.createElement('div');panel.className='card';const heading=document.createElement('h3');heading.textContent='Suggested change — review here';panel.appendChild(heading);const reason=document.createElement('p');reason.className='small muted';reason.textContent=p.reason;panel.appendChild(reason);if(preview){const before=document.createElement('div');before.className='entry';before.textContent=preview.session+' · '+preview.exercise+' | Current: '+preview.before;panel.appendChild(before);const after=document.createElement('div');after.className='entry';after.textContent='Proposed: '+preview.after;panel.appendChild(after)}else{const desc=document.createElement('p');desc.textContent=p.details;panel.appendChild(desc)}const actions=document.createElement('div');actions.className='actions';const accept=document.createElement('button');accept.textContent='Accept & apply now';accept.onclick=()=>decideInline(true,p);const keep=document.createElement('button');keep.className='secondary';keep.textContent='Keep original plan';keep.onclick=()=>decideInline(false,p);actions.append(accept,keep);panel.appendChild(actions);box.appendChild(panel)}
 function decideInline(yes,p){if(!p)return;proposal=p;decide(yes);const box=$('readinessProposal');box.innerHTML='';const msg=document.createElement('div');msg.className='coach';msg.textContent=yes?'Change applied to your plan. The updated workout is shown below.':'Original plan kept. No workout changes were made.';box.appendChild(msg);if(yes&&p.kind==='strength'){const s=effectiveSession(p.session),ex=s.ex.find(e=>e[0]===p.exercise);const summary=document.createElement('div');summary.className='card';const title=document.createElement('h3');title.textContent=s.day+' · '+s.name;const detail=document.createElement('p');detail.textContent=ex[0]+': '+ex[1]+' × '+ex[2]+' @ '+ex[3]+' kg · target RPE '+ex[4];const open=document.createElement('button');open.textContent='Open updated workout →';open.onclick=()=>openWorkout(p.session);summary.append(title,detail,open);box.appendChild(summary)}populate();refresh()}
 function requestChallenge(){if(data.activeSchedule?.length){const box=$('challengeProposal');if(box)box.innerHTML='<div class="coach">Custom programme challenge recommendations are not yet supported. You can review and activate a harder week in Plan; automatic load changes need more personalised performance data.</div>';return}
  const box=$('challengeProposal');if(!box)return;
@@ -1038,7 +1042,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   });
   if(changed)persist();
  }
- function status(){const readiness=document.getElementById('preWorkoutReadiness');if(readiness&&!document.getElementById('readinessModal')){readiness.hidden=true;readiness.open=false}reconcileLiveWeights();const el=document.getElementById('liveTrainRoot');if(!el)return;
+ function status(){reconcileLiveWeights();const el=document.getElementById('liveTrainRoot');if(!el)return;
   if(!live){window.LHRFTrainingMode?.sync();el.innerHTML='<div class="card live-empty"><h2>No workout in progress</h2><p class="muted">Choose a training day from Today, then start the session when you’re ready.</p><a href="#today" onclick="event.preventDefault();go(&quot;today&quot;)">Back to Today</a></div>';return}
   const n=total(),done=count(),pct=n?Math.round(100*done/n):live.runLogged?100:0;
   const hasRun=Array.isArray(live.runs)&&live.runs.length>0;const strengthReady=n===0||done===n;const runReady=!!live.runLogged;
@@ -1105,20 +1109,27 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  }
  function updateHeader(){const n=total(),done=count();const t=document.querySelector('#train .live-status');if(t)t.textContent=done+' of '+n+' sets completed';window.LHRFTrainingMode?.refresh()}
  function dayKey(){return new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'})}
- function launchSession(session,change){
-  const current=session.timeAdaptation?session:(effectiveSession(session.id)||session);
-  if(!equipmentStartAllowed(current))return;
+ function liveStartAllowed(session){
+  if(lhrfExternalStorageChanged){alert('Training data changed in another tab. Reload before starting.');return false}
+  if(live||localStorage.getItem(KEY)){alert('Finish or discard your active workout first. Your sets are safely kept.');return false}
+  return equipmentStartAllowed(session);
+ }
+ function launchSession(current,change){
+  if(!liveStartAllowed(current))return;
   live={id:current.id,parentId:current.parentId||null,component:current.component||(current.ex?.length?'strength':'run'),day:current.day,name:current.name,ex:JSON.parse(JSON.stringify(current.ex||[])),runs:JSON.parse(JSON.stringify(current.runs||[])),run:!!current.run,runLogged:false,runEntry:null,entries:{},notes:'',sourceProgrammeWeek:current.sourceProgrammeWeek||Number(data.activeCustomWeek)||1,started:new Date().toISOString(),...(current.timeAdaptation?{timeAdaptation:JSON.parse(JSON.stringify(current.timeAdaptation))}:{} )};
   if(change){if(change.kind==='accessory'){const e=live.ex[change.index];if(e&&e[1]>1){e[1]--;live.lastCoachNote='Readiness adjustment accepted: '+e[0]+' reduced by one set for this workout.'}}else if(change.kind==='run'){live.runs=change.runs;live.lastCoachNote='Readiness adjustment accepted: recovery run replaces today’s harder run.'}}
   if(current.component==='run'){try{const draft=JSON.parse(localStorage.getItem(KEY+'_pendingRun')||'null');if(draft&&draft.parentId===current.parentId&&draft.week===(Number(data.activeCustomWeek)||1)){live.runLogged=draft.runLogged;live.runEntry=draft.runEntry}}catch(e){}}
-  expanded=0;persist();go('train');status();
+  if(!persist()){live=null;alert('Could not save the workout. Check device storage and try again.');return}
+  expanded=0;go('train');status();
  }
  function chooseWorkoutPart(session){
   const overlay=document.createElement('div');overlay.id='livePreview';overlay.className='card';overlay.style.cssText='position:fixed;z-index:40;left:12px;right:12px;bottom:100px;max-width:540px;margin:auto;box-shadow:0 0 0 200vmax #000b';overlay.innerHTML='<h2>Choose your workout</h2><p class="muted small">Choose strength or running.</p>';
   const estimate=LHRFCoachConstraints.estimateSession(session),timing=document.createElement('p');timing.className='muted small';timing.textContent=estimate.baselineRangeMinutes?'Estimated total: '+estimate.baselineRangeMinutes.min+'–'+estimate.baselineRangeMinutes.max+' min':'Full mixed-visit duration needs a representative running prescription.';overlay.appendChild(timing);
   workoutParts(session).forEach(part=>{const b=document.createElement('button');b.style.cssText='display:block;width:100%;margin-top:12px';b.textContent=(sessionCompleted(part)?'✓ Completed · ':'')+part.name;b.onclick=()=>{overlay.remove();session.timeAdaptation?previewSession(part.id,{session:part,date:scheduledDate(part),week:Number(data.activeCustomWeek)||1,timeAdjusted:true}):previewSession(part.id)};overlay.appendChild(b)});const close=document.createElement('button');close.className='secondary';close.textContent='Close';close.onclick=()=>overlay.remove();overlay.appendChild(close);document.body.appendChild(overlay);LHRFMobileUX.modal(overlay);
  }
- function beginReadiness(session){
+ function beginReadiness(session,reopen){
+  const current=session.timeAdaptation?session:(effectiveSession(session.id)||session);
+  if(!liveStartAllowed(current))return;
   if(data.reviewedProgramme&&session.eventDate&&session.eventType==='running'){
    if(session.eventDate!==dayKey()){alert('This reviewed race is scheduled for '+session.eventDate+'. Do not start it on a different date without a coaching review.');return}
    if(session.recoveryReviewRequired&&!data.eventRecoveryDecisions?.some(d=>d.sessionId===session.id&&d.date===dayKey()&&d.approved)){
@@ -1127,29 +1138,59 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    }
   }
 
-  if(data.readinessDay===dayKey()){launchSession(session);return}
-  const form=document.getElementById('preWorkoutReadiness'),home=form.parentNode;
-  const modal=document.createElement('div');modal.id='readinessModal';modal.style.cssText='position:fixed;inset:0;z-index:9999;background:#000c;padding:20px;overflow:auto;display:grid;place-items:center';
-  const panel=document.createElement('div');panel.style.cssText='width:min(100%,540px);max-height:90vh;overflow:auto;background:var(--card);border-radius:18px;padding:16px';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label','Pre-workout readiness');modal.appendChild(panel);document.body.appendChild(modal);panel.appendChild(form);form.hidden=false;form.open=true;
-  const actions=document.createElement('div');actions.className='actions';actions.innerHTML='<button id="readinessContinue">Start workout</button><button class="secondary" id="readinessBack">Back</button>';panel.appendChild(actions);
-  let accepted=null,reviewed=false;
-  const finish=()=>{home.insertBefore(form,home.firstChild);form.hidden=true;form.open=false;modal.remove()};
-  const review=form.querySelector('button[onclick="saveCheckin()"]');
-  const previousReview=review.onclick;review.onclick=()=>{
-   saveCheckin();reviewed=true;accepted=null;
-   const check=data.checkins.at(-1),score=(check.sleep+check.energy+6-check.soreness+6-check.stress)/4,box=document.getElementById('readinessProposal');
-   const current=effectiveSession(session.id)||session;let change=null;
+  const localDay=date=>date.toLocaleDateString('en-CA');
+  const today=localDay(new Date());
+  const datedCheckins=(data.checkins||[]).filter(check=>Number.isFinite(Date.parse(check.date)));
+  const readinessRecorded=datedCheckins.some(check=>localDay(new Date(check.date))===today);
+  // Older backups can contain a London day marker without its corresponding response.
+  const legacyMarker=data.readinessDay===today&&today===dayKey()&&!datedCheckins.some(check=>
+   new Date(check.date).toLocaleDateString('en-CA',{timeZone:'Europe/London'})===today);
+  if(readinessRecorded||legacyMarker){launchSession(current);return}
+  const modal=$('readinessModal'),form=$('preWorkoutReadiness'),box=$('readinessSafety');
+  const back=$('readinessBack'),next=$('readinessContinue'),fields=[...form.querySelectorAll('select,input')];
+  form.reset();fields.forEach(field=>field.disabled=false);box.replaceChildren();next.hidden=false;
+  let safetyReviewed=false;
+  const read=()=>({date:new Date().toISOString(),sleep:+$('sleep').value,energy:+$('energy').value,soreness:+$('soreness').value,stress:+$('stress').value,symptoms:$('symptoms').value});
+  const cancel=()=>{modal.close();reopen()};
+  back.onclick=cancel;
+  modal.oncancel=event=>{event.preventDefault();cancel()};
+  function continueToWorkout(change){
+   if(!liveStartAllowed(current))return;
+   const check=read(),candidate={...data,checkins:[...(data.checkins||[]),check],readinessDay:localDay(new Date(check.date))};
+   if(!save(candidate))return;
+   data=candidate;
+   modal.close();
+   launchSession(current,change);
+  }
+  form.onsubmit=event=>{
+   event.preventDefault();
+   if(safetyReviewed){if(!next.hidden)continueToWorkout(null);return}
+   const check=read(),score=(check.sleep+check.energy+6-check.soreness+6-check.stress)/4;
+   let change=null;
    if(score<2.8&&!check.symptoms.trim()){
     const index=(current.ex||[]).findLastIndex(e=>e[1]>1&&!redundantOptionalExercise(e,current.ex)&&!['top','backoff'].includes(e[5]?.role)&&!/squat|bench|deadlift/i.test(e[0]));
     if(index>=0)change={kind:'accessory',index,label:current.ex[index][0]+': '+current.ex[index][1]+' → '+(current.ex[index][1]-1)+' sets. Main lifts unchanged.'};
     else if(current.runs?.some(r=>/quality|threshold|interval/i.test(r.role+' '+r.name))){const runs=JSON.parse(JSON.stringify(current.runs));let valid=true;runs.forEach(r=>{const easy=(r.steps||[]).find(x=>/warm|cool|easy/i.test(x.label||'')&&/\d:\d{2}/.test(x.pace||''));if(!easy){valid=false;return}r.name='Easy recovery run';r.role='easy-run';r.distanceKm=Math.min(3,Number(r.distanceKm)||3);r.pace=easy.pace;r.steps=[{label:'Easy recovery run',distanceKm:r.distanceKm,pace:easy.pace,detail:'Comfortable conversational pace'}];r.structure=r.distanceKm+' km easy';r.coachNote='Readiness adjustment accepted for this workout only.';delete r.durationRangeMinutes;r.minutes=null});if(valid)change={kind:'run',runs,label:'Replace this harder run with up to 3 km easy at your prescribed easy pace.'}}
    }
-   box.innerHTML='';const text=document.createElement('p');text.className='coach';text.textContent=change?'Suggested adjustment: '+change.label:check.symptoms.trim()?'Symptoms reported: review whether to train. No automatic adjustment or challenge applied.':'No adjustment suggested for this workout. Your prescribed work stays unchanged.';box.appendChild(text);
-   if(change){const apply=document.createElement('button');apply.textContent='Accept adjustment';apply.onclick=()=>{accepted=change;apply.textContent='✓ Adjustment accepted';apply.disabled=true};const keep=document.createElement('button');keep.className='secondary';keep.textContent='Keep prescribed workout';keep.onclick=()=>{accepted=null;apply.disabled=false;apply.textContent='Accept adjustment';keep.textContent='✓ Prescribed workout kept'};box.append(apply,keep)}
+   if(score>=2.8&&!check.symptoms.trim()){continueToWorkout(null);return}
+   safetyReviewed=true;
+   fields.forEach(field=>field.disabled=true);
+   const notice=document.createElement('p');notice.className='warn';
+   notice.textContent=check.symptoms.trim()
+    ? 'You reported symptoms. Consider modifying or skipping training. Do not push through pain or illness.'
+    : 'Readiness is low today. Pay attention to warm-ups and recent trends.'+(change?' '+change.label:'');
+   box.append(notice);
+   if(change){
+    const apply=document.createElement('button');apply.type='button';apply.textContent='Accept adjustment';
+    const keep=document.createElement('button');keep.type='button';keep.className='secondary';keep.textContent='Keep prescribed workout';
+    apply.onclick=()=>continueToWorkout(change);keep.onclick=()=>continueToWorkout(null);
+    const actions=document.createElement('div');actions.className='actions';actions.append(apply,keep);box.append(actions);next.hidden=true;
+   }
+   notice.tabIndex=-1;notice.focus();
   };
-  document.getElementById('readinessContinue').onclick=()=>{if(!reviewed){review.click();return}data.readinessDay=dayKey();save();review.onclick=previousReview;finish();launchSession(session,accepted)};
-  document.getElementById('readinessBack').onclick=()=>{review.onclick=previousReview;finish()};
+  modal.showModal();
  }
+
  function previewSession(id,planned){const raw=planned?.session||effectiveSession(id);let session=raw&&data.customRoadmap?ensureKnownLiftLoads([raw],data.customRoadmap)[0]:raw;if(!session){alert('Select an active workout from Today.');return}
   if(!planned&&workoutParts(session).length>1){chooseWorkoutPart(session);return}
   preview=session;if(session.runs?.length){selectedCanonicalRunId=(session.parentId||session.id)+':0';buildRunPlan()}
@@ -1185,14 +1226,14 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   }
   const startButton=dialog.querySelector('#previewStart');
   if((planned&&!planned.timeAdjusted)||sessionCompleted(session)||(!(session.ex||[]).length&&!(session.runs||[]).length))startButton.remove();
-  else if(live&&live.id===id)startButton.textContent='Start workout';
+  else if(live&&live.id===id)startButton.textContent='Resume workout';
   dialog.querySelector('#previewClose').onclick=()=>dialog.remove();
   if(startButton.isConnected)startButton.onclick=()=>{
    const parts=workoutParts(session);
    if(parts.length>1){dialog.remove();chooseWorkoutPart(session);return}
    if(live&&live.id===id){dialog.remove();go('train');return}
    if(live){alert('Finish or discard your active workout first. Your sets are safely kept.');return}
-   dialog.remove();beginReadiness(session);
+   dialog.remove();beginReadiness(session,()=>previewSession(id,planned));
   };
  }
  function openV2LiveHandoff(){
@@ -1944,7 +1985,14 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  };
 })();
 </script>
-<script src="./src/workout-tools.js"></script><script src="./src/garmin-import.js"></script><script>window.LHRFOpenGarminReview=LHRFGarminImport.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/local-activity-import.js"></script><script src="./src/local-activity-import-ui.js"></script><script>LHRFLocalActivityImportUI.mount({getData:()=>data,persist:next=>save(next),apply:next=>{data=next;refresh()},getLive:()=>window.LHRFLive?.get?.()||localStorage.getItem('lhrf_fresh_beta_live_v1114_pendingRun')});</script><script src="./src/training-review.js"></script><script>LHRFTrainingReview.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/programme-replacement-ui.js"></script><script>
+<script src="./src/workout-tools.js"></script><script src="./src/garmin-import.js"></script><script>window.LHRFOpenGarminReview=LHRFGarminImport.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/local-activity-import.js"></script><script src="./src/local-activity-import-ui.js"></script><script>LHRFLocalActivityImportUI.mount({getData:()=>data,persist:next=>save(next),apply:next=>{data=next;refresh()},getLive:()=>window.LHRFLive?.get?.()||localStorage.getItem('lhrf_fresh_beta_live_v1114_pendingRun')});</script><script src="./src/training-review.js"></script><script>LHRFTrainingReview.mount({getData:()=>data,parts:workoutParts,getSessions:week=>{
+ if(week===Number(data.activeCustomWeek||1))return data.activeSchedule;
+ const horizon=Number(data.customRoadmap?.weeks);
+ if(!Number.isInteger(horizon)||horizon<1)return null;
+ if(week>horizon)return [];
+ if(data.reviewedProgramme)return data.reviewedProgramme.weeks?.find(w=>w.week===week)?.sessions;
+ try{return generatedSessions(data.customRoadmap,week)}catch{return null}
+},commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/programme-replacement-ui.js"></script><script>
 (function(){
  const apply=next=>{data=next;schedule=next.activeSchedule;populate();refresh();planDashSelection=next.activeCustomWeek;renderPlanDashboard();window.LHRFLive?.render?.()};
  window.LHRFSelectReviewedWeek=w=>{if(!data.reviewedProgramme||w<1||w>data.customRoadmap.weeks)return;if(window.LHRFLive?.get?.()||localStorage.getItem('lhrf_fresh_beta_live_v1114_pendingRun')){alert('Finish the active workout first.');return}if(!confirm('Show reviewed week '+w+'? Frozen prescriptions and all training records are retained.'))return;const next=JSON.parse(JSON.stringify(data));next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);const previous=data;data=next;if(!save()){data=previous;return}apply(next)};

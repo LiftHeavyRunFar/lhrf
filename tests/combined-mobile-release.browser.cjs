@@ -149,6 +149,7 @@ const live = {id: strengthId, parentId: strength.id, component: 'strength', name
     await recovery.reload();
     await recovery.locator('nav [data-screen=today]').click();
     assert.equal(await recovery.locator('#today .weekly-prompt').isVisible(), false);
+    await recovery.locator('nav [data-screen=progress]').click();
     await recovery.locator('#weeklyRecovery>summary').click();
     const questions = recovery.locator('#weeklyCheckin>label select');
     for (const [i, value] of ['high', 'moderate', 'no'].entries()) await questions.nth(i).selectOption(value);
@@ -161,6 +162,7 @@ const live = {id: strengthId, parentId: strength.id, component: 'strength', name
     assert.equal(after.weeklyCheckins.at(-1).programmeWeekKey.endsWith('|2'), true);
     assert.equal(await recovery.locator('#today .weekly-prompt').isVisible(), false);
     assert.equal(await recovery.evaluate(() => LHRFTrainingReview.assess(data).proposals.length > 0), true);
+    await recovery.locator('#weeklyReviewSheet').getByRole('button',{name:'Done',exact:true}).click();
     // Regression for the integration overlap: a coaching action must not be intercepted as recovery navigation.
     await recovery.evaluate(() => {
       go('progress');

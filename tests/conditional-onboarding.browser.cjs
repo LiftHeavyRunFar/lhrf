@@ -13,7 +13,7 @@ const {reopenForWaitingUpdate} = require('./workout-update-helpers.cjs');
 
 const root = path.join(__dirname, '..');
 const previous = process.env.LHRF_ONBOARDING_BASE;
-if (!previous) throw new Error('Set LHRF_ONBOARDING_BASE to the archived v1.36.1 release.');
+if (!previous) throw new Error('Set LHRF_ONBOARDING_BASE to the archived v1.36.2 release.');
 const key = replacement.DATA_KEY;
 const pixel = {width: 393, height: 852};
 const desktop = {width: 1366, height: 900};
@@ -269,7 +269,7 @@ async function exportBackup(page) {
       const original = trainingState();
       original.readinessDay = '2026-11-09';
       const packet = await replacement.createPackage(eventProgramme({equipmentInventory:original.equipmentInventory}),
-        original, {reviewedCommit:'a5b9252', approvalContext:['Synthetic upgrade fixture']});
+        original, {reviewedCommit:'eeb5ded', approvalContext:['Synthetic upgrade fixture']});
       const approved = replacement.createReplacement(original, packet, coach, {now:date}).next;
       servePrevious = true;
       const context = await browser.newContext({viewport:pixel, isMobile:true, hasTouch:true,
@@ -283,7 +283,7 @@ async function exportBackup(page) {
       await page.goto(origin);
       await page.evaluate(() => navigator.serviceWorker.ready);
       await page.waitForFunction(() => !!navigator.serviceWorker.controller);
-      assert.ok((await page.evaluate(() => caches.keys())).includes('lhrf-shell-v1.36.1-workout-focus'));
+      assert.ok((await page.evaluate(() => caches.keys())).includes('lhrf-shell-v1.36.2-weekly-review'));
       const before = await state(page);
       assert.equal(await loc(page, 'firstRun').isVisible(), false);
       servePrevious = false;

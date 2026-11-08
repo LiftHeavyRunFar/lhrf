@@ -85,10 +85,10 @@ function mount({getData,commit,parts}){
  // Its event handlers and explicit selections must survive the layout change.
  const equipmentPanel=nodes.equipmentPanel||root.LHRFEquipmentPanel;if(equipmentPanel){equipment.append(equipmentPanel);equipmentPanel.open=true;equipmentPanel.querySelector('summary').textContent='Specialist equipment'}else make('p','Reopen online to finish updating equipment controls.',equipment)
  // Keep the original weekly questions and commit path; give them a discoverable home.
- const checkin=$('weeklyCheckin'),checkDetails=make('details',null,$('today'));checkDetails.id='weeklyRecovery';checkDetails.className='card';make('summary','Weekly check-in & recovery',checkDetails);checkDetails.append(checkin);
+ const checkin=$('weeklyCheckin'),checkDetails=make('details');$('progress').insertBefore(checkDetails,$('trainingHistory'));checkDetails.id='weeklyRecovery';checkDetails.className='card';make('summary','Weekly check-in & recovery',checkDetails);checkDetails.append(checkin);
  const history=make('details',null,checkin);make('summary','Previous check-ins',history);
- const reopen=key=>{root.LHRFWeeklyReviewKey=typeof key==='string'?key:weekKey(getData());root.go('today');checkDetails.open=true;checkDetails.scrollIntoView({block:'start'});checkDetails.querySelector('select')?.focus({preventScroll:true})};
- root.LHRFMobileUX.openRecovery=reopen;checkDetails.querySelector('summary').addEventListener('click',()=>{root.LHRFWeeklyReviewKey=weekKey(getData())});
+ const reopen=key=>{root.LHRFWeeklyReviewKey=typeof key==='string'?key:weekKey(getData());root.go('progress');root.LHRFRefreshWeeklyCheckin();checkDetails.open=true;checkDetails.scrollIntoView({block:'start'});checkDetails.querySelector('select')?.focus({preventScroll:true})};
+ root.LHRFMobileUX.openRecovery=reopen;checkDetails.querySelector('summary').addEventListener('click',()=>{if(!checkDetails.open){root.LHRFWeeklyReviewKey=weekKey(getData());root.LHRFRefreshWeeklyCheckin()}});
  const banners=[$('today'),$('train')].map(host=>{const box=make('aside',null,host);box.className='card weekly-prompt';box.setAttribute('aria-live','polite');return box});
  function render(){const state=getData(),current=Number(state.activeCustomWeek||1),weeks=[...new Set([current,...(state.completedWorkouts||[]).map(w=>Number(w.week||1)).filter(w=>w<current)])].sort((a,b)=>b-a);let reviewState=state;
   for(const week of weeks){let sessions=week===current?state.activeSchedule:state.reviewedProgramme?.weeks?.find(w=>w.week===week)?.sessions;if(!sessions&&root.generatedSessions)try{sessions=root.generatedSessions(state.customRoadmap,week)}catch{}const candidate={...state,activeCustomWeek:week,activeSchedule:sessions||[]},k=weekKey(candidate);if(weekComplete(candidate,parts)&&!(state.weeklyCheckins||[]).some(x=>x.programmeWeekKey===k)&&!state.uxWeeklyPrompts?.[k]){reviewState=candidate;break}}
@@ -97,7 +97,7 @@ function mount({getData,commit,parts}){
   history.querySelectorAll('p,button').forEach(e=>e.remove());for(const [k,value]of Object.entries(state.uxWeeklyPrompts||{})){if(value==='deferred'&&!(state.weeklyCheckins||[]).some(x=>x.programmeWeekKey===k)){const b=make('button','Complete deferred week '+k.split('|').at(-1),history);b.className='secondary';b.onclick=()=>reopen(k)}}for(const row of [...(state.weeklyCheckins||[])].reverse()){make('p',new Date(row.date).toLocaleDateString('en-GB')+' · fatigue '+row.fatigue+' · soreness '+row.soreness+' · discomfort '+row.discomfort+(row.notes?' · '+row.notes:''),history)}
  }
  const refresh=root.refresh;root.refresh=function(){refresh();render()};render();
- const oldGo=root.go;root.go=function(id){oldGo(id);if(id==='today'||id==='train')render()};
+ const oldGo=root.go;root.go=function(id){oldGo(id);if(id==='today'||id==='train'||id==='progress')render()};
  carousel($('upcomingSessions'),$('upcomingDots'));
  const restored=root.LHRFLive?.get?.();if(restored)reference($('liveTrainRoot'),restored,getData());
 
