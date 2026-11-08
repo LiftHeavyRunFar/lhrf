@@ -134,6 +134,30 @@ function calibrateProposalStrength(c,options){
  }
  if(Object.keys(byLift).length)c.strengthCalibration={version:1,asOf:new Date(now).toISOString(),lookbackDays:42,lifts:{...(c.strengthCalibration?.lifts||{}),...byLift},requiresAthleteApproval:true};
 }
+// Reconcile old, untyped athlete sets with their own completed native sessions.
+// This derives a provisional catalogue identity only when date, saved session,
+// lift and role agree. Physical equipment/setup are NOT attested. The source
+// records are not edited; a new proposal receives a separate evidence snapshot.
+function scopedCompletedLegacyEvidence(c,options={}){
+ const data=options.data;
+ if(!Array.isArray(data?.sets)||!Array.isArray(data.completedWorkouts))return options;
+ const base=id=>String(id||'').replace(/::strength$/,'');
+ const done=data.completedWorkouts.filter(w=>w.completedSets>0&&Array.isArray(w.prescription?.ex)&&w.id&&w.date);
+ let converted=0;
+ const sets=data.sets.map(row=>{
+  if(!['Bench','Squat','Deadlift'].includes(row.exercise)||!row.sessionId||!row.date||
+    ['exerciseId','variantId','loadType','doseUnit'].some(k=>row[k]!=null))return row;
+  const own=done.find(w=>base(w.id)===base(row.sessionId)&&String(w.date).slice(0,10)===String(row.date).slice(0,10)&&
+    w.prescription.ex.some(ex=>ex[0]===row.exercise&&ex[5]?.role===row.role&&
+      (!c.equipmentInventory||ex[5]?.variantId)));
+  if(!own)return row;
+  const identity=exerciseRegistry.identity(row.exercise,c.equipmentInventory);
+  if(!identity)return row;
+  converted++;
+  return {...row,...identity,legacyCatalogEvidence:'native-completed-session; physical setup unconfirmed'};
+ });
+ return converted?{...options,data:{...data,sets}}:options;
+}
 function prepareNewProgramme(input={},options={}){
  for(const key of ['weeks','bench','squat','deadlift','runs'])if(input[key]!==undefined&&(!Number.isInteger(Number(input[key]))||Number(input[key])<(key==='weeks'?1:0)||Number(input[key])>(key==='weeks'?104:7)))throw new RangeError('Invalid '+key+' for a new programme.');
  for(const key of ['startDate','strengthTargetDate','runningTargetDate'])if(input[key]&&(!/^\d{4}-\d{2}-\d{2}$/.test(input[key])||!Number.isFinite(Date.parse(input[key]+'T12:00:00Z'))||new Date(input[key]+'T12:00:00Z').toISOString().slice(0,10)!==input[key]))throw new RangeError('Invalid '+key+'.');
@@ -165,7 +189,10 @@ function prepareNewProgramme(input={},options={}){
    c.strengthModes={...Object.fromEntries(['Squat','Bench','Deadlift'].filter(lift=>lift!==primary).map(lift=>[lift,'maintenance'])),...explicit};
    c.strengthModePolicy='Single-lift competition defaults other lifts to maintenance; explicit per-lift objectives override this default.';
   }
-  const strengthOptions=reviewedStrengthOptions(c,options);
+  const stored=c.strengthEvidenceReview;
+  const savedReviews=options.performanceReviews===undefined&&stored?.version===1&&stored.originalLogsUnchanged===true&&Array.isArray(stored.reviews)?stored.reviews:options.performanceReviews;
+  const reconciled=scopedCompletedLegacyEvidence(c,options);
+  const strengthOptions=reviewedStrengthOptions(c,savedReviews===undefined?reconciled:{...reconciled,performanceReviews:savedReviews});
   if(Number(c.coachingRuntimeVersion)>=1&&runningPreparation.prepareEvidence)c.runningDoseEvidence=runningPreparation.prepareEvidence(c,options);
   if(Number(c.coachingRuntimeVersion)>=1)c.coachingEvidence=coachingEvidence.capture(c,strengthOptions);
   calibrateProposalStrength(c,strengthOptions);
@@ -277,7 +304,19 @@ function runtimeStrengthLoads(sessions,c){
   const rows=(c.coachingEvidence?.strength?.[ex[0]]?.rows||[]).filter(row=>row.reliable&&row.reps<=8&&row.rpe>=6&&!['speed','recovery'].includes(row.purpose)&&!['backoff','back-off','accessory','optional'].includes(row.role)&&['exerciseId','variantId','loadType','doseUnit'].every(key=>row[key]===identity[key])&&(!meta.execution||row.execution===meta.execution));
   const samePurpose=rows.filter(row=>row.purpose===purpose),purposePool=samePurpose.length?samePurpose:rows,matchingReps=purposePool.filter(row=>row.reps===Number(ex[2])),bounded=meta.boundedPractice,exactBound=bounded&&['exerciseId','variantId','loadType','doseUnit'].every(key=>bounded[key]===identity[key]),source=exactBound?bounded:(matchingReps.length?matchingReps:purposePool).at(-1);
   const knownBounded=exactBound&&bounded.reps===Number(ex[2])&&bounded.rpe===Number(ex[4]);
-  if(knownBounded){ex[3]=bounded.kg;meta.runtimeLoadEvidence={kind:'bounded-completed-practice',...bounded};meta.rationale=(meta.rationale||'')+' Repeat at most the recorded familiar practice dose from '+bounded.date.slice(0,10)+', rather than increasing reps, effort and sets together. This is a conditional trial, not permission for higher intensity or weekly volume.';}
+  if(knownBounded){ex[3]=bounded.kg;meta.runtimeLoadEvidence={kind:'bounded-completed-practice',...bounded};
+   // A newer same-setup, same-load overshoot supersedes an older low-RPE
+   // observation. Bound the trial downward; the effort curve is uncertain.
+   const later=(c.coachingEvidence?.strength?.[ex[0]]?.rows||[]).filter(row=>row.reliable&&!row.unreliable&&row.date>bounded.date&&row.reps===Number(ex[2])&&row.kg===bounded.kg&&row.rpe>Number(ex[4])&&
+     ['exerciseId','variantId','loadType','doseUnit'].every(key=>row[key]===identity[key])).at(-1);
+   if(later){
+    const reduced=roundLoad(later.kg*effortFraction(Number(ex[2]),Number(ex[4]))/effortFraction(later.reps,later.rpe));
+    ex[3]=Math.min(ex[3],reduced);
+    // Keep the source evidence fields at the top level: equipmentFinish
+    // independently verifies them against the frozen packet.
+    meta.runtimeLoadEvidence={kind:'recent-higher-effort-bound',...later,earlierDate:bounded.date,uncertainEffortTransfer:true};
+    meta.rationale=(meta.rationale||'')+' More recent matched practice at the same load exceeded the effort ceiling, so the provisional load is bounded downward. It cannot guarantee a future RPE.';
+   }meta.rationale=(meta.rationale||'')+' Repeat at most the recorded familiar practice dose from '+bounded.date.slice(0,10)+', rather than increasing reps, effort and sets together. This is a conditional trial, not permission for higher intensity or weekly volume.';}
   else if(practice){ex[3]=roundLoad(practice.suggestedKg);meta.runtimeLoadEvidence={kind:'same-purpose-practice',...practice};meta.practiceEvidence={...practice,suggestionBasis:'familiar-completed-practice'};delete meta.calibrationReview;meta.rationale=(meta.rationale||'')+' '+practice.date.slice(0,10)+': '+practice.kg+' kg × '+practice.reps+' at reported RPE '+practice.rpe+' supports repeating familiar '+purpose+' practice. '+practice.reason+(practice.approximate?' The reviewed effort is approximate; original effort remains preserved.':'');}
   else if(source&&purpose!=='speed'){
    const calculated=roundLoad(source.kg*effortFraction(Number(ex[2]),Number(ex[4]))/effortFraction(source.reps,source.rpe));
