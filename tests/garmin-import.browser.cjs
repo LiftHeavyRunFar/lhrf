@@ -17,9 +17,10 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.locator('#previewSyncGarmin').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});assert.match(await page.locator('#garminIncomingList').innerText(),/Already imported/);await page.locator('#garminIncomingSave').click();assert.equal(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)).runs.length,KEY),1);await page.locator('#previewClose').click();await page.locator('nav [data-screen="progress"]').click();
  await page.locator('#trainingHistory details').filter({hasText:'6.00 km'}).first().locator(':scope > summary').click();
  assert.match(await page.locator('#trainingHistory').innerText(),/average HR 150 bpm/);
- await page.locator('nav [data-screen="today"]').click();await page.locator('#weeklyRecovery>summary').click();await page.locator('#weeklyCheckin select').nth(0).selectOption('low');await page.locator('#weeklyCheckin select').nth(1).selectOption('low');await page.locator('#weeklyCheckin select').nth(2).selectOption('no');
+ await page.locator('#weeklyRecovery>summary').click();await page.locator('#weeklyCheckin select').nth(0).selectOption('low');await page.locator('#weeklyCheckin select').nth(1).selectOption('low');await page.locator('#weeklyCheckin select').nth(2).selectOption('no');
  await page.getByRole('button',{name:'Save weekly check-in',exact:true}).click();
  const checked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(checked.weeklyCheckins.length,1);assert.deepEqual(checked.activeSchedule,after.activeSchedule);assert.ok(checked.garminSync.savedAt);
+ await page.locator('#weeklyReviewSheet').getByRole('button',{name:'Done',exact:true}).click();
  await page.getByRole('button',{name:'Pull recent Garmin runs',exact:true}).click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});
  // Link the already imported Friday activity to Saturday without re-importing or starting LHRF tracking.
  await page.locator('#garminSavedLinks summary').click();

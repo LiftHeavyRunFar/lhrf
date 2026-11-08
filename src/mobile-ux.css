@@ -9,3 +9,28 @@
 
 .garmin-review-dialog{position:fixed;z-index:40;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));margin:auto;box-shadow:0 0 0 200vmax #0009}
 .garmin-review-dialog #garminIncoming{border:0;padding:0;margin:0}
+
+.training-sheet{box-sizing:border-box;width:min(100% - 24px, 480px);max-height:calc(100dvh - 24px);margin:auto auto max(12px,env(safe-area-inset-bottom));padding:18px;color:var(--fg);background:var(--card);border:1px solid var(--border);border-radius:22px;overflow:auto;overscroll-behavior:contain;overflow-wrap:anywhere}
+.training-sheet::backdrop{background:#02070cc9}
+body:has(.training-sheet[open]){overflow:hidden}
+.training-sheet button{min-height:44px}
+#weeklyRecovery>summary{display:flex;align-items:center;font-weight:750}
+#weeklyRecovery>summary::after{content:'⌄';margin-left:auto;color:var(--accent)}
+#weeklyRecovery[open]>summary::after{transform:rotate(180deg)}
+#weeklyCheckin{padding:8px 0 0;border:0;margin:0;box-shadow:none}
+#weeklyCheckin>label{display:block;margin:10px 0}
+.weekly-sheet h2{margin:0;font-size:24px}
+.weekly-sheet h3,.weekly-sheet p{margin:0}
+.weekly-sheet .tag{letter-spacing:.1em;margin-bottom:3px}
+.weekly-sheet section:not(.weekly-metrics){margin-top:12px;padding-top:10px;border-top:1px solid var(--border)}
+.weekly-sheet section p{margin-top:3px;font-size:14px}
+.weekly-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:12px 0 6px}
+.weekly-metrics>div{padding:9px 7px;border-radius:11px;background:var(--card2)}
+.weekly-metrics strong,.weekly-metrics span{display:block}
+.weekly-metrics strong{font-size:17px;line-height:1.25;font-variant-numeric:tabular-nums}
+.weekly-metrics span{font-size:11px;color:var(--muted);margin-top:4px}
+.weekly-concern{color:var(--amber)}
+.weekly-evidence{margin-top:8px}
+.weekly-evidence summary{display:list-item;padding:11px 0;font-size:14px;font-weight:700;color:var(--accent)}
+.weekly-evidence p,.weekly-evidence li{font-size:13px;color:var(--muted);margin-bottom:8px}
+.weekly-sheet>button{width:100%}
