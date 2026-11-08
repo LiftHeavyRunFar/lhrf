@@ -10,8 +10,8 @@
     "test:scenarios": "node scripts/test-five-scenarios.cjs",
     "test:scenarios:acceptance": "node scripts/audit-five-scenarios.cjs",
     "test:coaching:rounds": "node scripts/replay-coaching-rounds.cjs",
-    "test:coaching:safety": "node scripts/replay-coaching-rounds.cjs --safety",
-    "test:coaching:depth": "node scripts/replay-coaching-depth.cjs"
+    "test:coaching:safety": "node scripts/replay-coaching-rounds.cjs --safety --legacy-policy",
+    "test:coaching:depth": "node scripts/replay-coaching-depth.cjs docs/qa/coaching-rounds-current/round-three --legacy-policy"
   },
   "engines": {
     "node": ">=20"

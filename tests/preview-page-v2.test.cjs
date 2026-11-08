@@ -7,7 +7,7 @@ for(const path of ['coach-engine','coach-adapters']){
 }
 assert.ok(!/<script src="\.\/src\/[^\"]*-v2\.js"/.test(html),'Historical prototypes cannot be loaded by the preview');
 assert.ok(html.includes('Prototype, not yet approved for athlete use.'));
-assert.ok(html.includes('LHRFCoachAdapters.previewProgramme(c)'));
+assert.ok(html.includes('LHRFCoachAdapters.previewNewProgramme(c,{data:LHRFCoachAdapters.previewLogState(readLogs(),c)})'));
 assert.ok(html.includes('LHRFCoachAdapters.reviewPreviewLogs(logs,profile)'));
 assert.ok(html.includes("maxes:{bench:num('benchMax')"),'Bench baseline must reach prescription engine');
 assert.ok(html.includes('suggestedWeight'),'Strength prescriptions must be visible');

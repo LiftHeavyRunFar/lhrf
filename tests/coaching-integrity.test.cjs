@@ -31,7 +31,7 @@ test('IA01 legacy threshold labels preserve every work repetition rather than be
  const run=quality({legacy:true,padding:0,warm:1,cool:.5}),before=clone(run),result=apply([session(run),session({...easy(20),name:'Long run',role:'long-run'})])[0].runs[0];assert.equal(result.hybridAdjustment.status,'not-applied');assert.deepEqual(result.steps,before.steps);assert.equal(result.workMinutes,before.workMinutes);
 });
 test('IA01 post-reduction final weekly quality budget uses the existing ceiling',()=>{
- const a=makeAthletes()[0],p=adapters.buildNewProgramme(a.config,{data:a.data,now:()=>Date.parse('2026-11-07T12:00:00Z')}),input=clone(p.weeks[0].sessions),original=clone(input),result=coach.createEngine({data:{customRoadmap:p.config,decisions:[{...decision,week:1,factor:.75}]},now}).applyApprovedHybridRunning(input,1);
+ const a=makeAthletes()[0],p=adapters.buildNewProgramme(a.config,{data:a.data,now:()=>Date.parse('2026-11-07T12:00:00Z')}),input=clone(p.weeks[0].sessions),original=clone(input),result=coach.createEngine({data:{customRoadmap:{...p.config,programmeId:'approved-cut-control',approvedAt:'2026-11-07T13:00:00Z'},decisions:[{...decision,programmeId:'approved-cut-control',week:1,factor:.75}]},now}).applyApprovedHybridRunning(input,1);
  const run=result.flatMap(s=>s.runs).find(r=>r.role==='quality-run');assert.equal(run.hybridAdjustment.status,'not-applied');assert.match(run.hybridAdjustment.reason,/quality-distance budget/);assert.deepEqual(run.steps,original.flatMap(s=>s.runs).find(r=>r.role==='quality-run').steps);
 });
 test('IA01 contradictory or unknown timing defers; accepted factor1 is a true no-op',()=>{
@@ -57,7 +57,7 @@ test('IA01 actual review callback refuses unsupported frozen-plan approval witho
  }
 });
 test('IA01 actual weekly totals use adjusted distances and already completed run components are protected',()=>{
- const a=makeAthletes()[2],programme=adapters.buildNewProgramme(a.config,{data:a.data,now:()=>Date.parse('2026-11-07T12:00:00Z')}),sessions=clone(programme.weeks[0].sessions),data={customRoadmap:programme.config,decisions:[{...decision,week:1}],completedWorkouts:[]};
+ const a=makeAthletes()[2],programme=adapters.buildNewProgramme(a.config,{data:a.data,now:()=>Date.parse('2026-11-07T12:00:00Z')}),sessions=clone(programme.weeks[0].sessions),data={customRoadmap:{...programme.config,programmeId:'completed-cut-control',approvedAt:'2026-11-07T13:00:00Z'},decisions:[{...decision,programmeId:'completed-cut-control',week:1}],completedWorkouts:[]};
  const completed=sessions.find(s=>s.runs.some(r=>r.role==='easy-run'));data.completedWorkouts.push({id:completed.id+'::run',parentId:completed.id,component:'run',week:1,completedRun:true,prescription:{runs:clone(completed.runs)}});
  const before=clone(completed),engine=coach.createEngine({data,now}),result=engine.applyApprovedHybridRunning(sessions,1),summary=engine.runningWeekSummary(programme.config,1,result),sum=result.flatMap(s=>s.runs).reduce((n,r)=>n+r.distanceKm,0);
  assert.deepEqual(result.find(s=>s.id===completed.id),before);assert.equal(summary.totalKm,Math.round(sum*1000)/1000);assert.deepEqual(data.completedWorkouts[0].prescription.runs,before.runs);

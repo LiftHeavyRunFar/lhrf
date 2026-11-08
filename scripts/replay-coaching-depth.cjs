@@ -3,9 +3,10 @@ const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_pro
 const {run}=require('./test-five-scenarios.cjs'),{audit}=require('./audit-coaching-round-three.cjs');
 const root=path.join(__dirname,'..'),fixturePath='tests/fixtures/five-scenario-round-three-inputs.json',fixture=require('../'+fixturePath);
 const dir=path.resolve(root,process.argv[2]||'docs/qa/coaching-rounds-current/round-three');fs.mkdirSync(dir,{recursive:true});
-const capture=run({fixture,fixturePath});for(const row of capture.cases)fs.writeFileSync(path.join(dir,row.id+'.json'),JSON.stringify({...row,provenance:capture.provenance},null,2)+'\n');
+const legacyPolicy=process.argv.includes('--legacy-policy'),engine=legacyPolicy?require('./compare-runtime-coaching.cjs').legacyEngine():undefined;
+const capture=run({fixture,fixturePath,engine});for(const row of capture.cases)fs.writeFileSync(path.join(dir,row.id+'.json'),JSON.stringify({...row,provenance:capture.provenance},null,2)+'\n');
 const metricsPath=path.join(dir,'prescription-metrics.json');
-const probe=cp.spawnSync(process.execPath,[path.join(__dirname,'inspect-coaching-round-three.cjs'),metricsPath],{cwd:root,encoding:'utf8'});
+const probe=cp.spawnSync(process.execPath,[path.join(__dirname,'inspect-coaching-round-three.cjs'),metricsPath,...(legacyPolicy?['--legacy-policy']:[])],{cwd:root,encoding:'utf8'});
 if(probe.status!==0)throw Error(probe.stderr||probe.stdout||'Prescription inspection failed.');
 const result=audit(capture.cases,JSON.parse(fs.readFileSync(metricsPath)));fs.writeFileSync(path.join(dir,'coaching-gates.json'),JSON.stringify(result,null,2)+'\n');
-console.log(JSON.stringify({output:dir,coachingCodeGatesPassed:result.coachingCodeGatesPassed,criteria:result.gates.length,passed:result.gates.filter(g=>g.status==='pass').length,blocked:result.gates.filter(g=>g.status==='blocked'),athleteApproval:false},null,2));process.exitCode=result.coachingCodeGatesPassed?0:1;
+console.log(JSON.stringify({output:dir,legacyRegression:legacyPolicy,engineCommit:engine?.commit||null,coachingCodeGatesPassed:result.coachingCodeGatesPassed,criteria:result.gates.length,passed:result.gates.filter(g=>g.status==='pass').length,blocked:result.gates.filter(g=>g.status==='blocked'),athleteApproval:false},null,2));process.exitCode=result.coachingCodeGatesPassed?0:1;

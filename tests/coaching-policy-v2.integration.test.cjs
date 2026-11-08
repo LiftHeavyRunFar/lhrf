@@ -14,7 +14,7 @@ test('fresh beginner quality and two-set lifting doses fit all actual whole-visi
 });
 test('recent marathon recovery applies to supporting strength as well as running',()=>{
  const p=buildNewProgramme(original.cases.find(c=>c.id==='O2').config,clock);
- const first=p.weeks[0].sessions.flatMap(s=>s.ex);assert.ok(first.length);assert.ok(first.every(e=>e[4]<=5.5&&e[5]?.recentMarathonRecovery));
+ const first=p.weeks[0].sessions.flatMap(s=>s.ex);assert.ok(first.length);const lower=first.filter(e=>['Squat','Deadlift'].includes(e[0]));assert.ok(lower.length);assert.ok(lower.every(e=>e[4]<=6.5&&e[5]?.recoveryState?.restriction==='bounded'));assert.ok(first.every(e=>!e[5]?.recentMarathonRecovery),'No late unconditional clip overrides the scoped recovery decision.');
  assert.ok(p.weeks[0].sessions.flatMap(s=>s.runs).every(r=>r.role==='easy-run'));
  assert.equal(p.weeks[0].runningPhase,'Recovery');
 });
@@ -30,22 +30,24 @@ test('ordered goals validate dates and frequencies before entering shared genera
 test('new offline dependencies load in browser order and are cached without migrating approved policy',()=>{
  for(const name of ['index.html','coaching-preview.html']){const s=fs.readFileSync(name,'utf8');assert.ok(s.indexOf('./src/running-preparation.js')<s.indexOf('./src/coach-constraints.js'));assert.ok(s.indexOf('./src/coach-constraints.js')<s.indexOf('./src/coach-engine.js'));}
  const sw=fs.readFileSync('sw.js','utf8');for(const name of ['running-preparation','coach-constraints'])assert.ok(sw.includes('./src/'+name+'.js'));
- assert.equal(prepareNewProgramme({}).coachingRulesVersion,1);assert.equal(prepareNewProgramme({coachingRulesVersion:2}).coachingRulesVersion,2);
+ assert.equal(prepareNewProgramme({}).coachingRulesVersion,2);assert.equal(prepareNewProgramme({}).coachingRuntimeVersion,1);assert.equal(prepareNewProgramme({coachingRulesVersion:1}).coachingRulesVersion,1);assert.equal(prepareNewProgramme({coachingRulesVersion:2}).coachingRulesVersion,2);
 });
 test('browser-global modules generate the exact same v2 prescriptions as Node canonical entry',()=>{
  const vm=require('node:vm'),sandbox=vm.createContext({Date,console});
- for(const file of ['running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+file+'.js','utf8'),sandbox,{filename:file+'.js'});
+ for(const file of ['gym-equipment','exercise-registry','coaching-evidence','running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+file+'.js','utf8'),sandbox,{filename:file+'.js'});
  const config=fresh.cases.find(c=>c.id==='H').config;
  const browser=sandbox.LHRFCoachAdapters.buildNewProgramme(config,clock),native=adapters.buildNewProgramme(config,clock);
  assert.equal(JSON.stringify(browser),JSON.stringify(native));
 });
 test('version-two progression excludes approved load changes from an older programme',()=>{
  const {fullInventory,typedAnchors}=require('./equipment-fixtures.cjs');
- const coach=require('../src/coach-engine.js'),config=coach.approveProgrammeConfig({...fresh.cases.find(c=>c.id==='J').config,equipmentInventory:fullInventory()},'2026-10-30T12:00:00Z');
+ const coach=require('../src/coach-engine.js'),input={...fresh.cases.find(c=>c.id==='J').config,equipmentInventory:fullInventory()};
+ const observed=typedAnchors(coach.createEngine({now:clock.now}).generatedSessions({...input,equipmentPolicyVersion:undefined},2),input.equipmentInventory).map(row=>({...row,date:'2026-10-28T12:00:00Z'}));
+ const config=coach.approveProgrammeConfig(coach.prepareNewProgramme(input,{data:{sets:observed},now:clock.now}),'2026-10-30T12:00:00Z');
  const data={customRoadmap:config,sets:typedAnchors(coach.createEngine().generatedSessions({...config,equipmentPolicyVersion:undefined},2),config.equipmentInventory),decisions:[{approved:true,kind:'adaptive-progression',exercise:'Bench',week:1,factor:1.075,date:'2026-10-01T12:00:00Z'}]};
- const engine=coach.createEngine({data,now:clock.now}),before=engine.generatedSessions(config,2),snapshot=JSON.stringify(before);
+ const engine=coach.createEngine({data,now:()=>Date.parse('2026-11-01T12:00:00Z')}),before=engine.generatedSessions(config,2),snapshot=JSON.stringify(before);
  assert.equal(JSON.stringify(engine.carryForwardApprovedProgression(before,2)),snapshot);
- data.decisions.push({approved:true,kind:'adaptive-progression',exercise:'Bench',week:1,factor:1.025,date:'2026-10-31T12:00:00Z'});
+ data.decisions.push({approved:true,kind:'adaptive-progression',exercise:'Bench',programmeId:config.programmeId,week:1,factor:1.025,date:'2026-10-31T12:00:00Z'});
  assert.notEqual(JSON.stringify(engine.carryForwardApprovedProgression(engine.generatedSessions(config,2),2)),snapshot);
 });
 test('unknown pace does not demand a race PB for general-health running',()=>{

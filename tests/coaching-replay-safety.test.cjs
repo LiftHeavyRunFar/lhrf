@@ -1,7 +1,19 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {run}=require('../scripts/test-five-scenarios.cjs'),{audit}=require('../scripts/audit-five-scenarios.cjs');
+const {audit}=require('../scripts/audit-five-scenarios.cjs');
 const {checkSafety}=require('../scripts/coaching-replay-safety.cjs');
 const fixture=require('./fixtures/five-scenario-engine-inputs.json');
+// The exact five-blocked/ten-gate contract describes the frozen production
+// policy. Run the actual capture checks against isolated production modules,
+// then challenge that capture with the current safety validator. Current-policy
+// dose/recovery controls are independently covered by runtime assurance.
+const fs=require('node:fs'),path=require('node:path'),Module=require('node:module');
+const legacy=require('../scripts/compare-runtime-coaching.cjs').legacyEngine();
+const capturePath=require.resolve('../scripts/test-five-scenarios.cjs'),isolated=new Module(capturePath,module);
+const fromCapture=Module.createRequire(capturePath);
+isolated.filename=capturePath;isolated.paths=Module._nodeModulePaths(path.dirname(capturePath));
+isolated.require=request=>request.startsWith('../src/')?require(path.join(legacy.root,'src',request.slice('../src/'.length))):fromCapture(request);
+isolated._compile(fs.readFileSync(capturePath,'utf8'),capturePath);
+const {run}=isolated.exports;
 const capture=run({fixture}),review=audit(capture),clone=x=>JSON.parse(JSON.stringify(x));
 const verify=(c=capture,r=review)=>checkSafety(c,r,fixture,{frozenFive:true});
 test('engine safety passes while all five programme outcomes and ten gates stay blocked',()=>{

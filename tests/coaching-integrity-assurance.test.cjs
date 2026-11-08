@@ -49,12 +49,13 @@ function decodedDistances(bytes){
   }}
  }assert.equal(p,end);assert.equal(garmin.crc(bytes),0);return distances;
 }
-test('independent assurance: untouched A B C forward prescriptions remain exactly the PR128 evidence baseline',()=>{
+test('independent assurance: saved A B C policies remain exactly the PR128 evidence baseline on reload',()=>{
  for(const athlete of makeAthletes()){
-  const before=JSON.stringify(athlete),actual=adapters.buildNewProgramme(athlete.config,{data:athlete.data,now});
+  const saved=baseline.athletes.find(a=>a.id===athlete.id).programme;
+  const before=JSON.stringify(athlete),actual=adapters.buildProgramme(clone(saved.config),{data:athlete.data,now});
   // The PR128 artifact is JSON: compare the same serialization boundary, rather
   // than treating an in-memory undefined metadata key as a prescription change.
-  assert.deepEqual(clone(actual),baseline.athletes.find(a=>a.id===athlete.id).programme,athlete.id);
+  assert.deepEqual(clone(actual),saved,athlete.id);
   assert.equal(JSON.stringify(athlete),before,athlete.id);
  }
 });

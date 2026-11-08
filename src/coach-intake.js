@@ -44,6 +44,17 @@ function build(base,raw={}){
   if(hasSleep){context.sleepHours=number(context.sleepHours,'Recent sleep hours');context.usualSleepHours=number(context.usualSleepHours,'Usual sleep hours');if(context.sleepHours>24||context.usualSleepHours>24)throw new RangeError('Sleep hours must be between zero and 24.');}
   c.recoveryContext=context;
  }
+ if(own(raw,'recoveryObservations')){
+  if(!Array.isArray(raw.recoveryObservations))throw new RangeError('Recovery observations must be a list.');
+  c.recoveryObservations=raw.recoveryObservations.map(value=>{
+   const observation=clone(value),preserved=observation.source==='preserved-recovery-concern',observedAt=preserved?(observation.observedAt||observation.reportedAt||observation.date||null):date(observation.observedAt||observation.reportedAt||observation.date,'Recovery response date'),reference=observation.referencePerformanceDate?date(observation.referencePerformanceDate,'Completed activity date'):null;
+   if(!observedAt&&!preserved||!['all','running','strength'].includes(observation.sport)||!['unknown','normal','fatigue','pain','worsening'].includes(observation.status))throw new RangeError('Choose the activity, response and observation date for each recovery review.');
+   if(observation.sport==='running'&&!['all','easy','quality','long'].includes(observation.task)||observation.sport==='strength'&&(!['all','lifting','heavy'].includes(observation.task)||observation.task!=='all'&&!['Squat','Bench','Deadlift'].includes(observation.lift)))throw new RangeError('Recovery review needs a specific running task or lift.');
+   if(observation.status==='normal'&&(observation.source==='athlete-recovery-review'||reference)&&(!reference||Date.parse(observedAt)!==Date.parse(reference)+86400000||observation.nextDayResponse!=='normal'))throw new RangeError('A normal subsequent response needs the actual completed activity date and its following calendar day; same-day readiness is not a next-day report.');
+   observation.observedAt=observedAt;
+   return observation;
+  });
+ }
  if(raw.orderedGoals){
   if(!Array.isArray(raw.orderedGoals)||raw.orderedGoals.length<2||raw.orderedGoals.length>8)throw new RangeError('A priority handover needs two to eight dated goals.');
   for(const goal of raw.orderedGoals)if(goal.strengthVisits!==undefined){const visits=number(goal.strengthVisits,'After-event strength visits',{integer:true});if(visits>days.length||visits<Math.max(goal.squat||0,goal.bench||0,goal.deadlift||0))throw new RangeError('After-event strength visits must cover the lift frequencies and fit the available days.');}

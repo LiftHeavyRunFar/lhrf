@@ -4,6 +4,7 @@ const copy=x=>JSON.parse(JSON.stringify(x)),hash=x=>crypto.createHash('sha256').
 const clock='2026-11-02T08:00:00Z',root=path.join(__dirname,'..');
 function fixture(){
  const config=copy(require('./fixtures/five-scenario-round-three-inputs.json').cases.find(r=>r.id==='M').config);
+ config.equipmentInventory=require('./equipment-fixtures.cjs').fullInventory();
  delete config.trainingAge;config.startDate='2026-11-02';config.weeks=4;config.strengthTargetDate='2026-11-28';config.runningTargetDate='2026-11-29';
  config.runGoal='10k';
  config.baselines.Bench=110;config.liftProfiles.Bench={kg:110,reps:1};config.strengthExposureRoles={Bench:['volume','heavy','speed']};
@@ -11,6 +12,7 @@ function fixture(){
  const sets=[{date:'2026-10-24T09:00:00Z',exercise:'Bench',role:'top',weight:75,reps:5,rpe:8},
   {date:'2026-10-30T09:00:00Z',exercise:'Bench',role:'top',weight:90,reps:1,rpe:9},
   ...Array.from({length:6},(_,i)=>({date:'2026-11-01T09:00:00Z',exercise:'Bench',role:'straight',weight:60,reps:2,rpe:2,set:i+1}))];
+ for(const row of sets)Object.assign(row,require('../src/exercise-registry').identity(row.exercise,config.equipmentInventory));
  const match=i=>Object.fromEntries(['date','exercise','role','weight','reps'].map(k=>[k,sets[i][k]]));
  const performanceReviews=[{kind:'execution',match:match(1),original:null,value:'competition-paused',source:'athlete-confirmation'},
   {kind:'rpe',match:match(2),original:2,value:5,approximate:true,purpose:'speed',source:'athlete-confirmation'}];
@@ -41,7 +43,8 @@ test('review CLI to existing Stage 8 packager retains corrections, original anch
  assert.equal(packet.programme.weeks.at(-1).sessions.find(s=>s.eventType==='running').recoveryReviewRequired,true);
  const unreviewed=adapters.buildNewProgramme(source.customRoadmap,{data:source,now:()=>Date.parse(clock)});
  const speeds=p=>p.weeks.flatMap(w=>w.sessions.flatMap(s=>s.ex)).filter(e=>e[5]?.trainingRole==='speed').map(e=>e[3]);
- assert.deepEqual(speeds(native),speeds(unreviewed),'No automatic speed-load increase');
+ assert.ok(speeds(native).every(kg=>kg<=60),'An explicitly reviewed approximate practice reference cannot increase beyond familiar completed loading.');
+ assert.ok(native.weeks.flatMap(w=>w.sessions.flatMap(s=>s.ex)).filter(e=>e[5]?.trainingRole==='speed').every(e=>e[4]<=5.5));
  const changed=copy(packet);changed.programme.config.strengthEvidenceReview.reviews[1].approximate=false;await assert.rejects(api.verifyPackage(changed,fingerprint,source),/fingerprint/);
 });
 test('CLI fails closed on invalid reviews without changing the backup or writing a package',t=>{
