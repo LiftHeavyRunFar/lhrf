@@ -1079,7 +1079,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
      if(recording&&v.done&&Array.from({length:e[1]},(_,j)=>live.entries[i+'_'+j]?.done).every(Boolean))expanded=correcting?i:advance??(flow?.firstIncomplete(beforeSet)===i?-1:i);else expanded=i;
      live.trainingView={exerciseIndex:expanded,revision:flow?flow.revision(live):null};
      if(!persist()){live=beforeSet;expanded=i;status();const message='Set not saved. Check device storage and try again. Your entries are still here.';document.getElementById('liveError').textContent=message;const error=document.createElement('p');error.className='set-save-error';error.setAttribute('role','alert');error.textContent=message;document.getElementById('liveSets_'+i)?.append(error);return}
-     lastSetAction={key:k,at:Date.now()};status();if(advance!==null)window.LHRFTrainingMode?.revealNext(advance);
+     lastSetAction={key:k,at:Date.now()};if(recording&&v.done&&!correcting)document.dispatchEvent(new CustomEvent('lhrf:set-completed',{detail:{index:i,lastInExercise:Array.from({length:e[1]},(_,j)=>live.entries[i+'_'+j]?.done).every(Boolean)}}));status();if(advance!==null)window.LHRFTrainingMode?.revealNext(advance);
     };
     rows.appendChild(row);
    }
