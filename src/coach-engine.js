@@ -1093,9 +1093,11 @@ function generalStrengthCalendar(c,plan){
   const light=(c.lightLifts||[]).some(x=>String(x).toLowerCase()===lift.toLowerCase());
   const horizonEnd=generalSessionDate(c,Number(c.weeks),'Sun');
   const singleEvidence=c.strengthCalibration?.lifts?.[lift],peak=Number(c.coachingRuntimeVersion)>=1?runtimePeakEvidence(c,lift):null,singlesAllowed=peak?peak.singleSupported:!(Number(c.strengthEvidenceVersion)>=1&&!hasTrainingExperience(c))||singleEvidence?.singlesSupported&&singleEvidence?.competitionTechniqueConfirmed;
-  if(peak){item.peakEvidence=peak;if(item.competition&&!peak.singleSupported)warnings.push(lift+': '+peak.reason);}
+  if(peak){item.peakEvidence=peak;item.finalPracticeKind=peak.singleSupported?'single':'rep-practice';if(item.competition&&!peak.singleSupported)warnings.push(lift+': '+peak.reason);}
   if(Number(c.strengthEvidenceVersion)>=1&&!hasTrainingExperience(c)&&slots.length&&!light&&!maintenancePolicy(c,lift)&&!singlesAllowed)warnings.push(lift+': confirm competition-single experience; rep sets alone do not establish readiness for near-max command practice.');
-  if(generalPolicy(c)&&item.competition&&slots.length&&(!horizonEnd||c.strengthTargetDate<=horizonEnd)&&!beginnerPolicy(c,lift)&&!maintenancePolicy(c,lift)&&!light&&singlesAllowed){
+  // Withholding an unsupported single must not remove the taper for familiar
+  // demanding rep practice. Preserve the established dated calendar safeguards.
+  if(generalPolicy(c)&&item.competition&&slots.length&&(!horizonEnd||c.strengthTargetDate<=horizonEnd)&&!beginnerPolicy(c,lift)&&!maintenancePolicy(c,lift)&&!light&&(peak||singlesAllowed)){
    const bounds=lift==='Bench'?[4,7,6]:lift==='Squat'?[6,10,8]:[7,12,10],candidates=[];
    for(let w=1;w<=Number(c.weeks);w++)for(const slot of slots){
     const date=generalSessionDate(c,w,slot.day);if(!date||date<c.startDate)continue;
@@ -1262,7 +1264,7 @@ function generalStrengthExposureV2(c,w,lift,occurrence,day,baseline,deload,phase
  const single=near&&!variation&&['heavy','strength'].includes(role)&&(Number(c.coachingRuntimeVersion)>=1?info.peakEvidence?.singleSupported:hasTrainingExperience(c)||!Number(c.strengthEvidenceVersion)||proof?.singlesSupported);
  // Four successive peak exposures are purposeful practice at 8, 8.5, 8.5 and 9.
  const heavyTarget=days!==null?(finalHeavy?9:proof?.competitionTechniqueConfirmed&&days<=28?8.5:days>21?8:8.5):phase==='Foundation'?7.5:8;
- const reps=single?1:role==='volume'?(near&&days<=14?3:5):phase==='Foundation'?5:phase==='Specificity'?2:3;
+ const reps=single?1:role==='volume'?(near&&days<=14?3:5):phase==='Foundation'?5:phase==='Specificity'||Number(c.coachingRuntimeVersion)>=1&&finalHeavy&&customPhase(Math.max(1,w-1),generalEventWeek(c,c.strengthTargetDate),c)==='Specificity'?2:3;
  const target=single?Math.min(Number(c.coachingRuntimeVersion)>=1?info.peakEvidence.ceiling:runningFirst||Number(c.strengthEvidenceVersion)>=1&&!hasTrainingExperience(c)&&!proof?.competitionTechniqueConfirmed?8:9,heavyTarget):role==='volume'?(phase==='Foundation'?7:near?7.5:8):phase==='Foundation'?7.5:8;
  if(Number(c.coachingRuntimeVersion)>=1&&info.peakEvidence){meta.peakEvidence=info.peakEvidence;meta.rationale=info.peakEvidence.reason;}
  meta.trainingRole=single?'heavy':role;
