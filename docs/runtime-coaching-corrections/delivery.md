@@ -32,6 +32,8 @@ Local final-source verification:
 
 Final published-head CI and the deployment recommendation are recorded in the investigation PR. No merge, deployment or live athlete write is performed by this work.
 
+The first CI attempt passed three jobs and exposed two browser positive fixtures that no longer satisfied the actual guards: an undated race time was their only basis for event-duration feasibility, and the race replacement was generated for a different venue/setup than its recipient. The corrected fixtures supply an explicitly synthetic dated result and the recipient's inventory before generation. Both tests also retain negative controls proving that the undated event review and mismatched venue remain blocked without programme/history changes. Local browser reruns and the 18 replacement unit checks pass. No runtime restriction was removed to make these tests pass; the final full CI rerun is linked in the PR.
+
 ## November: attributable prescription versus fresh proposal
 
 Confirmed sanitized evidence in [#132](https://github.com/LiftHeavyRunFar/lhrf/pull/132): 8 November speed bench is saved as 5×2 at 77.5 kg with effort ceiling 5.5; 1 November completed work is 6×2 at 100 kg, original RPE 2, with a separate approximate retrospective estimate around 5. On 5 November, saved lower work was squat 2×3 at 100 kg/RPE 6 and deadlift 2×3 at 102.5/RPE 6; completed work was squat 120/RPE 6 and deadlift 140/RPE 7.5. The retained light-lifting flag and the independent maintenance fallback explain the limited lower template in the available configuration. A dated event alone does not establish current recovery or continuing restriction.
