@@ -71,6 +71,8 @@ function mount(){
  const bar=document.createElement('div');bar.id='restStopwatch';bar.style.cssText='display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:4px 0 10px;font-size:12px;color:var(--muted)';bar.className='training-rest-controls';bar.removeAttribute('style');
  bar.innerHTML='<span>REST</span><output id="restTime" aria-label="Rest time">0:00</output><small id="restGuide" aria-live="polite"></small><button type="button" id="restToggle" class="secondary">Start</button><button type="button" id="restReset" class="ghost">Reset</button><button type="button" id="restPlus15" class="secondary">+15s</button><button type="button" id="restPlus30" class="secondary">+30s</button><button type="button" id="restSkip" class="ghost">Skip</button>';
  document.getElementById('liveExercises')?.before(bar);bar.querySelector('#restToggle').onclick=()=>{
+  const current=live(),{index,guide}=activeRestGuidance(current);
+  if(guide&&(rest.mode!=='countdown'||rest.exerciseIndex!==index||rest.key!==identity(current))){beginRest(current,index);return}
   if(rest.mode==='countdown'){if(rest.endAt){rest.remaining=Math.max(0,rest.endAt-Date.now());rest.endAt=null}else rest.endAt=Date.now()+(rest.remaining||rest.duration);restSave();}
   else{if(rest.start!==null){rest.elapsed+=Date.now()-rest.start;rest.start=null}else rest.start=Date.now();restSave();}
   paintRest();
@@ -100,7 +102,7 @@ function paintRest(){
  const label=document.getElementById('restGuide'),display=document.getElementById('restTime'),toggle=document.getElementById('restToggle');
  if(!display)return;
  if(label)label.textContent=guide?(guide.min===guide.max?guide.min+'s prescribed':guide.min+'–'+guide.max+'s prescribed'):'Optional stopwatch';
- const relevant=rest.mode==='countdown'&&rest.key===identity(l)&&rest.exerciseIndex===index;
+ const relevant=rest.mode==='countdown'&&l&&rest.key===identity(l)&&rest.exerciseIndex===index;
  const remaining=relevant?(rest.endAt?Math.max(0,rest.endAt-Date.now()):rest.remaining||0):guide?guide.min*1000:null;
  display.textContent=remaining!==null?clock(Math.ceil(remaining/1000)):clock((rest.elapsed+(rest.start===null?0:Date.now()-rest.start))/1000);
  display.setAttribute('aria-label',remaining!==null?'Rest countdown':'Rest elapsed');
