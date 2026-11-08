@@ -1,30 +1,12 @@
 /* Read-only history and conservative weekly evidence. Programme edits remain in the approval flow. */
 (function(root){'use strict';
 const day=x=>String(x||'').slice(0,10);
-function completedRecord(rows,session,week){
- const matches=rows.filter(row=>Number(row.week||1)===week&&
-  (row.id===session.id||(session.parentId&&row.id===session.parentId)))
-  .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
- return matches.find(row=>row.id===session.id)||
-  (session.parentId?matches.find(row=>row.id===session.parentId):undefined);
-}
-function recordedWorkout(state,workout){
- return {
-  sets:(state.sets||[]).filter(s=>s.sessionId===workout.id&&s.date===workout.date),
-  runs:(state.runs||[]).filter(r=>r.sessionId===workout.id&&day(r.date)===day(workout.date))
- };
-}
 function history(state){
  const rows=[],sets=state.sets||[],runs=state.runs||[],used=new Set();
- for(const w of state.completedWorkouts||[]){const recorded=recordedWorkout(state,w);recorded.sets.forEach(s=>used.add(s));rows.push({...w,kind:w.component==='run'?'run':'strength',...recorded,feedback:(state.sessionFeedback||[]).filter(f=>f.sessionId===w.id&&day(f.date)===day(w.date))})}
- const groups=new Map();sets.forEach(s=>{if(used.has(s))return;const key=day(s.date)+'|'+(s.sessionId||s.session||'Strength');if(!groups.has(key))groups.set(key,{date:s.date,name:s.session||'Strength session',kind:'strength',sets:[],runs:[],feedback:[]});groups.get(key).sets.push(s)});rows.push(...groups.values());
+ for(const w of state.completedWorkouts||[]){const own=sets.filter((s,i)=>{const yes=s.sessionId===w.id&&s.date===w.date;if(yes)used.add(i);return yes});rows.push({...w,kind:w.component==='run'?'run':'strength',sets:own,runs:runs.filter(r=>r.sessionId===w.id&&day(r.date)===day(w.date)),feedback:(state.sessionFeedback||[]).filter(f=>f.sessionId===w.id&&day(f.date)===day(w.date))})}
+ const groups=new Map();sets.forEach((s,i)=>{if(used.has(i))return;const key=day(s.date)+'|'+(s.sessionId||s.session||'Strength');if(!groups.has(key))groups.set(key,{date:s.date,name:s.session||'Strength session',kind:'strength',sets:[],runs:[],feedback:[]});groups.get(key).sets.push(s)});rows.push(...groups.values());
  for(const r of runs)if(!rows.some(w=>w.runs.includes(r)))rows.push({date:r.date,name:r.name||r.session||r.type||'Run',kind:'run',sets:[],runs:[r],feedback:[]});
  return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-}
-const loadUnits=meta=>meta?.loadType==='per-hand-kg'?'kg / hand':meta?.loadType==='assistance-kg'?'kg assistance':'kg';
-function recordedSet(set){
- return (set.weight??'—')+' '+loadUnits(set)+' × '+(set.reps??'—')+
-  (set.doseUnit==='seconds'?' sec':' reps')+' · RPE '+(set.rpe??'—');
 }
 function strengthGroups(row){
  const groups=new Map(),key=(name,variant)=>name+'|'+(variant||'');
@@ -127,23 +109,22 @@ function weeklySummary({state,week,check,now=new Date(),sessions,nextSessions,pa
  return {period,counts,sets:sets.length,incompleteSets:actualSets.length-sets.length,runs:runs.length,
   distance:measured.length?distance:null,missingDistance:runs.length-measured.length,next,concern,verdict,coverage,evidence};
 }
-function mount({getData,commit,getSessions,parts,openProgress}){
+function mount({getData,commit,getSessions,parts}){
  const host=document.getElementById('progress');if(!host)return;const box=document.createElement('div');box.className='card';box.id='trainingHistory';host.insertBefore(box,document.getElementById('progressDetails'));const format=root.LHRFRunPresentation;
  const make=(tag,text,parent)=>{const el=document.createElement(tag);if(text!=null)el.textContent=text;if(parent)parent.append(el);return el};
  make('h2','Workout history',box);make('p','Open a session to review recorded work. Older records without a saved prescription show only what was recorded.',box).className='muted small';
  const filters=make('div',null,box);filters.className='grid';const field=(label,type)=>{const wrap=make('label',label,filters),input=make('input',null,wrap);input.type=type;return input};const from=field('From','date'),to=field('To','date'),type=make('select',null,make('label','Workout type',filters));for(const [value,label]of [['all','All workouts'],['strength','Strength'],['run','Running']]){const o=make('option',label,type);o.value=value}
  const list=make('div',null,box),more=make('button','Show more',box);more.className='secondary';let limit=10;
- const historyKey=row=>[row.date,row.id||row.name].join('|');
  function renderHistory(){const expanded=new Set([...list.querySelectorAll(':scope > details[open]')].map(e=>e.dataset.historyKey));list.replaceChildren();const items=history(getData()).filter(r=>(!from.value||day(r.date)>=from.value)&&(!to.value||day(r.date)<=to.value)&&(type.value==='all'||type.value==='run'&&r.runs.length||type.value==='strength'&&r.sets.length));
  if(!items.length)make('p','No recorded workouts match these dates.',list);
- for(const row of items.slice(0,limit)){const detail=make('details',null,list);detail.className='entry';detail.dataset.historyKey=historyKey(row);detail.open=expanded.has(detail.dataset.historyKey);make('summary',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name,detail);
- if(!row.sets.length&&!row.runs.length)make('p','No logged sets or run details are attached to this completion.',detail).className='muted small';
+ for(const row of items.slice(0,limit)){const detail=make('details',null,list);detail.className='entry';detail.dataset.historyKey=[row.date,row.id||row.name].join('|');detail.open=expanded.has(detail.dataset.historyKey);make('summary',new Date(row.date).toLocaleDateString('en-GB')+' · '+row.name,detail);
  if(row.plannedDate)make('p','Completed '+new Date(row.date).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · planned '+new Date(row.plannedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'}),detail).className='muted small';
  for(const group of strengthGroups(row)){const section=make('section',null,detail);section.className='strength-comparison';make('h3',group.name,section);const table=make('table',null,section),head=make('tr',null,make('thead',null,table));make('th','Prescribed',head);make('th','Actual',head);const tr=make('tr',null,make('tbody',null,table)),target=make('td',null,tr),actual=make('td',null,tr);
+ const units=meta=>meta?.loadType==='per-hand-kg'?'kg / hand':meta?.loadType==='assistance-kg'?'kg assistance':'kg';
  if(!group.prescribed.length)make('p','Original prescription unavailable',target);
- for(const ex of group.prescribed)make('p',ex[1]+' × '+ex[2]+(ex[5]?.doseUnit==='seconds'?' sec':' reps')+' · '+ex[3]+' '+loadUnits(ex[5])+' · RPE '+ex[4]+(ex[5]?.role?' · '+ex[5].role:''),target);
+ for(const ex of group.prescribed)make('p',ex[1]+' × '+ex[2]+(ex[5]?.doseUnit==='seconds'?' sec':' reps')+' · '+ex[3]+' '+units(ex[5])+' · RPE '+ex[4]+(ex[5]?.role?' · '+ex[5].role:''),target);
  if(!group.actual.length)make('p','No recorded sets',actual);
- for(const set of group.actual)make('p','Set '+(set.set??'—')+' · '+recordedSet(set)+(set.target?' / target '+set.target:''),actual);
+ for(const set of group.actual)make('p','Set '+(set.set??'—')+' · '+(set.weight??'—')+' '+units(set)+' × '+(set.reps??'—')+(set.doseUnit==='seconds'?' sec':' reps')+' · RPE '+(set.rpe??'—')+(set.target?' / target '+set.target:''),actual);
  }
  if(!row.prescription&&row.sets.length)make('p','Original prescription was not saved with this historical record.',detail).className='muted small';
  for(const r of row.runs){
@@ -163,21 +144,6 @@ function mount({getData,commit,getSessions,parts,openProgress}){
  for(const note of new Set([row.notes,...row.sets.map(s=>s.notes),...row.runs.map(r=>r.notes||r.note)].filter(Boolean)))make('p','Notes: '+note,detail);for(const f of row.feedback)make('p','Feedback: '+[f.difficulty,f.energy,f.discomfort==='yes'?'unusual discomfort':null].filter(Boolean).join(' · '),detail);
  }more.hidden=items.length<=limit;}
  for(const el of [from,to,type])el.onchange=()=>{limit=10;renderHistory()};more.onclick=()=>{limit+=20;renderHistory()};
- root.LHRFOpenWorkoutHistory=(session,week)=>{
-  const items=history(getData());
-  const row=session
-   ? completedRecord(items,session,week)
-   : items.find(r=>r.sets.length||r.runs.length);
-  from.value='';to.value='';type.value='all';
-  limit=Math.max(10,items.indexOf(row)+1);
-  openProgress();
-  const detail=row&&[...list.children].find(el=>el.dataset.historyKey===historyKey(row));
-  if(detail)detail.open=true;
-  const target=detail?.querySelector('summary')||box.querySelector('h2');
-  target.tabIndex=0;
-  target.focus({preventScroll:true});
-  target.scrollIntoView({block:'center'});
- };
  const review=document.createElement('div');review.className='card';review.id='weeklyCheckin';box.after(review);const heading=make('h2','Weekly check-in',review);make('p','Review recovery after your final workout of the week. You can return here any time.',review);
  const controls={};for(const [key,label,options]of [['fatigue','Overall fatigue',['low','moderate','high']],['soreness','Leg soreness',['low','moderate','high']],['discomfort','Unusual discomfort',['no','yes']]]){const wrap=make('label',label,review),select=make('select',null,wrap);for(const value of ['',...options]){const o=make('option',value||'Choose…',select);o.value=value}controls[key]=select}
  const notes=make('textarea',null,make('label','Anything affecting training? Heat, hills, sleep, illness or sensor problems',review));notes.rows=2;
@@ -263,5 +229,5 @@ function mount({getData,commit,getSessions,parts,openProgress}){
  sync.onclick=()=>root.LHRFOpenGarminReview?.(undefined,'Back to check-in');
  const oldRefresh=root.refresh;if(typeof oldRefresh==='function')root.refresh=function(){oldRefresh();renderHistory()};renderHistory();
 }
-const api={history,completedRecord,recordedWorkout,recordedSet,strengthGroups,assess,weeklySummary,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFTrainingReview=api;
+const api={history,strengthGroups,assess,weeklySummary,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFTrainingReview=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
