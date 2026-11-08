@@ -11,17 +11,18 @@ const fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInvent
  await page.route('http://shared.test/**',route=>{const file=new URL(route.request().url()).pathname;route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file==='/'?'index.html':file)),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':'text/html'})});
  await page.addInitScript(data=>{if(!localStorage.getItem('lhrf_beta_v1118_clean'))localStorage.setItem('lhrf_beta_v1118_clean',JSON.stringify(data))},fixture);
  await page.goto('http://shared.test/coaching-preview.html');
+ await page.locator('[name="v2Fatigue"]').selectOption('normal');await page.locator('[name="v2StrengthEventConfirmed"]').check();await page.locator('[name="v2RunningEventConfirmed"]').check();await page.locator('[name="runResultDate"]').fill('2026-10-18');
  for(const [name,value] of Object.entries({weeks:'6',startDate:'2026-10-19',strengthTargetDate:'2026-11-28',runningTargetDate:'2026-11-29',tenKTime:'1:05:00'}))await page.locator(`[name="${name}"]`).fill(value);
  await page.getByRole('button',{name:'Generate preview',exact:true}).click();
  assert.match(await page.locator('#output').innerText(),/needs changes before training/,'Dated plans with an unknown running baseline must be blocked');
  assert.equal(await page.locator('.trainPrescribed:not([disabled])').count(),0);
- for(const [name,value] of Object.entries({bench:'1',squat:'0',deadlift:'0',runs:'2',runningBaselineMinutes:'120'}))await page.locator(`[name="${name}"]`).fill(value);
+ for(const [name,value] of Object.entries({bench:'1',squat:'0',deadlift:'0',runs:'2',runningBaselineMinutes:'120',v2StrengthVisits:'1'}))await page.locator(`[name="${name}"]`).fill(value);
  await page.locator('[name="trainingAge"]').selectOption('intermediate');await page.locator('[name="runGoal"]').selectOption('10k');
  await page.getByRole('button',{name:'Generate preview',exact:true}).click();assert.equal(await page.locator('#previewEquipment').count(),1,'Advanced equipment controls remain available');
  await require('./equipment-browser-fixtures.cjs').confirmPreviewEquipment(page);await page.getByRole('button',{name:'Generate preview',exact:true}).click();
  assert.match(await page.locator('#output').innerText(),/strength EVENT — 2026-11-28/);
  const week=page.locator('#output .week').filter({has:page.getByRole('heading',{name:'Week 3 — development',exact:true})});
- await week.locator('p').filter({hasText:/Bench: top set/}).locator('.trainPrescribed').first().click();
+ const startButton=week.locator('p').filter({hasText:/Bench: top set/}).locator('.trainPrescribed').first();assert.equal(await startButton.isDisabled(),false,(await page.locator('#output').innerText()).slice(0,4200));await startButton.click();
  await page.waitForURL('**/index.html?trialTrain=1#train');await page.clock.runFor(100);
  assert.equal(await page.locator('.screen.active').getAttribute('id'),'train');
  assert.equal(await page.locator('#firstRun').isVisible(),false);
@@ -43,7 +44,7 @@ const fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInvent
  await page.getByRole('button',{name:'Generate preview',exact:true}).click();
  const runRow=page.locator('#output .week').filter({has:page.getByRole('heading',{name:'Week 3 — development',exact:true})}).locator('p').filter({has:page.locator('.preview-run-steps')}).first();
  const displayed=await runRow.locator('.preview-run-steps').innerText();assert.doesNotMatch(displayed,/RPE/);
- await runRow.locator('.trainPrescribed').click();await page.waitForURL('**/index.html?trialTrain=1#train');await page.clock.runFor(100);
+ const runButton=runRow.locator('.trainPrescribed');assert.equal(await runButton.isDisabled(),false,JSON.stringify(await page.locator('#output .error,#output .warn').allTextContents()));await runButton.click();await page.waitForURL('**/index.html?trialTrain=1#train');await page.clock.runFor(100);
  const live=await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_fresh_beta_live_v1114')));assert.ok(live.runs[0].steps.length>0);assert.ok(live.runs[0].distanceKm>0);
  for(const step of live.runs[0].steps){assert.ok(displayed.includes(step.label));assert.ok(displayed.includes(step.pace));}
  assert.equal(await page.locator('#liveRunRpe').count(),0);assert.doesNotMatch(await page.locator('#liveRunSection').innerText(),/RPE/);

@@ -4,7 +4,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const clone=x=>JSON.parse(JSON.stringify(x)),root=path.join(__dirname,'..'),base=process.env.LHRF_INTEGRITY_BASE;
 const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
 (async()=>{
- if(!base)throw Error('Set LHRF_INTEGRITY_BASE to production commit 0ae327b.');
+ if(!base)throw Error('Set LHRF_INTEGRITY_BASE to pinned production commit b59a720.');
  let candidate=false,browser;
  const server=http.createServer((req,res)=>{try{
   const pathname=new URL(req.url,'http://localhost').pathname,file=path.join(candidate?root:base,pathname==='/'?'index.html':pathname);
@@ -32,9 +32,10 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
    return LHRFCoach.createEngine({data:{decisions:[{approved:true,kind:'hybrid-load',week:2,key:'synthetic-check',factor:.9,intervention:'running-duration'}]}}).applyApprovedHybridRunning([{id:'synthetic',ex:[],runs:[run]}],2)[0].runs[0].distanceKm;
   });
   assert.equal(await correctedDistance(),9,'Updated app must execute the corrected engine');
-  assert.ok((await page.evaluate(()=>caches.keys())).includes('lhrf-shell-v1.34.0-coaching-integrity'));
+  assert.ok((await page.evaluate(()=>caches.keys())).includes('lhrf-shell-v1.35.0-runtime-coaching'));
   await context.setOffline(true);await page.reload();await page.waitForFunction(()=>!!window.LHRFCoach);
   assert.equal(await correctedDistance(),9);assert.deepEqual(await stored(),before);assert.deepEqual(errors,[]);
+  assert.equal(await page.evaluate(()=>LHRFCoach.prepareNewProgramme({coachingRulesVersion:2,weeks:1,bench:1,squat:0,deadlift:0,runs:0},{data:{sets:[],runs:[]}}).coachingRuntimeVersion),1,'Corrected new-proposal engine and its evidence dependency must be available offline');
   console.log('PASS production -> coaching-integrity app update and offline reload; exact saved programme/history/RPE/Garmin/draft preservation; corrected engine active.');
   await context.close();
  }finally{if(browser)await browser.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}

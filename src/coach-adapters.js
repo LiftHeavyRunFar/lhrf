@@ -102,8 +102,17 @@ function reviewPreviewLogs(logs,input,options={}){
  return {decision,data,proposals:decision.changes?[{lift:(decision.changes[0]?.exercise||data.customRoadmap.priority).toLowerCase().replace(' press',''),direction:decision.status==='progress'?'easy':'hard',date:String(data.sets.at(-1)?.date||'').slice(0,10),message:decision.summary,evidence:decision.details||decision.why||'',cautions:decision.why?[decision.why]:[],blockLoad:decision.status!=='progress',sharedDecision:decision,
   loadSuggestion:decision.status==='progress'?(()=>{const change=decision.changes[0],ex=data.activeSchedule.find(s=>s.id===change.id)?.ex?.find(e=>e[0]===change.exercise&&e[5]?.role==='top');if(!ex)return undefined;return {current:ex[3],next:Math.round(ex[3]*change.loadFactor/2.5)*2.5,description:decision.why}})():undefined}]:[]};
 }
-function buildNewProgramme(input,options={}){return buildProgramme(normalizeProfile(coach.prepareNewProgramme(input,options)),options)}
-function previewNewProgramme(input,options={}){return previewProgramme(normalizeProfile(coach.prepareNewProgramme(input,options)),options)}
+// Normalize before calibration: translating shorthand maxes afterwards would
+// otherwise discard evidence-calibrated baselines at the proposal boundary.
+function newProgrammeProfile(input){
+ const c=normalizeProfile(input);
+ // Preserve invalid supplied numbers for the engine's validation; the legacy
+ // adapter's fallback defaults must not turn malformed new requests into zero.
+ for(const key of ['weeks','bench','squat','deadlift','runs'])if(input[key]!==undefined)c[key]=Number(input[key]);
+ return c;
+}
+function buildNewProgramme(input,options={}){return buildProgramme(coach.prepareNewProgramme(newProgrammeProfile(input),options),options)}
+function previewNewProgramme(input,options={}){return previewProgramme(coach.prepareNewProgramme(newProgrammeProfile(input),options),options)}
 const api={normalizeProfile,createProfileEngine,buildProgramme,previewProgramme,buildNewProgramme,previewNewProgramme,previewLogState,reviewPreviewLogs};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoachAdapters=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

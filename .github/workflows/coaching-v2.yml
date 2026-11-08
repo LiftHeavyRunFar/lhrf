@@ -40,6 +40,14 @@ jobs:
           node-version: '24.19.0'
       - name: Run coaching v2 tests
         run: npm test
+      - name: Compare production and corrected runtime on identical fixed inputs
+        run: node scripts/compare-runtime-coaching.cjs --out /tmp/runtime-comparison.json --full-out /tmp/runtime-comparison-native.json
+      - name: Retain before and after native prescriptions and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-coaching-comparison
+          path: /tmp/runtime-comparison*.json
 
   athlete-coaching-gates:
     name: Athlete bots — coaching acceptance
@@ -140,7 +148,7 @@ jobs:
           LHRF_INTEGRITY_BASE: /tmp/lhrf-integrity-production
         run: |
           mkdir -p /tmp/lhrf-integrity-production
-          git archive 0ae327bdb9dfe11e189ff4a9b066d1406bc48f07 | tar -x -C /tmp/lhrf-integrity-production
+          git archive b59a720b39ff9d62412007467b16f7cf2f32a291 | tar -x -C /tmp/lhrf-integrity-production
           node tests/coaching-integrity-update.browser.cjs
       - name: Test all tabs and workout flow
         if: ${{ !cancelled() }}
@@ -154,6 +162,9 @@ jobs:
       - name: Test missing-experience performance calibration and saved programme boundary
         if: ${{ !cancelled() }}
         run: node tests/experience-calibration.browser.cjs
+      - name: Test dated task-specific recovery review without changing approved training
+        if: ${{ !cancelled() }}
+        run: node tests/runtime-recovery-review.browser.cjs
       - name: Test personal Garmin import review and data integrity
         if: ${{ !cancelled() }}
         run: node tests/garmin-import.browser.cjs

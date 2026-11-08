@@ -27,7 +27,7 @@ test('app, preview and bots reference the canonical engine; old prototype is not
  for(const name of ['reviewDecision','loadFromTopSet','phaseBackoffLoad'])assert.ok(app.includes(`function ${name}(...args){return coachEngine().${name}(...args)}`),name);
  // Reviewed snapshots are read directly; every newly generated prescription still uses the canonical engine.
  assert.match(app,/function generatedSessions\(\.\.\.args\)\{[^\n]*LHRFProgrammeReplacement\.sessions\(data,args\[1\]\)[^\n]*if\(frozen\)return frozen;const e=coachEngine\(\);return e\.generatedSessions\(\.\.\.args\)\.map\(s=>orderedSessionCompat\(e,s\)\)\}/);
- assert.ok(preview.includes('LHRFCoachAdapters.previewProgramme(c)'));
+ assert.ok(preview.includes('LHRFCoachAdapters.previewNewProgramme(c,'));
  assert.ok(preview.includes('LHRFCoachAdapters.reviewPreviewLogs(logs,profile)'));
  assert.ok(bots.includes("require('../../src/coach-engine.js')"));
  for(const html of [app,preview])assert.ok(!/<script src="\.\/src\/[^\"]*-v2\.js"/.test(html),'No old v2 engine scripts in active pages');

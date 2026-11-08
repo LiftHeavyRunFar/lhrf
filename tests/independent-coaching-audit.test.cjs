@@ -8,19 +8,20 @@ const now=()=>Date.parse(clock),proposal=a=>adapters.buildNewProgramme(a.config,
 test('independent audit: three full current-policy blocks are deterministic, feasible and leave fictional source data unchanged',()=>{
  for(const a of makeAthletes()){const source=JSON.stringify(a),p=proposal(a);assert.equal(p.weeks.length,a.config.weeks);assert.ok(p.weeks.every(w=>w.feasible),a.id);assert.deepEqual(proposal(a),p);assert.equal(JSON.stringify(a),source);assert.equal(p.config.sessionTimeVersion,1);assert.equal(p.config.strengthEvidenceVersion,1);assert.equal(p.config.equipmentPolicyVersion,1);assert.ok(p.requiresAthleteApproval);}
 });
-test('characterization: novice straight-set improvement never enters the top-set weekly progression review',()=>{
- const a=makeAthletes()[1],p=proposal(a),r=replay(a,p);assert.ok(r.reviews.every(x=>x.reviewSessions===0));assert.ok(r.reviews.every(x=>!x.decision.changes));
+test('corrected novice review: straight main sets enter monitoring without inventing historical prescription provenance',()=>{
+ const a=makeAthletes()[1],p=proposal(a),r=replay(a,p);assert.ok(r.reviews.every(x=>x.reviewSessions>0));assert.ok(r.reviews.every(x=>!x.decision.changes),'This old replay has no preserved historical prescriptions, so extra progression remains unproven.');
  const main=w=>p.weeks[w-1].sessions.flatMap(s=>s.ex).filter(e=>e[5]?.category==='primary').map(e=>e.slice(0,5));assert.deepEqual(main(3),main(11));
- const actualBench=r.finalData.sets.filter(s=>s.exercise==='Bench'&&s.week===7);assert.ok(actualBench.some(s=>s.weight>50));assert.ok(main(11).filter(e=>e[0]==='Bench').every(e=>e[3]===37.5));
+ const actualBench=r.finalData.sets.filter(s=>s.exercise==='Bench'&&s.week===7);assert.ok(actualBench.some(s=>s.weight>50));assert.ok(main(11).filter(e=>e[0]==='Bench').every(e=>e[3]>=50&&e[3]<=55),'Familiar completed six-rep work informs the conditional RPE-led build instead of the old37.5kg entry cap.');
+ assert.deepEqual(proposal(a),p,'Unapproved simulated outcomes do not rewrite the generated block.');
 });
 test('characterization: general hybrid default Development main doses do not progress between non-deload weeks',()=>{
  const p=proposal(makeAthletes()[2]);const dose=w=>p.weeks[w-1].sessions.flatMap(s=>s.ex).filter(e=>e[5]?.category==='primary'&&['Bench','Squat','Deadlift'].includes(e[0])).map(e=>[e[0],e[1],e[2],e[4],e[5].trainingRole]);assert.deepEqual(dose(6),dose(7));assert.deepEqual(dose(7),dose(9));assert.deepEqual(dose(9),dose(11));
 });
-test('characterization defect: resolved post-marathon recovery still clips all lifting within14 days',()=>{
- const variants=recoveryVariants(),p=variants.fast.programme;assert.equal(p.weeks[0].runningPhase,'Aerobic foundation');const ex=p.weeks[0].sessions.flatMap(s=>s.ex);assert.ok(ex.length);assert.ok(ex.every(e=>e[1]===2&&e[2]===2&&e[4]===5.5&&e[5].recentMarathonRecovery));
+test('corrected recovery: a broad normal report cannot clear running and no unconditional all-lift clip overrides scoped decisions',()=>{
+ const p=recoveryVariants().fast.programme;assert.equal(p.weeks[0].runningPhase,'Recovery');const ex=p.weeks[0].sessions.flatMap(s=>s.ex);assert.ok(ex.length);assert.ok(ex.some(e=>e[5]?.category==='primary'&&e[0]==='Bench'&&e[4]>5.5));assert.ok(ex.every(e=>!e[5]?.recentMarathonRecovery));assert.ok(p.weeks.every(w=>w.sessions.flatMap(s=>s.runs).every(r=>!r.steps.some(s=>s.role==='work'))));
 });
-test('characterization defect: persistent lower-body recovery report bounds lifting but running resumes quality after21 days',()=>{
- const p=recoveryVariants().slow.programme,w=p.weeks[2];assert.equal(w.runningPhase,'Aerobic foundation');assert.ok(w.sessions.flatMap(s=>s.runs).some(r=>r.steps.some(s=>s.role==='work')));const lower=w.sessions.flatMap(s=>s.ex).filter(e=>['Squat','Deadlift'].includes(e[0]));assert.ok(lower.some(e=>e[5].recoveryReviewRequired));assert.ok(lower.every(e=>e[4]<=6.5));
+test('corrected recovery: a persistent lower-body report does not release running quality after21 days',()=>{
+ const p=recoveryVariants().slow.programme,w=p.weeks[2];assert.ok(w.sessions.flatMap(s=>s.runs).every(r=>!r.steps.some(s=>s.role==='work')));const lower=w.sessions.flatMap(s=>s.ex).filter(e=>['Squat','Deadlift'].includes(e[0]));assert.ok(lower.some(e=>e[5].recoveryReviewRequired));assert.ok(lower.every(e=>e[4]<=6.5));
 });
 function temporalReview(dates,extra={}){const schedule=[{id:'bench-upcoming',day:'Sun',ex:[['Bench',1,3,100,8,{role:'top',category:'primary',policy:'general-strength-v2'}]],runs:[]}],data={activeCustomWeek:2,customRoadmap:{coachingRulesVersion:2,coachingPolicy:'review-v2',weeks:12,bench:2,priority:'Bench',trainingAge:'advanced',startDate:'2026-11-02'},activeSchedule:schedule,sets:dates.map((date,i)=>({date,exercise:'Bench',weight:100+i*2.5,reps:3,rpe:7,target:8,role:'top',session:'Bench',...extra})),runs:[],sessionFeedback:[],checkins:[],decisions:[]};const source=JSON.stringify(data),decision=coach.createEngine({data,now}).reviewDecision();assert.equal(JSON.stringify(data),source);return decision}
 test('corrected IA02: stale and future top sets cannot support a progression proposal',()=>{

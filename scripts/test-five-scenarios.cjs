@@ -32,7 +32,7 @@ function run(options={}){
    assert.equal(JSON.stringify(config),mappedSnapshot,'generation mutated mapped input');
    assert.equal(JSON.stringify(data),dataSnapshot,'generation mutated historical input');
    assert.deepEqual(adapters.buildNewProgramme(config,{data,now}),programme,'generation is not deterministic');
-   const prepared=coach.prepareNewProgramme(config),native=adapters.createProfileEngine(prepared,{data,now});
+   const prepared=coach.prepareNewProgramme(adapters.normalizeProfile(config),{data,now}),native=adapters.createProfileEngine(prepared,{data,now});
    const parity=programme.weeks.every(w=>JSON.stringify(native.engine.describeWeek(native.config,w.week).sessions)===JSON.stringify(w.sessions));
    assert.ok(parity,'adapter sessions differ from native production generator');
    native.data.activeSchedule=clone(programme.weeks[0].sessions);
