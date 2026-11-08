@@ -1,6 +1,7 @@
 // Real new-programme path: legacy athlete -> preview -> explicit approval -> reload.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {observeOnboardingProposal,onboardingProposal}=require('./onboarding-browser-proposal.cjs');
 const coach=require('../src/coach-engine'),install=require('../src/programme-install'),config=require('../tests/fixtures/approved-peak-v2.json').config;
 const approveGeneratedProgramme=require('./generated-programme-browser-fixtures.cjs');
 const KEY='lhrf_beta_v1118_clean';
@@ -10,7 +11,7 @@ const KEY='lhrf_beta_v1118_clean';
  let fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInventory(),customRoadmap:config,activeCustomWeek:1,activeSchedule:coach.createEngine().generatedSessions(config,1),sets:[{date:'2026-10-27T07:00:00Z',exercise:'Bench',weight:120,reps:5,rpe:7,role:'top',week:1,sessionId:'november-2026-custom-tue::strength'}],runs:[{km:5,min:33}],checkins:[],sessionFeedback:[],plannedRuns:[],decisions:[{approved:true,kind:'adaptive-progression',exercise:'Bench',factor:1.075,week:1,date:'2026-10-27T08:00:00Z'}],overrides:{},completedWorkouts:[{id:'november-2026-custom-tue::strength',week:1}],goals:{strength:'Bench',running:'10K PB'},onboardingComplete:true};
  fixture=install.refreshApprovedBenchPeak(install.refreshApprovedBenchProgramme(install.refreshApprovedRunningProgramme(fixture,coach,'2026-10-30T12:00:00Z'),coach,'2026-10-30T12:00:00Z'),coach,'2026-10-30T12:00:00Z');
  await page.route('https://general.test/**',route=>{const file=new URL(route.request().url()).pathname;return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file==='/'?'index.html':file)),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':'text/html'})});
- await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture});await page.goto('https://general.test/');
+ await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture});await page.goto('https://general.test/');await observeOnboardingProposal(page);
  const read=()=>page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY),before=await read();
  assert.deepEqual(before.activeSchedule,fixture.activeSchedule);assert.deepEqual(before.sets,fixture.sets);
  await page.evaluate(()=>document.getElementById('restartOnboardingLink').click());await page.locator('#frScope').selectOption('hybrid');await page.locator('[name="frFocus"][value="strength"]').check();await page.locator('#frNext').click();
@@ -20,7 +21,7 @@ const KEY='lhrf_beta_v1118_clean';
  await page.locator('#frModeCoach').click();await page.locator('#frWeeklyDetails > summary').click();await page.locator('#frStrengthVisits').fill('3');
  for(const [id,v]of Object.entries({frBench:'3',frRuns:'2'}))await page.locator('#'+id).selectOption(v);
  await page.locator('#frNext').click();await page.locator('#frMaxBench').fill('120');await page.locator('#frRunningResult > summary').click();await page.locator('#frRunTime').fill('50:00');await page.locator('#frRunKm').fill('20');await page.locator('#frFatigueStatus').selectOption('normal');await page.locator('#frNext').click();
- await page.getByText('Explore weekly sessions',{exact:true}).click();await page.locator('#frPreview').waitFor();await page.locator('#frPreview details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));const preview=await page.locator('#frPreview').innerText();assert.match(preview,/Lat pulldown/);assert.match(preview,/Face pull/);assert.match(preview,/Incline dumbbell press/);
+ const preview=(await onboardingProposal(page)).weeks[0].sessions.flatMap(s=>s.ex?.map(e=>e[0])||[]).join(' ');assert.match(preview,/Lat pulldown/);assert.match(preview,/Face pull/);assert.match(preview,/Incline dumbbell press/);
  const proposed=await read();assert.deepEqual(proposed.customRoadmap,before.customRoadmap);assert.deepEqual(proposed.activeSchedule,before.activeSchedule);assert.deepEqual(proposed.sets,before.sets);
  await page.locator('#frNext').click();await approveGeneratedProgramme(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
  const accepted=await read();assert.equal(accepted.customRoadmap.coachingRulesVersion,2);assert.equal(accepted.customRoadmap.priority,'Bench');assert.equal(accepted.customRoadmap.benchPeakVersion,undefined);assert.equal(accepted.customRoadmap.lightLifts,undefined);assert.equal(accepted.customRoadmap.manualSplit,undefined);

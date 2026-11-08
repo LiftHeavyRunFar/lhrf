@@ -185,8 +185,20 @@ jobs:
           LHRF_ONBOARDING_BASE: /tmp/lhrf-onboarding-production
         run: |
           mkdir -p "$LHRF_ONBOARDING_BASE"
-          git archive eeb5dedf362b8b9a40f699e7e7ec012bbaf0d401 | tar -x -C "$LHRF_ONBOARDING_BASE"
+          git archive babc279ae209f47a87de56d4a8766598ff7ff09b | tar -x -C "$LHRF_ONBOARDING_BASE"
           node tests/conditional-onboarding.browser.cjs
+      - name: Test 20-week onboarding approval, planned running and first workout
+        if: ${{ !cancelled() }}
+        env:
+          LHRF_QA_SCREENSHOTS: /tmp/lhrf-onboarding-145
+          LHRF_QA_BASE: /tmp/lhrf-onboarding-production
+        run: node tests/onboarding-approval-hotfix.browser.cjs
+      - name: Retain onboarding review evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: onboarding-review-pixel
+          path: /tmp/lhrf-onboarding-145/*.png
       - name: Test missing-experience performance calibration and saved programme boundary
         if: ${{ !cancelled() }}
         run: node tests/experience-calibration.browser.cjs

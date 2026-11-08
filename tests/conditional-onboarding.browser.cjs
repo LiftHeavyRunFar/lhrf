@@ -13,7 +13,9 @@ const {reopenForWaitingUpdate} = require('./workout-update-helpers.cjs');
 
 const root = path.join(__dirname, '..');
 const previous = process.env.LHRF_ONBOARDING_BASE;
-if (!previous) throw new Error('Set LHRF_ONBOARDING_BASE to the archived v1.36.2 release.');
+if (!previous) throw new Error('Set LHRF_ONBOARDING_BASE to the archived v1.37.0 release.');
+const shellCache = dir => fs.readFileSync(path.join(dir, 'sw.js'), 'utf8').match(/^const CACHE = '([^']+)'/m)[1];
+const candidateCache = shellCache(root), previousCache = shellCache(previous);
 const key = replacement.DATA_KEY;
 const pixel = {width: 393, height: 852};
 const desktop = {width: 1366, height: 900};
@@ -45,7 +47,7 @@ async function fresh(browser, origin, viewport = pixel) {
   page.on('pageerror', error => errors.push(error.message));
   await page.clock.install({time: new Date(date)});
   await page.goto(origin);
-  assert.equal(await loc(page, 'firstRun').isVisible(), true);
+  assert.equal(await loc(page, 'firstRun').isVisible(), true, errors.join('\n'));
   assert.equal(await fitsViewport(page), true);
   assert.equal(await step(page), '1');
   assert.match(await loc(page, 'frStepLabel').innerText(), /1 of 5/i);
@@ -142,6 +144,24 @@ async function exportBackup(page) {
       assert.deepEqual(errors, []);
       await context.close();
     }
+    {
+      const {page, context, errors} = await fresh(browser, origin);
+      // Keep defaults for general hybrid fitness, availability and baselines.
+      await next(page);
+      assert.equal(await step(page), '2');
+      assert.equal(await loc(page, 'frGoal').inputValue(), 'general');
+      await set(page, 'frExperience', 'beginner');
+      await next(page);
+      assert.equal(await step(page), '3');
+      await next(page);
+      await currentRecovery(page);
+      const installed = await accept(page);
+      assert.ok(installed.activeSchedule.some(session => session.ex?.length));
+      assert.ok(installed.activeSchedule.some(session => session.runs?.length));
+      assert.equal(await loc(page, 'frFinalHeavyPreview').isVisible(), false);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
     for (const test of [
       {goal:'bench', focus:'strength-only', lifts:['Bench'], viewport:pixel, choose:{Bench:{mode:'days',value:7}}},
       {goal:'deadlift', focus:'strength-only', lifts:['Deadlift'], viewport:desktop, choose:{Deadlift:{mode:'date',value:'2026-12-10'}}},
@@ -182,6 +202,7 @@ async function exportBackup(page) {
       for (const lift of test.lifts) assert.match(preview, new RegExp(lift, 'i'));
       assert.match(preview, /heavy.*single/is);
       assert.match(preview, /technique|light/i);
+      await disclose(page, 'frReviewEdits');
       assert.equal(await loc(page, 'frEditWeek').isVisible(), true);
       await loc(page, 'frEditWeek').click();
       assert.equal(await step(page), '3');
@@ -232,7 +253,8 @@ async function exportBackup(page) {
         await confirmOnboardingEquipment(page);
         await currentRecovery(page, 'all');
         assert.equal(await loc(page, 'frNext').isDisabled(), true);
-        assert.match(await loc(page, 'frWarnings').textContent(), /heavy|experience|recovery|taper/i);
+        assert.match(await loc(page, 'frWarnings').innerText(), /coach timing|heavy|experience|recovery|taper/i);
+        assert.match(await loc(page, 'frFinalHeavyPreview').innerText(), /heavy|experience|recovery|taper/i);
       } else {
         assert.equal(await step(page), '3');
         assert.match(await loc(page, 'frError').textContent(), /heavy|recovery|taper|training/i);
@@ -269,7 +291,7 @@ async function exportBackup(page) {
       const original = trainingState();
       original.readinessDay = '2026-11-09';
       const packet = await replacement.createPackage(eventProgramme({equipmentInventory:original.equipmentInventory}),
-        original, {reviewedCommit:'eeb5ded', approvalContext:['Synthetic upgrade fixture']});
+        original, {reviewedCommit:'babc279', approvalContext:['Synthetic upgrade fixture']});
       const approved = replacement.createReplacement(original, packet, coach, {now:date}).next;
       servePrevious = true;
       const context = await browser.newContext({viewport:pixel, isMobile:true, hasTouch:true,
@@ -283,14 +305,14 @@ async function exportBackup(page) {
       await page.goto(origin);
       await page.evaluate(() => navigator.serviceWorker.ready);
       await page.waitForFunction(() => !!navigator.serviceWorker.controller);
-      assert.ok((await page.evaluate(() => caches.keys())).includes('lhrf-shell-v1.36.2-weekly-review'));
+      assert.ok((await page.evaluate(() => caches.keys())).includes(previousCache));
       const before = await state(page);
       assert.equal(await loc(page, 'firstRun').isVisible(), false);
       servePrevious = false;
       await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
       await reopenForWaitingUpdate(page);
       assert.deepEqual((await page.evaluate(() => caches.keys())).filter(key => key.startsWith('lhrf-shell-')),
-        ['lhrf-shell-v1.37.0-conditional-onboarding']);
+        [candidateCache]);
       assert.equal(await loc(page, 'firstRun').isVisible(), false);
       assert.equal(await state(page), before);
       const backup = await exportBackup(page);

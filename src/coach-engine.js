@@ -19,6 +19,10 @@ const weekday=date=>WEEKDAYS[new Date(dateStamp(date)).getUTCDay()];
 const hasCompetitionIntake=c=>c.competitionIntakeVersion===1&&!!c.strengthTargetDate&&Object.hasOwn(COMPETITION_LIFTS,c.event);
 const protectedMeetDate=c=>c.strengthTargetDate||c._previousCompetitionDate;
 const preferredHeavyDate=(preference,eventDate)=>preference?.mode==='athlete'?(validDate(preference.date)?preference.date:validDate(eventDate)&&Number.isInteger(preference.daysOut)&&preference.daysOut>=1&&preference.daysOut<=730?dayBefore(eventDate,preference.daysOut):null):null;
+function competitionRequest(c,lift){
+ const mode=c.finalHeavyPreferences?.[lift]?.mode==='athlete'?'athlete':'coach',requestedDate=preferredHeavyDate(c.finalHeavyPreferences?.[lift],c.strengthTargetDate);
+ return {mode,requestedDate,requestedDaysOut:requestedDate?daysBetween(requestedDate,c.strengthTargetDate):null};
+}
 function unconfirmedCompetitionChoices(c,sessions){
  if(!hasCompetitionIntake(c))return {};
  const actual=sessions.flatMap(session=>session.ex||[]).filter(ex=>ex[2]===1&&ex[4]>=7&&ex[5]?.finalHeavyExposure?.kind==='single').map(ex=>ex[5].finalHeavyExposure);
@@ -176,6 +180,7 @@ function prepareNewProgramme(input={},options={}){
    if(choice.mode==='athlete'&&!(validDate(choice.date)&&choice.daysOut===undefined||choice.date===undefined&&Number.isInteger(choice.daysOut)&&choice.daysOut>=1&&choice.daysOut<=730))throw new RangeError(lift+': enter a valid final heavy date or a whole number of days before the competition.');
   }
   c.strengthGoal=c.event;
+  c.competitionTimingReviewVersion=1;
   if(lifts.length===1&&c.priority!=='Running'&&c.hybridFocus!=='running')c.priority=lifts[0];
   c.finalHeavyPreferences=Object.fromEntries(lifts.map(lift=>{
    const choice=preferences[lift];
@@ -234,6 +239,7 @@ function approveProgrammeConfig(proposal,approvedAt=new Date().toISOString()){
  const prepared=Number(proposal.coachingRulesVersion)>=2&&proposal.coachingRuntimeVersion===1&&proposal.coachingEvidence?.version===1;
  if(prepared&&(!Number.isFinite(Date.parse(proposal.coachingEvidence.asOf))||Date.parse(proposal.coachingEvidence.asOf)>approvedTime||!proposal.coachingEvidence.strength||!['observations','performances','events'].every(key=>Array.isArray(proposal.coachingEvidence.recovery?.[key]))))throw new RangeError('The frozen proposal evidence is invalid or postdates approval; review again.');
  const c=prepareNewProgramme({...proposal,equipmentPolicyVersion:1},{now:approvedTime});
+ if(prepared&&proposal.competitionTimingReviewVersion!==1)delete c.competitionTimingReviewVersion;
  // Approval validates the reviewed proposal; it must not learn again from an
  // empty history, discard evidence, or change the displayed starting loads.
  if(prepared)for(const key of ['coachingEvidence','strengthCalibration','strengthPractice','strengthEvidenceReview','runningReturnObservation','runningDoseEvidence','baselines']){
@@ -490,14 +496,14 @@ function rawVariationChoice(c,lift,w){const b=variationBlock(w,c.weeks,c),specif
 function variationChoice(c,lift,w){const selected=rawVariationChoice(c,lift,w),name=equipmentChoice(selected.name,c);return name===selected.name?selected:{name,locked:false,why:selected.name+' replaced by '+name+' for '+exerciseRegistry.resolve(name).purpose+'. Setup and loading differ; calibrate by RPE. No weakness was inferred.'};}
 
 // Component capacity is a hard constraint. Unplaced work is returned explicitly.
-function constrainedPlan(c,warnings,activities){
+function constrainedPlan(c,warnings,activities,week){
  if(Number(c.coachingRulesVersion)>=2&&(c.visitConstraints||Number(c.sessionTimeVersion)>=1)){
   const dates=new Map(),requiredStrengthDays={};
   if(hasCompetitionIntake(c))for(const lift of COMPETITION_LIFTS[c.event]){
    const date=preferredHeavyDate(c.finalHeavyPreferences?.[lift],c.strengthTargetDate);
-   if(date&&date>=c.startDate&&date<c.strengthTargetDate&&activities.some(item=>item.type==='strength'&&item.name===lift))requiredStrengthDays[lift]=weekday(date);
+   if(date&&date>=c.startDate&&date<c.strengthTargetDate&&(c.competitionTimingReviewVersion!==1||generalEventWeek(c,date)===week)&&activities.some(item=>item.type==='strength'&&item.name===lift))requiredStrengthDays[lift]=weekday(date);
   }
-  return visitPlanner.allocate(c,warnings,activities,{requiredStrengthDays,recoveryLifts:Number(c.weeklyStressVersion)>=1?['Squat','Bench','Deadlift'].filter(lift=>generalStrengthRecovery(c,lift)):[],finalHeavyDates:slots=>{
+  return visitPlanner.allocate(c,warnings,activities,{requiredStrengthDays,keepFeasiblePins:c.competitionTimingReviewVersion===1,recoveryLifts:Number(c.weeklyStressVersion)>=1?['Squat','Bench','Deadlift'].filter(lift=>generalStrengthRecovery(c,lift)):[],finalHeavyDates:slots=>{
    const key=slots.map(s=>s.items.filter(i=>i.type==='strength').map(i=>i.name).join(',')).join('|');
    if(!dates.has(key))dates.set(key,generalPolicy(c)&&c.strengthTargetDate?Object.values(generalStrengthCalendar(c,{slots}).lifts).filter(x=>x.finalHeavyDate&&/Squat|Deadlift/.test(x.lift)).map(x=>x.finalHeavyDate):[]);
    return dates.get(key);
@@ -680,8 +686,8 @@ function customPlan(c,week=1){
  const names={squat:'Squat',bench:'Bench',deadlift:'Deadlift'};const activities=[];
  for(const k of ['squat','bench','deadlift'])for(let i=0;i<c[k];i++)activities.push({type:'strength',name:names[k],detail:i===0?'Primary exposure':i===1?'Secondary exposure':'Additional technique / volume'});
  for(let i=0;i<c.runs;i++)activities.push({type:'run',name:'Run',detail:c.runGoal==='fitness'?(i===0?'Easy aerobic':i===1?'Longer easy aerobic':'Optional easy aerobic'):(i===0?'Quality / race-specific':i===1?'Easy aerobic':'Endurance / supporting run')});
- if([3,4].includes(c.runningGuidanceVersion)){const review=runningAssessment(c,week);warnings.push(...review.warnings);const plan=constrainedPlan(c,warnings,activities);if(generalPolicy(c))plan.warnings.push(...generalStrengthCalendar(c,plan).warnings);return {...plan,feasible:plan.feasible&&review.feasible,runningReview:review}}
- if(broaderPolicy(c)){const plan=constrainedPlan(c,warnings,activities);if(generalPolicy(c))plan.warnings.push(...generalStrengthCalendar(c,plan).warnings);return plan;}
+ if([3,4].includes(c.runningGuidanceVersion)){const review=runningAssessment(c,week);warnings.push(...review.warnings);const plan=constrainedPlan(c,warnings,activities,week);if(generalPolicy(c))plan.warnings.push(...generalStrengthCalendar(c,plan).warnings);return {...plan,feasible:plan.feasible&&review.feasible,runningReview:review}}
+ if(broaderPolicy(c)){const plan=constrainedPlan(c,warnings,activities,week);if(generalPolicy(c))plan.warnings.push(...generalStrengthCalendar(c,plan).warnings);return plan;}
  // Seven calendar days are always available. c.days is the maximum number of active days, not a Mon–Fri cutoff.
  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
  const allowed=Array.isArray(c.availableDays)&&c.availableDays.length?c.availableDays:dayNames;
@@ -1159,13 +1165,20 @@ function runtimePeakEvidence(c,lift){
 // taper review (doi:10.3390/sports8090125) and self-reported practices review
 // (doi:10.1007/s40279-026-02500-w) support individualized, lift-specific reductions.
 const competitionTiming={Bench:{minimum:3,preferred:6},Squat:{minimum:4,preferred:8},Deadlift:{minimum:5,preferred:10}};
-function competitionExposureConflict(c,lift,date,peak,slot){
+function competitionExposureConflict(c,lift,date,peak,slot,requireSlot=true){
  const days=daysBetween(date,c.strengthTargetDate),minimum=competitionTiming[lift].minimum;
  if(days<minimum)return 'Allow at least '+minimum+' days before this meet under the current taper guard, or choose coach timing.';
  if(days>21)return 'Choose a date within three weeks of the meet, or choose coach timing.';
- if(!slot)return 'That date has no '+lift.toLowerCase()+' visit in the current split. Choose another date or adjust availability and the split.';
+ if(!slot&&requireSlot){
+  if(c.competitionTimingReviewVersion===1){
+   const day=weekday(date);
+   if(c.availableDays?.length&&!c.availableDays.some(d=>d.slice(0,3)===day))return day+' is outside your available training days.';
+   if(c.runs>0&&(c.longRunDay?.slice(0,3)===day||c.manualSplit?.[day]?.includes('long')))return 'That '+day+' is reserved for your protected long run, so there is no '+lift.toLowerCase()+' visit.';
+  }
+  return 'That date has no '+lift.toLowerCase()+' visit in the current split.'+(c.competitionTimingReviewVersion===1?'':' Choose another date or adjust availability and the split.');
+ }
  if(peak.recentSingle&&daysBetween(peak.recentSingle.date.slice(0,10),date)<=3)return 'That date is too close to the recent completed single. Choose a later training date or coach timing.';
- if(orderedRecoveryInterval(c,generalEventWeek(c,date),slot.day))return 'That date falls inside a protected post-event recovery period. Choose another date.';
+ if(orderedRecoveryInterval(c,generalEventWeek(c,date),slot?.day||weekday(date)))return 'That date falls inside a protected post-event recovery period. Choose another date.';
  const raceDate=c.runningTargetDate||c._originRunningTargetDate;
  if(raceDate){
   const raceDays=daysBetween(date,raceDate),endurance=['half','marathon'].includes(String(c.runGoal).toLowerCase());
@@ -1175,17 +1188,37 @@ function competitionExposureConflict(c,lift,date,peak,slot){
  if(coachingEvidence.recovery(c,{sport:'strength',task:'heavy',lift,atDate:date,now:clock()}).restriction!=='none')return 'Current recovery evidence does not support heavy work on that date. Review the concern before choosing a heavy single.';
  return null;
 }
+function competitionEvidenceExplanation(c,lift,peak){
+ if(peak.readiness.restriction!=='none')return {reason:'Your current recovery evidence does not support heavy '+lift.toLowerCase()+' work.',nextStep:'Review recovery first. Choose coach timing for lighter work only if comfortable and appropriate.'};
+ if(beginnerPolicy(c,lift))return {reason:'Your current experience supports technique practice before a demanding competition single.',nextStep:'Choose coach timing for light technique. Do not test a heavy single to unlock this date.'};
+ if(!exerciseRegistry.identity(lift,equipmentInventory(c)))return {reason:'The current setup does not establish a competition '+lift.toLowerCase()+' practice.',nextStep:'Review the available equipment or choose coach timing for suitable practice.'};
+ if(peak.readiness.reviewRequired||c.strengthCalibration?.lifts?.[lift]?.trainingLevel==='clarification-required')return {reason:'Your recovery or recent lift evidence still needs review before scheduling a demanding single.',nextStep:'Review the relevant evidence, or choose coach timing for bounded practice.'};
+ const profile=c.liftProfiles?.[lift],asOf=c.coachingEvidence?.asOf?.slice(0,10),date=profile?.resultDate;
+ const stale=validDate(asOf)&&validDate(date)&&daysBetween(date,asOf)>42;
+ return {reason:stale?'Your reported competition single is more than six weeks old.':'There is no recent completed competition-single evidence for this lift.',
+  nextStep:'Choose coach timing for controlled rep practice if appropriate. If you already completed a single with competition technique in the last six weeks, add its weight and date and confirm its technique.'};
+}
 function selectCompetitionExposure(c,lift,slots,peak){
- const preference=c.finalHeavyPreferences?.[lift],mode=preference?.mode==='athlete'?'athlete':'coach',requested=preferredHeavyDate(preference,c.strengthTargetDate);
- const result={mode,date:null,daysOut:null,finalLightDate:null,kind:'none',reason:peak.reason,issue:null};
- const reject=reason=>({...result,reason,issue:mode==='athlete'?lift+' final heavy single'+(requested?' on '+requested:'')+': '+reason:null});
- if(!slots.length||Number(c[lift.toLowerCase()])<1)return {...reject('Add a '+lift.toLowerCase()+' exposure to prepare for this competition.'),issue:lift+': no '+lift.toLowerCase()+' exposure fits the current competition split. Add a visit or review availability.'};
- if(maintenancePolicy(c,lift)||(c.lightLifts||[]).some(name=>String(name).toLowerCase()===lift.toLowerCase()))return {...reject('Competition preparation needs more than a maintenance or light-only setting for this lift.'),issue:lift+': choose progression or automatic strength mode for the competition lift, or change the event goal.'};
+ const request=competitionRequest(c,lift),{mode,requestedDate:requested}=request,review=c.competitionTimingReviewVersion===1;
+ const result={mode,date:null,daysOut:null,finalLightDate:null,kind:'none',reason:peak.reason,issue:null,...(review?{...request,nextStep:null}:{})};
+ const reject=(reason,nextStep=null)=>({...result,reason,...(review?{nextStep}:{}),issue:mode==='athlete'?lift+' final heavy single'+(requested?' on '+requested:'')+': '+[reason,nextStep].filter(Boolean).join(' '):null});
+ if(!slots.length||Number(c[lift.toLowerCase()])<1)return {...reject(review?'No '+lift.toLowerCase()+' exposure fits the current competition split.':'Add a '+lift.toLowerCase()+' exposure to prepare for this competition.','Add a visit or review availability.'),issue:lift+': no '+lift.toLowerCase()+' exposure fits the current competition split. Add a visit or review availability.'};
+ if(maintenancePolicy(c,lift)||(c.lightLifts||[]).some(name=>String(name).toLowerCase()===lift.toLowerCase()))return {...reject('Competition preparation needs more than a maintenance or light-only setting for this lift.','Choose progression or automatic strength mode, or change the event goal.'),issue:lift+': choose progression or automatic strength mode for the competition lift, or change the event goal.'};
  if(c.variations?.[lift]?.lock&&c.variations[lift].choice!=='auto')return reject('Unlock the lift variation to plan a final exposure with the competition lift.');
  if(mode==='athlete'&&(!requested||requested<c.startDate||requested>=c.strengthTargetDate))return reject('Choose a training date from programme start to the day before the competition.');
- if(beginnerPolicy(c,lift)||peak.readiness.restriction!=='none'||mode==='athlete'&&!peak.singleSupported)return reject(peak.reason+(mode==='athlete'?' Choose coach timing for bounded practice or add recent completed competition-single evidence and review recovery.':''));
+ if(review&&mode==='athlete'){
+  const needsActualSlot=generalEventWeek(c,requested)===(c._policyWeek||1);
+  const slot=slots.find(item=>item.day.slice(0,3)===weekday(requested));
+  const conflict=competitionExposureConflict(c,lift,requested,peak,slot,needsActualSlot);
+  if(conflict)return reject(conflict,slot||!needsActualSlot?null:'Choose another date or adjust your training days or split.');
+ }
+ if(beginnerPolicy(c,lift)||peak.readiness.restriction!=='none'||mode==='athlete'&&!peak.singleSupported){
+  if(review){const {reason,nextStep}=competitionEvidenceExplanation(c,lift,peak);return reject(reason,nextStep);}
+  return reject(peak.reason+(mode==='athlete'?' Choose coach timing for bounded practice or add recent completed competition-single evidence and review recovery.':''));
+ }
  const candidates=[];
- for(let days=1;days<=21;days++){
+ if(review&&mode==='athlete')candidates.push({date:requested,days:request.requestedDaysOut});
+ else for(let days=1;days<=21;days++){
   const date=dayBefore(c.strengthTargetDate,days);
   if(date<c.startDate)break;
   const slot=slots.find(item=>item.day.slice(0,3)===weekday(date));
@@ -1202,7 +1235,8 @@ function selectCompetitionExposure(c,lift,slots,peak){
   const date=dayBefore(c.strengthTargetDate,days);
   if(date!==c.runningTargetDate&&slots.some(slot=>slot.day.slice(0,3)===weekday(date))){later=date;break;}
  }
- return {...result,date:chosen.date,daysOut:chosen.days,kind:peak.singleSupported?'single':'rep-practice',finalLightDate:later||null,reason:(mode==='athlete'?'Your selected date fits the current calendar and taper guard. ':'Coach timing weighs the '+lift.toLowerCase()+' taper, your experience and recovery evidence, and actual training days. It is an adjustable estimate. ')+peak.reason};
+ const basis=mode==='athlete'?(review?'Your selected date fits the training calendar and taper. ':'Your selected date fits the current calendar and taper guard. '):'Coach timing weighs the '+lift.toLowerCase()+' taper, your experience and recovery evidence, and actual training days. It is an adjustable estimate. ';
+ return {...result,date:chosen.date,daysOut:chosen.days,kind:peak.singleSupported?'single':'rep-practice',finalLightDate:later||null,reason:basis+(review&&!peak.singleSupported?competitionEvidenceExplanation(c,lift,peak).reason:peak.reason)};
 }
 // Calendar selection depends on available exposures and the lift, never named weekdays.
 function generalStrengthCalendar(c,plan){
@@ -1429,16 +1463,19 @@ function finishCompetitionWeek(sessions,c,w,calendar){
  const constraints=sessions.constraintResult,issues=[],warnings=[],finalHeavyPlan={};
  for(const lift of COMPETITION_LIFTS[c.event]){
   const {issue,...selection}=calendar.lifts[lift].finalHeavyPlan;
-  const checkWeek=generalEventWeek(c,selection.date||c.strengthTargetDate);
+  const checkDate=selection.date||(selection.requestedDate>=c.startDate&&selection.requestedDate<c.strengthTargetDate?selection.requestedDate:null)||c.strengthTargetDate;
+  const checkWeek=generalEventWeek(c,checkDate);
   if(checkWeek!==w)continue;
   if(issue)issues.push(issue);
   if(selection.date){
-   const session=sessions.find(session=>!session.eventDate&&generalSessionDate(c,w,session.day)===selection.date);
-   const actual=session?.ex?.find(ex=>ex[0]===lift&&ex[5]?.finalHeavyExposure?.date===selection.date&&ex[4]>=7&&(selection.kind!=='single'||ex[2]===1));
+   const isActual=ex=>ex[0]===lift&&ex[5]?.finalHeavyExposure?.date===selection.date&&ex[4]>=7&&(selection.kind!=='single'||ex[2]===1);
+   const matching=sessions.filter(session=>!session.eventDate&&generalSessionDate(c,w,session.day)===selection.date);
+   const session=c.competitionTimingReviewVersion===1?matching.find(s=>s.ex?.some(isActual)):matching[0],actual=session?.ex?.find(isActual);
    if(!actual){
     const reason=lift+': the final exposure on '+selection.date+' cannot be delivered with the current equipment, visit or recovery constraints. Review the plan before adding heavy work.';
     if(selection.mode==='athlete')issues.push(reason);else warnings.push(reason);
     Object.assign(selection,{date:null,daysOut:null,finalLightDate:null,kind:'none',reason});
+    if(c.competitionTimingReviewVersion===1)selection.nextStep='Review equipment, recovery and time on that visit, choose another date or switch to coach timing.';
    }else if(session.runs?.some(run=>run.steps?.some(isHardStep))){
     warnings.push(lift+': the final exposure shares a visit with a quality run. Review visit order and fatigue before attempting both.');
    }
@@ -2186,6 +2223,6 @@ function coachCandidate(){if(data.activeSchedule?.length||Number(data.customRoad
  function describeWeek(c,week){const effective=weekConfig(c,week),sessions=generatedSessions(effective,week),constraint=sessions.constraintResult;return {week,sessions,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||sessions[0]?.phase||customPhase(week,c.weeks,effective),deload:cycleWeek(week,c.weeks,effective).deload,...(Number(c.coachingRulesVersion)>=2||equipmentPolicy(c)?{priority:effective.priority,hybridFocus:effective.hybridFocus,activeGoal:effective.activeGoal,coachingInstructions:programmeGuidance(effective),constraints:constraint}:{}),...([3,4].includes(c.runningGuidanceVersion)?{runningSummary:runningWeekSummary(effective,week,sessions)}:{})}}
  return {equipmentFinish,generalStrengthExposure,generalStrengthRecovery,generalStrengthCalendar,repaceThresholdRun,orderSessionExercises,runningAssessment,runningWeekSummary,candidateWeek,describeWeek,isDesignatedTopSet,generatedSessions,selectTrainingFramework,customPhase,customPlan,runningPaces,cycleWeek,variationBlock,variationChoice,estimatedMax,exerciseEstimatedMax,roundLoad,backoffProfile,phaseBackoffLoad,loadFromTopSet,accessorySelection,accessoryPrefs,hybridRunWeek,hybridRecoverySignals,reviewRecovery,paceText,distanceLabel,ensureKnownLiftLoads,effectiveSession,reviewDecision,hybridWorkloadRecommendation,hybridAthleteBaseline,hybridInterventionFollowup,reviewSessions,isPrimaryExercise,isTertiaryExercise,plannedNextWeek,reviewNextStep,coachCandidate,latestCheckin,accessoryNames,carryForwardApprovedProgression,applyApprovedHybridRunning,pbSeconds};
 }
-const api={schema:'lhrf-shared-coach-v1',createEngine,allowsProgression,prepareNewProgramme,approveProgrammeConfig,unconfirmedCompetitionChoices};
+const api={schema:'lhrf-shared-coach-v1',createEngine,allowsProgression,prepareNewProgramme,approveProgrammeConfig,competitionRequest,unconfirmedCompetitionChoices};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoach=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

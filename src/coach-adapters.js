@@ -54,14 +54,17 @@ function buildProgramme(input,options={}){
  if(c.competitionIntakeVersion===1){
   const sessions=weeks.flatMap(w=>w.sessions);
   const finalLightExposures=sessions.flatMap(s=>s.ex||[]).map(ex=>ex[5]?.finalLightExposure).filter(Boolean);
-  for(const [lift,selection] of Object.entries(finalHeavyPlan))if(selection.finalLightDate&&!finalLightExposures.some(exposure=>exposure.lift===lift&&exposure.date===selection.finalLightDate))selection.finalLightDate=null;
+  for(const [lift,selection] of Object.entries(finalHeavyPlan)){
+   if(c.competitionTimingReviewVersion===1)selection.finalLightDate=selection.date?finalLightExposures.filter(exposure=>exposure.lift===lift&&exposure.date>selection.date&&exposure.date<c.strengthTargetDate).map(exposure=>exposure.date).sort().at(-1)||null:null;
+   else if(selection.finalLightDate&&!finalLightExposures.some(exposure=>exposure.lift===lift&&exposure.date===selection.finalLightDate))selection.finalLightDate=null;
+  }
   const meetWeek=weeks.find(w=>w.sessions.some(session=>session.competitionType));
   if(meetWeek){
    const conflicts=coach.unconfirmedCompetitionChoices(c,sessions);
    for(const lift of meetWeek.sessions.find(session=>session.competitionType).competitionLifts){
-    if(finalHeavyPlan[lift])continue;
+    if(finalHeavyPlan[lift]&&(!conflicts[lift]||finalHeavyPlan[lift].kind==='none'||c.competitionTimingReviewVersion!==1))continue;
     const reason=conflicts[lift]||'No final demanding exposure could be confirmed across the actual event stages. Review availability and recovery.';
-    finalHeavyPlan[lift]={mode:conflicts[lift]?'athlete':'coach',kind:'none',date:null,daysOut:null,finalLightDate:null,reason};
+    finalHeavyPlan[lift]={mode:conflicts[lift]?'athlete':'coach',kind:'none',date:null,daysOut:null,finalLightDate:null,reason,...(c.competitionTimingReviewVersion===1?{...coach.competitionRequest(c,lift),nextStep:'Review event handover and training days, choose another date or switch to coach timing.'}:{})};
     meetWeek.warnings.push(reason);
     if(conflicts[lift]){meetWeek.blockingIssues.push(reason);meetWeek.feasible=false;}
    }

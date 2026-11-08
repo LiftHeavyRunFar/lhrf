@@ -1,6 +1,7 @@
 // Synthetic users enter the actual first-run UI. No live browser profile or real records.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {observeOnboardingProposal,onboardingProposal}=require('./onboarding-browser-proposal.cjs');
 const coach=require('../src/coach-engine'),install=require('../src/programme-install');
 const approved=require('./fixtures/approved-peak-v2.json').config;
 const cases=[...require('./fixtures/five-scenario-engine-inputs.json').cases,...require('./fixtures/original-three-engine-inputs.json').cases];
@@ -25,7 +26,7 @@ async function contextFor(browser){
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date('2026-11-02T12:00:00Z')});
  await page.route('https://intake.test/**',route=>{const p=new URL(route.request().url()).pathname,file=path.join(__dirname,'..',p==='/'?'index.html':p);return route.fulfill({body:fs.readFileSync(file),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.png')?'image/png':'text/html'})});
  await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture:legacy()});
- await page.goto('https://intake.test/');
+ await page.goto('https://intake.test/');await observeOnboardingProposal(page);
  // Preserve frozen Stage 1–6 UI acceptance under its original duration policy. Latest policy has a separate mobile suite.
  await page.evaluate(()=>{const prepare=LHRFCoach.prepareNewProgramme;LHRFCoach.prepareNewProgramme=(c,o)=>prepare({...c,sessionTimeVersion:0},o)});const before=await read(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
  await page.evaluate(()=>document.getElementById('restartOnboardingLink').click());return {context,page,before,errors};
@@ -73,7 +74,7 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
   {
    const {context,page,before,errors}=await contextFor(browser);await enter(page,'A');preserved(await read(page),before);
    assert.equal(await page.locator('#frNext').isEnabled(),true);
-   await page.getByText('Explore weekly sessions',{exact:true}).click();await page.locator('#frPreview details').evaluateAll(nodes=>nodes.forEach(n=>n.open=true));assert.match(await page.locator('#frPreview').innerText(),/Squat|Bench/);
+   assert.ok((await onboardingProposal(page)).weeks[0].sessions.some(s=>s.ex?.some(e=>/Squat|Bench/.test(e[0]))));
    await page.locator('#frNext').click();await approveGeneratedProgramme(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
    const after=await read(page);preserved(after,before,true);assert.equal(after.customRoadmap.coachingRulesVersion,2);assert.equal(after.customRoadmap.visitConstraints.strengthVisits,2);assert.deepEqual(after.customRoadmap.visitConstraints.minutes,{Tue:75,Thu:75,Sun:105});assert.deepEqual(after.customRoadmap.runningHistory.weeklyKm,[20,22,23,24,22,25]);assert.notEqual(after.customRoadmap.programmeId,before.customRoadmap.programmeId);
    assert.deepEqual(after.programmeArchive.at(-1).programme,before.customRoadmap);assert.deepEqual(after.programmeArchive.at(-1).schedule,before.activeSchedule);assert.ok(after.activeSchedule.every(s=>s.id.startsWith(after.customRoadmap.sessionNamespace)));
