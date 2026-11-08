@@ -50,6 +50,12 @@ test('race PB strategy and adjacent competition readiness stay separate from har
  c.visitConstraints.eventDays={...c.visitConstraints.eventDays,'2026-12-27':{confirmed:true,minutes:60}};
  const capped=generate(c).weeks.at(-1).sessions.find(s=>s.eventType==='running');assert.equal(capped.eventPermission.confirmed,false);assert.ok(capped.constraintIssues.some(i=>i.kind==='event-time'));
  c.runProfile.seconds=null;const unknown=generate(c).weeks.at(-1).sessions.find(s=>s.eventType==='running');assert.equal(unknown.timeBudget.totalMinutes,null);assert.doesNotMatch(JSON.stringify(unknown),/NaN|0:00\/km/);
+ assert.ok(unknown.constraintIssues.some(i=>i.kind==='event-duration'));
+ c.visitConstraints.eventDays['2026-12-27']={confirmed:true};
+ const available=generate(c).weeks.at(-1).sessions.find(s=>s.eventType==='running');
+ assert.equal(available.eventPermission.confirmed,true);
+ assert.equal(available.timeBudget.totalMinutes,null);
+ assert.ok(!available.constraintIssues?.some(i=>i.kind==='event-duration'));
 });
 test('all nine Stage 5 saved policies retain exact programmes and browser globals match evidence-based Node generation',()=>{
  const fs=require('node:fs'),vm=require('node:vm');
