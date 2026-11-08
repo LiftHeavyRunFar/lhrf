@@ -57,11 +57,13 @@ function capture(config,{data={},now=Date.now()}={}){
  const runs=config.runningDoseEvidence?.recentActivities??data.runs??[];
  for(const raw of runs){const when=time(raw.date),minutes=Number(raw.minutes??raw.min);if(!Number.isFinite(when)||when>asOf||asOf-when>42*DAY||raw.completed===false||raw.failed||raw.unreliable||raw.rpeReliable===false||raw.effortReliable===false||raw.evidenceReview?.rpe?.approximate||!(Number(raw.km)>0&&minutes>0))continue;const type=norm(raw.type||raw.role);performances.push({date:raw.date,sport:'running',task:/quality|interval|threshold|tempo|race/.test(type)?'quality':/long/.test(type)?'long':'easy',km:Number(raw.km),minutes,rpe:Number(raw.rpe)||null});}
  for(const [lift,proof]of Object.entries(strength))if(['Squat','Bench','Deadlift'].includes(lift))for(const row of proof.rows)if(row.reliable&&row.reps<=8)performances.push({date:row.date,sport:'strength',task:row.reps<=3&&row.rpe>=7&&row.purpose!=='speed'?'heavy':'lifting',lift,kg:row.kg,reps:row.reps,rpe:row.rpe});
- const marathon=config.runningHistory?.recentMarathonDate||config.runProfile?.recentMarathonDate,events=[];
- if(date(marathon))events.push({date:marathon,sport:'running',goal:'marathon'});
+ const events=[],profile=config.runProfile||{},races=[config.runningHistory?.recentRace,profile.recentRace,config.recentRace,...(Number(profile.distance)>=40&&Number(profile.seconds)>0&&profile.effort==='performance'?[{distanceKm:Number(profile.distance),date:profile.resultDate}]:[])];
+ const marathonDates=[config.runningHistory?.recentMarathonDate,profile.recentMarathonDate,config.recentMarathonDate,...races.filter(r=>Number(r?.distanceKm)>=40).map(r=>r.date)].filter(value=>date(value)&&time(value)<=asOf).map(date);
+ for(const marathon of new Set(marathonDates))events.push({date:marathon,sport:'running',goal:'marathon'});
  for(const goal of config.orderedGoals||[])if(date(goal.date))events.push({date:goal.date,sport:goal.sport,goal:goal.runGoal||goal.goal||'event'});
  if(date(config.runningTargetDate))events.push({date:config.runningTargetDate,sport:'running',goal:config.runGoal||'event'});
- return {version:1,asOf:new Date(asOf).toISOString(),strength,recovery:{observations,performances,events,invalid},originalHistoryUnchanged:true};
+ const uniqueEvents=[...new Map(events.map(e=>[JSON.stringify([e.date,e.sport,norm(e.goal)]),e])).values()].sort((a,b)=>a.date.localeCompare(b.date)||String(a.sport).localeCompare(String(b.sport))||String(a.goal).localeCompare(String(b.goal)));
+ return {version:1,asOf:new Date(asOf).toISOString(),strength,recovery:{observations,performances,events:uniqueEvents,invalid},originalHistoryUnchanged:true};
 }
 function recovery(config,{atDate,now=Date.now(),sport='strength',task='lifting',lift}={}){
  const packet=config.coachingEvidence,asOf=Math.min(typeof now==='function'?Number(now()):Number(now),time(packet?.asOf)),when=time(atDate||packet?.asOf),base={status:'normal',restriction:'none',canProgress:true,reviewRequired:false,eventDate:null,observedAt:null,reassessment:'Review the next comparable completed session and its next-day response.',reasons:[],evidence:[]};

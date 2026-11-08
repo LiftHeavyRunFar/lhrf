@@ -18,38 +18,40 @@ function weekSummary(w){
  return {week:w.week,phase:w.phase,feasible:w.feasible,reviewRequired:w.reviewRequired,runKm:Number(w.sessions.flatMap(s=>s.runs||[]).reduce((n,r)=>n+(Number(r.distanceKm)||0),0).toFixed(3)),strengthDays:w.sessions.filter(s=>s.ex?.length).map(s=>s.day),runDays:w.sessions.filter(s=>s.runs?.length).map(s=>s.day),warnings:w.warnings,unscheduled:w.unscheduled||[],sessions:w.sessions.map(s=>({day:s.day,eventDate:s.eventDate||null,exercises:(s.ex||[]).map(e=>({exercise:e[0],sets:e[1],reps:e[2],kg:e[3],rpe:e[4],role:e[5]?.role,trainingRole:e[5]?.trainingRole})),runs:(s.runs||[]).map(r=>({name:r.name,role:r.role,distanceKm:r.distanceKm,minutes:r.minutes,durationRangeMinutes:r.durationRangeMinutes,pace:r.pace,paceBasis:r.paceBasis}))}))};
 }
 function run(options={}){
+ const activeCoach=options.engine?.coach||coach,activeAdapters=options.engine?.adapters||adapters;
  const fixture=options.fixture||defaultFixture,fixturePath=options.fixturePath||'tests/fixtures/five-scenario-engine-inputs.json';
  const origin=JSON.stringify(fixture),now=()=>Date.parse(fixture.clock),proof=provenance(fixture,fixturePath),cases=[];
+ if(options.engine){proof.engineCommit=options.engine.commit;proof.legacyRegression=true;proof.files={...proof.files,...options.engine.sourceSha256};}
  for(const p of fixture.cases){
   const config=clone(p.config),inputSnapshot=JSON.stringify(config),data=clone(p.historicalData),dataSnapshot=JSON.stringify(data);
   if(options.policyVersion)config.coachingRulesVersion=options.policyVersion;
   // Native UI estimates from kg/reps. The original observations remain intact in the fixture.
-  const bare=coach.createEngine({now});
+  const bare=activeCoach.createEngine({now});
   for(const [name,performance] of Object.entries(config.liftProfiles))config.baselines[name]=bare.estimatedMax(performance.kg,performance.reps);
   const mappedSnapshot=JSON.stringify(config);
   try{
-   const programme=adapters.buildNewProgramme(config,{data,now});
+   const programme=activeAdapters.buildNewProgramme(config,{data,now});
    assert.equal(JSON.stringify(config),mappedSnapshot,'generation mutated mapped input');
    assert.equal(JSON.stringify(data),dataSnapshot,'generation mutated historical input');
-   assert.deepEqual(adapters.buildNewProgramme(config,{data,now}),programme,'generation is not deterministic');
-   const prepared=coach.prepareNewProgramme(adapters.normalizeProfile(config),{data,now}),native=adapters.createProfileEngine(prepared,{data,now});
+   assert.deepEqual(activeAdapters.buildNewProgramme(config,{data,now}),programme,'generation is not deterministic');
+   const prepared=activeCoach.prepareNewProgramme(activeAdapters.normalizeProfile(config),{data,now}),native=activeAdapters.createProfileEngine(prepared,{data,now});
    const parity=programme.weeks.every(w=>JSON.stringify(native.engine.describeWeek(native.config,w.week).sessions)===JSON.stringify(w.sessions));
    assert.ok(parity,'adapter sessions differ from native production generator');
    native.data.activeSchedule=clone(programme.weeks[0].sessions);
-   const reviewing=coach.createEngine({data:native.data,schedule:native.data.activeSchedule,now});
+   const reviewing=activeCoach.createEngine({data:native.data,schedule:native.data.activeSchedule,now});
    const beforeReview=JSON.stringify(native.data),review=reviewing.reviewDecision();
    assert.equal(JSON.stringify(native.data),beforeReview,'review mutated athlete state');
    assert.deepEqual(reviewing.reviewDecision(),review,'review not deterministic');
    const diagnostic={};
    if(config.recoveryEvidence||p.id==='D'){
     const noFatigueConfig=clone(config);delete noFatigueConfig.recoveryEvidence;
-    const noHistory=adapters.buildNewProgramme(noFatigueConfig,{now});
+    const noHistory=activeAdapters.buildNewProgramme(noFatigueConfig,{now});
     diagnostic.historyVersusNoHistoryFirstWeekIdentical=JSON.stringify(programme.weeks[0].sessions)===JSON.stringify(noHistory.weeks[0].sessions);
     diagnostic.reviewRecovery=reviewing.reviewRecovery();diagnostic.hybridSignals=reviewing.hybridRecoverySignals();
    }
    if(config.runningGoalSeconds){
     const withoutTarget=clone(config);delete withoutTarget.runningGoalSeconds;
-    const noTargetProgramme=adapters.buildNewProgramme(withoutTarget,{data,now});
+    const noTargetProgramme=activeAdapters.buildNewProgramme(withoutTarget,{data,now});
     const baseRuns=programme.weeks[0].sessions.flatMap(s=>s.runs||[]),noTargetRuns=noTargetProgramme.weeks[0].sessions.flatMap(s=>s.runs||[]);
     diagnostic.targetVersusNoTargetFirstWeekRunsIdentical=JSON.stringify(baseRuns)===JSON.stringify(noTargetRuns);
     const prescribed=runs=>runs.map(({paceBasis,...prescription})=>prescription);

@@ -69,18 +69,20 @@ jobs:
           path: athlete-report.json
 
   five-scenario-baseline:
-    name: Coaching replay safety (programme feasibility reported separately)
+    name: Legacy replay preservation (current coaching tested independently)
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify engine safety; retain blocked programme feasibility outcomes
+      - name: Verify pinned production replay safeguards and retain blocked outcomes
         run: npm run test:coaching:safety
-      - name: Check prescription-level recovery, taper and calibration criteria
+      - name: Preserve historical recovery, taper and calibration replay
         run: npm run test:coaching:depth
       - name: Retain exact outputs and mapping limitations
         if: always()

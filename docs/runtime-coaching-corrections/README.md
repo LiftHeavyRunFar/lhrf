@@ -10,6 +10,8 @@ The new `src/coaching-evidence.js` is a small shared interpreter used by strengt
 
 One dated recovery interpretation replaces conflicting strength/running rules in the new policy. Easy running, quality, longer running, individual lifting and heavy lifting have different evidence. Expiry does not clear an unresolved concern. An old event alone is context for review, rather than a permanent restriction. Task tolerance and restoration of weekly dose remain separate decisions. Worsening or provoking symptoms require stopping that work and prompt review; a percentage reduction cannot establish safety.
 
+Completed marathon dates are normalised across the dated performance profile, recent-race records and explicit history fields. Repeating the same fact in another supported field cannot change executable work. Partial starting weeks also retain each surviving slot's original purpose; removing earlier dates does not relabel a Sunday speed slot as the first volume slot.
+
 Running retains the IA-01 executable scaling correction. The new policy removes the blanket six-km-per-run general-fitness cap when a familiar running base is available. A provisional post-marathon ceiling no longer compounds because future week numbers advance. A single tolerated short run cannot restore the pre-event running week. Duration constraints and the actual final calendar still govern feasibility; removed distance is never automatically made up. Overlap alone is a monitoring signal, rather than proof that concurrent training warrants a cut.
 
 ## Evidence and policy limits
@@ -31,8 +33,10 @@ Reproduce without writing athlete state:
 npm test
 node scripts/compare-runtime-coaching.cjs --out /tmp/runtime-comparison.json --full-out /tmp/runtime-comparison-native.json
 node scripts/test-athletes.cjs --json
-node scripts/replay-coaching-rounds.cjs --safety --output /tmp/runtime-safety
-node scripts/replay-coaching-depth.cjs /tmp/runtime-depth
+node scripts/replay-coaching-rounds.cjs --safety --legacy-policy --output /tmp/runtime-safety
+node scripts/replay-coaching-depth.cjs /tmp/runtime-depth --legacy-policy
 ```
+
+The last two commands explicitly replay immutable production `b59a720` as **legacy preservation evidence**. Their historical assertions include assumptions rejected by this correction, such as a mandatory RPE-8.5-plus single without observed single experience and a future marathon build without new recovery evidence. They are not the quality standard for the corrected engine. Their provenance records the selected source commit/hashes. Current runtime quality is checked by the new adversarial tests, identical-input comparison and independent coaching reviews; existing saved-policy hashes still run against the current renderer. Omitting `--legacy-policy` retains the current-engine diagnostic route and can report unmet old assumptions without making an athlete programme approved.
 
 The November proposal is generated only after the general comparison and independent review. It is a proposal for review, never an active replacement. Final validation results, exact source SHAs, limitations and the deployment recommendation are recorded with the investigation PR.

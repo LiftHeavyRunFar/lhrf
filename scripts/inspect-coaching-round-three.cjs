@@ -2,10 +2,10 @@
 // deliberately does not treat calendar feasibility as coaching approval.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {run}=require('./test-five-scenarios.cjs');
-const coach=require('../src/coach-engine.js'),adapters=require('../src/coach-adapters.js');
+const selected=process.argv.includes('--legacy-policy')?require('./compare-runtime-coaching.cjs').legacyEngine():null,coach=selected?.coach||require('../src/coach-engine.js'),adapters=selected?.adapters||require('../src/coach-adapters.js');
 const fixturePath='tests/fixtures/five-scenario-round-three-inputs.json';
 const fixture=require('../'+fixturePath),copy=x=>JSON.parse(JSON.stringify(x));
-const capture=run({fixture,fixturePath});
+const capture=run({fixture,fixturePath,engine:selected||undefined});
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 const cfg=id=>{const c=copy(fixture.cases.find(x=>x.id===id).config);const e=coach.createEngine();for(const [n,p]of Object.entries(c.liftProfiles))c.baselines[n]=e.estimatedMax(p.kg,p.reps);return c;};
 const now=()=>Date.parse(fixture.clock);
