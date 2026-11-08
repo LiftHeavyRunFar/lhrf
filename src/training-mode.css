@@ -52,19 +52,17 @@ body[data-training-mode=active] .exercise-history .history-actual{color:#a7bed0;
 @media(max-width:360px){body[data-training-mode=active] .training-active>summary .ex-text strong{-webkit-text-stroke:.3px #b6e6ff}.weight-carry-hint{margin-left:18px}}
 @media(prefers-contrast:more){body[data-training-mode=active] .training-active>summary .ex-text strong{-webkit-text-fill-color:#fff;background:none}}
 
-/* Issue #138: training is about the sets, not a dashboard. */
-body[data-training-mode=active] #trainingSessionHeader{padding:4px 8px!important;border:0!important;border-radius:8px!important;background:transparent!important;box-shadow:none!important;margin:0 0 3px}
-body[data-training-mode=active] #trainingSessionHeader .training-topline{gap:8px;min-height:42px}
-body[data-training-mode=active] #trainingSessionHeader .training-topline .tag{font-size:10px;letter-spacing:.09em;color:#7fbfe7;flex:0 0 auto}
-body[data-training-mode=active] #trainingSessionHeader .live-status{font-size:11px;color:#c0d7e9;flex:1;text-align:right}
-body[data-training-mode=active] #trainingSessionHeader .training-leave{min-height:40px;padding:6px 10px}
-body[data-training-mode=active] .training-info-button{min-width:42px;min-height:42px;padding:4px 8px;border-radius:10px;border:1px solid #43779d;background:#102a40;color:#bde8ff;font-size:20px;flex:0 0 auto}
-body[data-training-mode=active] .live-ex .ex-content > p.muted.small:first-child,
-body[data-training-mode=active] .live-ex .exercise-notes{display:none}
-body[data-training-mode=active] .exercise-history{display:none}
-.training-info-dialog{position:fixed;z-index:9999;inset:auto 12px 14px;max-height:calc(100dvh - 48px);max-width:620px;margin:auto;overflow:auto;overscroll-behavior:contain;padding:18px;background:#0b2035;color:#e7f4ff;border:1px solid #3a8ac1;border-radius:16px;box-shadow:0 0 0 100vmax rgba(0,6,14,.76)}
-.training-info-dialog h2{font-size:19px;margin:0 0 8px}.training-info-dialog h3{font-size:14px;color:#8dd6ff;margin:18px 0 7px}
-.training-info-dialog > button{min-height:44px;margin:5px 0}.training-info-dialog p{font-size:14px;line-height:1.55}
-.training-info-dialog .exercise-history.training-dialog-history{display:block;padding:12px;margin-top:10px;background:#071624}
-.training-info-dialog .exercise-history.training-dialog-history details{margin-top:8px}
-@media(min-width:700px){.training-info-dialog{left:50%;right:auto;transform:translateX(-50%);width:min(620px,90vw);bottom:24px}}
+/* Compact training header and on-demand exercise reference. */
+body[data-training-mode=active] #trainingSessionHeader{padding:0 6px!important;border:0!important;background:transparent!important;box-shadow:none!important;margin:0 0 4px}
+body[data-training-mode=active] #trainingSessionHeader .live-status{font-size:12px;color:#c0d7e9}
+.training-info-button{width:44px;min-width:44px;min-height:44px;padding:0;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
+.training-info-dialog{position:fixed;inset:auto 0 max(12px,env(safe-area-inset-bottom));width:calc(100% - 24px);max-width:560px;max-height:calc(100dvh - 36px);margin:0 auto;overflow:auto;overscroll-behavior:contain;padding:0 16px 16px;background:#0b2035;color:#e7f4ff;border:1px solid #3a8ac1;border-radius:16px;box-sizing:border-box}
+.training-info-dialog::backdrop{background:rgba(0,6,14,.76)}
+.training-info-heading{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#0b2035;padding:10px 0 6px}
+.training-info-heading h2{font-size:19px;margin:0;overflow-wrap:anywhere}
+.training-info-heading button{width:auto;min-height:44px;flex:0 0 auto}
+.training-info-dialog h3{font-size:14px;color:#8dd6ff;margin:18px 0 7px}
+.training-info-dialog p{font-size:14px;line-height:1.55}
+.training-info-dialog .training-info-purpose{margin:0;color:#ace4ff;text-transform:capitalize}
+.training-info-dialog .exercise-history details{margin-top:8px}
+.training-info-dialog .exercise-history summary{min-height:44px}

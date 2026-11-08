@@ -27,6 +27,17 @@ function matches(ex,s){
  // Machines, accessories and explicit variations require a recorded exact setup.
  return legacyBarbell.has(a.id);
 }
+function executionMatches(ex,set,row){
+ const known=value=>norm(value)==='unconfirmed'?'':norm(value);
+ const expected=known(ex[5]?.execution),recorded=known(set.execution);
+ if(!expected)return true;
+ if(recorded)return recorded===expected;
+ const prescribed=(row.prescription?.ex||[]).filter(candidate=>
+  matches([set.exercise,0,0,0,0,set],{exercise:candidate[0],...(candidate[5]||{})})&&
+  (!set.role||!candidate[5]?.role||set.role===candidate[5].role));
+ const evidence=[known(row.execution),...prescribed.map(candidate=>known(candidate[5]?.execution))].filter(Boolean);
+ return evidence.every(value=>value===expected);
+}
 // Set roles (top/backoff/straight) are not training purposes. Never infer purpose
 // from loads, reps, RPE, weekday, programme-week numbers or a new engine replay.
 const purposes={heavy:'heavy',volume:'volume',speed:'speed/technique',technique:'speed/technique',practice:'speed/technique',recovery:'recovery',hypertrophy:'hypertrophy',strength:'strength',maintenance:'maintenance',endurance:'endurance',power:'power'};
@@ -65,7 +76,7 @@ function recordedPurpose(state,row,set,date,snapshots=frozenSessions(state)){
  const values=new Set(evidence.map(e=>e.value).filter(Boolean)),ambiguous=evidence.some(e=>e.ambiguous)||values.size>1;
  return {value:!ambiguous&&values.size===1?[...values][0]:null,ambiguous,source:evidence.map(e=>e.source).filter((x,i,xs)=>xs.indexOf(x)===i).join(', ')||'not recorded'};
 }
-function references(state,live,history,now=new Date()){
+function references(state,live,history,now=new Date(),{comparableOnly=false}={}){
  const cutoff=day(live.started)||day(now.toISOString());if(!cutoff)return [];
  const out=[],snapshots=frozenSessions(state);
  for(const ex of live.ex||[]){
@@ -75,7 +86,8 @@ function references(state,live,history,now=new Date()){
   for(const row of history||[]){
    const groups=new Map();
    for(const set of row.sets||[]){
-    const date=day(set.date||row.date);if(!date||date>=cutoff||!suitable(set)||!matches(ex,set))continue;
+    const date=day(set.date||row.date);
+    if(!date||date>=cutoff||!suitable(set)||!matches(ex,set)||comparableOnly&&!executionMatches(ex,set,row))continue;
     const classification=recordedPurpose(state,row,set,date,snapshots),groupKey=JSON.stringify([date,classification.value,classification.ambiguous]);
     if(!groups.has(groupKey))groups.set(groupKey,{row,date,sets:[],purpose:classification});groups.get(groupKey).sets.push(set);
    }
@@ -83,7 +95,13 @@ function references(state,live,history,now=new Date()){
   }
   const samePurpose=c=>!!currentPurpose.value&&currentPurpose.value===c.purpose.value;
   candidates.sort((a,b)=>Number(samePurpose(b))-Number(samePurpose(a))||b.date.localeCompare(a.date)||String(b.row.date).localeCompare(String(a.row.date)));
-  const chosen=candidates[0];if(chosen)out.push({...chosen,exercise:ex[0],key,currentPurpose,samePurpose:samePurpose(chosen),alternative:!samePurpose(chosen),setupMissing:chosen.sets.some(s=>!s.variantId||!ex[5]?.variantId)});
+  const role=ex[5]?.role,matchingRole=s=>!role||!s.role||s.role===role;
+  const chosen=comparableOnly?candidates.find(c=>samePurpose(c)&&c.sets.some(matchingRole)):candidates[0];
+  if(!chosen)continue;
+  const comparisonSets=comparableOnly?chosen.sets.filter(matchingRole):chosen.sets;
+  const pairedRole=role==='top'?'backoff':role==='backoff'?'top':null;
+  const sets=comparableOnly?chosen.sets.filter(s=>matchingRole(s)||s.role===pairedRole):chosen.sets;
+  out.push({...chosen,sets,...(comparableOnly?{comparisonSets}:{}),exercise:ex[0],key,currentPurpose,samePurpose:samePurpose(chosen),alternative:!samePurpose(chosen),setupMissing:sets.some(s=>!s.variantId||!ex[5]?.variantId)});
  }
  return out;
 }

@@ -2,6 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),http=require('node:http'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {reopenForWaitingUpdate}=require('./workout-update-helpers.cjs');
 const coach=require('../src/coach-engine'),registry=require('../src/exercise-registry');
 const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114',CONNECTION='lhrf_intervals_connection_v1';
 const root=path.join(__dirname,'..'),previous=process.env.LHRF_COMBINED_BASE;
@@ -41,7 +42,7 @@ if(!previous)throw Error('Set LHRF_COMBINED_BASE to an archive of production mai
    plannedRuns:[{id:'old-run',activityId:'synthetic-123'}],checkins:[],decisions:[],goals:{strength:'Bench',running:'10K PB'},overrides:{}};
   const live={...strength,sourceProgrammeWeek:1,entries:{'0_0':{weight:'119',reps:'4',rpe:'8',done:false}},notes:'Retain this active draft',started:'2026-11-05T06:00:00Z'};
   const connection={id:'synthetic',name:'Synthetic runner',key:'synthetic-key'};
-  await page.addInitScript(({KEY,LIVE,CONNECTION,fixture,live,connection})=>{
+  await page.addInitScript(({KEY,LIVE,CONNECTION,fixture,live,connection})=>{if(location.protocol!=='http:')return;
    for(const [key,value] of [[KEY,fixture],[LIVE,live],[CONNECTION,connection]])if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(value));
   },{KEY,LIVE,CONNECTION,fixture,live,connection});
   const state=()=>page.evaluate(({KEY,LIVE,CONNECTION})=>Object.fromEntries([KEY,LIVE,CONNECTION].map(key=>[key,localStorage.getItem(key)])),{KEY,LIVE,CONNECTION});
@@ -50,16 +51,22 @@ if(!previous)throw Error('Set LHRF_COMBINED_BASE to an archive of production mai
   const previousShellKeys=await page.evaluate(async()=>(await caches.keys()).filter(key=>key.startsWith('lhrf-shell-')));
   const expected=await state();assert.equal(expected[KEY],JSON.stringify(fixture));assert.equal(expected[LIVE],JSON.stringify(live));
   const checkHistory=async()=>{
-   await page.locator('nav [data-screen=train]').click();if(!upgraded){await page.locator('#previousWorkout').evaluate(el=>el.open=true)}else await page.locator('.exercise-history details').evaluateAll(nodes=>nodes.forEach(el=>el.open=true));
-   const text=upgraded?(await page.locator('.exercise-history').allTextContents()).join(' '):await page.locator('#previousWorkout').innerText();
+   await page.locator('nav [data-screen=train]').click();
+   let text;
+   if(upgraded){
+    assert.equal(await page.locator('#liveExercises .exercise-history').count(),0);
+    text=await page.evaluate(()=>{const workout=LHRFLive.get();return workout.ex.map(ex=>LHRFMobileUX.exerciseReference(ex,workout,data).textContent).join(' ')});
+   }else{
+    await page.locator('#previousWorkout').evaluate(el=>el.open=true);
+    text=await page.locator('#previousWorkout').innerText();
+   }
    for(const pattern of [/Squat/i,/Deadlift/i,/29\/10\/2026/,/112.5 kg × 5 reps · RPE 7.5/,/140 kg × 5 reps · RPE 8/,/Context only/])assert.match(text,pattern);
    assert.equal(await page.locator('.live-set [data-field=weight]').first().inputValue(),'119');assert.deepEqual(await state(),expected);
   };
   const preview=()=>page.evaluate(run=>previewPlannedWorkout(run,new Date('2026-11-06T12:00:00'),2),run);
   await checkHistory();await preview();assert.equal(await page.locator('#livePreview [data-garmin-preview]').count(),0);await page.locator('#previewClose').click();
   upgraded=true;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});
-  await page.locator('#lhrf-update-banner').waitFor({state:'visible'});
-  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.locator('#lhrf-update-banner button').click()]);
+  await reopenForWaitingUpdate(page);
   await checkHistory();
   const shell=await page.evaluate(async()=>{
    const keys=(await caches.keys()).filter(key=>key.startsWith('lhrf-shell-'));

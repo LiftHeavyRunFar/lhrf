@@ -17,8 +17,8 @@ function modal(dialog,onDismiss){
 }
 function previousReferences(state,live,history){return (typeof module==='object'&&module.exports?require('./performance-history'):root.LHRFPerformanceHistory).references(state,live,history)}
 function comparable(state,live,history){return previousReferences(state,live,history)[0]?.row||(typeof module==='object'&&module.exports?require('./performance-history'):root.LHRFPerformanceHistory).previousRun(live,history)}
-function exerciseReference(ex,live,state){
- const model=root.LHRFPerformanceHistory,history=root.LHRFTrainingReview.history(state),ref=model.references(state,{...live,ex:[ex]},history)[0];
+function exerciseReference(ex,live,state,options){
+ const model=root.LHRFPerformanceHistory,history=root.LHRFTrainingReview.history(state),ref=model.references(state,{...live,ex:[ex]},history,undefined,options)[0];
  const box=document.createElement('aside');box.className='exercise-history';box.setAttribute('aria-label','Previous performance for '+ex[0]);
  const make=(tag,text,parent=box)=>{const node=document.createElement(tag);node.textContent=text;parent.append(node);return node};
  const current=model.purpose(ex[5]).value,name=ex[0].toLowerCase();
@@ -28,7 +28,7 @@ function exerciseReference(ex,live,state){
  if(ref.alternative)make('small',current&&ref.purpose.value?'Different training purpose; contextual reference only.':'Training purpose is unconfirmed; contextual reference only.').className='history-caution';
  const units=s=>s.loadType==='per-hand-kg'?' kg / hand':s.loadType==='assistance-kg'?' kg assistance':' kg';
  const actual=s=>s.weight+units(s)+' × '+s.reps+(s.doseUnit==='seconds'?' seconds':' reps')+' · RPE '+(s.rpe??'not recorded')+(s.role?' · '+s.role:'');
- const groups=new Map();for(const set of ref.sets){const key=actual(set);groups.set(key,(groups.get(key)||0)+1)}
+ const groups=new Map();for(const set of ref.comparisonSets||ref.sets){const key=actual(set);groups.set(key,(groups.get(key)||0)+1)}
  const selected=[...groups].sort((a,b)=>Number(!/· top$/.test(a[0]))-Number(!/· top$/.test(b[0]))).slice(0,3);
  for(const [text,count]of selected)make('p',(count>1?count+' sets · ':'')+text).className='history-actual';
  const related=ref.sets.filter(s=>!ex[5]?.role||s.role===ex[5].role),different=(related.length?related:ref.sets).some(s=>s.reps!==ex[2]);
@@ -45,7 +45,6 @@ function exerciseReference(ex,live,state){
 }
 function reference(host,live,state){
  host.querySelector('#previousWorkout')?.remove();host.querySelectorAll('.exercise-history').forEach(node=>node.remove());
- host.querySelectorAll('#liveExercises > .live-ex').forEach(card=>{const ex=live.ex?.[Number(card.dataset.exerciseIndex)];if(ex)card.querySelector('.ex-content').append(exerciseReference(ex,live,state))});
  if(!live.ex?.length){const row=root.LHRFPerformanceHistory.previousRun(live,root.LHRFTrainingReview.history(state));if(row){const box=document.createElement('details');box.id='previousWorkout';box.className='card';const summary=document.createElement('summary');summary.textContent='Previous recorded run';box.append(summary);for(const run of row.runs){const p=document.createElement('p');p.textContent=new Date(run.date||row.date).toLocaleDateString('en-GB')+' · '+root.LHRFRunPresentation.distance(run.km)+' · '+root.LHRFRunPresentation.duration(run.min);box.append(p)}host.firstElementChild.after(box)}}
 }
 function carousel(rail,dots){

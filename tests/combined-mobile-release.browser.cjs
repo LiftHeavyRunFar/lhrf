@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {reopenForWaitingUpdate}=require('./workout-update-helpers.cjs');
 const coach = require('../src/coach-engine.js');
 const install = require('../src/programme-install.js');
 const DATA = 'lhrf_beta_v1118_clean', LIVE = 'lhrf_fresh_beta_live_v1114';
@@ -75,7 +76,7 @@ const live = {id: strengthId, parentId: strength.id, component: 'strength', name
     const storageSeeds = {lhrf_release_115_sentinel: 'synthetic unrelated device preference',
       [LIVE + '_pendingRun']: JSON.stringify({parentId: strength.id, week: 2, runLogged: true, runEntry: {km: 5, min: 32}}),
       'lhrf-v2-genuine-training-log': JSON.stringify([{source: 'synthetic-release-test', rpe: 8.5}])};
-    await page.addInitScript(({fixture, live, DATA, LIVE, storageSeeds}) => {
+    await page.addInitScript(({fixture, live, DATA, LIVE, storageSeeds}) => {if(location.protocol!=='http:')return;
       if (!localStorage.getItem(DATA)) localStorage.setItem(DATA, JSON.stringify(fixture));
       if (!localStorage.getItem(LIVE)) localStorage.setItem(LIVE, JSON.stringify(live));
       for (const [key, value] of Object.entries(storageSeeds)) if (!localStorage.getItem(key)) localStorage.setItem(key, value);
@@ -96,8 +97,7 @@ const live = {id: strengthId, parentId: strength.id, component: 'strength', name
     assert.equal(before.live.entries['0_0'].rpe, 7.5);
     upgraded = true;
     await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
-    await page.locator('#lhrf-update-banner').waitFor();
-    await Promise.all([page.waitForNavigation({waitUntil: 'load'}), page.locator('#lhrf-update-banner button').click()]);
+    await reopenForWaitingUpdate(page);
     await page.waitForFunction(() => !!window.LHRFMobileUX?.openRecovery);
     assert.deepEqual(await snapshot(), before, 'Combined update preserves exact existing storage and active inputs');
     assert.deepEqual(await page.evaluate(() => JSON.parse(JSON.stringify(data))), fixture);
@@ -110,7 +110,8 @@ const live = {id: strengthId, parentId: strength.id, component: 'strength', name
     await page.reload();
     await page.waitForFunction(() => !!window.LHRFMobileUX?.openRecovery);
     assert.equal(await page.locator('#firstRun').isVisible(), false);
-    assert.ok(await page.locator('.exercise-history').count() > 0);
+    assert.equal(await page.locator('#liveExercises .exercise-history').count(), 0);
+    assert.ok(await page.locator('#liveExercises .training-info-button').count() > 0);
     assert.deepEqual(await snapshot(), before, 'Offline resume retains November prescriptions, RPE and Garmin associations');
     assert.equal(await page.evaluate(() => LHRFExercises.eligibility('Bench', data.equipmentInventory).eligible), true);
     assert.deepEqual(errors, []);

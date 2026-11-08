@@ -1,6 +1,7 @@
 // Same-origin candidate -> revised candidate. Fictional athlete and mocked faults only.
 const assert=require('assert/strict'),fs=require('fs'),http=require('http'),path=require('path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {reopenForWaitingUpdate}=require('./workout-update-helpers.cjs');
 const registry=require('../src/exercise-registry'),{fixture:build}=require('./training-mode-fixture.cjs');
 const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114',root=path.join(__dirname,'..'),base=process.env.LHRF_FLOW_BASE;
 (async()=>{let candidate=!base,browser;
@@ -11,7 +12,7 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114',root=path.jo
   const fixture=build(),ex=(name,count,reps,weight,role='straight')=>[name,count,reps,weight,7,{...registry.identity(name,fixture.equipmentInventory),role}];
   const session={id:'flow-synthetic',day:'Friday',name:'Working sets + bench',scheduledDate:'2026-11-06',ex:[ex('Squat',5,5,100),ex('Deadlift',2,3,120),ex('Bench',1,1,130,'top'),ex('Bench',2,3,100,'backoff')],runs:[]};session.ex[3][5].topIndex=2;
   fixture.activeSchedule=[session];fixture.readinessDay='2026-11-06';
-  await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture});
+  await page.addInitScript(({KEY,fixture})=>{if(location.protocol!=='http:')return;if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture});
   const draft=()=>page.evaluate(LIVE=>JSON.parse(localStorage.getItem(LIVE)),LIVE),saved=()=>page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);
   const card=i=>page.locator('#liveExercises>.live-ex').nth(i),row=(i,j)=>card(i).locator('.live-set').nth(j);
   const open=async i=>{if(!await card(i).evaluate(el=>el.open))await card(i).locator(':scope>summary').click()};
@@ -19,7 +20,7 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114',root=path.jo
   const capture=async name=>{if(process.env.LHRF_FLOW_EVIDENCE){fs.mkdirSync(process.env.LHRF_FLOW_EVIDENCE,{recursive:true});await page.screenshot({path:path.join(process.env.LHRF_FLOW_EVIDENCE,name+'.png'),fullPage:false})}};
   await page.goto('http://localhost:'+server.address().port+'/');await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
   await page.evaluate(()=>openWorkout('flow-synthetic'));assert.equal(await page.locator('#appHeader').isVisible(),true);await page.locator('#previewStart').click();
-  if(base){await capture('before-active');const old=await draft();candidate=true;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});await page.locator('#lhrf-update-banner').waitFor({state:'visible'});await Promise.all([page.waitForNavigation(),page.locator('#lhrf-update-banner button').click()]);assert.deepEqual(await draft(),old,'Update preserves the in-progress workout exactly')}
+  if(base){await capture('before-active');const old=await draft();candidate=true;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});await reopenForWaitingUpdate(page);assert.deepEqual(await draft(),old,'Update preserves the in-progress workout exactly')}
   await page.evaluate(()=>document.fonts.ready);await capture('after-active');
   assert.ok(await card(0).locator('.ex-text strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize)<=30));assert.equal(await page.locator('#appHeader').isVisible(),false);
   // Invalid/incomplete set: no actual, suggestion, or navigation.
@@ -52,7 +53,7 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114',root=path.jo
   await record(3,0,92.5,'7');assert.equal((await draft()).entries['3_1'].weight,'91.25');await record(3,1,null,'7.5');assert.equal(await page.locator('#finishSessionDialog').count(),0);assert.ok(await draft());assert.equal((await saved()).completedWorkouts.length,fixture.completedWorkouts.length,'Final exercise never submits the workout');assert.equal(await page.locator('#liveExercises>.live-ex[open]').count(),0);
   await page.reload();await page.locator('nav [data-screen=train]').click();assert.equal(await page.locator('#liveExercises>.live-ex[open]').count(),0);assert.ok(await draft());
   for(const width of [320,390]){await page.setViewportSize({width,height:844});await open(0);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.ok(await row(0,0).locator('[data-field=weight]').evaluate(input=>{const s=getComputedStyle(input),ctx=document.createElement('canvas').getContext('2d');ctx.font=s.font;return ctx.measureText(input.value).width<=input.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight)}));await capture('after-'+width)}
-  const rest=await page.locator('#restStopwatch').innerText();assert.match(rest,/Rest.*Start.*Reset/s);await page.locator('#restToggle').click();await page.clock.runFor(2600);assert.match(await page.locator('#restTime').innerText(),/0:02/);await page.locator('#restToggle').click();
+  const rest=await page.locator('#restStopwatch').innerText();assert.match(rest,/Start.*Reset/s);await page.locator('#restToggle').click();await page.clock.runFor(2600);assert.match(await page.locator('#restTime').innerText(),/0:02/);await page.locator('#restToggle').click();
   await page.locator('#liveFinish').click();await page.getByRole('button',{name:'Keep training',exact:true}).click();assert.ok(await draft());await page.locator('#liveFinish').click();await page.locator('#finishAndSave').click();await page.locator('#liveFeedbackSkip').click();
   const final=await saved();assert.deepEqual(final.sets.slice(0,fixture.sets.length),fixture.sets);assert.deepEqual(final.activeSchedule,fixture.activeSchedule);assert.deepEqual(final.customRoadmap,fixture.customRoadmap);assert.deepEqual(final.runs,fixture.runs);assert.deepEqual(final.plannedRuns,fixture.plannedRuns);assert.deepEqual(final.equipmentInventory,fixture.equipmentInventory);const actual=final.sets.slice(fixture.sets.length);assert.equal(actual.length,10);assert.equal(actual[0].weight,106.25);assert.equal(actual[0].rpe,8);assert.equal(actual[2].weight,107.5);assert.equal(actual[3].weight,102.5);assert.ok(actual.every(s=>!('weightHint'in s)&&!('weightEdited'in s)&&!('trainingView'in s)),'Completed-record shape is unchanged');assert.equal(await draft(),null);assert.deepEqual(errors,[]);
   console.log('PASS save-gated ordered progression; no invalid/failed-save/duplicate transitions; correction/manual navigation/resume; 105 ->107.5 ->102.5 actual carry with manual value protection; top/backoff phase/math preserved; final set never submits; 320/390px bold UI; unchanged rest/completion/history/Garmin/equipment/programme/record shape');await context.close();

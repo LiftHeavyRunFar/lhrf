@@ -16,8 +16,9 @@ function mount({getData}){
 
   const total=(live.ex||[]).reduce((n,ex)=>n+(ex[5]?.optional?0:ex[1]),0);
   const requiredDone=Object.entries(live.entries||{}).filter(([k,v])=>v.done&&!live.ex?.[Number(k.split('_')[0])]?.[5]?.optional).length;
-  header.querySelector('.live-status').textContent=total?requiredDone+' of '+total+' sets completed':live.runLogged?'Run logged':'Running session';
-  const progress=header.querySelector('.live-progress > div');if(progress)progress.style.width=(total?Math.round(requiredDone/total*100):live.runLogged?100:0)+'%';
+  const count=header.querySelector('.live-status');
+  const progress=total?requiredDone+' of '+total+' sets completed':live.runLogged?'Run logged':'Running session';
+  if(count.textContent!==progress)count.textContent=progress;
   for(const card of document.querySelectorAll('#liveExercises > .live-ex')){
    const index=Number(card.dataset.exerciseIndex),ex=live.ex[index],complete=Array.from({length:ex[1]},(_,j)=>live.entries[index+'_'+j]?.done).every(Boolean);
    card.querySelectorAll('.live-set').forEach((row,j)=>{row.querySelector('.set-check')?.setAttribute('aria-pressed',String(!!live.entries[index+'_'+j]?.done));row.querySelectorAll('input[data-field]').forEach(input=>input.setAttribute('aria-label',ex[0]+' set '+(j+1)+' '+input.dataset.field))});
@@ -30,8 +31,39 @@ function mount({getData}){
    const context=card.querySelector('.weight-carry-hint');if(context&&!suggestions.length)context.remove();
    card.classList.toggle('training-complete',complete);card.classList.toggle('training-active',card.open);
   }
-  const active=document.querySelector('#liveExercises > .live-ex[open]'),ex=active&&live.ex[Number(active.dataset.exerciseIndex)];
-  // The session purpose lives in the exercise information panel, not the training header.
+  root.LHRFWorkoutTools?.paintRest?.();
+ }
+ function showExerciseInfo(ex,live,trigger){
+  const dialog=document.createElement('dialog');dialog.className='training-info-dialog';
+  const {scrollX,scrollY}=root;
+  const title=document.createElement('h2');title.id='trainingInfoTitle';title.textContent=ex[0];
+  const close=document.createElement('button');close.type='button';close.className='secondary';close.textContent='Close';close.autofocus=true;
+  const heading=document.createElement('div');heading.className='training-info-heading';heading.append(title,close);
+  dialog.setAttribute('aria-labelledby',title.id);
+  const purpose=document.createElement('p');purpose.className='training-info-purpose';
+  purpose.textContent=root.LHRFPerformanceHistory.purpose(ex[5]).value||root.LHRFExercises?.resolve(ex[0])?.purpose||'Prescribed work';
+  dialog.append(heading,purpose);
+  const notes=document.createElement('h3');notes.textContent='Coach’s notes';dialog.append(notes);
+  const execution={'competition-paused':'Competition-style pause','touch-and-go':'Touch-and-go'}[ex[5]?.execution];
+  const guidance=[ex[5]?.cue,ex[5]?.rationale,execution&&'Execution · '+execution,ex[4]&&'Target effort · RPE '+ex[4]];
+  for(const text of new Set(guidance.filter(Boolean))){
+   const note=document.createElement('p');note.textContent=text;dialog.append(note);
+  }
+  const reference=document.createElement('h3');reference.textContent='Previous comparable performance';
+  dialog.append(reference,root.LHRFMobileUX.exerciseReference(ex,live,getData(),{comparableOnly:true}));
+  close.onclick=()=>dialog.close();
+  dialog.addEventListener('keydown',event=>{
+   if(event.key!=='Tab')return;
+   const controls=[...dialog.querySelectorAll('button,summary')].filter(el=>el.getClientRects().length);
+   const edge=event.shiftKey?controls[0]:controls.at(-1);
+   if(document.activeElement===edge){event.preventDefault();(event.shiftKey?controls.at(-1):controls[0]).focus();}
+  });
+  dialog.addEventListener('close',()=>{
+   dialog.remove();
+   if(trigger.isConnected)trigger.focus({preventScroll:true});
+   if(root.scrollX!==scrollX||root.scrollY!==scrollY)root.scrollTo({left:scrollX,top:scrollY,behavior:'instant'});
+  },{once:true});
+  document.body.append(dialog);dialog.showModal();
  }
  function render(){
   sync();const live=getLive(),host=$('liveTrainRoot');if(!live||!host?.firstElementChild)return;
@@ -45,10 +77,9 @@ function mount({getData}){
    // Replace only the existing presentation header; exercise inputs stay in place.
    header.replaceChildren();
    const top=document.createElement('div');top.className='training-topline';
-   const mode=document.createElement('span');mode.className='tag';mode.textContent='WORKOUT';
    const count=document.createElement('span');count.className='live-status';count.setAttribute('aria-live','polite');
    const leave=document.createElement('button');leave.type='button';leave.className='secondary training-leave';leave.textContent='Leave & resume';leave.onclick=()=>root.go('today');
-   top.append(mode,count,leave);header.append(top);
+   top.append(count,leave);header.append(top);
   }
   for(const card of cards){
    const index=Number(card.dataset.exerciseIndex),ex=live.ex[index],content=card.querySelector('.ex-content');
@@ -65,19 +96,13 @@ function mount({getData}){
     let hintShown=false;card.querySelectorAll('.live-set').forEach((row,j)=>{const entry=live.entries[index+'_'+j];if(!entry?.done&&entry?.weightHint?.kind==='carry-forward'){const input=row.querySelector('[data-field=weight]');input.dataset.suggested='carry-forward';input.setAttribute('aria-description','Editable suggestion from recorded set '+entry.weightHint.fromSet);input.parentElement.querySelector('label').textContent+=' · suggested';if(!hintShown){const hint=document.createElement('small');hint.className='weight-carry-hint';hint.textContent='Working suggestion: '+entry.weight+(ex[5]?.loadType==='per-hand-kg'?' kg / hand':ex[5]?.loadType==='assistance-kg'?' kg assistance':' kg')+' · editable';prescription.after(hint);hintShown=true}}});
    }
    if(!card.querySelector('.training-info-button')){
-    const info=document.createElement('button');info.type='button';info.className='training-info-button';info.textContent='ⓘ';info.setAttribute('aria-label','Exercise coaching notes and previous performance for '+ex[0]);info.title='Exercise guidance and history';
+    const info=document.createElement('button');info.type='button';info.className='secondary training-info-button';info.setAttribute('aria-label','Exercise information for '+ex[0]);info.setAttribute('aria-haspopup','dialog');
+    info.innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>';
     const summary=card.querySelector(':scope > summary');summary?.appendChild(info);
     info.addEventListener('click',event=>{
      event.preventDefault();event.stopPropagation();
      const source=getLive(),current=source?.ex?.[index];if(!current)return;
-     const dialog=document.createElement('section');dialog.className='training-info-dialog';
-     const title=document.createElement('h2');title.textContent=current[0]+' · '+(root.LHRFPerformanceHistory.purpose(current[5]).value||'Exercise');dialog.appendChild(title);
-     const close=document.createElement('button');close.type='button';close.className='secondary';close.textContent='Close';close.onclick=()=>dialog.remove();dialog.appendChild(close);
-     const h=document.createElement('h3');h.textContent='Coach’s notes';dialog.appendChild(h);
-     const note=document.createElement('p');note.textContent=current[5]?.cue||card.querySelector('.exercise-notes p')?.textContent||'Follow the prescribed sets, effort and your exercise setup.';dialog.appendChild(note);
-     const history=card.querySelector('.exercise-history');
-     if(history){const h2=document.createElement('h3');h2.textContent='Previous comparable performance';dialog.appendChild(h2);const copy=history.cloneNode(true);copy.classList.add('training-dialog-history');dialog.appendChild(copy)}
-     document.body.appendChild(dialog);root.LHRFMobileUX?.modal(dialog);
+     showExerciseInfo(current,source,info);
     });
    }
    if(!card.dataset.trainingBound){card.dataset.trainingBound='true';

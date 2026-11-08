@@ -1,5 +1,6 @@
 const fs=require('fs'),path=require('path'),http=require('http'),assert=require('assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {reopenForWaitingUpdate}=require('./workout-update-helpers.cjs');
 const {fixture:build}=require('./training-mode-fixture.cjs');
 const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114',root=path.join(__dirname,'..'),previous=process.env.LHRF_TRAINING_BASE;
 (async()=>{let current=!previous,browser;
@@ -7,22 +8,26 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114',root=path.jo
  try{
   browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,timezoneId:'Europe/London'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date('2026-11-06T06:00:00Z')});
-  const fixture=build();await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture));if(!localStorage.getItem('lhrf_intervals_connection_v1'))localStorage.setItem('lhrf_intervals_connection_v1',JSON.stringify({id:'synthetic',name:'Synthetic',key:'synthetic-key'}))},{KEY,fixture});
+  const fixture=build();await page.addInitScript(({KEY,fixture})=>{if(location.protocol!=='http:')return;if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture));if(!localStorage.getItem('lhrf_intervals_connection_v1'))localStorage.setItem('lhrf_intervals_connection_v1',JSON.stringify({id:'synthetic',name:'Synthetic',key:'synthetic-key'}))},{KEY,fixture});
   const saved=()=>page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY),draft=()=>page.evaluate(LIVE=>JSON.parse(localStorage.getItem(LIVE)),LIVE);
   const capture=async name=>{if(process.env.LHRF_EVIDENCE_DIR){fs.mkdirSync(process.env.LHRF_EVIDENCE_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.LHRF_EVIDENCE_DIR,name+'.png'),fullPage:false})}};
-  await page.goto('http://localhost:'+server.address().port+'/');await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
+  await page.goto('http://localhost:'+server.address().port+'/');await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller&&!!window.LHRFMobileUX);
   if(previous){
    await page.evaluate(()=>openWorkout('replacement-heavy'));await page.locator('#previewStart').click();await page.locator('.live-ex').first().waitFor();await page.locator('#previousWorkout').evaluate(e=>e.open=true);assert.match(await page.locator('#previousWorkout').innerText(),/03\/11\/2026/);await capture('before-active');
-   const oldDraft=await draft();current=true;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});await page.locator('#lhrf-update-banner').waitFor({state:'visible'});await Promise.all([page.waitForNavigation(),page.locator('#lhrf-update-banner button').click()]);assert.deepEqual(await draft(),oldDraft,'PWA update never restarts a workout');
+   const oldDraft=await draft();current=true;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});await reopenForWaitingUpdate(page);assert.deepEqual(await draft(),oldDraft,'PWA update never restarts a workout');
   }else{await page.evaluate(()=>openWorkout('replacement-heavy'));await page.locator('#previewStart').click();}
   const first=page.locator('#liveExercises > .live-ex').nth(0),second=page.locator('#liveExercises > .live-ex').nth(1);
   assert.equal(await page.locator('#appHeader').isVisible(),false);assert.equal(await page.locator('body').getAttribute('data-training-mode'),'active');
   await page.evaluate(()=>document.fonts.ready);assert.equal(await first.locator('.ex-text strong').evaluate(el=>getComputedStyle(el).fontFamily.includes('LHRFTraining')),true);assert.ok(await first.locator('.ex-text strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))<=30);
-  const reference=await first.locator('.exercise-history').innerText();assert.match(reference,/Previous heavy bench — 30 October/);assert.match(reference,/137.25 kg × 2 reps · RPE 8.5/);assert.match(reference,/Different rep scheme/);assert.doesNotMatch(reference,/121.75/);await first.locator('.history-all').evaluate(e=>e.open=true);assert.match(await first.locator('.history-all').innerText(),/117.25 kg × 3 reps · RPE 7.5 · backoff/);
-  await first.locator('.history-all').evaluate(e=>e.open=false);
+  assert.equal(await first.locator('.exercise-history').count(),0);
+  await first.locator('.training-info-button').click();
+  const dialog=page.getByRole('dialog',{name:/Bench/i});
+  const reference=await dialog.locator('.exercise-history').innerText();assert.match(reference,/Previous heavy bench — 30 October/);assert.match(reference,/137.25 kg × 2 reps · RPE 8.5/);assert.match(reference,/Different rep scheme/);assert.doesNotMatch(reference,/121.75/);
+  await dialog.locator('.history-all > summary').click();assert.match(await dialog.locator('.history-all').innerText(),/117.25 kg × 3 reps · RPE 7.5 · backoff/);
+  await dialog.getByRole('button',{name:'Close',exact:true}).click();
   const alternative=await page.evaluate(fixture=>{const state=structuredClone(fixture);state.sets=state.sets.filter(s=>s.date.startsWith('2026-11-03'));state.completedWorkouts=state.completedWorkouts.filter(w=>w.date.startsWith('2026-11-03'));return LHRFMobileUX.exerciseReference(state.activeSchedule[0].ex[0],LHRFLive.get(),state).textContent},fixture);assert.match(alternative,/Alternative volume bench/);assert.match(alternative,/Different training purpose/);
   assert.deepEqual(await saved(),fixture);await capture('after-active');
-  const restBefore=await page.locator('#restStopwatch').innerText();assert.match(restBefore,/Rest.*0:00.*Start.*Reset/s);await page.locator('#restToggle').click();await page.clock.runFor(2600);assert.match(await page.locator('#restTime').innerText(),/0:02/);await page.locator('#restToggle').click();const stopped=await page.locator('#restTime').innerText();await page.clock.runFor(1000);assert.equal(await page.locator('#restTime').innerText(),stopped);
+  const restBefore=await page.locator('#restStopwatch').innerText();assert.match(restBefore,/0:00.*Start.*Reset/s);await page.locator('#restToggle').click();await page.clock.runFor(2600);assert.match(await page.locator('#restTime').innerText(),/0:02/);await page.locator('#restToggle').click();const stopped=await page.locator('#restTime').innerText();await page.clock.runFor(1000);assert.equal(await page.locator('#restTime').innerText(),stopped);
   await first.locator('[data-field=weight]').first().fill('131.25');await first.locator('[data-field=rpe]').first().fill('8');await first.locator('.set-check').first().click();
   if(!await second.evaluate(e=>e.open))await second.locator(':scope > summary').click();await second.locator('[data-field=rpe]').first().fill('7.5');const beforeAway=await draft();
   await page.locator('.training-leave').click();assert.equal(await page.locator('#appHeader').isVisible(),true);assert.equal(await page.locator('#trainingResume').isVisible(),true);await page.getByRole('button',{name:'Resume training',exact:true}).click();assert.deepEqual(await draft(),beforeAway);
