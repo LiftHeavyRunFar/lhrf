@@ -124,13 +124,14 @@ function fitSessions(c,input){
   let runMinutes=(session.runs||[]).reduce((n,r)=>n+Number(r.durationRangeMinutes?.max??r.minutes),0);const knownRuns=(session.runs||[]).every(r=>Number.isFinite(Number(r.durationRangeMinutes?.max??r.minutes))&&(r.durationRangeMinutes?.max??r.minutes)!==null);
   if(session.eventDate){
    if(Number(c.coachingSafeguardsVersion)>=1){
-    const duration=session.runs?.length?(knownRuns?runMinutes:null):(permission?.estimatedMinutes??null),known=Number.isFinite(duration)&&duration>0,logistics=Number(permission?.logisticsMinutes)||0;
+    const runtime=Number(c.coachingRuntimeVersion)>=1;
+    const duration=session.runs?.length?(knownRuns?runMinutes:runtime?permission?.estimatedMinutes??null:null):(permission?.estimatedMinutes??null),known=Number.isFinite(duration)&&duration>0,logistics=Number(permission?.logisticsMinutes)||0;
     const window=permission?permission.minutes:ordinary.has(day)?cap:null,cutoff=permission?.hardLimitMinutes,preferred=permission?.preferredFinishMinutes;
     const hasWindow=Number.isFinite(window)&&window>0,hasCutoff=Number.isFinite(cutoff)&&cutoff>0;
     const attendance=permission?permission.confirmed===true:ordinary.has(day)&&session.eventType==='running';
     const conflicts=[];
     if(!attendance)conflicts.push({kind:'event-permission',detail:'Confirm event-day availability before approving participation.'});
-    if(!known&&(session.eventType==='running'||hasWindow||hasCutoff))conflicts.push({kind:'event-duration',detail:'Confirm a representative event-duration estimate before checking the hard time limit. Do not substitute the preferred finish target.'});
+    if(!known&&(hasWindow||hasCutoff||!runtime&&session.eventType==='running'))conflicts.push({kind:'event-duration',detail:'Confirm a representative event-duration estimate before checking the hard time limit. Do not substitute the preferred finish target.'});
     if(known&&hasWindow&&duration+logistics>window)conflicts.push({kind:'event-time',detail:'Estimated event duration '+duration+' minutes plus '+logistics+' minutes logistics exceeds the hard event window of '+window+' minutes. Confirm a genuinely larger window or choose a suitable event/date; do not force faster pacing to fit.'});
     if(known&&hasCutoff&&duration>cutoff)conflicts.push({kind:'event-cutoff',detail:'Estimated event duration '+duration+' minutes exceeds the hard event cutoff of '+cutoff+' minutes. Review a suitable event or defer participation; a faster aspiration does not establish fitness.'});
     const feasible=!conflicts.length;

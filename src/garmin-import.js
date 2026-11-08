@@ -75,9 +75,21 @@ function mount({getData,commit}){
  }
  function commitChoices(choices){if(choices.some(c=>c.plannedKey!==undefined)&&root.LHRFLive?.get?.())throw Error('Finish or discard your current workout before changing planned-session links.');const result=mergeRuns(getData(),choices);result.state.garminSync={...(getData().garminSync||{}),savedAt:new Date().toISOString()};if(!commit(result.state))throw Error('Could not save. Existing records are unchanged.');renderSaved();return result;}
  function renderSaved(){management.querySelectorAll('div').forEach(n=>n.remove());for(const run of (getData().runs||[]).filter(r=>r.source==='garmin-personal').slice(-20).reverse()){
-  const row=document.createElement('div');row.className='entry';const text=document.createElement('p');text.textContent=localDay(run.date)+' · '+run.km.toFixed(2)+' km'+(run.plannedSession?' · planned '+run.plannedSession.plannedDate:' · unlinked');if(run.sessionId&&!run.plannedSession){text.textContent+=' · linked through existing LHRF log';row.append(text);management.append(row);continue;}const select=picker(run,run),button=document.createElement('button');button.type='button';button.textContent='Save session link';button.onclick=()=>{try{commitChoices([{run,action:'existing',plannedKey:select.value}]);status.textContent='Session link saved. Actual activity date retained.';}catch(e){status.textContent=e.message}};row.append(text,select,button);management.append(row);
+  const row=document.createElement('div');row.className='entry';const text=document.createElement('p');text.textContent=localDay(run.date)+' · '+run.km.toFixed(2)+' km'+(run.plannedSession?' · planned '+run.plannedSession.plannedDate:' · unlinked');if(run.sessionId&&!run.plannedSession){text.textContent+=' · linked through existing LHRF log';row.append(text);management.append(row);continue;}const select=picker(run,run),button=document.createElement('button');button.type='button';button.textContent='Save session link';button.onclick=()=>{try{commitChoices([{run,action:'existing',plannedKey:select.value}]);status.textContent='Session link saved. Actual activity date retained.';reviewDialog?.remove();}catch(e){status.textContent=e.message}};row.append(text,select,button);management.append(row);
  }}renderSaved();
- let pending=null,items=[],source=null,nonce=null;
+ let pending=null,items=[],source=null,nonce=null,reviewDialog=null;
+ function openReview(onReturn,closeLabel){
+  const panel=$('garminIncoming'),parent=panel.parentNode,next=panel.nextSibling;
+  const dialog=document.createElement('section'),close=document.createElement('button');
+  dialog.className='card garmin-review-dialog';close.type='button';close.className='secondary';close.textContent=closeLabel||'Back to workout';
+  dialog.append(panel,close);document.body.append(dialog);reviewDialog=dialog;
+  close.onclick=()=>dialog.remove();
+  root.LHRFMobileUX.modal(dialog,()=>{
+   parent.insertBefore(panel,next);reviewDialog=null;nonce=null;pending=null;items=[];source?.close();source=null;
+   save.hidden=true;list.replaceChildren();onReturn?.();
+  });
+  button.click();
+ }
  button.onclick=()=>{nonce=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');pending=null;items=[];list.replaceChildren();save.hidden=true;
   source=window.open(BRIDGE+'/?state='+nonce,'lhrf-garmin-import','popup,width=520,height=780');status.textContent=source?'Open the private connection window. After fetching, send your runs back here for review.':'Your browser blocked the connection window. Allow pop-ups for LHRF and try again.';
  };
@@ -95,7 +107,8 @@ function mount({getData,commit}){
    });save.hidden=false;status.textContent=items.length+' runs received. Review matches before saving. Your programme and bench work stay unchanged.';source?.close();
   }catch(e){status.textContent=e.message;}
  });
- save.onclick=()=>{if(!pending)return;try{const choices=items.map((item,i)=>({run:item.run,action:list.querySelector('[data-import-index="'+i+'"]').value,plannedKey:list.querySelector('[data-import-index="'+i+'"]').value==='new'?list.querySelector('[data-planned-index="'+i+'"]').value:undefined}));if(choices.some(c=>c.plannedKey)&&root.LHRFLive?.get?.())throw Error('Finish or discard your current workout before linking an imported run.');const result=mergeRuns(getData(),choices);result.state.garminSync={savedAt:new Date().toISOString(),start:pending.start||null,end:pending.end||null,truncated:pending.truncated===true};if(!commit(result.state))throw Error('Could not save. Existing records are unchanged.');status.textContent=result.added+' runs saved; '+result.linked+' existing logs updated with Garmin details.';save.hidden=true;pending=null;list.replaceChildren();renderSaved();}catch(e){status.textContent=e.message}};
+ save.onclick=()=>{if(!pending)return;try{const choices=items.map((item,i)=>({run:item.run,action:list.querySelector('[data-import-index="'+i+'"]').value,plannedKey:list.querySelector('[data-import-index="'+i+'"]').value==='new'?list.querySelector('[data-planned-index="'+i+'"]').value:undefined}));if(choices.some(c=>c.plannedKey)&&root.LHRFLive?.get?.())throw Error('Finish or discard your current workout before linking an imported run.');const result=mergeRuns(getData(),choices);result.state.garminSync={savedAt:new Date().toISOString(),start:pending.start||null,end:pending.end||null,truncated:pending.truncated===true};if(!commit(result.state))throw Error('Could not save. Existing records are unchanged.');status.textContent=result.added+' runs saved; '+result.linked+' existing logs updated with Garmin details.';save.hidden=true;pending=null;list.replaceChildren();renderSaved();reviewDialog?.remove();}catch(e){status.textContent=e.message}};
+ return openReview;
 }
 const api={BRIDGE,validatePayload,reviewRuns,plannedSessions,occupied,mergeRuns,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFGarminImport=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -426,3 +426,23 @@ test('independent runtime assurance: truncating the first week retains the survi
   assert.equal(JSON.stringify(source),before);
  }
 });
+
+test('linked legacy main-lift logs support standard-kit proposals without assuming a confirmed venue or pause',()=>{
+ const makeRow=(day,weight,reps,rpe,role)=>({date:day+'T08:00:00Z',sessionId:'legacy-'+day,exercise:'Bench',weight,reps,rpe,role,set:1});
+ const sets=[makeRow('2026-11-03',100,5,8,'top'),makeRow('2026-11-06',120,1,9,'top')];
+ const completedWorkouts=sets.map(row=>({id:row.sessionId+'::strength',date:row.date,prescription:{ex:[['Bench',1,row.reps,row.weight,8,{role:'top',trainingRole:row.reps===1?'heavy':'volume',competition:true,execution:'competition-paused'}]]}}));
+ const data={...blank(),sets,completedWorkouts};
+ const {config}=clone(makeRuntimeAthletes().find(a=>a.id==='experienced-strength-hybrid'));
+ delete config.equipmentInventory;
+ delete config.trainingAge;
+ const baseline=JSON.stringify(data);
+ const p=adapters.buildNewProgramme(config,{data,now});
+ assert.equal(p.config.strengthCalibration.lifts.Bench.trainingLevel,'performance-supported');
+ assert.ok(p.config.coachingEvidence.strength.Bench.rows.every(r=>r.setupSource&&r.variantId==='bench@unknown:fixed'));
+ assert.ok(p.weeks.flatMap(w=>w.sessions.flatMap(s=>s.ex)).some(e=>e[0]==='Bench'&&e[3]>0));
+ assert.ok(!p.weeks.flatMap(w=>w.sessions.flatMap(s=>s.ex)).some(e=>e[0]==='Bench'&&e[2]===1&&e[4]>=7));
+ assert.equal(JSON.stringify(data),baseline);
+ const venue=makeRuntimeAthletes().find(a=>a.id==='experienced-strength-hybrid').config.equipmentInventory;
+ assert.ok(venue.venueId);
+ assert.equal(adapters.buildNewProgramme({...config,equipmentInventory:venue},{data,now}).config.strengthCalibration?.lifts?.Bench,undefined);
+});
