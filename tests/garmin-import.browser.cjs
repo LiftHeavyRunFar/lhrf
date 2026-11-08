@@ -28,10 +28,12 @@ await page.locator('#garminSavedLinks select').selectOption(target.key);await pa
  const linked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(linked.runs.length,1);assert.equal(linked.runs[0].sessionId,target.id);assert.equal(linked.completedWorkouts.length,1);assert.equal(linked.completedWorkouts[0].plannedDate,'2026-10-31');assert.equal(linked.runs[0].date,'2026-10-30T06:00:00.000Z');
  for(const k of ['customRoadmap','activeSchedule','sets','overrides'])assert.deepEqual(linked[k],checked[k]);
  await page.locator('nav [data-screen="today"]').click();assert.match(await page.locator('[data-session-id="'+target.id+'"]').innerText(),/Completed Fri,? 30 Oct · planned Sat,? 31 Oct/);
- await page.evaluate(id=>openWorkout(id),target.id);
- assert.match(await page.locator('#livePreview').innerText(),/Recorded run.*6.00 km · 30:00 · 5:00\/km/s);
+ assert.match(await page.locator('[data-session-id="'+target.id+'"] .day-result').innerText(),/6\.00 km · 30:00 · 5:00\/km/);
+ await page.locator('[data-session-id="'+target.id+'"]').click();
+ const log=page.locator('#trainingHistory details[open]').filter({has:page.locator('.run-comparison')});
+ const actual=await log.locator('.run-summary-table tbody tr td:last-child').allTextContents();
+ assert.deepEqual(actual,['6.00 km','30:00','5:00/km']);
  assert.equal(await page.locator('#previewSyncGarmin').count(),0);
- await page.locator('#previewClose').click();
  await page.reload();assert.deepEqual(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY),linked);
  await page.locator('nav [data-screen="settings"]').click();await page.locator('#settingsServices').evaluate(e=>e.open=true);await page.locator('#garminSavedLinks summary').click();await page.locator('#garminSavedLinks select').selectOption('');await page.getByRole('button',{name:'Save session link',exact:true}).click();
  const unlinked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(unlinked.runs.length,1);assert.equal(unlinked.completedWorkouts.length,0);assert.equal(unlinked.runs[0].sessionId,undefined);
