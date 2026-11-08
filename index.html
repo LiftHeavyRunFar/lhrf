@@ -63,7 +63,6 @@ header{padding-top:16px;padding-bottom:4px}header h1{font-size:24px}header p{fon
 .day-slide .day-workout{background:var(--card2);border:1px solid var(--border);border-radius:13px;padding:14px;margin-top:4px}
 .day-slide .day-workout strong{display:block;font-size:16px}
 .day-slide .day-workout span{display:block;color:var(--muted);font-size:13px;margin-top:5px}
-.day-slide .day-result span:last-child{color:var(--fg);line-height:1.45}
 .day-slide .day-open{width:100%;margin-top:10px}
 /* v1.6.5: expanded cards list prescribed exercises and set counts */
 .day-exercise-list{display:flex;flex-direction:column;gap:0}
@@ -211,7 +210,7 @@ button{border-radius:12px!important}button:not(.ghost):not(.secondary){backgroun
 .lhrf-run-prescription>p{color:#b4d4e9;font-size:13px}
 
 #programmeReplacement{overflow-wrap:anywhere}#programmeReplacement section{min-width:0}#programmeReplacement input[type="checkbox"]{width:auto;margin-right:8px}#programmeReplacement label{display:block;margin:12px 0}
-</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/training-flow.js"></script><script src="./src/android-polish.js"></script><script src="./src/run-presentation.js"></script><script src="./src/training-review.js"></script><script src="./src/programme-replacement.js"></script><script src="./src/training-backup.js"></script><script src="./src/running-workouts.js"></script><script src="./src/coaching-evidence.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/gym-equipment.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script><script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script><script src="./src/garmin-workout.js"></script><script src="./src/intervals-sync.js"></script><style>
+</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/training-flow.js"></script><script src="./src/android-polish.js"></script><script src="./src/run-presentation.js"></script><script src="./src/programme-replacement.js"></script><script src="./src/training-backup.js"></script><script src="./src/running-workouts.js"></script><script src="./src/coaching-evidence.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/gym-equipment.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script><script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script><script src="./src/garmin-workout.js"></script><script src="./src/intervals-sync.js"></script><style>
 /* A single, unboxed masthead; the original logo blends into the page surface. */
 body{background:#03070e!important}
 header#appHeader{position:sticky!important;top:0;z-index:20;max-width:none;min-height:0;margin:0!important;padding:calc(4px + env(safe-area-inset-top)) 16px 4px!important;background:#03070e;border:0;border-radius:0;box-shadow:none;text-align:center}
@@ -921,23 +920,6 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  const dayAliases={monday:0,mon:0,tuesday:1,tue:1,wednesday:2,wed:2,thursday:3,thu:3,friday:4,fri:4,saturday:5,sat:5,sunday:6,sun:6};
  const matchesDay=(s,day,i)=>{const raw=String(s.day??s.weekday??'').trim().toLowerCase();return raw===day.toLowerCase()||dayAliases[raw]===i||Number(s.dayIndex)===i};
  const fmtLoad=v=>Number(v)>0?Number(v)+' kg':'Choose during warm-up';
- function recordedSummary(session,workout){
-  const {sets,runs}=workout?LHRFTrainingReview.recordedWorkout(data,workout):{sets:[],runs:[]};
-  const lines=[];
-  if(session.component!=='run'&&sets.length){
-   const first=sets[0],setLabel=first.set?'set '+first.set:'first logged set';
-   lines.push(sets.length+(sets.length===1?' set logged':' sets logged'),
-    (first.exercise||'Exercise')+' · '+setLabel+' · '+LHRFTrainingReview.recordedSet(first));
-  }
-  if(session.component!=='strength'&&runs.length){
-   const run=runs[0],format=LHRFRunPresentation;
-   const metrics=[format.distance(run.km),format.duration(run.min),format.pace(run.min,run.km)]
-    .filter(value=>value!=='Not recorded');
-   lines.push((runs.length>1?runs.length+' runs logged · first run':'Run logged')+
-    (metrics.length?' · '+metrics.join(' · '):' · distance and time unavailable'));
-  }
-  return lines.length?lines:['Logged details unavailable'];
- }
  function render(){
   if(!root)return;
   const hasActive=Array.isArray(data.activeSchedule)&&data.activeSchedule.length>0;
@@ -971,12 +953,6 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   }
   root.innerHTML='<div class="day-heading"><h2>'+ (currentWeekIncludesToday?'This week':'Active week') +'</h2><span>Today: '+today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · Swipe between workouts ↔</span></div><div class="day-carousel" id="dayCarousel" tabindex="0" aria-label="Training days. Swipe or use left and right arrow keys."></div><div class="day-controls"><div class="day-position" id="dayPosition" aria-live="polite" aria-atomic="true"></div></div><div class="day-dots" id="dayDots" aria-label="Choose a training day"></div>';
   const rail=document.getElementById('dayCarousel');
-  if(data.sets?.length||data.runs?.length){
-   const lastWorkout=document.createElement('button');
-   lastWorkout.type='button';lastWorkout.className='secondary';lastWorkout.textContent='Last logged workout';
-   lastWorkout.onclick=()=>window.LHRFOpenWorkoutHistory();
-   root.querySelector('.day-heading').appendChild(lastWorkout);
-  }
   const range=document.createElement('p');range.className='muted small';range.style.margin='0 16px 12px';range.textContent='Active week '+activeWeek+' · '+formatDate(dateFor(0))+' – '+formatDate(dateFor(6));root.prepend(range);
   const todayTraining=trainingDays.some(d=>d.date.getTime()===today.getTime()&&d.sessions.length>0);
   const nextTraining=trainingDays.find(d=>d.date>=today&&d.sessions.length>0);
@@ -1024,54 +1000,35 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    if(isPast)slide.classList.add('is-past');
    slide.innerHTML='<span class="day-label">'+(isPast?(allCompleted?'✓ Completed · ':'Past · '):date.getTime()===today.getTime()?'Today · ':'')+(sessions.length?'Training day':'Rest day')+'</span><h3>'+day+' <span style="font-size:15px;font-weight:600;color:var(--muted);white-space:nowrap">'+formatDate(date)+'</span></h3><p class="day-status">'+sessions.length+' session'+(sessions.length===1?'':'s')+'</p>';
    for(const s of sessions){
-    const workout=source==='saved-preview'?undefined:
-     LHRFTrainingReview.completedRecord(data.completedWorkouts||[],s,Number(s.sourceProgrammeWeek||activeWeek));
-    const done=!!workout;
+    const eff=source==='saved-preview'?s:(effectiveSession(s.id)||s);
+    const exercises=Array.isArray(eff.ex)?eff.ex.filter(e=>!redundantOptionalExercise(e,eff.ex)):[],runs=Array.isArray(eff.runs)?eff.runs:[];
+    const done=sessionCompleted(s);
     const w=document.createElement('div');w.className='day-workout';w.classList.toggle('is-complete',done);w.dataset.sessionId=s.id;
     const heading=document.createElement('strong');heading.textContent=s.name;
-    w.appendChild(heading);
-    if(done){
-     const mark=document.createElement('span');mark.className='complete-mark';
-     mark.textContent='✓ Completed';
-     if(workout.source==='garmin-personal'&&workout.plannedDate){
-      const dateLabel=date=>date.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
-      mark.textContent='✓ Completed '+dateLabel(new Date(workout.date))+' · planned '+dateLabel(new Date(workout.plannedDate+'T12:00:00'));
-     }
-     w.appendChild(mark);
-     const result=document.createElement('div');result.className='day-result';
-     for(const line of recordedSummary(s,workout)){
-      const text=document.createElement('span');text.textContent=line;result.appendChild(text);
-     }
-     w.appendChild(result);
-    }else{
-     const eff=source==='saved-preview'?s:(effectiveSession(s.id)||s);
-     const exercises=Array.isArray(eff.ex)?eff.ex.filter(e=>!redundantOptionalExercise(e,eff.ex)):[],runs=Array.isArray(eff.runs)?eff.runs:[];
-     const overview=document.createElement('div');overview.className='day-overview';
-     const quick=document.createElement('div');quick.className='day-quick';
-     quick.textContent=[exercises.length?exercises.length+' strength exercises':'',runs.length?runs.length+' running session'+(runs.length>1?'s':''):''].filter(Boolean).join(' · ')||'Scheduled workout';
-     overview.appendChild(quick);
-     const detailed=document.createElement('div');detailed.className='day-detailed';
-     const list=document.createElement('div');list.className='day-exercise-list';
-     exercises.forEach(ex=>{const item=document.createElement('div');item.className='day-exercise-item';const name=document.createElement('span');name.textContent=ex[0]||'Exercise';const prescription=document.createElement('b');prescription.textContent=ex[1]+' × '+ex[2]+' · '+fmtLoad(ex[3])+' · RPE '+ex[4];item.append(name,prescription);list.appendChild(item)});
-     runs.forEach(run=>{const item=document.createElement('div');item.className='day-exercise-item';const name=document.createElement('span');name.textContent=run.name||'Run';const prescription=document.createElement('b');prescription.textContent=(run.distanceKm?distanceLabel(run.distanceKm):'—')+' · '+runningStepPace({pace:run.pace});item.append(name,prescription);list.appendChild(item);{const structure=document.createElement('div');structure.innerHTML=runStepsHtml(run);list.appendChild(structure)}});
-     if(!exercises.length&&!runs.length){list.textContent='Open this session to see the full prescription.'}
-     detailed.appendChild(list);overview.appendChild(detailed);
-     w.appendChild(overview);
-    }
-    const btn=document.createElement('button');btn.type='button';btn.className='day-open';btn.textContent=source==='saved-preview'?'Activate week to train':done?'View workout log →':'Preview workout →';btn.disabled=source==='saved-preview';if(source!=='saved-preview')btn.onclick=e=>{e.stopPropagation();openWorkout(s.id)};
-    w.tabIndex=0;w.setAttribute('role','button');w.setAttribute('aria-label',done?'View workout log for '+s.name:'Preview '+s.name);w.onclick=e=>{if(e.target.closest('button'))return;e.stopPropagation();if(source!=='saved-preview')openWorkout(s.id)};w.onkeydown=e=>{if(e.target!==w)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();if(source!=='saved-preview')openWorkout(s.id)}};
-    w.appendChild(btn);slide.appendChild(w);
+    const overview=document.createElement('div');overview.className='day-overview';
+    const quick=document.createElement('div');quick.className='day-quick';
+    quick.textContent=[exercises.length?exercises.length+' strength exercises':'',runs.length?runs.length+' running session'+(runs.length>1?'s':''):''].filter(Boolean).join(' · ')||'Scheduled workout';
+    overview.appendChild(quick);
+    const detailed=document.createElement('div');detailed.className='day-detailed';
+    const list=document.createElement('div');list.className='day-exercise-list';
+    exercises.forEach(ex=>{const item=document.createElement('div');item.className='day-exercise-item';const name=document.createElement('span');name.textContent=ex[0]||'Exercise';const prescription=document.createElement('b');prescription.textContent=ex[1]+' × '+ex[2]+' · '+fmtLoad(ex[3])+' · RPE '+ex[4];item.append(name,prescription);list.appendChild(item)});
+    runs.forEach(run=>{const item=document.createElement('div');item.className='day-exercise-item';const name=document.createElement('span');name.textContent=run.name||'Run';const prescription=document.createElement('b');prescription.textContent=(run.distanceKm?distanceLabel(run.distanceKm):'—')+' · '+runningStepPace({pace:run.pace});item.append(name,prescription);list.appendChild(item);{const structure=document.createElement('div');structure.innerHTML=runStepsHtml(run);list.appendChild(structure)}});
+    if(!exercises.length&&!runs.length){list.textContent='Open this session to see the full prescription.'}
+    detailed.appendChild(list);overview.appendChild(detailed);
+    const btn=document.createElement('button');btn.type='button';btn.className='day-open';btn.textContent=source==='saved-preview'?'Activate week to train':done?'✓ Completed · View details':'Preview workout →';btn.disabled=source==='saved-preview';if(source!=='saved-preview')btn.onclick=e=>{e.stopPropagation();openWorkout(s.id)};
+    w.tabIndex=0;w.setAttribute('role','button');w.setAttribute('aria-label','Preview '+s.name);w.onclick=e=>{if(e.target.closest('button'))return;e.stopPropagation();if(source!=='saved-preview')openWorkout(s.id)};w.onkeydown=e=>{if(e.target!==w)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();if(source!=='saved-preview')openWorkout(s.id)}};
+    w.append(heading);if(done){const mark=document.createElement('span');mark.className='complete-mark';const imported=(data.completedWorkouts||[]).find(x=>x.id===s.id&&Number(x.week||1)===Number(s.sourceProgrammeWeek||activeWeek)&&x.source==='garmin-personal');mark.textContent=imported?'✓ Completed '+new Date(imported.date).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+' · planned '+new Date(imported.plannedDate+'T12:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):'✓ Completed';w.appendChild(mark)}w.append(overview,btn);slide.appendChild(w);
    }
    const hint=document.createElement('div');hint.className='day-hint';slide.appendChild(hint);
    const openCard=()=>{if(source==='saved-preview'||!sessions.length)return;openWorkout(sessions.length===1?sessions[0].id:(sessions[0].parentId||sessions[0].id))};
    slide.addEventListener('click',e=>{if(e.target.closest('button,[data-session-id]'))return;openCard()});
-   if(sessions.length===1&&source!=='saved-preview'){slide.tabIndex=0;slide.setAttribute('role','button');slide.setAttribute('aria-label',allCompleted?'View workout log for '+sessions[0].name:'Preview '+sessions[0].name);slide.onkeydown=e=>{if(e.target===slide&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openCard()}};}
+   if(sessions.length===1&&source!=='saved-preview'){slide.tabIndex=0;slide.setAttribute('role','button');slide.setAttribute('aria-label','Preview '+sessions[0].name);slide.onkeydown=e=>{if(e.target===slide&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openCard()}};}
    rail.appendChild(slide);slides.push(slide);
   }
   const dots=document.getElementById('dayDots');trainingDays.forEach(()=>{const d=document.createElement('button');d.type='button';d.className='day-dot';d.setAttribute('aria-label',trainingDays[dots.children.length].day+' '+formatDate(trainingDays[dots.children.length].date));d.onclick=()=>selectDay(trainingDays[[...dots.children].indexOf(d)].i);dots.appendChild(d)});
   function update(){
    const position=trainingDays.findIndex(d=>d.i===selectedDay);
-   slides.forEach((slide,j)=>{const on=j===position;slide.classList.toggle('is-current',on);slide.classList.toggle('is-expanded',on&&detailLevel>=1);slide.classList.toggle('is-detailed',on&&detailLevel>=2);slide.setAttribute('aria-expanded',String(on&&detailLevel>=1));const hint=slide.querySelector('.day-hint');const sessions=trainingDays[j].sessions;hint.textContent=sessions.length===1&&sessionCompleted(sessions[0])?'Tap to view workout log →':!on?'Tap to preview workout →':'Tap anywhere to preview workout →'});
+   slides.forEach((slide,j)=>{const on=j===position;slide.classList.toggle('is-current',on);slide.classList.toggle('is-expanded',on&&detailLevel>=1);slide.classList.toggle('is-detailed',on&&detailLevel>=2);slide.setAttribute('aria-expanded',String(on&&detailLevel>=1));const hint=slide.querySelector('.day-hint');hint.textContent=!on?'Tap to preview workout →':'Tap anywhere to preview workout →'});
    [...dots.children].forEach((d,j)=>{d.classList.toggle('active',j===position);d.setAttribute('aria-current',j===position?'true':'false')});
    document.getElementById('dayPosition').textContent=trainingDays[position].day+' '+formatDate(trainingDays[position].date)+' · '+(position+1)+' / '+trainingDays.length;
    document.querySelector('.day-controls').style.display=trainingDays.length>1?'flex':'none';dots.style.display=trainingDays.length>1?'flex':'none';
@@ -1367,7 +1324,6 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
 
  function previewSession(id,planned){const raw=planned?.session||effectiveSession(id);let session=raw&&data.customRoadmap?ensureKnownLiftLoads([raw],data.customRoadmap)[0]:raw;if(!session){alert('Select an active workout from Today.');return}
   if(!planned&&workoutParts(session).length>1){chooseWorkoutPart(session);return}
-  if(!planned&&sessionCompleted(session)){window.LHRFOpenWorkoutHistory(session,Number(session.sourceProgrammeWeek||data.activeCustomWeek||1));return}
   preview=session;if(session.runs?.length){selectedCanonicalRunId=(session.parentId||session.id)+':0';buildRunPlan()}
   const old=document.getElementById('livePreview');if(old)old.remove();
   const dialog=document.createElement('div');dialog.id='livePreview';dialog.className='card';dialog.style.cssText='position:fixed;z-index:30;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));max-width:540px;margin:auto;box-shadow:0 0 0 200vmax #0009;max-height:75vh;overflow:auto';
@@ -2324,7 +2280,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  };
 })();
 </script>
-<script src="./src/workout-tools.js"></script><script src="./src/garmin-import.js"></script><script>window.LHRFOpenGarminReview=LHRFGarminImport.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/local-activity-import.js"></script><script src="./src/local-activity-import-ui.js"></script><script>LHRFLocalActivityImportUI.mount({getData:()=>data,persist:next=>save(next),apply:next=>{data=next;refresh()},getLive:()=>window.LHRFLive?.get?.()||localStorage.getItem('lhrf_fresh_beta_live_v1114_pendingRun')});</script><script>LHRFTrainingReview.mount({getData:()=>data,parts:workoutParts,openProgress:()=>go('progress'),getSessions:week=>{
+<script src="./src/workout-tools.js"></script><script src="./src/garmin-import.js"></script><script>window.LHRFOpenGarminReview=LHRFGarminImport.mount({getData:()=>data,commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/local-activity-import.js"></script><script src="./src/local-activity-import-ui.js"></script><script>LHRFLocalActivityImportUI.mount({getData:()=>data,persist:next=>save(next),apply:next=>{data=next;refresh()},getLive:()=>window.LHRFLive?.get?.()||localStorage.getItem('lhrf_fresh_beta_live_v1114_pendingRun')});</script><script src="./src/training-review.js"></script><script>LHRFTrainingReview.mount({getData:()=>data,parts:workoutParts,getSessions:week=>{
  if(week===Number(data.activeCustomWeek||1))return data.activeSchedule;
  const horizon=Number(data.customRoadmap?.weeks);
  if(!Number.isInteger(horizon)||horizon<1)return null;
