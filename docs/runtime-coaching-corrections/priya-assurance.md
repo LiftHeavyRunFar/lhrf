@@ -1,6 +1,6 @@
 # Priya — independent runtime coaching assurance
 
-**Independent review completed 8 November 2026.** Reviewed frozen integration: `fb14efc72de9ade0403488e1c9f9de7dd949fcb2`; production baseline: `b59a720b39ff9d62412007467b16f7cf2f32a291`. The principal comparison clock remains 7 November at noon UTC; later-clock controls are explicitly synthetic scenarios. The latest user request authorises general runtime corrections in new proposals, while existing approved/frozen prescriptions, original RPE, completed history, Garmin associations and approval/replacement boundaries remain protected.
+**Independent review completed 8 November 2026.** Reviewed final frozen integration: `d6249615c32fcd1617cd7152f22773a0d892e431`; production baseline: `b59a720b39ff9d62412007467b16f7cf2f32a291`. The principal comparison clock remains 7 November at noon UTC; later-clock controls are explicitly synthetic scenarios. The latest user request authorises general runtime corrections in new proposals, while existing approved/frozen prescriptions, original RPE, completed history, Garmin associations and approval/replacement boundaries remain protected.
 
 ## Independent questions fixed before outputs
 
@@ -43,6 +43,8 @@ The old Stage 3/weekly scheduling contracts and the exact 149-week Stage 7 nativ
 
 One auditor mutation assumed a Monday session existed; the corrected recovery path can omit that visit. The test now injects an explicitly unsafe Monday when absent, and still requires the current auditor to reject it. The replacement integration test now generates its fictional reviewed proposal with the recipient's confirmed equipment before packaging; it does not weaken venue/setup validation. Approval comparisons deliberately permit new programme/session identities while requiring the reviewed evidence and dose to remain intact.
 
+The historical taper-auditor positive now uses the actual isolated production K output. Its old “recovered” fixture contains a dated marathon without subsequent corroboration, so the current engine correctly withholds quality. The work-step mutation must still be rejected by the unchanged auditor. Current day-after-race, unsupported-marathon and support-objective negative controls remain active; the independent runtime suite supplies current incomplete/positive return contrasts. No input capture or expected hash was rewritten to force a pass.
+
 ## Interpretation of the revised return model
 
 The observed post-event week is a temporary proposal base, capped by reported habitual volume; it is not a newly measured habitual capacity. An isolated tolerated run cannot establish that week. Unknown return stages retain a provisional familiar-dose cap, and a new proposal date does not advance them. Conversely, an older event plus a later dated performance and at least three reported routine weeks can support preserving familiar running when no relevant adverse evidence is present. That continuity exception is not full recovery clearance or permission for additional mileage.
@@ -59,19 +61,34 @@ The review found additional failures at the boundary between recovery flags and 
 - Fresh day-22 proposals no longer restore the general hybrid's full lower volume/intensity merely because the event is older. The four temporal comparison cases retain the actual lower-dose arrays as well as running, so the resolved running cliff cannot conceal a strength cliff.
 - A normal working-five response can preserve squat 3×5 at 100 kg/RPE 7 and deadlift 2×5 at 130 kg/RPE 7 in a wholly synthetic positive. I independently regenerated weeks 1 and 3 from Rowan's recorded input and added an independent repository test. No heavy single/triple probe or blanket RPE-6.5 ceiling is required merely to repeat those supported fives; extra dose is still unearned.
 - Withholding an unsupported competition single no longer deletes the final demanding-rep/taper calendar. Taylor retains final demanding squat practice on 9 February and light work on 16 February before the 20 February meet. No new single is inserted. This preserves a deliberate taper without claiming that eleven days is individually optimal. The separate short-preparation control also prevents a final-phase increase in reps simply because singles are absent.
+- Truncating a first week no longer reassigns a surviving Sunday speed visit as the week's first volume visit. Independent Thursday/Sunday starts preserve the full calendar's remaining Friday/Sunday dose and purpose for experienced, novice and unknown-experience inputs. The protected final two days before a meet remain rest; preserving a role does not revive deleted work.
 - Real session-feedback discomfort and structured safety concerns are captured at the new-proposal boundary. Location is taken from preserved prescriptions when identifiable; mixed/unknown location requests clarification, rather than inventing a diagnosis. A later coarse normal answer cannot erase older unresolved concerns or valid specific normal evidence.
 - The actual intake callback now carries undated concerns without inventing symptom onset. `recordedAt` means when the concern was documented, not when it began. New observations need actual activity/response dates; a subsequent matching completed task after that documented receipt can resolve familiar-task uncertainty. Same-day answers cannot masquerade as next-day outcomes. Original history remains unchanged.
 - Monday morning/date-only runs now count in their proper completed calendar week. The independent 28 km positive distinguishes the previous Sunday and current Monday rather than quietly changing observations to noon. Zero requested training runs also remains a valid strength-proposal case after a marathon.
 
-The final old/new comparison contains 31 identical-input cases, 62 full blocks and 648 native weeks. I verified every revised source-file hash against the workspace, the final fixture hash, all input-purity/determinism flags, the frozen integration ID and the actual four temporal outputs. There were no source-hash mismatches. The old implementation and dependencies are isolated from the revised modules. The owner provenance amendment remains disclosed rather than being presented as an unchanged original input.
+The final old/new comparison contains 31 identical-input cases, 62 full blocks and 648 native weeks. I verified every revised source-file hash against the workspace, the final fixture hash, all input-purity/determinism flags, the frozen integration ID and the actual six temporal/canonical outputs. There were no source-hash mismatches. The old implementation and dependencies are isolated from the revised modules. The owner provenance amendment remains disclosed rather than being presented as an unchanged original input.
+
+## Canonical event-source challenge after the first gate
+
+The final replay found a further high-severity integration defect outside the original 31 cases: running preparation recognized a marathon from a dated performance profile, while the shared recovery packet recognized only two explicit-date aliases. I independently reproduced the executable consequence. With the same 1 November marathon performance, 42.195 km in 12,600 seconds, C received squat 1×5 at 105 kg/RPE 7.5 plus 2×5 at 95/RPE 7, deadlift 1×5 at 135/RPE 7.5 plus 2×5 at 120/RPE 7, and 28 km with quality/long work. Duplicating only that already-known date into `runningHistory.recentMarathonDate` changed the proposal to lower 2×3/RPE 6.5 and 5.6 km easy. This was a material dose defect; the prior favorable cases all contained explicit dates.
+
+Two additional independent regressions compare every week's actual dose for this paired input and exercise all recognized explicit-date/recent-race/profile aliases. They also retain newer pain, older-explicit/newer-profile, non-marathon, training-effort, missing result time, invalid-date and future-date controls. Both tests fail on the first-gated source and pass with the canonical-source correction. It collects the existing valid completed-event sources, normalizes dates and deduplicates the same event; it does not introduce a new physiological recovery interval. Missing optional goal metadata also remains non-crashing. The final source-bound recapture contains six temporal/canonical controls; both canonical inputs yield 5.6 km easy and the same bounded lower triples. All source/fixture hashes, deterministic input-purity flags and the final integration ID match. The earlier counterexample and its attributable results remain recorded.
 
 ## Verification and recommendation
 
-I independently ran **104/104 checks** on the frozen source: thirty adversarial/preservation controls plus the seven assigned legacy/auditor/replacement/time/scheduling files. The final command was:
+I independently ran **107/107 checks** on the final frozen source: thirty-three adversarial/preservation controls plus the seven assigned legacy/auditor/replacement/time/scheduling files. Core source hashes remained identical before and after the run. The earlier 104-check gate was extended after the canonical-source and partial-week findings, rather than being treated as permanent approval. The final command was:
 
 ```sh
 node --test tests/runtime-coaching-assurance.test.cjs tests/stage-three-safeguards.test.cjs tests/weekly-stress-scheduling.test.cjs tests/flexible-session-time.test.cjs tests/coaching-depth-gates.test.cjs tests/coaching-replay-safety.test.cjs tests/programme-replacement.test.cjs tests/taylor-scheduling.test.cjs
 ```
+
+The source-bound final comparison records 31 same-input cases plus six temporal/canonical controls. I verified the fixture SHA and every revised source hash with no mismatches. The principal runtime hashes are:
+
+| File | SHA-256 |
+|---|---|
+| `src/coach-engine.js` | `639cf5bce1a88ca4ee713635379149df3b4d21fa3cc50567e102067c5d2df6a6` |
+| `src/coaching-evidence.js` | `9635f7de425b0849c1b32cc0a8cf8f6426dbf38d550110f04a21cdc4425e34cf` |
+| `src/running-preparation.js` | `ea2f0480300055fc4dbc7abab2340e69cc542b6a9ce56b99d81ce00c02fd391a` |
 
 The general-quality gate passes for the stated targeted correction. I support **independent PR/release review of controlled new proposals**, subject to the final whole-repository and browser/CI checks recorded on the published head. No confirmed blocking defect remains in the reviewed controls. This does not endorse broad autonomous optimisation, establish freedom from under/overtraining, or authorise merge, deployment or activation in this iteration.
 

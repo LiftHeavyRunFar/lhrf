@@ -372,3 +372,57 @@ test('independent runtime assurance: normal familiar fives remain fives at their
  }
  assert.equal(JSON.stringify(source),before);
 });
+test('independent runtime assurance: the same dated marathon performance has identical executable dose when its date is duplicated explicitly',()=>{
+ const source=clone(makeRuntimeAthletes().find(a=>a.id==='marathon-general-uncertain'));
+ source.config.runProfile={...source.config.runProfile,distance:42.195,seconds:12600,resultDate:'2026-11-01'};
+ delete source.config.runningHistory.recentMarathonDate;
+ const duplicate=clone(source);duplicate.config.runningHistory.recentMarathonDate='2026-11-01';
+ const before=JSON.stringify([source,duplicate]),build=input=>adapters.buildNewProgramme(input.config,{data:input.data,now});
+ const programmes=[build(source),build(duplicate)];
+ const dose=p=>p.weeks.map(w=>w.sessions.map(s=>({day:s.day,ex:s.ex.map(e=>e.slice(0,5)),runs:s.runs.map(r=>({
+  role:r.role,distanceKm:r.distanceKm,minutes:r.minutes,durationRangeMinutes:r.durationRangeMinutes,pace:r.pace,rpe:r.rpe,steps:r.steps}))})));
+ assert.deepEqual(dose(programmes[0]),dose(programmes[1]),'Source aliases for one known race must not restore full quality or lower volume');
+ assert.ok(programmes[0].config.coachingEvidence.recovery.events.some(e=>e.goal==='marathon'&&e.date==='2026-11-01'));
+ assert.equal(JSON.stringify([source,duplicate]),before);
+});
+test('independent runtime assurance: recognized marathon aliases agree, while later concerns and future/non-performance controls remain distinct',()=>{
+ const race={distanceKm:42.195,date:'2026-11-01'},profile={distance:42.195,seconds:12600,resultDate:'2026-11-01',effort:'performance'};
+ const sources=[{recentMarathonDate:'2026-11-01'},{runningHistory:{recentMarathonDate:'2026-11-01'}},{runProfile:{recentMarathonDate:'2026-11-01'}},
+  {runningHistory:{recentRace:race}},{runProfile:{recentRace:race}},{recentRace:race},{runProfile:profile},
+  {runningHistory:{recentMarathonDate:'2026-10-18'},runProfile:profile}];
+ for(const input of sources){
+  const before=JSON.stringify(input),config={...clone(input),coachingEvidence:evidence.capture(input,{now})};
+  assert.equal(recover(config).eventDate,'2026-11-01',JSON.stringify(input));assert.equal(recover(config).canProgress,false);
+  assert.equal(JSON.stringify(input),before);
+  const concern={...clone(input),recoveryObservations:[observe('pain')]};concern.coachingEvidence=evidence.capture(concern,{now});
+  assert.equal(recover(concern).restriction,'hold','Canonical event sources cannot erase newer task-relevant pain');
+ }
+ for(const runProfile of [{...profile,distance:10},{...profile,effort:'training'},{...profile,seconds:0},{...profile,resultDate:'invalid'},
+  {...profile,resultDate:'2026-11-15'}]){
+  const config={runProfile};config.coachingEvidence=evidence.capture(config,{now});
+  assert.equal(recover(config,{atDate:'2026-11-09'}).eventDate,null,'A non-marathon, undated or future result is not a completed marathon');
+ }
+ assert.doesNotThrow(()=>evidence.capture({runningHistory:{recentMarathonDate:'2026-11-01'},
+  orderedGoals:[{date:'2026-11-01',goal:'marathon'}]},{now}),'Canonicalization must not turn malformed optional metadata into a runtime exception');
+});
+test('independent runtime assurance: truncating the first week retains the surviving visits original lift purposes and dose',()=>{
+ for(const trainingAge of ['advanced','beginner',undefined]){
+  const source=clone(makeRuntimeAthletes().find(a=>a.id==='experienced-strength-hybrid'));
+  if(!trainingAge)source.data=blank();
+  Object.assign(source.config,{trainingAge,startDate:'2026-11-02',weeks:4,event:'bench',priority:'Bench',bench:3,squat:0,deadlift:0,runs:0,days:3,
+   availableDays:['Tue','Fri','Sun'],doubleDays:[],manualSplit:{Tue:['bench'],Fri:['bench'],Sun:['bench']},
+   strengthTargetDate:'2026-11-28',runningTargetDate:'',strengthExposureRoles:{Bench:['volume','heavy','speed']},
+   visitConstraints:{strengthVisits:3,minutes:{Tue:120,Fri:120,Sun:120},combinedDays:[],separateDays:[],eventDays:{'2026-11-28':{confirmed:true}}}});
+  const before=JSON.stringify(source),full=adapters.buildNewProgramme(source.config,{data:source.data,now});
+  const visits=p=>p.weeks[0].sessions.filter(s=>s.ex.some(e=>e[0]==='Bench')).map(s=>({day:s.day,bench:s.ex.filter(e=>e[0]==='Bench').map(e=>[...e.slice(0,5),e[5].trainingRole])}));
+  for(const [startDate,days]of [['2026-11-05',['Fri','Sun']],['2026-11-08',['Sun']]]){
+   const partial=adapters.buildNewProgramme({...source.config,startDate},{data:source.data,now});
+   assert.deepEqual(visits(partial),visits(full).filter(s=>days.includes(s.day)),String(trainingAge)+' '+startDate);
+   assert.ok(visits(partial).find(s=>s.day==='Sun').bench.every(e=>e[2]===2&&e[4]<=5.5&&e[5]==='speed'));
+  }
+  const restConfig={...source.config,startDate:'2026-11-08',strengthTargetDate:'2026-11-09',visitConstraints:{...source.config.visitConstraints,
+   eventDays:{'2026-11-09':{confirmed:true}}}},rest=adapters.buildNewProgramme(restConfig,{data:source.data,now});
+  assert.deepEqual(visits(rest),[],'Retaining a weekly purpose must not revive work in the final two days before competition');
+  assert.equal(JSON.stringify(source),before);
+ }
+});

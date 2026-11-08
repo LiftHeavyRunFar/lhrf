@@ -12,8 +12,13 @@ test('coaching audit rejects day-after-race lifting even when calendar labels cl
  n.programme.weeks[6].feasible=true;
  assert.equal(gate(rows,'N-day-after-half-recovery-coordination').status,'blocked');
 });
-test('coaching audit measures taper steps rather than trusting phase and workout names',()=>{
- const rows=copy(native.cases),k=rows.find(r=>r.id==='K');
+test('historical taper audit measures steps rather than trusting phase and workout names',()=>{
+ // This auditor's recovered-K contract predates task-specific return evidence.
+ // Keep its genuine preserved-policy positive; current recovery negatives and
+ // corroborated return positives are exercised by the runtime assurance suite.
+ const stored=run({fixture:{...fixture,cases:fixture.cases.filter(r=>r.id==='K')},fixturePath,
+  engine:require('../scripts/compare-runtime-coaching.cjs').legacyEngine()});
+ const rows=copy(native.cases);rows[rows.findIndex(r=>r.id==='K')]=copy(stored.cases[0]);const k=rows.find(r=>r.id==='K');
  assert.equal(gate(rows,'K-small-taper-pace-reminders').status,'pass');
  for(const s of k.programme.weeks[11].sessions)for(const r of s.runs||[])for(const step of r.steps||[])if(step.role==='work')step.role='easy';
  assert.equal(gate(rows,'K-small-taper-pace-reminders').status,'blocked');
