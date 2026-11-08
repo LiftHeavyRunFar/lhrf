@@ -20,6 +20,10 @@ const fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInvent
  await page.locator('[name="trainingAge"]').selectOption('intermediate');await page.locator('[name="runGoal"]').selectOption('10k');
  await page.getByRole('button',{name:'Generate preview',exact:true}).click();assert.equal(await page.locator('#previewEquipment').count(),1,'Advanced equipment controls remain available');
  await require('./equipment-browser-fixtures.cjs').confirmPreviewEquipment(page);await page.getByRole('button',{name:'Generate preview',exact:true}).click();
+ assert.match(await page.locator('#output').innerText(),/Confirm a familiar running outing/);
+ assert.equal(await page.locator('.trainPrescribed:not([disabled])').count(),0,'A two-run dated race needs a familiar outing');
+ for(const [name,value] of Object.entries({v2LongKm:'7',v2LongMinutes:'50',v2LongRecovery:'24'}))await page.locator(`[name="${name}"]`).fill(value);
+ await page.getByRole('button',{name:'Generate preview',exact:true}).click();
  assert.match(await page.locator('#output').innerText(),/strength EVENT — 2026-11-28/);
  const week=page.locator('#output .week').filter({has:page.getByRole('heading',{name:'Week 3 — development',exact:true})});
  const startButton=week.locator('p').filter({hasText:/Bench: top set/}).locator('.trainPrescribed').first();assert.equal(await startButton.isDisabled(),false,(await page.locator('#output').innerText()).slice(0,4200));await startButton.click();
