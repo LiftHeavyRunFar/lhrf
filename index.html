@@ -1909,7 +1909,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    squat:selected.counts.Squat,bench:selected.counts.Bench,deadlift:selected.counts.Deadlift,runs:selected.runs,runGoal,rungoal:runGoal,
    strengthGoal:hasStrength()&&event!=='running'?event:'general',strengthTargets,strengthTarget,runningTarget,
    runningGoalSeconds:Number.isFinite(targetSeconds)&&targetSeconds>0?targetSeconds:null,
-   strengthTargetDate:strength,runningTargetDate:running,hybridFocus:focus(),coachingPolicy:'review-v2',exerciseSelectionVersion:2,runningGuidanceVersion:4,runningPaceVersion:2,runningWorkoutVersion:1,onboardingAerobicBuildVersion:1,integratedCoachingVersion:1,
+   strengthTargetDate:strength,runningTargetDate:running,hybridFocus:focus(),coachingPolicy:'review-v2',exerciseSelectionVersion:2,runningGuidanceVersion:4,runningPaceVersion:2,runningWorkoutVersion:1,onboardingAerobicBuildVersion:1,
    trainingAge:hasStrength()?get('frExperience').value:'',strengthMode:hasStrength()?get('frStrengthMode').value:'auto'});
   cfg.runProfile={...cfg.runProfile,distance:Number(get('frRunDistance').value),seconds:pbSeconds(runTime),time:runTime,weeklyKm:hasRunning()?Number(get('frRunKm').value):0,
    resultDate:runTime?get('frResultDate').value||null:null,effort:runTime?get('frResultEffort').value:'performance',environment:runTime?get('frResultEnvironment').value:'unknown'};
