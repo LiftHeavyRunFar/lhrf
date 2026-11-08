@@ -8,11 +8,11 @@ test('shared extraction preserves 28 prior live prescriptions',()=>{
  for(const fixture of fixtures.cases){const c=normalizeProfile(fixtures.profiles.find(p=>p.id===fixture.profile).config),data={sets:[],runs:[],checkins:[],decisions:[],overrides:{},customRoadmap:c};const before=JSON.stringify(data),engine=createEngine({data,now:()=>fixtures.timestamp});assert.equal(hash(engine.generatedSessions(c,fixture.week)),fixture.sha256,fixture.profile+' W'+fixture.week);assert.equal(JSON.stringify(data),before)}
 });
 test('legacy review fixtures retain fatigue safeguards but cannot establish extra progression without current provenance',()=>{
- // Keep the historical hashes as evidence, rather than rewriting the original
- // fixture to bless a changed decision. These old logs have no linked saved
- // prescription and their active week does not match the dated calendar.
+ // The historical fatigue hash recorded a running cut with zero running logs.
+ // These sets have no linked prescription and their active week does not
+ // match the dated calendar, so they cannot establish a targeted change.
  for(const fixture of fixtures.reviews){const data=reviewState(fixture.mode),engine=createEngine({data,now:()=>fixtures.timestamp});data.activeSchedule=engine.generatedSessions(data.customRoadmap,3);const before=JSON.stringify(data),result=createEngine({data,schedule:data.activeSchedule,now:()=>fixtures.timestamp}).reviewDecision();
-  if(fixture.mode==='fatigue')assert.equal(hash(result),fixture.sha256);
+  if(fixture.mode==='fatigue'){assert.equal(result.status,'monitor');assert.match(result.summary,/repeated poor recovery/);assert.equal(result.changes,undefined);}
   else{assert.equal(result.status,'on-track');assert.equal(result.changes,undefined);assert.match(result.details,/Additional progression needs evidence/);assert.match(result.summary,/Continue the planned progression/);}
   assert.equal(JSON.stringify(data),before);
  }

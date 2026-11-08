@@ -46,6 +46,33 @@ function weeklyStress(c,slots,context={}){
  }
  return score;
 }
+// Only explore alternate lift groupings when the ordinary calendar cannot fit
+// the full work. A pinned exposure must remain on its chosen day.
+function* alternateLiftLayouts(slots,strengthDays,strengthOrder,required){
+ const lifts=[...new Set(strengthOrder.map(item=>item.name))].map(name=>{
+  const items=strengthOrder.filter(item=>item.name===name),pin=required[name];
+  const choices=combinations(strengthDays,items.length).filter(group=>!pin||group.includes(pin));
+  return {items,pin,choices};
+ });
+ const layout=slots.map(slot=>({day:slot.day,items:slot.items.filter(item=>item.type==='run')}));
+ const byDay=new Map(layout.map(slot=>[slot.day,slot]));
+ function* place(index){
+  if(index===lifts.length){
+   if(strengthDays.every(day=>byDay.get(day).items.some(item=>item.type==='strength')))
+    yield layout.map(slot=>({...slot,items:slot.items.slice()}));
+   return;
+  }
+  const {items,pin,choices}=lifts[index];
+  for(const group of choices){
+   const order=pin?[pin,...group.filter(day=>day!==pin)]:group;
+   order.forEach((day,i)=>byDay.get(day).items.push(items[i]));
+   yield* place(index+1);
+   order.forEach(day=>byDay.get(day).items.pop());
+  }
+ }
+ yield* place(0);
+}
+const allocationKey=slots=>slots.map(s=>s.items.map(x=>x.type+':'+x.name+':'+x.detail+(Number.isInteger(x.runIndex)?':'+x.runIndex:'')).sort().join(',')).join('|');
 function allocate(c,warnings=[],activities=[],context={}){
  const cfg=c.visitConstraints||{},allowed=DAYS.filter(d=>(c.availableDays?.length?c.availableDays.map(short):DAYS).includes(d)),slots=()=>DAYS.map(day=>({day,items:[]}));
  const work=activities.map((x,i)=>({...x,componentId:'component-'+i})),strength=work.filter(x=>x.type==='strength'),runs=work.filter(x=>x.type==='run');
@@ -62,7 +89,9 @@ function allocate(c,warnings=[],activities=[],context={}){
  // A fixed split is an explicit athlete choice, never a suggestion to reshuffle silently.
  if(c.manualSplit||c.fixedSessions?.length){
   const out=slots(),pending=work.slice(),unscheduled=[];
-  const assign=(day,type,name,long)=>{const at=pending.findIndex(x=>x.type===type&&(!name||x.name===name));if(at<0)return false;const item=pending.splice(at,1)[0],slot=out.find(s=>s.day===short(day));if(long)item.detail='Long run · protected endurance';if(!slot||!allowed.includes(slot.day)||slot.items.some(x=>x.name===item.name)){unscheduled.push({...item,reason:'Fixed assignment conflicts with availability or duplicates a lift/run'});return false}slot.items.push(item);return true};
+  const assign=(day,type,name,long)=>{const matching=x=>x.type===type&&(!name||x.name===name);
+   const exact=type==='run'&&runs.some(x=>Number.isInteger(x.runIndex))?pending.findIndex(x=>matching(x)&&!!long===/Long run/.test(x.detail)):-1;
+   const at=exact>=0?exact:pending.findIndex(matching);if(at<0)return false;const item=pending.splice(at,1)[0],slot=out.find(s=>s.day===short(day));if(long)item.detail='Long run · protected endurance';if(!slot||!allowed.includes(slot.day)||slot.items.some(x=>x.name===item.name)){unscheduled.push({...item,reason:'Fixed assignment conflicts with availability or duplicates a lift/run'});return false}slot.items.push(item);return true};
   if(c.manualSplit){for(const [day,items]of Object.entries(c.manualSplit))for(const item of items){if(item==='lower'){for(const lift of ['Squat','Deadlift'])if(Number(c[lift.toLowerCase()])>0)assign(day,'strength',lift)}else if(item==='bench')assign(day,'strength','Bench');else if(item==='run'||item==='long')assign(day,'run',null,item==='long')}}
   else for(const f of c.fixedSessions)assign(f.day,f.kind==='run'?'run':'strength',f.kind==='run'?null:({squat:'Squat',bench:'Bench',deadlift:'Deadlift'}[String(f.lift).toLowerCase()]),f.runType==='long');
   for(const item of pending)unscheduled.push({...item,reason:'Requested frequency has no fixed visit assignment'});
@@ -70,6 +99,8 @@ function allocate(c,warnings=[],activities=[],context={}){
   if(out.filter(s=>s.items.some(x=>x.type==='strength')).length!==visits)unscheduled.push({name:'Strength visits',reason:'Fixed split differs from the requested number of strength visits'});
   return {slots:out,warnings:[...warnings,...unscheduled.map(x=>x.reason)],total:work.length,scheduled:work.length-pending.length,unscheduled,feasible:!unscheduled.length};
  }
+ const spreadEasy=c.feasibleScheduleVersion===1&&c.onboardingAerobicBuildVersion===1&&c.runGoal==='fitness'&&runs.length===2;
+ const alternatives=context.evaluateFit?new Map():null;
  let best=null,legacyBest=null;
  const required=context.requiredStrengthDays||{},requiredDays=Object.values(required);
  const strengthOrder=strength.slice().sort((a,b)=>Number(lower(b))-Number(lower(a)));
@@ -101,17 +132,54 @@ function allocate(c,warnings=[],activities=[],context={}){
   // Quality early in the week, then supporting easy running; Sunday remains protected.
   if(!strengthFirstHealth)runDays.forEach((day,i)=>{if(i!==longIndex){const preferred=i===0?1:3;score+=Math.abs(DAYS.indexOf(day)-preferred)*2}});
   score+=out.reduce((n,s)=>n+(s.items.length?DAYS.indexOf(s.day)*.001:0),0);
+  if(spreadEasy){
+   const gap=Math.abs(DAYS.indexOf(runDays[0])-DAYS.indexOf(runDays[1]));
+   // Soft preference. Genuine availability, visit fit and recovery still decide.
+   if(gap===1||gap===6)score+=.55;
+  }
   const priorScore=score;
-  if(!legacyBest||priorScore<legacyBest.score)legacyBest={slots:out,score:priorScore};
+  if(!legacyBest||priorScore<legacyBest.score)legacyBest={slots:out,score:priorScore,strengthDays};
   if(Number(c.weeklyStressVersion)>=1)score+=weeklyStress(c,out,context);
-  if(!best||score<best.score)best={slots:out,score};
+  if(!best||score<best.score)best={slots:out,score,strengthDays};
+  if(alternatives){
+   const key=allocationKey(out);
+   if(!alternatives.has(key))alternatives.set(key,{slots:out,score,strengthDays});
+  }
  }
- if(best&&Number(c.weeklyStressVersion)>=1){
+ if(best&&Number(c.weeklyStressVersion)>=1&&!spreadEasy){
   const previousDays=new Map(legacyBest.slots.flatMap(s=>s.items.map(x=>[x.componentId,s.day])));
   const moved=best.slots.reduce((n,s)=>n+s.items.filter(x=>previousDays.get(x.componentId)!==s.day).length,0);
   // Changing familiar days has a real cost. Require a material stress reduction,
   // not marginal heuristic gains that churn an otherwise coherent calendar.
   if(best.score+moved>=legacyBest.score+weeklyStress(c,legacyBest.slots,context))best=legacyBest;
+ }
+ if(best&&alternatives){
+  const ranked=[best,...[...alternatives.values()].sort((a,b)=>a.score-b.score).filter(a=>a.slots!==best.slots)]
+   .map(candidate=>({...candidate,minimumCost:context.minimumAdaptation?.(candidate.slots)||0}));
+  const minimumCost=ranked.reduce((minimum,candidate)=>Math.min(minimum,candidate.minimumCost),Infinity);
+  let fitting=null;
+  const seen=new Set();
+  const evaluate=candidate=>{
+   if(fitting&&candidate.minimumCost>=fitting.cost)return false;
+   const key=allocationKey(candidate.slots);
+   if(seen.has(key))return false;
+   seen.add(key);
+   const result=context.evaluateFit(candidate.slots);
+   if(!result.feasible)return false;
+   if(!fitting||result.adaptationCost<fitting.cost)fitting={candidate,cost:result.adaptationCost};
+   return result.adaptationCost===minimumCost;
+  };
+  if(!ranked.some(evaluate)&&strengthOrder.length>1&&visits>1){
+   for(const candidate of ranked){
+    if(fitting&&candidate.minimumCost>=fitting.cost)continue;
+    let complete=false;
+    for(const slots of alternateLiftLayouts(candidate.slots,candidate.strengthDays,strengthOrder,required)){
+     if(evaluate({...candidate,slots})){complete=true;break}
+    }
+    if(complete)break;
+   }
+  }
+  if(fitting)best=fitting.candidate;
  }
  if(!best&&requiredDays.length){
   // An impossible request must not knock out other lifts with feasible dates.
@@ -315,16 +383,38 @@ function fitFlexibleSessions(c,input){
   const runningOver=()=>{if(!separate)return !fits();if(cap===null)return false;let n=0;for(const r of s.runs.filter(r=>r.priority!=='optional')){const d=runDuration(r);if(!d)return true;n+=d.max}return n>cap};
   for(let i=s.runs.length-1;i>=0&&runningOver()&&constrained;i--)if(s.runs[i].priority==='supporting'){changes.push({kind:'omit-support-run',name:s.runs[i].name});s.runs.splice(i,1)}
   for(const [e,top]of topRefs)if(s.ex.includes(e))e[5].topIndex=s.ex.indexOf(top);
+  if(c.feasibleScheduleVersion===1&&hasCap&&!fits()&&s.runs.length===1){
+   const run=s.runs[0],runTime=runDuration(run);
+   if(runTime&&run.aerobicDose&&run.distanceKnown===false){
+    const whole=estimate().baselineRangeMinutes?.max;
+    const budget=separate?cap-5:cap-5-(whole-runTime.max);
+    const fitted=running.fitRunToMinutes(run,budget);
+    if(fitted.feasible&&fitted.capacityLimited){
+     s.runs[0]=fitted.run;
+     changes.push({kind:'shorten-timed-easy-run',minutes:run.minutes-fitted.run.minutes});
+     warnings.push(day+': easy running is '+fitted.run.minutes+' min instead of '+run.minutes+
+      ' min to fit the '+cap+' min visit including preparation.');
+    }
+   }
+  }
   const t=estimate(),known=!!t.baselineRangeMinutes;
-  if(!known)fail(day+' has unknown prescribed running duration; confirm representative pace or a timed prescription.');
-  else if(!fits()){const er=t.essentialRangeMinutes,tooShort=separate?visitsTooShort():cap!==null&&er&&er.min>cap;fail(day+(tooShort?' essential work cannot fit':' essential work may exceed')+' the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.');}
+  const flexibleEasy=!hasCap&&!validCap(strengthCap)&&s.runs.length>0&&s.runs.every(r=>runDuration(r)||r.fitnessDistanceDose);
+  if(!known&&!flexibleEasy)fail(day+' has unknown prescribed running duration; confirm representative pace or a timed prescription.');
+  else if(known&&!fits()){const er=t.essentialRangeMinutes,tooShort=separate?visitsTooShort():cap!==null&&er&&er.min>cap;fail(day+(tooShort?' essential work cannot fit':' essential work may exceed')+' the hard limit with full warm-ups and rests. Review the limit or training priorities; essential work has not been silently removed.');}
   function visitsTooShort(){const sr=strengthDuration(s.ex.filter(e=>e[5].priority==='essential')).rangeMinutes;let rr=0;for(const r of s.runs.filter(r=>r.priority==='essential'))rr+=runDuration(r)?.min||0;return (strengthCap!==null&&sr.min>strengthCap)||(cap!==null&&rr>cap)}
   const visits=separate?[{kind:'strength',rangeMinutes:strengthDuration(s.ex.filter(e=>e[5].priority!=='optional')).rangeMinutes,capMinutes:strengthCap},{kind:'run',rangeMinutes:estimateSession({...s,ex:[]}).baselineRangeMinutes,capMinutes:cap}]:[{kind:mixed?'combined':s.ex.length?'strength':'run',rangeMinutes:t.baselineRangeMinutes,capMinutes:cap}];
   s.timeBudget={...t,totalMinutes:t.baselineRangeMinutes?.max??null,capMinutes:cap,hardLimit:hasCap,availability:hasCap?'hard-limit':'unspecified-flexible',feasible:!s.constraintWarnings?.length,visits,separate,minimumGapHours:separate?cfg.minimumGapHours:null,adjustments:changes};
   s.plannedStress=plannedStress(s);
-  if(changes.length){s.timeAdaptation={originalPrescription:prescribed,adjustedPrescription:clone({ex:s.ex,runs:s.runs}),reason:'hard-time-limit',changes,completedWorkChanged:false,makeUpWorkScheduled:false};s.hybridNotes=[...(s.hybridNotes||[]),'Time adjustment: supporting/optional work reduced; essential work protected. Removed work is not stacked onto later days.'];}
+  if(changes.length){
+   s.timeAdaptation={originalPrescription:prescribed,adjustedPrescription:clone({ex:s.ex,runs:s.runs}),reason:'hard-time-limit',changes,completedWorkChanged:false,makeUpWorkScheduled:false};
+   const changedRun=changes.some(change=>change.kind==='shorten-timed-easy-run');
+   const note=changedRun?'The easy run is shorter to fit the full visit. Resume the normal dose when the visit allows and recovery supports it.':
+    'Time adjustment: supporting/optional work reduced; essential work protected. Removed work is not stacked onto later days.';
+   s.hybridNotes=[...(s.hybridNotes||[]),note];
+  }
   if(c.sessionDurationPreference?.mode==='typical'&&t.baselineRangeMinutes?.max>c.sessionDurationPreference.minutes)warnings.push(day+': estimate exceeds the typical duration preference; this is not a hard limit. Review supporting volume if desired.');
-  if(!hasCap)warnings.push(day+': session duration is estimated; no hard time limit was supplied.');
+  if(!hasCap)warnings.push(day+(known?': session duration is estimated; no hard time limit was supplied.':
+   ': running duration is unconfirmed. A recent timed outing helps assess whether a hard visit limit is feasible.'));
   sessions.push(s);
  }
  return {sessions,warnings:[...warnings,...issues],blockingIssues:issues,feasible:!issues.length,reviewRequired:!!issues.length};

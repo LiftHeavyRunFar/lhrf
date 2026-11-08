@@ -157,18 +157,25 @@ async function verifyLiveRecheck(page, proposal) {
   assert.match(await noData.innerText(),/two recent controlled sessions/i);
   assert.equal(await noData.locator('[data-conditional-single]').count(),0);
   await page.evaluate(() => cancelLiveWorkout());
-  const completed = ['Tue','Thu'].map((day,index) => {
-    const session = proposal.weeks[17].sessions.find(row => row.day===day);
-    const exercise = session.ex.find(ex => ex[0]==='Squat' && ex[5]?.role==='top');
-    assert.ok(exercise[5].competition && exercise[2]<=3);
-    return {session,exercise,date:['2027-03-09','2027-03-11'][index]+'T10:00:00Z',weight:[100,105][index]};
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const planned = proposal.weeks.flatMap(week => week.sessions.map(session => ({
+    week:week.week, session, date:session.scheduledDate ||
+      new Date(Date.UTC(2026,10,9+(week.week-1)*7+days.indexOf(session.day),10)).toISOString().slice(0,10)
+  })));
+  const completed = proposal.finalHeavyPlan.Squat.practiceDates.slice(-2).map((practiceDate,index) => {
+    const eligible = ex => ex[0]==='Squat' && ['top','straight'].includes(ex[5]?.role) &&
+      ex[5].competition && ex[2]<=3 && ex[4]>=6 && ex[4]<=7.5;
+    const visit = planned.find(row => row.date===practiceDate && row.session.ex.some(eligible));
+    assert.ok(visit,'A practice date corresponds to compatible installed competition work');
+    return {...visit,exercise:visit.session.ex.find(eligible),date:practiceDate+'T10:00:00Z',weight:[100,105][index]};
   });
+  assert.equal(completed.length,2);
   await page.evaluate(({key,identity,completed}) => {
     const store = JSON.parse(localStorage.getItem(key));
     store.completedWorkouts ??= [];
-    for (const {session,exercise,date,weight} of completed) {
+    for (const {session,exercise,date,weight,week} of completed) {
       const id = store.customRoadmap.sessionNamespace+session.id;
-      store.completedWorkouts.push({id,date,week:18,prescription:{ex:session.ex}});
+      store.completedWorkouts.push({id,date,week,prescription:{ex:session.ex}});
       store.sets.push({...identity,exercise:'Squat',date,sessionId:id,weight,reps:exercise[2],rpe:7,role:exercise[5].role});
     }
     localStorage.setItem(key,JSON.stringify(store));
@@ -279,14 +286,16 @@ async function approve(page) {
     }
     for (const variant of [
       {experience:'beginner',kind:'technique'},
-      {experience:'advanced',kind:'rep-practice'},
-      {experience:'advanced',evidenceDate:'2027-03-04',kind:'single'}
+      {experience:'advanced'},
+      {experience:'advanced',evidenceDate:'2027-03-04'}
     ]) {
       const {page,context,errors} = await fresh(browser,origin,'2027-03-08');
       const proposal = await fillMeet(page,variant);
       for (const [lift,{date}] of Object.entries(timings)) {
         const plan = proposal.finalHeavyPlan[lift];
-        assert.equal(plan.kind,variant.kind,JSON.stringify(plan));
+        const dates = plan.practiceDates || [];
+        const enough = dates.length>=2 && Date.parse(date)-Date.parse(dates.at(-1))<=14*86400000;
+        assert.equal(plan.kind,variant.kind || (enough?'conditional-single':'rep-practice'),JSON.stringify(plan));
         assert.equal(plan.date,date);
       }
       assert.equal(await loc(page,'frNext').isEnabled(),true,await loc(page,'frWarnings').textContent());

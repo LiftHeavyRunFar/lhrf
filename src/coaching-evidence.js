@@ -3,6 +3,55 @@
 const DAY=86400000,norm=value=>String(value||'').trim().toLowerCase(),clone=value=>JSON.parse(JSON.stringify(value));
 function date(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}(?:$|T)/.test(value)||!Number.isFinite(Date.parse(value)))return null;const day=value.slice(0,10);return new Date(day+'T12:00:00Z').toISOString().slice(0,10)===day?day:null;}
 const time=value=>date(value)?Date.parse(value.length===10?value+'T00:00:00Z':value):NaN;
+function symptomText(value){
+ const text=String(value||'').replace(/\b(?:no|without) (?:(?:(?:chest|knee|shoulder|ankle|hip|back|elbow|wrist) )?pain|symptoms|discomfort|shortness of breath|dizziness)(?:(?:,| and| or) ?(?:pain|symptoms|discomfort))*(?: today| now)?\b/ig,'').replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g,'');
+ return /^(?:none|no|normal|false|n\/a|and|or)?$/i.test(text)?'':text;
+}
+function symptomObservation(row,defaults={}){
+ if(!row)return null;
+ const text=symptomText(row.symptoms),status=norm(row.status),when=row.observedAt||row.reportedAt||row.date;
+ const systemic=row.illness===true||/chest (?:pain|tightness|pressure)|shortness of breath|breath(?:ing)? (?:is )?difficult|faint|dizz|fever|vomit|illness/i.test(text);
+ const severe=systemic||row.safetyConcern===true||row.worsening===true||row.severe===true||status==='worsening'||/\bsevere\b|worsen|unable to bear weight/i.test(text);
+ const pain=severe||row.pain===true||row.injury===true||status==='pain'||/pain|injur|limp/i.test(text);
+ const adverse=['fatigue','unrecovered','poor','restricted','recovery-review'].includes(status)&&!!(row.sport||row.task);
+ if(!text&&!pain&&!adverse&&norm(row.discomfort)!=='yes')return null;
+ const explicit=['running','strength'].includes(row.sport)?row.sport:defaults.sport;
+ const upper=/\b(?:shoulder|elbow|wrist|upper.body|bench(?: press)?)\b/i.test(text);
+ const running=/\b(?:running|run|jog|jogging)\b/i.test(text.replace(/\brunning (?:is )?unaffected\b/ig,''));
+ const mixed=upper&&running||explicit==='strength'&&running||explicit==='running'&&upper;
+ const sport=systemic||mixed?'all':explicit&&explicit!=='all'?explicit:upper?'strength':running?'running':'all';
+ const lifts=sport==='strength'?(row.affectedLifts||row.lifts||defaults.lifts||(/\bbench(?: press)?\b/i.test(text)?['Bench']:[])):[];
+ return {date:when,sport,task:systemic||mixed?'all':row.task||defaults.task||'all',lifts:Array.isArray(lifts)?lifts:[],scope:row.scope||null,
+  status:pain?'safety':'adverse',severity:severe?'severe':pain?'pain':'unclear',symptoms:text||null,
+  source:sport==='all'?'Symptom report with unknown location or systemic scope':'Task-scoped symptom report'};
+}
+const symptomConcern=row=>symptomObservation(row)?.status==='safety';
+const reliableEffort=row=>!!row&&row.rpeReliable!==false&&row.effortReliable!==false&&!row.approximateRpe&&
+ !row.evidenceReview?.rpe?.approximate&&row.evidenceReview?.rpe?.value!==null&&Number(row.rpe)>=1&&Number(row.rpe)<=10;
+const symptomApplies=(o,sport,task,lift)=>!!o&&(o.sport==='all'||o.sport===sport)&&
+ (!o.lifts.length||!lift||o.lifts.some(x=>norm(x)===norm(lift)))&&
+ (o.task==='all'||o.task===task||sport==='running'&&o.task==='easy'||sport==='strength'&&o.task==='lifting'&&task==='heavy');
+
+function symptomReview(data,{now,sport,task,lift,performances=[]}){
+ const clock=new Date(now).toISOString(),c=data.customRoadmap||{};
+ const rows=[...(data.checkins||[]),...(data.recoveryObservations||[]),...(c.recoveryObservations||[]),...(c.recoveryEvidence?.observations||[])];
+ const observations=[],invalid=[];
+ for(const row of rows){
+  const symptom=symptomObservation(row),observedAt=row.observedAt||row.reportedAt||row.date,when=time(observedAt);
+  if(when>now)continue;
+  if(symptom&&symptomApplies(symptom,sport,task,lift)){
+   if(Number.isFinite(when))observations.push(symptom);
+   else invalid.push({...symptom,invalidTiming:'missing-or-invalid'});
+  }else if(!symptom&&row.sport===sport&&row.task===task&&Number.isFinite(when)&&
+   (row.resolved===true||row.cleared===true||norm(row.status)==='normal')&&row.referencePerformanceDate){
+   observations.push({date:observedAt,sport,task,lifts:row.affectedLifts||[],status:'normal',
+    nextDayResponse:row.nextDayResponse||row.responseNextDay,referencePerformanceDate:row.referencePerformanceDate,
+    resolutionConfirmed:row.resolved===true||row.cleared===true,source:'Dated task-specific response'});
+  }
+ }
+ return recovery({integratedCoachingVersion:1,coachingEvidence:{asOf:clock,recovery:{observations,invalid,performances,events:[]}}},
+  {now,atDate:clock,sport,task,lift});
+}
 function validSet(row,asOf,{practice=false,generic=false}={}){
  const when=time(row.date),rpe=Number(row.rpe),reps=Number(row.reps),kg=Number(row.weight);
  const validDose=Number.isFinite(reps)&&reps>0&&(generic&&row.doseUnit==='seconds'||Number.isInteger(reps)&&(generic||reps<=8)),validLoad=Number.isFinite(kg)&&(kg>0||generic&&kg===0&&['bodyweight','assistance-kg'].includes(row.loadType));
@@ -39,8 +88,15 @@ function capture(config,{data={},now=Date.now()}={}){
  }
  const add=(raw,defaults={})=>{if(!raw)return;const observedAt=raw.observedAt||raw.reportedAt||raw.date,when=time(observedAt);
   const status=norm(raw.status),negative=['lower','all','fatigue','accumulating-fatigue','recovery-review','unrecovered','poor','worsening','pain','restricted'].includes(status),positive=['normal','recovered','ready','comfortable'].includes(status)||raw.resolved===true||raw.cleared===true;
-  const text=String(raw.symptoms||raw.pain||'').trim(),negated=text.replace(/\bno (?:pain|symptoms|discomfort)(?: or (?:pain|discomfort|symptoms))?\b/ig,'').trim(),symptom=['none','no','normal','false'].includes(norm(negated))?'':negated,safety=status==='worsening'||status==='pain'||raw.safetyConcern===true||raw.worsening===true||/pain|illness|severe|worsen|limp|dizz/i.test(symptom);
+  const text=String(raw.symptoms||raw.pain||'').trim(),negated=text.replace(/\bno (?:pain|symptoms|discomfort)(?: or (?:pain|discomfort|symptoms))?\b/ig,'').trim(),
+   simplified=config.integratedCoachingVersion===1,symptom=simplified?symptomText(text):['none','no','normal','false'].includes(norm(negated))?'':negated;
+  const classified=simplified?symptomObservation(raw,defaults):null;
+  const safety=status==='worsening'||status==='pain'||(simplified?classified?.status==='safety':raw.safetyConcern===true||raw.worsening===true||/pain|illness|severe|worsen|limp|dizz/i.test(symptom));
   const observation={date:observedAt||null,sport:raw.sport||defaults.sport||'all',task:raw.task||defaults.task||'all',scope:raw.scope||defaults.scope||null,lifts:raw.affectedLifts||raw.lifts?.filter(x=>typeof x==='string')||(raw.lift?[raw.lift]:defaults.lifts)||[],status:safety?'safety':negative||symptom?'adverse':positive?'normal':'unknown',nextDayResponse:raw.nextDayResponse||raw.responseNextDay||null,referencePerformanceDate:raw.referencePerformanceDate||null,eventDate:raw.eventDate||null,source:defaults.source||'recovery observation',symptoms:symptom||null};
+  if(simplified){
+   if(classified)Object.assign(observation,classified);
+   observation.resolutionConfirmed=raw.resolved===true||raw.cleared===true;
+  }
   if(!Number.isFinite(when)||when>asOf){invalid.push({...observation,recordedAt:raw.recordedAt||new Date(asOf).toISOString(),invalidTiming:Number.isFinite(when)?'future':'missing-or-invalid',reason:'Undated, invalid or future recovery observation cannot establish readiness; a reported concern still needs scoped review.'});return;}
   observations.push(observation);
  };
@@ -51,19 +107,23 @@ function capture(config,{data={},now=Date.now()}={}){
  if(evidence?.runningFatigue)add({...evidence,status:'fatigue',affectedLifts:undefined},{source:'running fatigue evidence',sport:'running'});
  if(evidence?.lowerBodyFatigue)add({...evidence,status:'fatigue',affectedLifts:undefined},{source:'lower-body fatigue evidence',sport:'all',scope:'lower'});
  for(const entry of evidence?.lifts||[])if(typeof entry==='object')add({...entry,observedAt:entry.observedAt||evidence.observedAt},{source:'lift recovery evidence',sport:'strength'});
- for(const observation of [...(config.recoveryObservations||[]),...(evidence?.observations||[])])add(observation,{source:'task recovery observation'});
+ for(const observation of [...(config.recoveryObservations||[]),...(evidence?.observations||[]),
+  ...(config.integratedCoachingVersion===1?data.recoveryObservations||[]:[])])add(observation,{source:'task recovery observation'});
  // Actual app feedback can add a concern, never positive readiness. Scope is
  // taken only from its preserved completed prescription, not guessed anatomy.
  for(const [source,rows]of [['session feedback',data.sessionFeedback||[]],['check-in',data.checkins||[]]])for(const row of rows){
   const text=String(row.symptoms||'').replace(/\bno (?:pain|symptoms|discomfort)(?: or (?:pain|discomfort|symptoms))?\b/ig,'').trim(),safety=row.pain===true||row.injury===true||row.worsening===true||row.illness===true||row.safetyConcern===true||/pain|injur|worsen|illness|severe|limp|dizz/i.test(text),discomfort=norm(row.discomfort)==='yes';
-  if(!safety&&!discomfort)continue;
+  const simplified=config.integratedCoachingVersion===1,hasSafety=simplified?symptomConcern(row):safety;
+  const report=simplified?symptomText(row.symptoms):'';
+  if(!hasSafety&&!discomfort&&!report)continue;
   const base=id=>String(id||'').replace(/::(?:strength|run)$/,''),when=time(row.date),linked=(data.completedWorkouts||[]).filter(done=>row.sessionId&&base(done.id)===base(row.sessionId)&&(!row.week||Number(done.week)===Number(row.week))&&time(done.date)<=when).sort((a,b)=>time(a.date)-time(b.date)).at(-1),prescription=linked?.prescription,ex=prescription?.ex||[],runs=prescription?.runs||[],lifts=[...new Set(ex.filter(e=>['Squat','Bench','Deadlift'].includes(e[0])).map(e=>e[0]))];
   const precise=ex.length===1&&!runs.length&&lifts.length===1,scope=ex.length&&!runs.length?{sport:'strength',affectedLifts:precise?lifts:[]}:runs.length&&!ex.length?{sport:'running'}:{sport:'all'};
-  add({date:row.date,status:safety?'pain':'fatigue',...scope,symptoms:safety?text||'Structured safety concern':null},{source:source+(precise?' linked to saved completed prescription':' with unknown location; clarify the affected activity')});
+  if(simplified)add(row,{sport:scope.sport,lifts:scope.affectedLifts,source});
+  else add({date:row.date,status:hasSafety?'pain':'fatigue',...scope,symptoms:hasSafety?text||'Structured safety concern':report||null},{source:source+(precise?' linked to saved completed prescription':' with unknown location; clarify the affected activity')});
  }
  const performances=[];
  const runs=config.runningDoseEvidence?.recentActivities??data.runs??[];
- for(const raw of runs){const when=time(raw.date),minutes=Number(raw.minutes??raw.min);if(!Number.isFinite(when)||when>asOf||asOf-when>42*DAY||raw.completed===false||raw.failed||raw.unreliable||raw.rpeReliable===false||raw.effortReliable===false||raw.evidenceReview?.rpe?.approximate||!(Number(raw.km)>0&&minutes>0))continue;const type=norm(raw.type||raw.role);performances.push({date:raw.date,sport:'running',task:/quality|interval|threshold|tempo|race/.test(type)?'quality':/long/.test(type)?'long':'easy',km:Number(raw.km),minutes,rpe:Number(raw.rpe)||null});}
+ for(const raw of runs){const when=time(raw.date),minutes=Number(raw.minutes??raw.min);if(!Number.isFinite(when)||when>asOf||asOf-when>42*DAY||raw.completed===false||raw.failed||raw.unreliable||raw.rpeReliable===false||raw.effortReliable===false&&!(config.runningDosePolicyVersion===1&&raw.easyEffortConfirmed===true&&raw.rpe==null)||raw.evidenceReview?.rpe?.approximate||!(Number(raw.km)>0&&minutes>0))continue;const type=norm(raw.type||raw.role);performances.push({date:raw.date,sport:'running',task:/quality|interval|threshold|tempo|race/.test(type)?'quality':/long/.test(type)?'long':'easy',km:Number(raw.km),minutes,rpe:Number(raw.rpe)||null,...(config.runningDosePolicyVersion===1&&raw.easyEffortConfirmed===true&&raw.rpe==null?{easyEffortConfirmed:true}:{})});}
  for(const [lift,proof]of Object.entries(strength))if(['Squat','Bench','Deadlift'].includes(lift))for(const row of proof.rows)if(row.reliable&&row.reps<=8)performances.push({date:row.date,sport:'strength',task:row.reps<=3&&row.rpe>=7&&row.purpose!=='speed'?'heavy':'lifting',lift,kg:row.kg,reps:row.reps,rpe:row.rpe});
  const events=[],profile=config.runProfile||{},races=[config.runningHistory?.recentRace,profile.recentRace,config.recentRace,...(Number(profile.distance)>=40&&Number(profile.seconds)>0&&profile.effort==='performance'?[{distanceKm:Number(profile.distance),date:profile.resultDate}]:[])];
  const marathonDates=[config.runningHistory?.recentMarathonDate,profile.recentMarathonDate,config.recentMarathonDate,...races.filter(r=>Number(r?.distanceKm)>=40).map(r=>r.date)].filter(value=>date(value)&&time(value)<=asOf).map(date);
@@ -92,7 +152,8 @@ function recovery(config,{atDate,now=Date.now(),sport='strength',task='lifting',
   for(const report of observations.slice().reverse()){
    const afterEvent=!event||time(report.date)>time(event.date),scoped=report.task===task||(sport==='strength'&&task==='lifting'&&report.task==='heavy'),normalResponse=['normal','no-worsening'].includes(norm(report.nextDayResponse));
    if(report.status!=='normal'||!afterEvent||!scoped||!normalResponse||report.eventDate&&report.eventDate!==event?.date)continue;
-   const completed=packet.recovery.performances.filter(p=>p.sport===sport&&(!lift||p.lift===lift)&&p.task===task&&time(p.date)<=time(report.date)&&time(p.date)>concernWhen&&(!event||time(p.date)>time(event.date))&&(!report.referencePerformanceDate||date(p.date)===date(report.referencePerformanceDate))).sort((a,b)=>time(a.date)-time(b.date)),performance=completed.at(-1),nextDay=performance&&(time(date(report.date))-time(date(performance.date)))===DAY,tolerated=!!(performance&&nextDay&&(sport!=='running'||performance.rpe!==null&&performance.rpe<=(task==='easy'?4:8))),conflicting=observations.some(o=>date(o.date)===date(report.date)&&['safety','adverse'].includes(o.status));
+   if(config.integratedCoachingVersion===1&&observations.some(o=>o.severity==='severe')&&!report.resolutionConfirmed)continue;
+   const completed=packet.recovery.performances.filter(p=>p.sport===sport&&(!lift||p.lift===lift)&&p.task===task&&time(p.date)<=time(report.date)&&time(p.date)>concernWhen&&(!event||time(p.date)>time(event.date))&&(!report.referencePerformanceDate||date(p.date)===date(report.referencePerformanceDate))).sort((a,b)=>time(a.date)-time(b.date)),performance=completed.at(-1),nextDay=performance&&(time(date(report.date))-time(date(performance.date)))===DAY,tolerated=!!(performance&&nextDay&&(sport!=='running'||(performance.rpe!==null&&performance.rpe<=(task==='easy'?4:8)||task==='easy'&&performance.rpe===null&&performance.easyEffortConfirmed===true&&date(report.referencePerformanceDate)===date(performance.date)))),conflicting=observations.some(o=>date(o.date)===date(report.date)&&['safety','adverse'].includes(o.status));
    if(!tolerated||conflicting)continue;
    if(sport==='strength'&&task==='lifting'&&performance.rpe<6)return finish({observedAt:report.date,status:'rebuild',restriction:'bounded',canProgress:false,reviewRequired:true,reasons:['Comfortable light practice supports repeating that familiar dose only. It does not establish higher repetitions, more sets or demanding work.']});
    return finish({observedAt:report.date,familiarTaskSupported:true,canProgress:sport!=='strength'||task==='heavy',reviewRequired:sport==='strength'&&task==='lifting',reasons:['A dated task-specific normal subsequent response corroborates completed comparable activity; this supports this familiar task only, not higher volume or intensity.']});
@@ -117,5 +178,5 @@ function anchor(config,{exercise,purpose:requested,reps,target,execution,variant
  const latest=eligible.at(-1);if(!latest)return null;
  return {...clone(latest),suggestedKg:latest.kg,confidence:latest.reliable?'reported-compatible-practice':'approximate-practice-only',automaticIncrease:false,velocityMeasured:false,reason:'Repeat a familiar same-purpose load within the prescribed effort ceiling; it is not a maximum, velocity measurement or guaranteed RPE.'};
 }
-const api={capture,recovery,anchor,validSet,date};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoachingEvidence=api;
+const api={capture,recovery,anchor,validSet,date,purpose,symptomConcern,symptomObservation,symptomApplies,symptomReview,symptomText,reliableEffort};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFCoachingEvidence=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

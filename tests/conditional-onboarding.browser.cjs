@@ -224,7 +224,7 @@ async function exportBackup(page) {
         const marker = conditional ? 'conditionalFinalHeavy' : 'finalHeavyExposure';
         const planned = exercises.filter(ex => ex[5]?.[marker]?.lift === lift && ex[5][marker].date === final.date);
         assert.equal(planned.length, 1);
-        assert.equal(planned[0][2] === 1, !conditional);
+        assert.equal(planned[0][2] === 1, final.kind === 'single');
         if (final.finalLightDate) {
           const practice = exercises.find(ex => ex[5]?.finalLightExposure?.lift === lift);
           assert.equal(practice?.[5].finalLightExposure.date, final.finalLightDate);
@@ -233,7 +233,9 @@ async function exportBackup(page) {
       }
       if (test.goal === 'powerlifting') {
         assert.equal(proposal.finalHeavyPlan.Deadlift.mode, 'coach');
-        assert.match(proposal.finalHeavyPlan.Deadlift.reason, /recovery|experience|taper|evidence/i);
+        const finalPractice=proposal.finalHeavyPlan.Deadlift;
+        if(finalPractice.kind==='conditional-single')assert.match(finalPractice.reason,/on-day review/i);
+        else assert.match(finalPractice.reason,/recovery|experience|taper|evidence|controlled reps/i);
       }
       assert.deepEqual(errors, []);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

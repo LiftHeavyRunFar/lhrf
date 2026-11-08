@@ -36,5 +36,10 @@ test('independent audit: aspirational faster10K target does not replace current 
  const p=proposal(makeAthletes()[1]),q=p.weeks.flatMap(w=>w.sessions).flatMap(s=>s.runs).filter(r=>r.workoutFamily==='race-pace-repeats');assert.ok(q.length);assert.ok(q.every(r=>r.paceBasis.racePaceSeconds===240));assert.equal(p.config.runningGoalSeconds/10,228);
 });
 test('independent audit: isolated difficult session and repeated fatigue review preserve synthetic active prescriptions and history',()=>{
- for(const a of [makeAthletes()[0],makeAthletes()[2]]){const r=replay(a,proposal(a));assert.ok(r.reviews.every(x=>x.activeScheduleUnchanged&&x.historyUnchangedByReview&&x.approvedChanges===0));if(a.id==='A')assert.equal(r.reviews[1].decision.status,'on-track');else assert.equal(r.reviews[2].decision.status,'fatigue');}
+ for(const a of [makeAthletes()[0],makeAthletes()[2]]){const r=replay(a,proposal(a));assert.ok(r.reviews.every(x=>x.activeScheduleUnchanged&&x.historyUnchangedByReview&&x.approvedChanges===0));if(a.id==='A')assert.equal(r.reviews[1].decision.status,'on-track');else{
+  const completedWeek=r.reviews[2].decision;
+  assert.equal(completedWeek.status,'monitor');
+  assert.match(completedWeek.summary,/repeated poor recovery or difficult sessions/);
+  assert.equal(completedWeek.changes,undefined,'A finished week has no remaining work to reduce');
+ }}
 });

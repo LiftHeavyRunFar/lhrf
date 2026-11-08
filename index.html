@@ -728,12 +728,20 @@ function renderWeeklyReview(){const box=$('weeklyReview'),actions=$('weeklyRevie
 }
 function applyWeeklyReview(approved){const p=weeklyReviewProposal;if(!p?.changes||!p.key)return;if((data.decisions||[]).some(d=>d.key===p.key))return;
  if(approved&&data.reviewedProgramme&&p.hybridIntervention==='running-duration'){$('weeklyReviewStatus').textContent='This reviewed plan needs a separate replacement review before changing running. Current programme unchanged.';return}
- if(approved&&!p.hybridIntervention){for(const c of p.changes){const original=schedule.find(s=>s.id===c.id)?.ex?.find(e=>e[0]===c.exercise);if(!original)continue;const arr=Array.isArray(data.overrides[c.id])?data.overrides[c.id].slice():data.overrides[c.id]?[data.overrides[c.id]]:[];const old=arr.find(x=>x.exercise===c.exercise);if(old){old.setDelta=(old.setDelta||0)+(c.setDelta||0);old.loadFactor=(old.loadFactor||1)*(c.loadFactor||1)}else arr.push({exercise:c.exercise,setDelta:c.setDelta||0,loadFactor:c.loadFactor||1});data.overrides[c.id]=arr;}}
+ const reviewedAccessory=data.reviewedProgramme&&p.hybridIntervention==='lower-accessory'&&p.targetSessionIds;
+ if(approved&&(p.trainingPurpose||p.targetSessionIds)){
+  const current=reviewDecision();
+  if((typeof window!=='undefined'&&window.LHRFLive?.get?.())||current.key!==p.key||JSON.stringify(current.changes)!==JSON.stringify(p.changes)){
+   $('weeklyReviewStatus').textContent='Finish your active workout or refresh the review before changing training.';return
+  }
+ }
+ if(approved&&(!p.hybridIntervention||reviewedAccessory)){for(const c of p.changes){const original=schedule.find(s=>s.id===c.id)?.ex?.find(e=>e[0]===c.exercise);if(!original)continue;const arr=Array.isArray(data.overrides[c.id])?data.overrides[c.id].slice():data.overrides[c.id]?[data.overrides[c.id]]:[];const old=arr.find(x=>x.exercise===c.exercise);if(old){old.setDelta=(old.setDelta||0)+(c.setDelta||0);old.loadFactor=(old.loadFactor||1)*(c.loadFactor||1)}else arr.push({exercise:c.exercise,setDelta:c.setDelta||0,loadFactor:c.loadFactor||1});data.overrides[c.id]=arr;}}
  data.decisions.push({date:new Date().toISOString(),week:Number(data.activeCustomWeek)||1,programmeId:data.customRoadmap?.programmeId||null,key:p.key,title:p.title,approved,reason:p.summary,
   kind:p.hybridIntervention?'hybrid-load':p.status==='progress'?'adaptive-progression':p.status==='fatigue'?'fatigue-intervention':'other',
   intervention:p.hybridIntervention, factor:p.hybridFactor||(p.status==='progress'?p.changes[0]?.loadFactor:undefined),
   exercise:p.status==='progress'?p.changes[0]?.exercise:undefined,
-  progressionFactor:p.status==='progress'?p.changes[0]?.loadFactor:undefined});save();populate();refresh();$('weeklyReviewStatus').textContent=approved?(p.hybridIntervention?'Approved. Re-activate this week in Plan to apply the proposed adjustment once; protected sessions remain intact.':'Approved for this week; progression also carries forward to future training weeks (except deload/taper).'):'Plan kept unchanged.';
+  affectedLift:p.affectedLift,trainingPurpose:p.trainingPurpose,targetSessionIds:p.targetSessionIds,
+  progressionFactor:p.status==='progress'?p.changes[0]?.loadFactor:undefined});save();populate();refresh();$('weeklyReviewStatus').textContent=approved?(p.hybridIntervention&&!reviewedAccessory?'Approved. Re-activate this week in Plan to apply the proposed adjustment once; protected sessions remain intact.':p.status==='progress'?'Approved for this week; progression also carries forward to future comparable work.':'Approved for the selected work this week.'):'Plan kept unchanged.';
 }
 function refresh(){$('setCount').textContent=data.sets.length;$('runCount').textContent=data.runs.length;$('strengthHistory').innerHTML=data.sets.length?data.sets.slice(-7).reverse().map(s=>`<div class="entry">${s.exercise} · ${s.weight} kg × ${s.reps} · RPE ${s.rpe}</div>`).join(''):'<p class="muted small">No sets logged yet.</p>';$('runHistory').innerHTML=data.runs.length?data.runs.slice(-5).reverse().map(r=>`<div class="entry">${r.type} · ${LHRFRunPresentation.distance(r.km)} · ${LHRFRunPresentation.duration(r.min)}${Number.isFinite(r.avgHr)?' · avg HR '+r.avgHr+' bpm':''}${Number.isFinite(r.maxHr)?' · max HR '+r.maxHr+' bpm':''}${r.rpe!=null?' · RPE '+r.rpe:''}${r.pace?' · '+readableRunPace(r.pace).replace(/\/km$/, '')+'/km':''}</div>`).join(''):'<p class="muted small">No runs logged yet.</p>';generateProposal();renderWeeklyReview()}
 function legacyGenerateProposal(){let msg='Complete a check-in or log a set to receive a suggested adjustment.';let last=data.sets[data.sets.length-1],c=data.checkins[data.checkins.length-1];if(last){let d=last.rpe-last.target;if(d>=1)msg=`${last.exercise}: RPE ${last.rpe} exceeded target ${last.target}. Consider reducing the next comparable load by 2.5–5% or dropping one work set.`;else if(d<=-1)msg=`${last.exercise}: RPE ${last.rpe} was below target ${last.target}. Consider repeating the load to confirm before increasing by a small increment.`;else msg=`${last.exercise}: effort matched target. Consider keeping the next comparable load steady.`}if(c&&(c.energy<=2||c.soreness>=4||c.sleep<=2||c.symptoms.trim()))msg='Recovery caution: consider reducing volume and avoiding hard running until reassessed. '+msg;proposal=msg;$('coachProposal').innerHTML='<div class="coach">'+msg+'</div>';$('proposalActions').innerHTML='<button onclick="decide(true)">Approve suggestion</button><button class="secondary" onclick="decide(false)">Keep existing plan</button>'}
@@ -1079,16 +1087,25 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   if(changed)persist();
  }
  function localWorkoutDate(date=new Date()){return date.toLocaleDateString('en-CA')}
- function readyForProgression(date){
+ function readyForProgression(date,task){
   const check=(data.checkins||[]).filter(row=>Number.isFinite(Date.parse(row.date))&&localWorkoutDate(new Date(row.date))===date).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date))[0];
   const ratings=check&&[check.sleep,check.energy,check.soreness,check.stress];
-  return !!ratings?.every(value=>Number.isFinite(value)&&value>=1&&value<=5)&&!String(check.symptoms||'').trim()&&(check.sleep+check.energy+12-check.soreness-check.stress)/4>=2.8;
+  const symptoms=task&&data.customRoadmap?.integratedCoachingVersion===1
+   ?LHRFCoachingEvidence.symptomApplies(LHRFCoachingEvidence.symptomObservation(check),task.sport,task.task,task.lift)
+   :String(check?.symptoms||'').trim();
+  return !!ratings?.every(value=>Number.isFinite(value)&&value>=1&&value<=5)&&!symptoms&&(check.sleep+check.energy+12-check.soreness-check.stress)/4>=2.8;
+ }
+ function sessionTasks(session){
+  const tasks=(session.runs||[]).map(run=>({sport:'running',task:run.role==='long-run'?'long':run.role==='easy-run'?'easy':'quality'}));
+  for(const ex of session.ex||[])if(['Squat','Bench','Deadlift'].includes(ex[0]))tasks.push({sport:'strength',lift:ex[0],task:ex[2]<=3&&ex[4]>=7?'heavy':'lifting'});
+  if(session.ex?.length&&!tasks.some(task=>task.sport==='strength'))tasks.push({sport:'strength',task:'lifting'});
+  return tasks;
  }
  function conditionalWorkoutCheck(marker){
   const date=localWorkoutDate();
   if(date!==marker.date)return {eligible:false,reason:'The single can only be reviewed on its planned date, '+marker.date+'.'};
   if(live.timeAdaptation)return {eligible:false,reason:'Keep the rep practice in this shortened workout.'};
-  if(!readyForProgression(date))return {eligible:false,reason:'Today’s readiness check needs to support heavier work.'};
+  if(!readyForProgression(date,{sport:'strength',task:'heavy',lift:marker.lift}))return {eligible:false,reason:'Today’s readiness check needs to support heavier work.'};
   return LHRFCoach.reassessConditionalFinalHeavy(data.customRoadmap,marker,{data,now:Date.now(),date});
  }
  function conditionalWorkoutControl(ex,index,anchor){
@@ -1116,7 +1133,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   }
   if(Object.keys(live.entries).some(key=>key.startsWith(index+'_'))){message.textContent='Continue with the rep practice shown in your working sets.';return;}
   const check=conditionalWorkoutCheck(marker);
-  message.textContent=check.eligible?'Review your logged practice on '+check.practiceDates.join(' and ')+'. Keep the rep practice if you’re unsure.':check.reason+' Use the rep practice shown in your working sets.';
+  message.textContent=check.eligible?'Review your logged practice on '+check.practiceDates.join(' and ')+'. Keep the rep practice if you’re unsure.':check.reason+(check.practiceDates?.length?' Qualifying practice logged on '+check.practiceDates.join(' and ')+'.':'')+' Use the rep practice shown in your working sets.';
   if(!check.eligible)return;
   const label=document.createElement('label');label.className='small';
   const confirm=document.createElement('input');confirm.type='checkbox';confirm.style.width='auto';label.append(confirm,' I used competition technique on those days. Today’s warm-ups felt normal and I have no new pain or unusual fatigue.');
@@ -1208,11 +1225,27 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  }
  function launchSession(current,change){
   if(!liveStartAllowed(current))return;
+  const integrated=data.customRoadmap?.integratedCoachingVersion===1;
+  if(integrated){
+   const now=Date.now(),tasks=sessionTasks(change?.kind==='run'?{...current,runs:change.runs}:current);
+   const performances=tasks.some(task=>task.sport==='strength')?LHRFCoachingEvidence.capture(data.customRoadmap,{data,now}).recovery.performances:[];
+   for(const task of tasks){
+    const review=task.sport==='running'?LHRFRunningPreparation.runningSymptomReview(data,{now,task:task.task}):
+     LHRFCoachingEvidence.symptomReview(data,{...task,now,performances});
+    if(review.restriction==='hold'||review.reviewRequired&&task.task!=='easy'&&task.task!=='lifting'){
+     alert('Review the reported symptoms before starting this workout. Avoid training that provokes them.');return;
+    }
+   }
+   if(current.runs?.some(run=>run.frequencyTrial)&&!readyForProgression(localWorkoutDate(),{sport:'running',task:'easy'})){
+    alert('Skip the extra running visit today. Resume your familiar running days when ready.');return;
+   }
+  }
   live={id:current.id,parentId:current.parentId||null,component:current.component||(current.ex?.length?'strength':'run'),day:current.day,name:current.name,ex:JSON.parse(JSON.stringify(current.ex||[])),runs:JSON.parse(JSON.stringify(current.runs||[])),run:!!current.run,runLogged:false,runEntry:null,entries:{},notes:'',sourceProgrammeWeek:current.sourceProgrammeWeek||Number(data.activeCustomWeek)||1,started:new Date().toISOString(),...(current.timeAdaptation?{timeAdaptation:JSON.parse(JSON.stringify(current.timeAdaptation))}:{} )};
   if(change){if(change.kind==='accessory'){const e=live.ex[change.index];if(e&&e[1]>1){e[1]--;live.lastCoachNote='Readiness adjustment accepted: '+e[0]+' reduced by one set for this workout.'}}else if(change.kind==='run'){live.runs=change.runs;live.lastCoachNote='Readiness adjustment accepted: recovery run replaces today’s harder run.'}}
   if(live.runs.some(run=>run.conditionalAerobicBuild)){
-   const now=Date.now(),ready=readyForProgression(localWorkoutDate());
-   live.runs=live.runs.map(run=>LHRFRunningPreparation.resolveAerobicBuild(run,data,{now,ready}));
+   const now=Date.now();
+   live.runs=live.runs.map(run=>LHRFRunningPreparation.resolveAerobicBuild(run,data,{now,
+    ready:readyForProgression(localWorkoutDate(),{sport:'running',task:run.role==='long-run'?'long':'easy'}),sessionNamespace:data.customRoadmap?.sessionNamespace}));
   }
   if(current.component==='run'){try{const draft=JSON.parse(localStorage.getItem(KEY+'_pendingRun')||'null');if(draft&&draft.parentId===current.parentId&&draft.week===(Number(data.activeCustomWeek)||1)){live.runLogged=draft.runLogged;live.runEntry=draft.runEntry}}catch(e){}}
   if(!persist()){live=null;alert('Could not save the workout. Check device storage and try again.');return}
@@ -1262,17 +1295,19 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    event.preventDefault();
    if(safetyReviewed){if(!next.hidden)continueToWorkout(null);return}
    const check=read(),score=(check.sleep+check.energy+6-check.soreness+6-check.stress)/4;
+   const concern=data.customRoadmap?.integratedCoachingVersion===1?sessionTasks(current).some(task=>
+    LHRFCoachingEvidence.symptomApplies(LHRFCoachingEvidence.symptomObservation(check),task.sport,task.task,task.lift)):!!check.symptoms.trim();
    let change=null;
-   if(score<2.8&&!check.symptoms.trim()){
+   if(score<2.8&&!concern){
     const index=(current.ex||[]).findLastIndex(e=>e[1]>1&&!redundantOptionalExercise(e,current.ex)&&!['top','backoff'].includes(e[5]?.role)&&!/squat|bench|deadlift/i.test(e[0]));
     if(index>=0)change={kind:'accessory',index,label:current.ex[index][0]+': '+current.ex[index][1]+' → '+(current.ex[index][1]-1)+' sets. Main lifts unchanged.'};
     else if(current.runs?.some(r=>/quality|threshold|interval/i.test(r.role+' '+r.name))){const runs=JSON.parse(JSON.stringify(current.runs));let valid=true;runs.forEach(r=>{const easy=(r.steps||[]).find(x=>/warm|cool|easy/i.test(x.label||'')&&/\d:\d{2}/.test(x.pace||''));if(!easy){valid=false;return}r.name='Easy recovery run';r.role='easy-run';r.distanceKm=Math.min(3,Number(r.distanceKm)||3);r.pace=easy.pace;r.steps=[{label:'Easy recovery run',distanceKm:r.distanceKm,pace:easy.pace,detail:'Comfortable conversational pace'}];r.structure=r.distanceKm+' km easy';r.coachNote='Readiness adjustment accepted for this workout only.';delete r.durationRangeMinutes;r.minutes=null});if(valid)change={kind:'run',runs,label:'Replace this harder run with up to 3 km easy at your prescribed easy pace.'}}
    }
-   if(score>=2.8&&!check.symptoms.trim()){continueToWorkout(null);return}
+   if(score>=2.8&&!concern){continueToWorkout(null);return}
    safetyReviewed=true;
    fields.forEach(field=>field.disabled=true);
    const notice=document.createElement('p');notice.className='warn';
-   notice.textContent=check.symptoms.trim()
+   notice.textContent=concern
     ? 'You reported symptoms. Consider modifying or skipping training. Do not push through pain or illness.'
     : 'Readiness is low today. Pay attention to warm-ups and recent trends.'+(change?' '+change.label:'');
    box.append(notice);
@@ -1547,6 +1582,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  <details class="fr-card" id="frRunningResult"><summary>Add a recent run result</summary><div class="fr-fields"><div class="fr-field"><label for="frRunDistance">Distance</label><select id="frRunDistance"><option value="5">5K</option><option value="10" selected>10K</option><option value="21.0975">Half marathon</option><option value="42.195">Marathon</option></select></div><div class="fr-field"><label for="frRunTime">Time (hh:mm:ss or mm:ss)</label><input id="frRunTime" placeholder="e.g. 55:00"></div></div>
  <div class="fr-fields" id="frRunResultDetails" hidden><div class="fr-field"><label for="frResultDate">Result date (optional)</label><input id="frResultDate" type="date"></div><div class="fr-field"><label for="frResultEffort">Type of effort</label><select id="frResultEffort"><option value="performance">Race / hard time trial</option><option value="training">Normal training run</option></select></div><div class="fr-field"><label for="frResultEnvironment">Where was it run?</label><select id="frResultEnvironment"><option value="outdoor">Outdoors</option><option value="treadmill">Treadmill</option></select></div></div></details>
  <div class="fr-field"><label for="frRunKm">Recent running distance (km/week)</label><input id="frRunKm" type="number" min="0" placeholder="Optional"></div>
+ <div class="fr-field" id="frRunningModeWrap"><label for="frRunningMode">General running objective</label><select id="frRunningMode"><option value="auto">Follow training priority</option><option value="development">Build running fitness</option><option value="maintenance">Maintain my familiar running routine</option></select></div>
  <details class="fr-card"><summary>Recent running history</summary><p class="fr-note">Optional facts improve the starting dose. Leave unknown history blank rather than estimating it.</p><div class="fr-field"><label for="frRunHistory">Completed weekly kilometres, oldest to newest</label><input id="frRunHistory" placeholder="e.g. 20, 22, 24, 22, 25, 25"></div><div class="fr-fields"><div class="fr-field"><label for="frLongKm">Recent long run (km)</label><input id="frLongKm" type="number" min="0" step="0.1"></div><div class="fr-field"><label for="frLongMinutes">Long run duration (minutes)</label><input id="frLongMinutes" type="number" min="1"></div><div class="fr-field"><label for="frLongRecovery">Hours until normal recovery</label><input id="frLongRecovery" type="number" min="0"></div><div class="fr-field"><label for="frRecentMarathon">Most recent completed marathon date</label><input id="frRecentMarathon" type="date"></div></div></details>
  <p class="fr-note">Without a recent result, the coach uses effort to guide your initial runs.</p></div>
  <div class="fr-card"><div class="fr-field"><label for="frFatigueStatus">How is your recovery now?</label><select id="frFatigueStatus"><option value="">Choose your current recovery</option><option value="normal">Normal for me</option><option value="lower">My legs feel more fatigued than usual</option><option value="all">Fatigue is affecting training overall</option></select></div><details id="frSleepDetails"><summary>Add recent sleep (optional)</summary><div class="fr-fields"><div class="fr-field"><label for="frSleepRecent">Recent sleep (hours, optional)</label><input id="frSleepRecent" type="number" min="0" max="24" step="0.5"></div><div class="fr-field"><label for="frSleepUsual">Usual sleep (hours, optional)</label><input id="frSleepUsual" type="number" min="0" max="24" step="0.5"></div></div></details></div>
@@ -1590,15 +1626,15 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  get('frAddRecoveryObservation').onclick=()=>{
   const row=document.createElement('div');row.className='fr-card fr-recovery-observation';
   const tasks=recoveryChoices.filter(([value])=>scope()==='hybrid'||value.startsWith(scope()+'|'));
-  row.innerHTML='<div class="fr-fields"><label>Activity<select data-recovery-task><option value="">Choose activity</option>'+tasks.map(([value,label])=>'<option value="'+value+'">'+label+'</option>').join('')+'</select></label><label>Completed activity date<input type="date" data-recovery-performance></label><label>Response date<input type="date" data-recovery-date></label><label>Subsequent response<select data-recovery-status><option value="">Choose response</option><option value="unknown">Unknown</option><option value="normal">Normal on the following day</option><option value="fatigue">Fatigue remained</option><option value="pain">Pain or concerning symptoms</option><option value="worsening">Worsening symptoms</option></select></label></div><button type="button" class="ghost">Remove this draft observation</button>';
+  row.innerHTML='<div class="fr-fields"><label>Activity<select data-recovery-task><option value="">Choose activity</option>'+tasks.map(([value,label])=>'<option value="'+value+'">'+label+'</option>').join('')+'</select></label><label>Completed activity date<input type="date" data-recovery-performance></label><label>Response date<input type="date" data-recovery-date></label><label>Subsequent response<select data-recovery-status><option value="">Choose response</option><option value="unknown">Unknown</option><option value="normal">Normal on the following day</option><option value="resolved">Symptoms resolved and response normal</option><option value="fatigue">Fatigue remained</option><option value="pain">Pain or concerning symptoms</option><option value="worsening">Worsening symptoms</option></select></label></div><button type="button" class="ghost">Remove this draft observation</button>';
   row.querySelector('button').onclick=()=>row.remove();get('frRecoveryObservations').appendChild(row);
  };
  function recoveryObservationRows(){
-  const previous=data.customRoadmap||{},packet=previous.coachingEvidence||LHRFCoachingEvidence.capture(previous,{data}),preserved=[...(packet.recovery?.observations||[]),...(packet.recovery?.invalid||[])].filter(o=>['adverse','safety'].includes(o.status)).map(o=>({observedAt:o.date,recordedAt:o.recordedAt||packet.asOf,sport:o.sport,task:o.task,...(o.lifts?.length?{affectedLifts:o.lifts}:{}),...(o.scope?{scope:o.scope}:{}),status:o.status==='safety'?'pain':'fatigue',source:'preserved-recovery-concern',...(o.symptoms?{symptoms:o.symptoms}:{})}));
+  const previous=data.customRoadmap||{},packet=previous.coachingEvidence||LHRFCoachingEvidence.capture({...previous,integratedCoachingVersion:1},{data}),preserved=[...(packet.recovery?.observations||[]),...(packet.recovery?.invalid||[])].filter(o=>['adverse','safety'].includes(o.status)).map(o=>({observedAt:o.date,recordedAt:o.recordedAt||packet.asOf,sport:o.sport,task:o.task,...(o.lifts?.length?{affectedLifts:o.lifts}:{}),...(o.scope?{scope:o.scope}:{}),status:o.status==='safety'?'pain':'fatigue',...(o.severity==='severe'?{severe:true}:{}),source:'preserved-recovery-concern',...(o.symptoms?{symptoms:o.symptoms}:{})}));
   const fresh=[...get('frRecoveryObservations').children].flatMap(row=>{
    const value=selector=>row.querySelector(selector).value,task=value('[data-recovery-task]'),status=value('[data-recovery-status]'),observedAt=value('[data-recovery-date]'),referencePerformanceDate=value('[data-recovery-performance]');
    if(!task&&!status&&!observedAt&&!referencePerformanceDate)return [];
-   const [sport,activity,effort]=task.split('|');return [{sport,task:sport==='running'?activity:effort,...(sport==='strength'?{lift:activity}:{}),status,observedAt,...(referencePerformanceDate?{referencePerformanceDate}:{}),...(status==='normal'?{nextDayResponse:'normal'}:{}),source:'athlete-recovery-review'}];
+   const [sport,activity,effort]=task.split('|');return [{sport,task:sport==='running'?activity:effort,...(sport==='strength'?{lift:activity}:{}),status:status==='resolved'?'normal':status,observedAt,...(referencePerformanceDate?{referencePerformanceDate}:{}),...(['normal','resolved'].includes(status)?{nextDayResponse:'normal'}:{}),...(status==='resolved'?{resolved:true}:{}),source:'athlete-recovery-review'}];
   });
   return [...new Map([...(previous.recoveryObservations||[]).filter(o=>o.observedAt||o.reportedAt||o.date),...preserved,...fresh].map(o=>[JSON.stringify(o),o])).values()];
  }
@@ -1653,6 +1689,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   get('frStrengthEvent').hidden=!meet.length;
   get('frAddRunningGoalWrap').hidden=scope()!=='hybrid'||goal()==='running';
   get('frRunningGoalFields').hidden=!runningGoalEnabled();
+  get('frRunningModeWrap').hidden=!hasRunning()||(runningGoalEnabled()&&get('frRunGoal').value!=='fitness');
   for(const id of ['frRunningTarget','frRunningDate'])get(id).parentElement.hidden=!runningEventEnabled();
   get('frDualGoalFields').hidden=!dual;
   get('frUndatedWrap').hidden=!!(strength||running);
@@ -1872,10 +1909,15 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    squat:selected.counts.Squat,bench:selected.counts.Bench,deadlift:selected.counts.Deadlift,runs:selected.runs,runGoal,rungoal:runGoal,
    strengthGoal:hasStrength()&&event!=='running'?event:'general',strengthTargets,strengthTarget,runningTarget,
    runningGoalSeconds:Number.isFinite(targetSeconds)&&targetSeconds>0?targetSeconds:null,
-   strengthTargetDate:strength,runningTargetDate:running,hybridFocus:focus(),coachingPolicy:'review-v2',exerciseSelectionVersion:2,runningGuidanceVersion:4,runningPaceVersion:2,runningWorkoutVersion:1,onboardingAerobicBuildVersion:1,
+   strengthTargetDate:strength,runningTargetDate:running,hybridFocus:focus(),coachingPolicy:'review-v2',exerciseSelectionVersion:2,runningGuidanceVersion:4,runningPaceVersion:2,runningWorkoutVersion:1,onboardingAerobicBuildVersion:1,integratedCoachingVersion:1,
    trainingAge:hasStrength()?get('frExperience').value:'',strengthMode:hasStrength()?get('frStrengthMode').value:'auto'});
   cfg.runProfile={...cfg.runProfile,distance:Number(get('frRunDistance').value),seconds:pbSeconds(runTime),time:runTime,weeklyKm:hasRunning()?Number(get('frRunKm').value):0,
    resultDate:runTime?get('frResultDate').value||null:null,effort:runTime?get('frResultEffort').value:'performance',environment:runTime?get('frResultEnvironment').value:'unknown'};
+  delete cfg.runningMode;
+  if(hasRunning()&&runGoal==='fitness'){
+   const mode=get('frRunningMode').value;
+   cfg.runningMode=mode==='auto'?(focus()==='strength'?'maintenance':'development'):mode;
+  }
   for(const lift of lifts){
    const id='frMax'+lift,kg=hasStrength()&&selected.counts[lift]>0?Number(get(id).value):0,reps=kg>0?Number(get(id+'Reps').value):1;
    const single=meetLifts().includes(lift)&&kg>0&&reps===1;
@@ -1954,7 +1996,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
      const scheduled=plan.date&&milestoneDate?' · '+milestoneDate:'';
      const request=!plan.date&&milestoneDate?'<p class="fr-note">Requested '+milestoneDate+'</p>':'';
      const light=plan.finalLightDate&&plan.finalLightDate!==plan.date?'<p class="fr-note">Later light technique · '+esc(dateLabel(plan.finalLightDate))+'</p>':'';
-     return '<div class="fr-timing-result"><h3>'+esc(lift)+'</h3><p><strong>'+esc(title)+'</strong>'+scheduled+'</p>'+request+light+'</div>';
+     const practice=plan.practiceDates?.length?'<p class="fr-note">Scheduled practice · '+plan.practiceDates.map(date=>esc(dateLabel(date))).join(', ')+'</p>':'';
+     return '<div class="fr-timing-result"><h3>'+esc(lift)+'</h3><p><strong>'+esc(title)+'</strong>'+scheduled+'</p>'+request+practice+light+'</div>';
     }).join('')+
     [...explanations].map(([detail,names])=>'<p class="fr-note"><strong>'+esc(names.join(', '))+'</strong> · '+esc(detail)+'</p>').join('')+
     (notes.length?'<details><summary>How a conditional single is checked</summary>'+notes.map(note=>'<p class="fr-note">'+esc(note)+'</p>').join('')+'</details>':'');
@@ -2122,6 +2165,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const values={frScope:savedScope,frGoal:savedGoal,frExperience:c.trainingAge,frStrengthMode:c.strengthMode,frLiftPriority:c.priority,frStartDate:c.startDate>=today()?c.startDate:today(),frWeeks:c.weeks,frStrengthTarget:c.strengthTarget,frStrengthDate:strength,frRunningDate:running,frRunningTarget:c.runningTarget,frRunGoal:c.runGoal||c.rungoal,frRunTime:c.runProfile?.time,frRunDistance:c.runProfile?.distance,frRunKm:c.runProfile?.weeklyKm,frResultDate:c.runProfile?.resultDate,frResultEffort:c.runProfile?.effort,frResultEnvironment:c.runProfile?.environment,frSquat:c.squat,frBench:c.bench,frDeadlift:c.deadlift,frRuns:c.runs,frLongDay:c.longRunDay,frStrengthVisits:c.visitConstraints?.strengthVisits||(data.activeSchedule||[]).filter(s=>s.ex?.length).length};
   for(const [id,value]of Object.entries(values))set(id,value);
   get('frAddRunningGoal').checked=!!(running||c.runGoal&&c.runGoal!=='fitness');
+  get('frRunningMode').value=c.runningMode||'auto';
   for(const lift of lifts){
    const lp=c.liftProfiles?.[lift]||{},id='frMax'+lift;
    set(id,lp.kg||c.baselines?.[lift]);set(id+'Reps',lp.reps||1);set(id+'Date',lp.resultDate);get(id+'Technique').checked=lp.competitionTechnique===true;set('frTarget'+lift,c.strengthTargets?.[lift]);

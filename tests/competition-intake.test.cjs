@@ -267,18 +267,23 @@ test('fresh 20-week meet reserves all requested dates as safe fallback work and 
   assert.equal(sundayStart.programme.weeks[20].sessions.find(s=>s.eventType==='strength')?.eventDate,LONG_MEET);
 });
 
-test('short lead time and novice experience retain specific bounded alternatives', () => {
+test('short lead time can use actual practice opportunities and novice experience retains bounded technique', () => {
   const choice = {Bench: {mode: 'athlete', daysOut: 5}};
   const now = () => Date.parse('2026-11-23T12:00:00Z');
   const unverified = review(profile('bench', {liftProfiles: {}, finalHeavyPreferences: choice}), {conditional: true, now});
   assert.deepEqual(unverified.issues, []);
-  assert.equal(unverified.programme.finalHeavyPlan.Bench.kind, 'rep-practice');
+  assert.equal(unverified.programme.finalHeavyPlan.Bench.kind, 'conditional-single');
   assert.equal(unverified.programme.finalHeavyPlan.Bench.date, '2026-12-14');
-  assert.equal(unverified.finalExposures[0][2], 2);
-  assert.equal(unverified.finalExposures[0][4], 7);
+  assert.ok(unverified.programme.finalHeavyPlan.Bench.practiceDates.length>=2);
+  assert.equal(unverified.conditionalExposures[0][2], 2);
+  assert.equal(unverified.conditionalExposures[0][4], 7);
   const experienced = review(profile('bench', {finalHeavyPreferences: choice}), {conditional: true, now});
-  assert.equal(experienced.programme.finalHeavyPlan.Bench.kind, 'single');
-  assert.equal(experienced.finalExposures[0][2], 1);
+  assert.equal(experienced.programme.finalHeavyPlan.Bench.kind, 'conditional-single');
+  assert.equal(experienced.conditionalExposures[0][2], 2);
+  const legacy={...experienced.config};
+  delete legacy.competitionPracticePlanVersion;
+  delete legacy.competitionPracticeDates;
+  assert.equal(adapters.buildProgramme(legacy,{now}).finalHeavyPlan.Bench.kind,'single','An existing older competition policy retains its prescribed dose');
   assert.doesNotThrow(() => coach.approveProgrammeConfig(unverified.config, new Date(now()).toISOString()));
   const novice = review(longHybrid({longRunDay:'Tue', trainingAge:'beginner', finalHeavyPreferences:ownerPreferences}), {conditional:true});
   assert.deepEqual(novice.issues, []);
@@ -290,6 +295,38 @@ test('short lead time and novice experience retain specific bounded alternatives
     assert.equal(dose[5].finalHeavyAlternative.date,ownerDates[lift]);
     assert.ok(dose[2]>1&&dose[4]<=6);
   }
+});
+
+test('equivalent 27- and 28-day proposals use available rehearsal evidence, while a sparse plan keeps controlled reps', () => {
+  const finalHeavyPreferences={Bench:{mode:'athlete',date:ownerDates.Bench}};
+  const raw=longHybrid({event:'bench',squat:0,deadlift:0,runs:0,bench:1,liftProfiles:{},finalHeavyPreferences,
+    visitConstraints:{strengthVisits:1,eventDays:{[LONG_MEET]:{confirmed:true}}}});
+  const plans=['2027-02-22','2027-02-23'].map(asOf=>review(raw,{conditional:true,now:()=>Date.parse(asOf+'T12:00:00Z')}).programme.finalHeavyPlan.Bench);
+  assert.deepEqual(plans.map(plan=>plan.kind),['conditional-single','conditional-single']);
+  assert.ok(plans.every(plan=>plan.practiceDates.length>=2));
+  const now=()=>Date.parse('2027-03-13T12:00:00Z');
+  const sparse=review({...raw,availableDays:['Mon']},{conditional:true,now});
+  const rehearsal=sparse.programme.finalHeavyPlan.Bench;
+  assert.equal(rehearsal.kind,'rep-practice');
+  assert.equal(rehearsal.reviewOnDay,true);
+  assert.equal(rehearsal.date,ownerDates.Bench);
+  assert.deepEqual(rehearsal.practiceDates,['2027-03-15']);
+  assert.deepEqual(sparse.finalExposures[0].slice(1,3),[1,2]);
+  const marker=sparse.finalExposures[0][5].conditionalFinalHeavy;
+  const approved=coach.approveProgrammeConfig(sparse.config,new Date(now()).toISOString());
+  assert.deepEqual(adapters.buildProgramme(approved,{now}).finalHeavyPlan.Bench,rehearsal);
+  const reassess=data=>coach.reassessConditionalFinalHeavy(approved,marker,{data,date:marker.date,now:()=>Date.parse(marker.date+'T12:00:00Z')});
+  assert.equal(reassess({}).eligible,false);
+  const id=approved.sessionNamespace+'custom-mon::strength', meta=sparse.finalExposures[0][5];
+  const dates=['2027-03-15','2027-03-18'];
+  const data={
+    completedWorkouts:dates.map(date=>({id,date,prescription:{ex:[['Bench',1,2,100,7,meta]]}})),
+    sets:dates.map(date=>({date,sessionId:id,exercise:'Bench',reps:2,weight:100,rpe:7,role:meta.role,
+      ...Object.fromEntries(['exerciseId','variantId','loadType','doseUnit'].map(key=>[key,meta[key]]))}))
+  };
+  assert.equal(reassess(data).eligible,true,'Later genuine practice can earn the same on-day review route');
+  data.completedWorkouts[1].prescription.ex[0][5]={...meta,trainingRole:'speed'};
+  assert.equal(reassess(data).eligible,false,'A speed exposure cannot complete the rehearsal evidence');
 });
 
 test('conditional rehearsal still blocks a true unavailable or unsafe date and cannot retain a false milestone', () => {
