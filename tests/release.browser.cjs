@@ -1,12 +1,13 @@
 // Release gate: install artwork + explicit programme activation with synthetic existing records.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const serveApp=route=>{const file=new URL(route.request().url()).pathname;return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file==='/'?'index.html':file)),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':file.endsWith('.json')||file.endsWith('.webmanifest')?'application/json':'text/html'})};
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{
  const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  // Freeze the programme's original review date; this migration fixture must not change with the wall clock.
  await page.clock.install({time:new Date('2026-10-26T22:00:00Z')});
  const config={...require('./fixtures/approved-five-week.json').config,runningGuidanceVersion:2},fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInventory(),customRoadmap:config,activeCustomWeek:2,activeSchedule:[],sets:[{exercise:'Bench',weight:100,reps:5}],runs:[{km:5}],completedWorkouts:[{id:'custom-tue',week:1}],decisions:[{approved:true,kind:'old-programme'}],checkins:[],plannedRuns:[],overrides:{},goals:{strength:'Bench',running:'10K'},onboardingComplete:true,onboardingDraftDays:['Tue','Thu','Fri','Sat','Sun'],sentinel:'retain'};
- await page.route('http://release.test/**',route=>{const file=new URL(route.request().url()).pathname;route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file==='/'?'index.html':file)),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.png')?'image/png':file.endsWith('.json')||file.endsWith('.webmanifest')?'application/json':'text/html'})});
+ await page.route('http://release.test/**',serveApp);
  await page.addInitScript(f=>{if(!localStorage.getItem('lhrf_beta_v1118_clean'))localStorage.setItem('lhrf_beta_v1118_clean',JSON.stringify(f))},fixture);
  await page.goto('http://release.test/?programme=november-2026');await page.getByRole('button',{name:'Activate approved programme',exact:true}).waitFor();
  await page.goto('http://release.test/');const activate=page.getByRole('button',{name:'Activate approved programme',exact:true});await activate.waitFor();
@@ -37,5 +38,15 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
  const colors=await page.locator('nav.nav button').evaluateAll(els=>els.map(el=>({color:getComputedStyle(el).color,background:getComputedStyle(el).backgroundImage,fill:getComputedStyle(el).backgroundColor})));
  assert.equal(colors.length,5);for(const c of colors){assert.equal(c.background,'none');assert.notEqual(c.color,'rgb(137, 166, 188)');}
  await page.locator('nav [data-screen="train"]').click();assert.equal(await page.locator('#liveRunKm').count(),0,'Restored strength draft no longer embeds the pending run');assert.match(await page.locator('#liveTrainRoot').innerText(),/keep my bench|completed/);
- assert.deepEqual(errors,[]);console.log('PASS new install icons decode; in-progress workout is protected; explicit approved-block activation preserves athlete history, archives prior decisions and is repeat-safe.');await context.close();
+ assert.deepEqual(errors,[]);await context.close();
+ const fresh=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
+ await fresh.route('http://release.test/**',serveApp);
+ const setup=await fresh.newPage();await setup.clock.install({time:new Date('2026-10-26T22:00:00Z')});
+ await setup.goto('http://release.test/?programme=november-2026');
+ assert.equal(await setup.locator('#firstRun').isVisible(),false);
+ assert.equal(await setup.locator('main').evaluate(main=>main.inert),false,'Direct activation releases the onboarding focus boundary');
+ await setup.getByRole('button',{name:'Activate approved programme',exact:true}).click();
+ assert.match(await setup.getByRole('status').innerText(),/active/);
+ await fresh.close();
+ console.log('PASS install icons, fresh direct activation, active workout protection and repeat-safe approved-block activation with preserved history.');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

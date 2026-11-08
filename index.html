@@ -1488,7 +1488,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  }));
  function setMode(isManual){manualMode=scope()==='hybrid'&&isManual;get('frCoachPanel').hidden=manualMode;get('frManualPanel').hidden=!manualMode;get('frModeCoach').classList.toggle('active',!manualMode);get('frModeManual').classList.toggle('active',manualMode);get('frModeCoach').setAttribute('aria-pressed',String(!manualMode));get('frModeManual').setAttribute('aria-pressed',String(manualMode));updateManualStatus()}
  get('frModeCoach').onclick=()=>setMode(false);get('frModeManual').onclick=()=>setMode(true);
- const existing=Boolean(data.onboardingComplete && data.activeSchedule && data.activeSchedule.length); // retain completed setup
+ const existing=Boolean(data.onboardingComplete&&(data.customRoadmap||data.activeSchedule?.length));
  for(const lift of lifts){
   const id='frMax'+lift;
   const node=document.createElement('div');node.className='fr-field';node.dataset.baselineLift=lift;
@@ -1850,6 +1850,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   weeklyEdited=!!days.length;updateScope();step=1;previewWeek=1;openSetup();
  }
  window.LHRFStartNewProgramme=startNewProgramme;
+ window.LHRFCloseOnboarding=closeSetup;
  const restartLink=document.getElementById('restartOnboardingLink');if(restartLink)restartLink.addEventListener('click',e=>{e.preventDefault();startNewProgramme()});
  const cancel=document.createElement('button');cancel.type='button';cancel.id='frCancel';cancel.className='secondary';cancel.textContent='Cancel';cancel.hidden=!existing;get('frBack').parentNode.append(cancel);cancel.onclick=()=>{closeSetup();go('settings')};
  root.addEventListener('keydown',event=>{if(event.key==='Escape'&&existing){event.preventDefault();cancel.click();}});
@@ -1931,7 +1932,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  if(requested==='november-2026'){try{localStorage.setItem('lhrf_pending_programme',requested)}catch(e){}}
  if(!requested&&data.customRoadmap?.programmeId==='november-2026')return;
  // An explicit approved-programme link uses this activation flow instead of fresh onboarding.
- document.getElementById('firstRun').hidden=true;document.body.style.overflow='';
+ window.LHRFCloseOnboarding();
  const card=document.createElement('aside');card.className='card';card.setAttribute('aria-label','Approved programme activation');card.innerHTML='<h2>Your approved November block</h2><p>27 October–29 November · Bench competition + 10K. Earlier workouts and onboarding settings are retained. Your previous programme and its coach decisions will be archived.</p><button type="button" disabled>Activate approved programme</button><p class="small muted" role="status"></p>';document.querySelector('main').prepend(card);
  const button=card.querySelector('button'),status=card.querySelector('[role="status"]');
  if(data.customRoadmap?.programmeId==='november-2026'){button.disabled=true;status.textContent='This programme is already active. Your new logs are retained.';return}
