@@ -26,8 +26,11 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
  await page.evaluate(id=>openWorkout(id),fri.id);
  await page.locator('#livePreview .preview-coach-notes').evaluateAll(els=>els.forEach(e=>e.open=true));const preview=await page.locator('#livePreview').innerText();assert.match(preview,/Heavy competition practice/);assert.equal(fri.ex[0][5].benchRole,'heavy');assert.match(preview,/147.5 kg/);assert.match(preview,/paused single/);
  await page.locator('#previewStart').click();await page.getByRole('button',{name:'Review readiness',exact:true}).click();await page.locator('#readinessContinue').click();
- assert.equal(await page.locator('#liveTrainRoot .exercise-notes').first().evaluate(e=>e.open),false);await page.locator('#liveTrainRoot .exercise-notes').evaluateAll(els=>els.forEach(e=>e.open=true));assert.match(await page.locator('#liveTrainRoot').innerText(),/Heavy competition practice/);
- const top=page.locator('.live-ex').first();await top.locator('[data-field="weight"]').first().fill('147.5');await top.locator('[data-field="rpe"]').first().fill('8');await top.locator('.set-row button, .live-set button').first().click();
+ const top=page.locator('.live-ex').first();assert.doesNotMatch(await top.innerText(),/Heavy competition practice/);
+ await top.getByRole('button',{name:'Exercise information for Bench',exact:true}).click();
+ const exerciseInfo=page.getByRole('dialog',{name:'Bench',exact:true});assert.match(await exerciseInfo.innerText(),/Heavy competition practice/);
+ await exerciseInfo.getByRole('button',{name:'Close',exact:true}).click();
+ await top.locator('[data-field="weight"]').first().fill('147.5');await top.locator('[data-field="rpe"]').first().fill('8');await top.locator('.set-row button, .live-set button').first().click();
  const draft=await page.evaluate(LIVE=>JSON.parse(localStorage.getItem(LIVE)),LIVE);assert.equal(draft.entries['0_0'].done,true);assert.ok(draft.ex[1][3]<147.5);assert.ok(draft.ex[1][3]>0);
  await page.reload();assert.deepEqual((await state()).sets,fixture.sets);const restored=await page.evaluate(LIVE=>JSON.parse(localStorage.getItem(LIVE)),LIVE);assert.deepEqual(restored.entries,draft.entries);assert.deepEqual(restored.ex,draft.ex);
  // A later-week upgrade moves the final heavy exposure to Sunday and makes Friday light.

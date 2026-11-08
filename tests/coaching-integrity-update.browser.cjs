@@ -1,6 +1,7 @@
 // Current-production same-origin PWA upgrade. Fictional local data only.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {reopenForWaitingUpdate}=require('./workout-update-helpers.cjs');
 const clone=x=>JSON.parse(JSON.stringify(x)),root=path.join(__dirname,'..'),base=process.env.LHRF_INTEGRITY_BASE;
 const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
 (async()=>{
@@ -18,13 +19,13 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
   const data=require('./training-mode-fixture.cjs').fixture();data.customRoadmap.programmeId='synthetic-reviewed-integrity-update';
   data.reviewedProgramme={id:data.customRoadmap.programmeId,config:clone(data.customRoadmap),weeks:Array.from({length:5},(_,i)=>({week:i+1,sessions:i===1?clone(data.activeSchedule):[]}))};
   const s=data.activeSchedule[0],live={...clone(s),week:2,entries:{},notes:'Keep this fictional active draft',started:'2026-11-06T06:00:00Z',trainingPrescription:clone(s)};
-  await page.addInitScript(({KEY,LIVE,data,live})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(data));if(!localStorage.getItem(LIVE))localStorage.setItem(LIVE,JSON.stringify(live))},{KEY,LIVE,data,live});
+  await page.addInitScript(({KEY,LIVE,data,live})=>{if(location.protocol!=='http:')return;if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(data));if(!localStorage.getItem(LIVE))localStorage.setItem(LIVE,JSON.stringify(live))},{KEY,LIVE,data,live});
   const stored=()=>page.evaluate(({KEY,LIVE})=>({data:localStorage.getItem(KEY),live:localStorage.getItem(LIVE)}),{KEY,LIVE});
-  await page.goto('http://localhost:'+server.address().port+'/');await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
+  const url='http://localhost:'+server.address().port+'/';await page.goto(url);await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
   const before=await stored();assert.deepEqual(JSON.parse(before.data),data);
   candidate=true;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});
   await page.locator('#lhrf-update-banner').waitFor({state:'visible'});
-  await Promise.all([page.waitForNavigation({waitUntil:'load'}),page.locator('#lhrf-update-banner button').click()]);
+  await reopenForWaitingUpdate(page);
   await page.waitForFunction(()=>!!window.LHRFCoach);
   assert.deepEqual(await stored(),before,'PWA update must preserve the entire saved programme, history, Garmin links and active draft');
   const correctedDistance=()=>page.evaluate(()=>{
@@ -32,7 +33,7 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
    return LHRFCoach.createEngine({data:{decisions:[{approved:true,kind:'hybrid-load',week:2,key:'synthetic-check',factor:.9,intervention:'running-duration'}]}}).applyApprovedHybridRunning([{id:'synthetic',ex:[],runs:[run]}],2)[0].runs[0].distanceKm;
   });
   assert.equal(await correctedDistance(),9,'Updated app must execute the corrected engine');
-  assert.ok((await page.evaluate(()=>caches.keys())).includes('lhrf-shell-v1.36.0-reviewed-programme'));
+  await page.waitForFunction(async()=>(await caches.keys()).includes('lhrf-shell-v1.36.1-workout-focus')&&!!navigator.serviceWorker.controller);
   await context.setOffline(true);await page.reload();await page.waitForFunction(()=>!!window.LHRFCoach);
   assert.equal(await correctedDistance(),9);assert.deepEqual(await stored(),before);assert.deepEqual(errors,[]);
   assert.equal(await page.evaluate(()=>LHRFCoach.prepareNewProgramme({coachingRulesVersion:2,weeks:1,bench:1,squat:0,deadlift:0,runs:0},{data:{sets:[],runs:[]}}).coachingRuntimeVersion),1,'Corrected new-proposal engine and its evidence dependency must be available offline');

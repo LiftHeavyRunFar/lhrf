@@ -1048,11 +1048,11 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   extras.querySelector('#liveAddExtra').onclick=()=>{const name=extras.querySelector('#liveExtraChoice').value;if(!name)return;const movement=x=>String(x).toLowerCase().replace(/rope|cable|barbell|dumbbell/g,'').replace(/[^a-z]/g,'');if(live.ex.some(e=>movement(e[0])===movement(name))){alert('This movement is already in your workout.');return}live.ex.push([name,2,12,0,7,{role:'optional',category:'optional',optional:true}]);expanded=live.ex.length-1;persist();status()};
   const root=document.getElementById('liveExercises');
   (live.ex||[]).map((e,i)=>({e,i})).sort((a,b)=>Number(!!a.e[5]?.optional)-Number(!!b.e[5]?.optional)).forEach(({e,i})=>{
-   const practical=LHRFAndroidPolish.loadSuggestion(e),shortCue=String(e[5]?.cue||'').split(/(?<=[.!?])\s/)[0];
+   const practical=LHRFAndroidPolish.loadSuggestion(e);
    const completedSets=Array.from({length:e[1]},(_,j)=>live.entries[i+'_'+j]?.done).filter(Boolean).length;
    if(!completedSets&&redundantOptionalExercise(e,live.ex))return;
    const d=document.createElement('details');d.className='live-ex';d.dataset.exerciseIndex=String(i);d.open=i===expanded;
-   d.innerHTML=`<summary><span style="color:var(--accent)">${completedSets===e[1]?'✓':'○'}</span><span class="ex-text"><strong>${esc(e[5]?.role==='top'?'TOP SET · ':e[5]?.role==='backoff'?'BACK-OFF · ':'')}${esc(e[0])}</strong><small>${e[5]?.optional?'OPTIONAL · ':''}${e[1]} × ${esc(e[2])} · target RPE ${esc(e[4])}${e[3]>0?' · '+esc(practical.value)+' kg'+(practical.type==='per-hand-kg'?' / hand':'')+' suggested'+(practical.value!==practical.original?' · saved prescription '+esc(e[3])+' kg':''):''}</small></span><span class="live-status">${completedSets}/${e[1]}</span><span class="muted">⌄</span></summary><div class="ex-content">${shortCue&&shortCue.length<=120?'<p class="muted small">'+esc(shortCue)+'</p>':''}${e[5]?.cue?'<details class="exercise-notes"><summary>Coach’s notes</summary><p class="muted small">'+esc(e[5].cue)+'</p></details>':''}<div id="liveSets_${i}"></div></div>`;
+   d.innerHTML=`<summary><span style="color:var(--accent)">${completedSets===e[1]?'✓':'○'}</span><span class="ex-text"><strong>${esc(e[5]?.role==='top'?'TOP SET · ':e[5]?.role==='backoff'?'BACK-OFF · ':'')}${esc(e[0])}</strong><small>${e[5]?.optional?'OPTIONAL · ':''}${e[1]} × ${esc(e[2])} · target RPE ${esc(e[4])}${e[3]>0?' · '+esc(practical.value)+' kg'+(practical.type==='per-hand-kg'?' / hand':'')+' suggested'+(practical.value!==practical.original?' · saved prescription '+esc(e[3])+' kg':''):''}</small></span><span class="live-status">${completedSets}/${e[1]}</span><span class="muted">⌄</span></summary><div class="ex-content"><div id="liveSets_${i}"></div></div>`;
    d.addEventListener('toggle',()=>{if(d.open){expanded=i;root.querySelectorAll(':scope > details').forEach(other=>{if(other!==d&&!other.classList.contains('exercise-notes'))other.open=false})}});
    root.appendChild(d);
    const rows=d.querySelector('#liveSets_'+i);
@@ -1079,7 +1079,11 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
      if(recording&&v.done&&Array.from({length:e[1]},(_,j)=>live.entries[i+'_'+j]?.done).every(Boolean))expanded=correcting?i:advance??(flow?.firstIncomplete(beforeSet)===i?-1:i);else expanded=i;
      live.trainingView={exerciseIndex:expanded,revision:flow?flow.revision(live):null};
      if(!persist()){live=beforeSet;expanded=i;status();const message='Set not saved. Check device storage and try again. Your entries are still here.';document.getElementById('liveError').textContent=message;const error=document.createElement('p');error.className='set-save-error';error.setAttribute('role','alert');error.textContent=message;document.getElementById('liveSets_'+i)?.append(error);return}
-     lastSetAction={key:k,at:Date.now()};status();if(advance!==null)window.LHRFTrainingMode?.revealNext(advance);
+     lastSetAction={key:k,at:Date.now()};
+     const meta=e[5]||{};
+     const workingSet=!meta.optional&&!meta.warmup&&!meta.warmUp&&![meta.role,meta.category].some(role=>/^(?:optional|warm-?up)$/i.test(role||''));
+     if(recording&&v.done&&!correcting&&workingSet)document.dispatchEvent(new CustomEvent('lhrf:set-completed',{detail:{index:i}}));
+     status();if(advance!==null)window.LHRFTrainingMode?.revealNext(advance);
     };
     rows.appendChild(row);
    }
@@ -1620,27 +1624,26 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
 })();
 </script>
 <script>
-/* LHRF PWA: registration never clears app data; updates only activate on request. */
+/* Let an installed update take over after existing LHRF windows close. */
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register('./sw.js', {scope:'./'});
       function showUpdate() {
-        if (!reg.waiting || document.getElementById('lhrf-update-banner')) return;
+        if (!reg.waiting || window.LHRFLive?.get?.() || document.getElementById('lhrf-update-banner')) return;
         const bar = document.createElement('div');bar.id='lhrf-update-banner';
-        bar.style.cssText='position:fixed;z-index:999999;bottom:12px;left:12px;right:12px;max-width:520px;margin:auto;background:#122b42;border:1px solid #2589d8;color:white;padding:12px 14px;border-radius:12px;box-shadow:0 4px 20px #0009;font:14px system-ui';
-        bar.innerHTML='<span>New LHRF version ready.</span> <button type="button" style="float:right;background:#168af0;border:0;border-radius:8px;color:white;padding:7px 12px;font-weight:700">Update now</button>';
-        bar.querySelector('button').addEventListener('click',()=>reg.waiting?.postMessage({type:'SKIP_WAITING'}));
+        bar.className='card';
+        bar.style.cssText='position:fixed;z-index:6;bottom:calc(78px + env(safe-area-inset-bottom));left:12px;right:12px;max-width:520px;margin:auto';
+        bar.setAttribute('role','status');
+        bar.textContent='New LHRF version ready. Close and reopen LHRF to update.';
         document.body.appendChild(bar);
       }
       reg.addEventListener('updatefound',()=>reg.installing?.addEventListener('statechange',showUpdate));
       showUpdate();
-      let refreshing=false;
-      navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!refreshing){refreshing=true;location.reload()}});
     } catch(err) {console.warn('Offline install unavailable:',err)}
   });
 }
-</script><script src="./src/programme-install.js"></script>
+</script><style>body:has(#train.active) #lhrf-update-banner{display:none}</style><script src="./src/programme-install.js"></script>
 <script>
 (function(){
  if(data.reviewedProgramme)return;

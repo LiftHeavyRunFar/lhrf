@@ -51,3 +51,18 @@ body[data-training-mode=active] .exercise-history .history-actual{color:#a7bed0;
 .weight-carry-hint{display:block;font-size:11px;line-height:1.45;color:#9cdaff;margin:-2px 0 12px 22px}.working-guidance{font-size:11px;color:#bbd5e9;line-height:1.45}.set-save-error{font-size:13px;color:#ffcfba;border-left:3px solid #f79f73;padding:8px;line-height:1.5}
 @media(max-width:360px){body[data-training-mode=active] .training-active>summary .ex-text strong{-webkit-text-stroke:.3px #b6e6ff}.weight-carry-hint{margin-left:18px}}
 @media(prefers-contrast:more){body[data-training-mode=active] .training-active>summary .ex-text strong{-webkit-text-fill-color:#fff;background:none}}
+
+/* Compact training header and on-demand exercise reference. */
+body[data-training-mode=active] #trainingSessionHeader{padding:0 6px!important;border:0!important;background:transparent!important;box-shadow:none!important;margin:0 0 4px}
+body[data-training-mode=active] #trainingSessionHeader .live-status{font-size:12px;color:#c0d7e9}
+.training-info-button{width:44px;min-width:44px;min-height:44px;padding:0;border-radius:8px;display:grid;place-items:center;flex:0 0 auto}
+.training-info-dialog{position:fixed;inset:auto 0 max(12px,env(safe-area-inset-bottom));width:calc(100% - 24px);max-width:560px;max-height:calc(100dvh - 36px);margin:0 auto;overflow:auto;overscroll-behavior:contain;padding:0 16px 16px;background:#0b2035;color:#e7f4ff;border:1px solid #3a8ac1;border-radius:16px;box-sizing:border-box}
+.training-info-dialog::backdrop{background:rgba(0,6,14,.76)}
+.training-info-heading{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#0b2035;padding:10px 0 6px}
+.training-info-heading h2{font-size:19px;margin:0;overflow-wrap:anywhere}
+.training-info-heading button{width:auto;min-height:44px;flex:0 0 auto}
+.training-info-dialog h3{font-size:14px;color:#8dd6ff;margin:18px 0 7px}
+.training-info-dialog p{font-size:14px;line-height:1.55}
+.training-info-dialog .training-info-purpose{margin:0;color:#ace4ff;text-transform:capitalize}
+.training-info-dialog .exercise-history details{margin-top:8px}
+.training-info-dialog .exercise-history summary{min-height:44px}

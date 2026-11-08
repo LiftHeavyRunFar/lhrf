@@ -136,6 +136,14 @@ jobs:
           mkdir -p /tmp/lhrf-training-production
           git archive 385a4bc66c14e47e2b7c3ed668b9037462a7e3a9 | tar -x -C /tmp/lhrf-training-production
           node tests/training-mode.browser.cjs
+      - name: Test Pixel Workout Mode and safe production update
+        if: ${{ !cancelled() }}
+        env:
+          LHRF_WORKOUT_FOCUS_BASE: /tmp/lhrf-workout-focus-production
+        run: |
+          mkdir -p /tmp/lhrf-workout-focus-production
+          git archive 059d4ebf0c82581953c8c17d73b5100e3e584d98 | tar -x -C /tmp/lhrf-workout-focus-production
+          node tests/workout-focus.browser.cjs
       - name: Test save-gated exercise progression and compatible actual-load carry
         if: ${{ !cancelled() }}
         env:

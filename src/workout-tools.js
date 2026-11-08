@@ -27,7 +27,7 @@ function createWakeLockController({request,visible=()=>true,onState=()=>{}}={}){
  }
  return {setActive(active){if(active&&!wanted)blocked=false;wanted=!!active;return sync();},retry(){blocked=false;return sync();}};
 }
-const api={paceSpeeds,defaultSpeed,stages,create,advance,changeSpeed,createWakeLockController};
+const api={paceSpeeds,defaultSpeed,stages,create,advance,changeSpeed,createWakeLockController,restGuidance};
 if(typeof module==='object'&&module.exports){module.exports=api;return;}root.LHRFWorkoutTools=api;
 const LIVE='lhrf_fresh_beta_live_v1114',STORE='lhrf_treadmill_v1',REST='lhrf_rest_v1';
 let current=null,rest=null;const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
@@ -39,15 +39,95 @@ let wakeState='off';
 const wake=createWakeLockController({request:root.navigator?.wakeLock?.request?.bind(root.navigator.wakeLock),visible:()=>document.visibilityState==='visible',onState:state=>{wakeState=state;const el=document.getElementById('tmWakeState');if(el){const value=state==='active'?'Screen stays on':state==='unsupported'||state==='unavailable'?'Screen wake lock unavailable':'';if(el.textContent!==value)el.textContent=value;}}});
 function syncWake(){const l=live();wake.setActive(!!(current?.running&&!current.complete&&l&&identity(l)===current.key&&!l.runLogged&&document.visibilityState==='visible'));}
 const clock=n=>Math.floor(n/60)+':'+String(Math.floor(n%60)).padStart(2,'0');
+function restGuidance(ex){
+ const m=ex?.[5]||{},explicit=m.restRangeSeconds||m.restSecondsRange||m.restSeconds;
+ const valid=value=>(typeof value==='number'||typeof value==='string')&&Number.isFinite(Number(value))&&Number(value)>0;
+ const range=(a,b)=>valid(a)&&valid(b)&&Number(a)<=Number(b)?{min:Number(a),max:Number(b)}:null;
+ if(Array.isArray(explicit)&&explicit.length===2){const result=range(...explicit);if(result)return result;}
+ if(valid(explicit))return range(explicit,explicit);
+ const dose=String.raw`(\d+)(?:\s*(?:[-–—]|\bto\b)\s*(\d+))?\s*(seconds?|secs?|s|minutes?|mins?)\b`;
+ const named=new RegExp(String.raw`\b(?:rest(?: for)?|between (?:working )?sets)\s*:?\s*`+dose+'|'+dose+String.raw`\s+(?:of\s+)?(?:rest\b|between (?:working )?sets\b)`,'i');
+ const cue=String(m.cue||'');
+ const match=String(m.restGuidance||'').match(new RegExp(dose,'i'))||cue.match(named);
+ if(!match)return null;
+ const [min,max,unit]=match[1]?match.slice(1,4):match.slice(4,7);
+ const scale=/^m/i.test(unit)?60:1;
+ return range(Number(min)*scale,Number(max||min)*scale);
+}
+function restContext(l,now){
+ const card=document.querySelector('#liveExercises > .live-ex[open]'),active=card?Number(card.dataset.exerciseIndex):null;
+ const remaining=rest.mode==='countdown'?(rest.endAt?Math.max(0,rest.endAt-now):rest.remaining):null;
+ const keepCountdown=remaining!==null&&((remaining>0&&!!rest.endAt)||active===rest.exerciseIndex||active===null);
+ const index=keepCountdown?rest.exerciseIndex:active,guide=restGuidance(l.ex[index]);
+ return {card,active,index,guide,remaining:keepCountdown?remaining:null};
+}
+function restSave(){try{localStorage.setItem(REST,JSON.stringify(rest))}catch{}}
+function beginRest(l,index,guide,now){
+ rest={key:identity(l),mode:'countdown',exerciseIndex:index,remaining:guide.min*1000,endAt:now+guide.min*1000};
+}
+function changeRest(action,seconds){
+ const l=live();if(!l?.ex?.length)return;
+ const now=Date.now(),{index,guide,remaining}=restContext(l,now);
+ if(guide){
+  if(action==='skip'){
+   rest.endAt=null;rest.remaining=0;rest.skipped=true;
+  }else if(action==='extend'&&remaining===0){
+   rest.endAt=now+seconds*1000;delete rest.skipped;
+  }else if(action==='restart'||remaining===null||remaining===0){
+   beginRest(l,index,guide,now);
+  }else if(action==='extend'){
+   if(rest.endAt)rest.endAt+=seconds*1000;
+   else rest.remaining+=seconds*1000;
+  }else if(rest.endAt){
+   rest.endAt=null;rest.remaining=remaining;
+  }else rest.endAt=now+remaining;
+ }else if(action==='restart'){
+  rest={key:identity(l),elapsed:0,start:null};
+ }else if(action==='toggle'){
+  if(rest.mode==='countdown')rest={key:identity(l),elapsed:0,start:null};
+  if(rest.start===null)rest.start=now;
+  else{rest.elapsed+=Math.max(0,now-rest.start);rest.start=null;}
+ }else return;
+ restSave();paintRest();
+}
+
 function live(){return root.LHRFLive?.get?.()||read(LIVE)}
 function identity(l){return l.id+'|'+l.started}
+function paintRest(){
+ const l=live(),exercises=document.getElementById('liveExercises');
+ if(!l?.ex?.length||!exercises)return;
+ if(rest.key!==identity(l)){rest={key:identity(l),elapsed:0,start:null};restSave();}
+ const now=Date.now(),{card,active,index,guide,remaining}=restContext(l,now);
+ let bar=document.getElementById('restStopwatch');
+ if(!bar){
+  bar=document.createElement('div');bar.id='restStopwatch';bar.className='training-rest-controls';
+  bar.innerHTML='<span>Rest</span><output id="restTime" role="timer" aria-live="off">0:00</output><small id="restGuide"></small><button type="button" id="restToggle" class="secondary">Start</button><button type="button" id="restReset" class="ghost">Reset</button><button type="button" id="restPlus15" class="secondary" aria-label="Add 15 seconds">+15s</button><button type="button" id="restPlus30" class="secondary" aria-label="Add 30 seconds">+30s</button><button type="button" id="restSkip" class="ghost">Skip</button><small id="restStatus" role="status"></small>';
+  for(const [id,action,seconds] of [['restToggle','toggle'],['restReset','restart'],['restPlus15','extend',15],['restPlus30','extend',30],['restSkip','skip']]){
+   bar.querySelector('#'+id).onclick=()=>changeRest(action,seconds);
+  }
+ }
+ const anchor=card?.querySelector('[id^="liveSets_"]')||exercises;
+ if(anchor.previousElementSibling!==bar)anchor.before(bar);
+ const put=(id,value)=>{const node=bar.querySelector('#'+id);if(node.textContent!==value)node.textContent=value;};
+ const running=guide?remaining>0&&!!rest.endAt:rest.start!=null;
+ const elapsed=rest.mode==='countdown'?0:rest.elapsed+(rest.start===null?0:Math.max(0,now-rest.start));
+ const range=guide&&(guide.min===guide.max?guide.min:guide.min+'–'+guide.max);
+ const owner=guide&&index!==active?l.ex[index][0]+' · ':'';
+ put('restGuide',guide?owner+range+'s prescribed':'Optional stopwatch');
+ put('restTime',guide?clock(Math.ceil((remaining??guide.min*1000)/1000)):clock(elapsed/1000));
+ bar.querySelector('#restTime').setAttribute('aria-label',guide?'Rest countdown':'Rest elapsed');
+ const paused=guide?remaining>0:elapsed>0;
+ put('restToggle',running?'Pause':paused?'Resume':'Start');
+ put('restReset',guide?'Restart':'Reset');
+ put('restStatus',remaining===0?(rest.skipped?'Rest skipped':'Rest complete'):'');
+ for(const id of ['restPlus15','restPlus30','restSkip'])bar.querySelector('#'+id).hidden=!guide||remaining===null||(id==='restSkip'&&remaining===0);
+ bar.querySelector('#restReset').hidden=!!guide&&remaining===null;
+}
+api.paintRest=paintRest;
 function mount(){
  syncTheme();const l=live(),container=document.getElementById('liveRunSection');
  const existing=document.getElementById('treadmillControls');const treadmill=document.querySelector('#liveRunSection .run-environment-choice')?.value==='treadmill';if(existing){existing.hidden=!treadmill;if(!treadmill&&current?.running){current=advance(current,Date.now());current.running=false;save();paint();}}
- if(l&&l.ex?.length&&document.getElementById('liveTrainRoot')&&!document.getElementById('restStopwatch')){
- if(rest.key!==identity(l)){rest={elapsed:0,start:null,key:identity(l)};localStorage.setItem(REST,JSON.stringify(rest));}
- const bar=document.createElement('div');bar.id='restStopwatch';bar.style.cssText='display:flex;align-items:center;gap:8px;justify-content:flex-end;padding:4px 0 10px;font-size:12px;color:var(--muted)';bar.innerHTML='<span>Rest</span><output id="restTime" aria-label="Rest elapsed">0:00</output><button type="button" id="restToggle" class="secondary" style="padding:5px 9px;font-size:12px">Start</button><button type="button" id="restReset" class="ghost" style="padding:5px 9px;font-size:12px">Reset</button>';
- document.getElementById('liveExercises')?.before(bar);bar.querySelector('#restToggle').onclick=()=>{if(rest.start!==null){rest.elapsed+=Date.now()-rest.start;rest.start=null}else rest.start=Date.now();localStorage.setItem(REST,JSON.stringify(rest));paintRest()};bar.querySelector('#restReset').onclick=()=>{rest={elapsed:0,start:null,key:identity(l)};localStorage.setItem(REST,JSON.stringify(rest));paintRest()};paintRest();}
+ paintRest();
  if(!l?.runs?.length||l.runLogged||!container||!container.children.length||document.getElementById('treadmillControls'))return;
  const steps=stages(l.runs);if(!steps.length)return;
  const panel=document.createElement('div');panel.id='treadmillControls';panel.className='card';panel.innerHTML=`<div id="tmIntro"><div class="tag">TREADMILL</div><p class="muted small">Track each lap using the speed shown on your treadmill.</p><button type="button" id="openTreadmill">Start treadmill tracker</button></div><div id="treadmillActive" hidden><div class="tm-top"><span class="tm-kicker">LHRF / RUN</span><button type="button" id="tmExit">Workout details ↗</button></div><div class="tm-laprow"><span id="tmLap"></span><span id="tmState"></span></div><h3 id="tmStage"></h3><p id="tmTarget"></p><div class="tm-distance"><span id="tmRemainingLabel">LAP REMAINING</span><div id="tmRemaining"></div><div class="tm-track"><div id="tmFill"></div></div></div><div class="tm-metrics"><div class="tm-metric"><span>Lap distance</span><strong id="tmLapDistance"></strong></div><div class="tm-metric"><span>Total distance</span><strong id="tmTotalDistance"></strong></div><div class="tm-metric"><span>Lap time</span><strong id="tmLapTime"></strong></div><div class="tm-metric"><span>Total time</span><strong id="tmTotalTime"></strong></div></div><div class="tm-next"><div class="tm-kicker" id="tmNextLabel">UP NEXT</div><p id="tmNext"></p></div><label class="tm-speed-label" for="tmSpeed">TREADMILL SPEED · KM/H</label><div class="tm-speed-controls"><button type="button" id="tmSlower" class="secondary" aria-label="Decrease treadmill speed">−</button><input id="tmSpeed" type="number" min="0" max="30" step="0.1" inputmode="decimal"/><button type="button" id="tmFaster" class="secondary" aria-label="Increase treadmill speed">+</button></div><div class="tm-buttons"><button type="button" id="tmPause">Start / Resume</button><button type="button" id="tmUse" class="secondary">Review totals</button></div><p id="tmError" role="status"></p><p class="tm-estimate">Estimated distance · match belt to selected speed</p><output id="tmWakeState" class="tm-estimate" aria-live="polite"></output></div>`;
@@ -62,7 +142,6 @@ function mount(){
  panel.querySelector('#tmUse').onclick=()=>{current=advance(current,Date.now());current.running=false;save();paint();leaveFocus();const km=document.getElementById('liveRunKm'),min=document.getElementById('liveRunMinutes');if(km&&min){km.value=current.km.toFixed(2);min.value=(current.seconds/60).toFixed(1);km.dispatchEvent(new Event('input',{bubbles:true}));min.dispatchEvent(new Event('input',{bubbles:true}));panel.querySelector('#tmError').textContent='Estimated totals copied. Correct them to the treadmill display, then log your run.';km.scrollIntoView({behavior:'smooth',block:'center'});}};
  if(current?.key===key){if(current.focus!==false)activate();else panel.querySelector('#openTreadmill').textContent='Return to tracker';}
 }
-function paintRest(){const el=document.getElementById('restTime');if(el)el.textContent=clock((rest.elapsed+(rest.start===null?0:Date.now()-rest.start))/1000);const b=document.getElementById('restToggle');if(b)b.textContent=rest.start===null?'Start':'Pause';}
 function targetText(step){if(!step)return '';const values=paceSpeeds(step.pace);return /walk|recover/i.test(step.label)?'Walking · 4.0 km/h':values.length?Math.min(...values).toFixed(1)+'–'+Math.max(...values).toFixed(1)+' km/h':step.pace||'Set a comfortable speed';}
 function syncTheme(){const l=live(),active=document.getElementById('train')?.classList.contains('active');const kind=active&&l?(l.ex?.length?'strength':l.runs?.length?'run':''):'';if(kind)document.body.dataset.workoutKind=kind;else delete document.body.dataset.workoutKind;const focus=!!(kind==='run'&&current?.key===identity(l)&&current.focus!==false&&document.getElementById('treadmillActive')&&!document.getElementById('treadmillActive').hidden&&!document.getElementById('treadmillControls')?.hidden);document.body.dataset.treadmillFocus=String(focus);}
 function paint(){
@@ -79,6 +158,10 @@ function paint(){
  const next=current.steps[i+1];put('tmNextLabel',next?'UP NEXT · LAP '+(i+2):'UP NEXT');put('tmNext',next?next.label+' · '+(next.distanceKm>0?next.distanceKm.toFixed(2)+' km':clock(next.seconds))+' · '+targetText(next):current.complete?'Review and confirm your treadmill totals.':'Finish and review your run');
  const input=p.querySelector('#tmSpeed');if(document.activeElement!==input)input.value=current.speed.toFixed(1);const button=p.querySelector('#tmPause');button.textContent=current.running?'Pause':'Start / Resume';button.disabled=current.complete;
 }
-function tick(){const l=live();if(!l?.ex?.length&&rest.start!==null){rest.elapsed+=Date.now()-rest.start;rest.start=null;localStorage.setItem(REST,JSON.stringify(rest));}if(current?.running){if(!l||identity(l)!==current.key||l.runLogged){current=advance(current,Date.now());current.running=false;save();}else{const i=current.index;current=advance(current,Date.now());save();if(i!==current.index){const el=document.getElementById('tmError');if(el)el.textContent=current.complete?'Stages complete. Verify and copy your totals.':'Lap speed set to '+current.speed.toFixed(1)+' km/h. Match the treadmill belt.';}paint();}}paintRest();syncTheme();syncWake();}
-if(typeof document!=='undefined'){const observer=new MutationObserver(()=>{if(!document.getElementById('treadmillControls')||!document.getElementById('restStopwatch'))mount();syncTheme()});observer.observe(document.body,{childList:true,subtree:true});setInterval(tick,500);document.addEventListener('visibilitychange',()=>{tick();if(document.visibilityState==='visible')wake.retry()});window.addEventListener('pagehide',()=>wake.setActive(false));document.addEventListener('change',e=>{if(e.target.matches('.run-environment-choice'))mount()});mount();}
+function tick(){const l=live();if(current?.running){if(!l||identity(l)!==current.key||l.runLogged){current=advance(current,Date.now());current.running=false;save();}else{const i=current.index;current=advance(current,Date.now());save();if(i!==current.index){const el=document.getElementById('tmError');if(el)el.textContent=current.complete?'Stages complete. Verify and copy your totals.':'Lap speed set to '+current.speed.toFixed(1)+' km/h. Match the treadmill belt.';}paint();}}paintRest();syncTheme();syncWake();}
+if(typeof document!=='undefined'){document.addEventListener('lhrf:set-completed',event=>{
+ const l=live(),index=event.detail?.index,guide=restGuidance(l?.ex?.[index]);
+ if(!guide)return;
+ beginRest(l,index,guide,Date.now());restSave();
+});const observer=new MutationObserver(()=>{if(!document.getElementById('treadmillControls')||!document.getElementById('restStopwatch'))mount();syncTheme()});observer.observe(document.body,{childList:true,subtree:true});setInterval(tick,500);document.addEventListener('visibilitychange',()=>{tick();if(document.visibilityState==='visible')wake.retry()});window.addEventListener('pagehide',()=>wake.setActive(false));document.addEventListener('change',e=>{if(e.target.matches('.run-environment-choice'))mount()});mount();}
 })(typeof globalThis!=='undefined'?globalThis:this);
