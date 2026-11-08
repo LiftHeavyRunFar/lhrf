@@ -12,7 +12,7 @@ const fixture={equipmentInventory:inventory,onboardingComplete:true,customRoadma
  assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'4');
  await page.locator('#frFatigueStatus').selectOption('normal');await page.locator('#frTaskRecovery summary').click();await page.locator('#frAddRecoveryObservation').click();
  const row=page.locator('.fr-recovery-observation').last();await row.locator('[data-recovery-task]').selectOption('strength|Bench|heavy');await row.locator('[data-recovery-performance]').fill('2026-11-05');await row.locator('[data-recovery-date]').fill('2026-11-05');await row.locator('[data-recovery-status]').selectOption('normal');await page.locator('#frNext').click();
- assert.match(await page.locator('#frError').innerText(),/following calendar day|next-day/);assert.equal(await page.locator('#frNext').isDisabled(),true);
+ assert.match(await page.locator('#frWarnings').innerText(),/following calendar day|next-day/);assert.equal(await page.locator('#frNext').isDisabled(),true);
  await page.locator('#frBack').click();await row.locator('[data-recovery-date]').fill('2026-11-06');await page.locator('#frNext').click();
  const result=await page.evaluate(()=>({observations:recoveryProposal.recoveryObservations,state:LHRFCoachingEvidence.recovery(recoveryProposal,{now:Date.now(),atDate:'2026-11-09',sport:'strength',task:'heavy',lift:'Bench'})}));
  assert.equal(result.state.status,'normal','A current coarse normal answer must not erase an earlier specific subsequent response.');assert.ok(result.observations.some(o=>o.source==='preserved-recovery-concern'&&o.status==='fatigue'));assert.ok(result.observations.some(o=>o.referencePerformanceDate==='2026-11-05'&&o.observedAt==='2026-11-06'));

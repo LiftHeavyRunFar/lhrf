@@ -106,7 +106,19 @@ function allocate(c,warnings=[],activities=[],context={}){
   // not marginal heuristic gains that churn an otherwise coherent calendar.
   if(best.score+moved>=legacyBest.score+weeklyStress(c,legacyBest.slots,context))best=legacyBest;
  }
- if(!best&&requiredDays.length)return allocate(c,warnings,activities,{...context,requiredStrengthDays:null});
+ if(!best&&requiredDays.length){
+  // An impossible request must not knock out other lifts with feasible dates.
+  // Keep the largest possible subset in this draft; the omitted requests
+  // still require an explicit resolution before programme approval.
+  if(context.keepFeasiblePins){
+   const entries=Object.entries(required);
+   for(let n=entries.length-1;n>0;n--)for(const subset of combinations(entries,n)){
+    const fallback=allocate(c,warnings,activities,{...context,requiredStrengthDays:Object.fromEntries(subset),keepFeasiblePins:false,strictPins:true});
+    if(fallback.feasible)return fallback;
+   }
+  }
+  if(!context.strictPins)return allocate(c,warnings,activities,{...context,requiredStrengthDays:null});
+ }
  if(!best)return fail('No complete visit calendar fits the requested strength visits, runs, protected long run and mixed/separate permissions. Review frequencies or availability.');
  return {warnings:warnings.slice(),slots:best.slots,total:work.length,scheduled:work.length,unscheduled:[],feasible:true,visitModel:'strength visits group multiple distinct lift exposures; one run per day'};
 }

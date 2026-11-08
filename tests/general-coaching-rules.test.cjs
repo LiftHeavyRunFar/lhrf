@@ -99,7 +99,7 @@ test('preserved production policy: generic proposals cannot trigger personal Nov
 test('shared defaults are wired into onboarding, advanced proposals and trial preview while saved schedules stay read-only on startup',()=>{
  const fs=require('node:fs'),path=require('node:path'),app=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8'),preview=fs.readFileSync(path.join(__dirname,'../coaching-preview.html'),'utf8');
  assert.match(app,/return LHRFCoach\.prepareNewProgramme\(intakeConfig\(cfg,selected\),\{data\}\)/);assert.match(app,/const next=LHRFCoach\.prepareNewProgramme\(c,\{data\}\)/);assert.match(preview,/LHRFCoachAdapters\.previewNewProgramme\(c,\{data:LHRFCoachAdapters\.previewLogState\(readLogs\(\),c\)\}\)/);
- assert.ok(app.includes('reviewed=wholeProgramme(proposal)'));assert.ok(app.includes('LHRFCoach.approveProgrammeConfig(proposal)'));assert.ok(app.includes('c=LHRFCoach.approveProgrammeConfig(c)'));
+ assert.match(app,/proposal=wholeProgramme\(c\)[\s\S]*setReviewedProgramme\(proposal\)/);assert.match(app,/LHRFCoach\.approveProgrammeConfig\(reviewed\.config\)/);assert.ok(app.includes('c=LHRFCoach.approveProgrammeConfig(c)'));
  const core=fs.readFileSync(path.join(__dirname,'../src/coach-engine.js'),'utf8');assert.doesNotMatch(core,/\b(document|localStorage|fetch)\s*[.(]/);
 });
 test('the existing approved November programme remains byte-identical across all five weeks',()=>{

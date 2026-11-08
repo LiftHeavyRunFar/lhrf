@@ -262,7 +262,24 @@ html{scroll-padding-top:125px}
 </style><style>
 #firstRun .fr-step[data-step="1"] .fr-card:has(input:checked){border-color:#22394e!important;background:linear-gradient(130deg,#0d1b2b,#081320)!important;box-shadow:none!important}
 #firstRun .fr-step[data-step="1"] input[type=radio]{width:20px;height:20px;vertical-align:middle}
-#frCycleChart svg{width:100%;height:auto;display:block}#frCycleChart h3{font-size:13px;margin:22px 0 8px}.fr-phase-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;margin:12px 0 20px}.fr-phase-legend span{display:flex;align-items:center;gap:6px}.fr-phase-legend i{width:9px;height:9px;border-radius:3px}#frWeeknav{display:block;margin:18px 0}#firstRun summary{cursor:pointer;padding:10px 0;font-weight:650}
+#firstRun .fr-review-overview{padding:16px 18px;margin:0 0 12px}
+#firstRun .fr-review-kicker{color:#80caff;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin:0 0 5px}
+#firstRun .fr-review-overview h2{margin:0 0 5px;font-size:20px;line-height:1.2}
+#firstRun .fr-review-event{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0 12px}
+#firstRun .fr-review-event span{font-size:13px;color:#c5dcf2}
+#firstRun .fr-review-week{border-top:1px solid #2a445f;padding-top:12px;margin-top:12px}
+#firstRun .fr-review-rhythm{display:flex;align-items:baseline;gap:10px;margin:4px 0 10px}
+#firstRun .fr-review-rhythm strong{font-size:20px}
+#firstRun .fr-review-rhythm span{font-size:13px;color:#c5dcf2}
+#firstRun .fr-review-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;padding:0;list-style:none;margin:0 0 8px}
+#firstRun .fr-review-days li{display:grid;align-content:start;min-height:38px;text-align:center;padding:4px 0;border-radius:7px;color:#adc1d8;background:#0a1928;font-size:11px}
+#firstRun .fr-review-days span{font-size:9px;line-height:1.15}
+#firstRun .fr-review-days .fr-review-day-active{background:#153957;color:#e3f4ff}
+#firstRun .fr-review-edit{margin:0 0 8px;padding:8px 4px;color:#a9d7fa}
+#firstRun .fr-review-alert{border-left:4px solid #f5b768}
+#firstRun .fr-review-alert h2{font-size:16px;margin:0 0 6px}
+#firstRun .fr-review-alert p{font-size:13px;line-height:1.45;margin:0}
+#firstRun .fr-review-alert button{margin-top:10px}
 </style><style>
 /* Readable navigation takes precedence over global primary-button gradients. */
 nav.nav button[data-screen]{background:#0b1c30!important;color:#eaf4ff!important;border:1px solid #294861!important;box-shadow:none!important}
@@ -289,6 +306,7 @@ nav.nav button[data-screen] b{color:inherit!important}
  <div id="planDashLegend" class="muted small" style="display:flex;flex-wrap:wrap;gap:9px;margin:12px 0"></div>
  <div class="field" style="margin-top:14px"><label>Select a week</label><select id="planDashSelect" onchange="selectPlanDashWeek(Number(this.value))"></select></div>
  <div id="planDashWeekDetails" class="entry" style="margin-top:8px"></div>
+ <details id="planAdvancedDetails" class="entry"><summary>Advanced details</summary><h3>Weekly running volume</h3><div id="planRunningVolume"></div><h3>Coach’s notes for the selected week</h3><div id="planSelectedNotes"></div></details>
  <div id="planDashEmpty" class="muted small" style="display:none"></div>
 </div>
 <details id="lhrfSettings" class="card" style="margin-top:12px"><summary style="cursor:pointer;font-weight:700;padding:5px 0">⚙ Settings & account</summary><p class="muted small">Your training history and saved programme stay on this device. Revisit onboarding only when you intentionally want to rebuild your programme.</p><a class="secondary" id="restartOnboardingLink" href="#" style="display:inline-block;padding:10px 12px;border-radius:10px;text-decoration:none">Restart programme setup</a><p class="muted small">Restarting setup will ask you to approve a new programme. Your existing training logs are not deleted.</p></details>
@@ -362,12 +380,22 @@ try{
 
 let current=null,completed={},proposal=null;
 let workoutReturn={screen:"today",scroll:0};
-function save(candidate=data){try{if(lhrfExternalStorageChanged)throw Error('Another tab changed training data. Reload before saving.');if(window.LHRFProgrammeReplacement&&localStorage.getItem(LHRFProgrammeReplacement.LOCK_KEY))throw Error('A programme transaction is in progress; reload to inspect it.');localStorage.setItem(LHRF_DATA_KEY,JSON.stringify(candidate));lhrfSaveError='';return true}catch(e){lhrfSaveError='Storage failed: '+e.message+'. Export a backup and free device storage.';alert(lhrfSaveError);return false}}
+function save(candidate=data,{notify=true}={}){try{if(lhrfExternalStorageChanged)throw Error('Another tab changed training data. Reload before saving.');if(window.LHRFProgrammeReplacement&&localStorage.getItem(LHRFProgrammeReplacement.LOCK_KEY))throw Error('A programme transaction is in progress; reload to inspect it.');localStorage.setItem(LHRF_DATA_KEY,JSON.stringify(candidate));lhrfSaveError='';return true}catch(e){lhrfSaveError='Storage failed: '+e.message+'. Export a backup and free device storage.';if(notify)alert(lhrfSaveError);return false}}
 function go(id){if(id==='plan'){const details=document.getElementById('planAdvanced');if(details)details.open=false;}document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.screen===id));const labels={today:['Train for both.','Strength and running, without losing control.'],plan:['Your training cycle.','Your programme at a glance.'],strength:['Lift with intent.','Track sets, loads and effort.'],running:['Run with purpose.','Use pace, RPE and recovery together.'],progress:['Your progress.','Coaching suggestions are yours to approve.'],settings:['Settings.','Your preferences and programme controls.'],workout:['Your workout.','Log each set as you complete it.'],train:['Your workout.','Focused logging, set by set.']};$('title').textContent=labels[id][0];$('subtitle').textContent='';if(id==='progress'||id==='strength'||id==='running')refresh();if(id==='plan'){try{renderPlanDashboard()}catch(err){console.error('Plan dashboard',err);const el=$('planDashChart');if(el)el.innerHTML='<div class="warn">The programme chart could not load. Open Edit programme & settings to check your saved programme.</div>';}}window.scrollTo(0,0)}
 
 // Visual programme overview: derived from the actual generated weekly prescriptions.
 let planDashSelection=null;
 function planPhaseColour(p){return p==='Foundation'?'#2abda7':p==='Development'?'#5799df':p==='Specificity'?'#ef9a70':'#ae91eb'}
+function plannedRunningVolume(sessions){
+ const runs=sessions.flatMap(s=>s.runs||[]);
+ if(!runs.length)return 'No runs planned';
+ const measured=r=>r.distanceKnown!==false&&Number.isFinite(r.distanceKm)&&r.distanceKm>0;
+ const km=runs.filter(measured).reduce((sum,r)=>sum+r.distanceKm,0);
+ const timed=runs.filter(r=>!measured(r)&&Number.isFinite(r.minutes)&&r.minutes>0);
+ const minutes=timed.reduce((sum,r)=>sum+r.minutes,0);
+ const unspecified=runs.filter(r=>!measured(r)).length-timed.length;
+ return [km>0?km.toFixed(1)+' km':'',minutes>0?Math.round(minutes)+' min by effort':'',unspecified?unspecified+' '+(unspecified===1?'run without a distance or time estimate':'runs without distance or time estimates'):''].filter(Boolean).join(' + ');
+}
 function renderPlanDashboard(){
  const root=$('planDashboard');if(!root)return;
  const c=data.customRoadmap || (typeof customConfig==='function'?customConfig():null);
@@ -398,7 +426,7 @@ function renderPlanDashboard(){
   let sessions=[];try{sessions=generatedSessions(c,w)}catch(e){console.warn('Could not calculate week',w,e)}
   let sets=0,reps=0,weightedPct=0,pctReps=0,topPct=0;
   sessions.forEach(s=>(s.ex||[]).forEach(e=>{const meta=e[5]||{};if(!['primary','secondary'].includes(meta.category))return;const count=Number(e[1])||0,repCount=Number(e[2])||0,n=count*repCount;sets+=count;reps+=n;const baseline=Number(meta.baseline)||0;if(baseline>0&&e[3]>0){const pct=100*e[3]/baseline;weightedPct+=n*pct;pctReps+=n;if(meta.role==='top'&&/bench/i.test(e[0]))topPct=Math.max(topPct,pct)}}));
-  metrics.push({week:w,sets,reps,rpe:pctReps?weightedPct/pctReps:0,topPct,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||customPhase(w,n,c),deload:variationBlock(w,n).deload});
+  metrics.push({week:w,sets,reps,rpe:pctReps?weightedPct/pctReps:0,topPct,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||customPhase(w,n,c),deload:variationBlock(w,n).deload,runningVolume:plannedRunningVolume(sessions)});
  }
  const maxReps=Math.max(1,...metrics.map(m=>m.reps));
  const rpes=metrics.filter(m=>m.rpe).map(m=>m.rpe),minRpe=rpes.length?Math.min(...rpes):0,maxRpe=rpes.length?Math.max(...rpes):1;
@@ -413,6 +441,9 @@ function renderPlanDashboard(){
  $('planDashLegend').innerHTML=[['Strength reps (primary + secondary)','#2abda7'],['Rep-weighted average (%1RM)','#ef9a70'],['Peak bench top set (%1RM)','#36adff'],['Foundation','#2abda7'],['Development','#5799df'],['Specificity','#ef9a70'],['Taper / event','#ae91eb'],['Deload','#8994a8']].map(([label,color])=>'<span><span style="color:'+color+'">■</span> '+label+'</span>').join('');
  let sessions=[];try{sessions=generatedSessions(c,prev)}catch(e){}
  const escPlan=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ $('planRunningVolume').innerHTML=metrics.map(m=>'<p>Week '+m.week+' · '+escPlan(m.runningVolume)+'</p>').join('');
+ const details=[...new Set([...(sessions.constraintResult?.warnings||[]),...sessions.flatMap(s=>[...(s.hybridNotes||[]),...(s.variationNotes||[])])])];
+ $('planSelectedNotes').innerHTML=details.length?details.map(note=>'<p>'+escPlan(note)+'</p>').join(''):'<p>No additional notes for this week.</p>';
  const baseDate=c.startDate?new Date(c.startDate+'T12:00:00'):null;
  const weekMonday=baseDate?new Date(baseDate.getTime()-((baseDate.getDay()+6)%7)*86400000+(prev-1)*7*86400000):null;
  const days={Monday:0,Tuesday:1,Wednesday:2,Thursday:3,Friday:4,Saturday:5,Sunday:6};
@@ -1438,14 +1469,14 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  <div class="fr-field"><label for="frDeadlift">Deadlift exposures per week</label><select id="frDeadlift"><option>0</option><option selected>1</option><option>2</option><option>3</option></select></div>
  <div class="fr-field"><label for="frRuns">Runs per week</label><select id="frRuns"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div></div><div class="fr-field"><label for="frLongDay">Preferred long-run day</label><select id="frLongDay"><option value="">No preference</option><option value="Mon">Monday</option><option value="Tue">Tuesday</option><option value="Wed">Wednesday</option><option value="Thu">Thursday</option><option value="Fri">Friday</option><option value="Sat" selected>Saturday</option><option value="Sun">Sunday</option></select></div><p class="fr-note">Long-run placement is a fixed preference when you have two or more runs. We will flag scheduling conflicts rather than silently move it.</p></details>
  </div><div id="frManualPanel" hidden><p class="fr-note">Assign sessions to days. Lower body includes squat and deadlift in one workout. Select Long run for exactly one day; other runs use Run. Training priorities change the prescriptions, not this split.</p><div id="frManualDays"></div><p class="fr-note" id="frManualStatus"></p></div>
- <div id="frFinalHeavy" class="fr-card" hidden><h2>Final heavy singles</h2><p class="fr-note">The coach uses your schedule, lifting experience and recovery to choose. You can request timing for each lift. Any later light technique session is separate from the final heavy work.</p><div id="frFinalHeavyLifts"></div></div>
+ <div id="frFinalHeavy" class="fr-card" hidden><h2>Final heavy singles</h2><p class="fr-note">Choose coach timing, or request an exact date or number of days before the meet for each lift. A requested heavy single needs suitable availability, recent experience with that lift and recovery. A later light technique session is separate.</p><div id="frFinalHeavyLifts"></div></div>
  <details class="fr-card" id="frTimeDetails"><summary>Session time preferences</summary><div class="fr-field"><label for="frTimePreference">Typical session duration (optional)</label><select id="frTimePreference"><option value="unspecified">Prefer not to specify</option><option value="varies">Varies / no fixed limit</option><option value="45">About 45 minutes</option><option value="60">About 60 minutes</option><option value="90">About 90 minutes</option></select><p class="fr-note">A preference guides review; it is not a hard limit.</p></div></details><details class="fr-card"><summary>Hard time limits and separate visits (optional)</summary><p class="fr-note">Leave minutes blank when flexible. Enter only genuine hard limits, including warm-up, rests and transitions. Use Double above for one combined visit. Separate visits each get the stated allowance.</p><div id="frVisitWindows"></div><div class="fr-field"><label for="frGapHours">Hours between separate visits</label><input id="frGapHours" type="number" min="6" value="6"></div></details>
  <details class="fr-card" id="frAfterWrap" hidden><summary>Your week after the first event</summary><p class="fr-note" id="frAfterNote">The coach switches priority after the first event and recovery. Set the frequencies for the next goal.</p><div class="fr-fields">
  <div class="fr-field"><label for="frAfterStrengthVisits">Strength visits</label><input id="frAfterStrengthVisits" type="number" min="1" max="7" value="2"></div><div class="fr-field"><label for="frAfterRuns">Runs</label><input id="frAfterRuns" type="number" min="1" max="7" value="3"></div>
  <div class="fr-field"><label for="frAfterSquat">Squat exposures</label><input id="frAfterSquat" type="number" min="0" max="7" value="1"></div><div class="fr-field"><label for="frAfterBench">Bench exposures</label><input id="frAfterBench" type="number" min="0" max="7" value="2"></div><div class="fr-field"><label for="frAfterDeadlift">Deadlift exposures</label><input id="frAfterDeadlift" type="number" min="0" max="7" value="1"></div></div></details>
  </section>
  <section class="fr-step" data-step="4"><h1>Where are you starting?</h1><p>Enter known lifting or running results to guide your starting loads and paces. Leave unknown results blank.</p>
- <div id="frStrengthBaselines"><div class="fr-fields" id="frBaselines"></div><div id="frEquipment"></div></div>
+ <div id="frStrengthBaselines"><p id="frSingleEvidence" class="fr-note" hidden></p><div class="fr-fields" id="frBaselines"></div><div id="frEquipment"></div></div>
  <div id="frRunningBaselines">
  <details class="fr-card" id="frRunningResult"><summary>Add a recent run result</summary><div class="fr-fields"><div class="fr-field"><label for="frRunDistance">Distance</label><select id="frRunDistance"><option value="5">5K</option><option value="10" selected>10K</option><option value="21.0975">Half marathon</option><option value="42.195">Marathon</option></select></div><div class="fr-field"><label for="frRunTime">Time (hh:mm:ss or mm:ss)</label><input id="frRunTime" placeholder="e.g. 55:00"></div></div>
  <div class="fr-fields" id="frRunResultDetails" hidden><div class="fr-field"><label for="frResultDate">Result date (optional)</label><input id="frResultDate" type="date"></div><div class="fr-field"><label for="frResultEffort">Type of effort</label><select id="frResultEffort"><option value="performance">Race / hard time trial</option><option value="training">Normal training run</option></select></div><div class="fr-field"><label for="frResultEnvironment">Where was it run?</label><select id="frResultEnvironment"><option value="outdoor">Outdoors</option><option value="treadmill">Treadmill</option></select></div></div></details>
@@ -1455,10 +1486,14 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  <div class="fr-card"><div class="fr-field"><label for="frFatigueStatus">How is your recovery now?</label><select id="frFatigueStatus"><option value="">Choose your current recovery</option><option value="normal">Normal for me</option><option value="lower">My legs feel more fatigued than usual</option><option value="all">Fatigue is affecting training overall</option></select></div><details id="frSleepDetails"><summary>Add recent sleep (optional)</summary><div class="fr-fields"><div class="fr-field"><label for="frSleepRecent">Recent sleep (hours, optional)</label><input id="frSleepRecent" type="number" min="0" max="24" step="0.5"></div><div class="fr-field"><label for="frSleepUsual">Usual sleep (hours, optional)</label><input id="frSleepUsual" type="number" min="0" max="24" step="0.5"></div></div></details></div>
  <details class="fr-card" id="frTaskRecovery"><summary>Activity-specific recovery review (optional)</summary><p class="fr-note">Record how you felt on the day after a completed activity. A normal response must match an actual logged activity. Comfortable easy running or light lifting does not establish readiness for harder work or a full training week. Unknown can stay unknown. These observations belong to this proposal; original sessions and RPE stay unchanged.</p><div id="frRecoveryObservations"></div><button type="button" class="secondary" id="frAddRecoveryObservation">Add a recovery observation</button></details>
  </section>
- <section class="fr-step" data-step="5"><h1>Review your programme</h1><p>Check the schedule and coaching notes before approving.</p>
- <div class="fr-card" id="frSummary"></div><div id="frReviewEdits" class="fr-mode"><button type="button" class="secondary" id="frEditGoals">Edit goals</button><button type="button" class="secondary" id="frEditWeek">Edit week</button><button type="button" class="secondary" id="frEditBaselines">Edit baselines</button></div><section class="fr-card" id="frFinalHeavyPreview" aria-label="Final heavy plan" hidden></section><details class="fr-card"><summary>Programme volume</summary><div id="frCycleChart"></div></details><details class="fr-card"><summary>Explore weekly sessions</summary><div class="fr-weeknav" id="frWeeknav"></div><div id="frPreview"></div></details><p id="frSafetyNotice" class="fr-warning"></p><details id="frCoachNotes" class="fr-card"><summary>Coach’s notes</summary><p id="frWarnings" class="fr-note"></p></details>
- <p class="fr-note">Review before approving. Replacing an existing programme requires a verified backup and explicit approval.</p></section>
+ <section class="fr-step" data-step="5"><h1>Your programme</h1>
+ <section id="frReviewStatus" class="fr-card fr-review-alert" aria-labelledby="frSafetyNotice" hidden><h2 id="frSafetyNotice"></h2><p id="frWarnings" role="status" tabindex="-1"></p><button type="button" id="frUseCoachTiming" class="secondary" hidden>Use coach timing for blocked lifts</button></section>
+ <div class="fr-card fr-review-overview" id="frSummary"></div>
+ <details id="frReviewEdits" class="fr-review-edit"><summary>Edit choices</summary><div class="fr-mode"><button type="button" class="secondary" id="frEditGoals">Edit goals</button><button type="button" class="secondary" id="frEditWeek">Edit week</button><button type="button" class="secondary" id="frEditBaselines">Edit baselines</button></div></details>
+ <section class="fr-card fr-review-overview" id="frFinalHeavyPreview" aria-label="Competition preparation" hidden></section>
+ </section>
  <p id="frError" class="fr-warning" role="alert"></p>
+ <p id="frApprovalError" class="fr-warning" role="alert" tabindex="-1" hidden></p>
  <div class="fr-actions"><button type="button" class="fr-back" id="frBack">Back</button><button type="button" id="frNext">Continue</button></div>
  </div>
 </div>
@@ -1484,7 +1519,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  const runningDate=()=>runningEventEnabled()?get('frRunningDate').value:'';
  const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
  const shiftedDate=(date,days)=>new Date(Date.parse(date+'T12:00:00Z')+days*86400000).toISOString().slice(0,10);
- let step=1,previewWeek=1,weeklyEdited=false,dialogRestore=null;
+ let step=1,weeklyEdited=false,dialogRestore=null,reviewedProgramme=null,approvalBlock='';
  const recoveryChoices=[['running|easy','Easy running'],['running|quality','Quality running'],['running|long','Long running'],...['Squat','Bench','Deadlift'].flatMap(lift=>[['strength|'+lift+'|lifting',lift+' familiar lifting'],['strength|'+lift+'|heavy',lift+' heavy singles/triples']])];
  get('frAddRecoveryObservation').onclick=()=>{
   const row=document.createElement('div');row.className='fr-card fr-recovery-observation';
@@ -1529,11 +1564,11 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  }));
  function setMode(isManual){manualMode=scope()==='hybrid'&&isManual;get('frCoachPanel').hidden=manualMode;get('frManualPanel').hidden=!manualMode;get('frModeCoach').classList.toggle('active',!manualMode);get('frModeManual').classList.toggle('active',manualMode);get('frModeCoach').setAttribute('aria-pressed',String(!manualMode));get('frModeManual').setAttribute('aria-pressed',String(manualMode));updateManualStatus()}
  get('frModeCoach').onclick=()=>setMode(false);get('frModeManual').onclick=()=>setMode(true);
- const existing=Boolean(data.onboardingComplete&&(data.customRoadmap||data.activeSchedule?.length));
+ const existing=()=>Boolean(data.onboardingComplete&&(data.customRoadmap||data.activeSchedule?.length));
  for(const lift of lifts){
   const id='frMax'+lift;
   const node=document.createElement('div');node.className='fr-field';node.dataset.baselineLift=lift;
-  node.innerHTML='<label for="'+id+'">'+lift+' (kg, optional)</label><input type="number" id="'+id+'" min="0" step="any" placeholder="Optional"><div id="'+id+'Details" hidden><label for="'+id+'Reps">Repetitions</label><select id="'+id+'Reps">'+Array.from({length:10},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'</option>').join('')+'</select></div><div id="'+id+'Single" hidden><label for="'+id+'Date">Single completed on (optional)</label><input type="date" id="'+id+'Date"><label class="fr-event-line"><input type="checkbox" id="'+id+'Technique"> Used competition technique</label></div>';
+  node.innerHTML='<label for="'+id+'">'+lift+' (kg, optional)</label><input type="number" id="'+id+'" min="0" step="any" placeholder="Optional"><div id="'+id+'Details" hidden><label for="'+id+'Reps">Repetitions</label><select id="'+id+'Reps">'+Array.from({length:10},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'</option>').join('')+'</select></div><div id="'+id+'Single" hidden><label for="'+id+'Date">'+lift+' single completed on (optional)</label><input type="date" id="'+id+'Date"><label class="fr-event-line"><input type="checkbox" id="'+id+'Technique"> Used competition technique for this single</label></div>';
   get('frBaselines').appendChild(node);
   get(id).addEventListener('input',updateVisitWindows);
   get(id+'Reps').addEventListener('change',updateVisitWindows);
@@ -1588,7 +1623,10 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    get(baseline+'Single').hidden=!(meet.includes(lift)&&+get(baseline).value>0&&+get(baseline+'Reps').value===1);
   }
   get('frStrengthBaselines').hidden=!hasStrength();
-  get('frEquipment').hidden=existing;
+  const requestedSingles=meet.filter(lift=>get('frFinalHeavy'+lift+'Mode').value!=='coach'),singleEvidence=get('frSingleEvidence');
+  singleEvidence.hidden=!requestedSingles.length;
+  singleEvidence.textContent=requestedSingles.length?'For your requested heavy singles ('+requestedSingles.join(', ')+'), enter the weight, 1 rep and date of a recent single you actually completed, and confirm competition technique if used. Leave unknown results blank. Coach timing can offer a safer option if the requested single cannot be confirmed.':'';
+  get('frEquipment').hidden=existing();
   get('frRunningBaselines').hidden=!hasRunning();
   get('frRunResultDetails').hidden=!get('frRunTime').value.trim();
   for(const id of ['frStrengthVisits','frSquat','frBench','frDeadlift'])get(id).parentElement.hidden=!hasStrength();
@@ -1663,6 +1701,18 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  }
  function wholeProgramme(c){return LHRFCoachAdapters.buildProgramme(c,{data});}
  function blockingMessage(p){const blocked=p.weeks.filter(w=>w.feasible===false);return blocked.slice(0,3).map(w=>'Week '+w.week+': '+[...new Set(w.blockingIssues?.length?w.blockingIssues:w.warnings)].join(' ')).join(' ') +(blocked.length>3?' '+(blocked.length-3)+' other weeks also require review.':'');}
+ function setReviewedProgramme(proposal,message=''){
+  reviewedProgramme=proposal;
+  approvalBlock=message||(proposal?(blockingMessage(proposal)||(!proposal.weeks.some(w=>w.sessions.length)?'No sessions fit this programme. Check your dates, goals and available training days.':'')):'Review your answers before starting this programme.');
+  const button=get('frNext');
+  if(approvalBlock)button.setAttribute('aria-disabled','true');else button.removeAttribute('aria-disabled');
+  get('frApprovalError').hidden=true;
+  get('frApprovalError').textContent='';
+ }
+ function showApprovalError(message){
+  const error=get('frApprovalError');error.hidden=false;error.textContent=message;
+  error.focus({preventScroll:true});error.scrollIntoView({block:'center'});
+ }
  function view(){
   updateVisitWindows();
   get('frStepLabel').textContent='Step '+step+' of 5 · '+['Training type','Goals','Week','Baselines and recovery','Review'][step-1];
@@ -1670,7 +1720,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   get('frProgress').setAttribute('aria-valuenow',step);
   get('frProgress').innerHTML=Array.from({length:5},(_,i)=>'<i class="'+(i<step?'on':'')+'" aria-hidden="true"></i>').join('');
   get('frBack').hidden=step===1;
-  get('frNext').disabled=false;get('frNext').textContent=step===5?(data.onboardingComplete?'Review replacement':'Approve programme'):'Continue';
+  get('frNext').disabled=false;get('frNext').textContent=step===5?(data.onboardingComplete&&data.customRoadmap?'Review replacement':'Start my programme'):'Continue';
+  if(step<5){setReviewedProgramme(null);get('frNext').removeAttribute('aria-disabled');}
   get('frError').textContent='';
   root.querySelectorAll('[aria-invalid=true]').forEach(el=>el.removeAttribute('aria-invalid'));
   if(step===5)renderPreview();
@@ -1714,43 +1765,75 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    cfg.liftProfiles[lift]={kg,reps,recency:cfg.liftProfiles[lift].recency,...(single&&get(id+'Date').value?{resultDate:get(id+'Date').value,competitionTechnique:get(id+'Technique').checked}:{})};
    cfg.baselines[lift]=estimatedMax(kg,reps);
   }
-  if(!existing&&hasStrength()&&window.LHRFOnboardingEquipmentDraft)cfg.equipmentInventory=window.LHRFOnboardingEquipmentDraft;
-  for(const key of ['lightLifts','topSetFirst','runTemplate','fixedSessions','manualSplit','competitionIntakeVersion','finalHeavyPreferences'])delete cfg[key];
+  if(!existing()&&hasStrength()&&window.LHRFOnboardingEquipmentDraft)cfg.equipmentInventory=window.LHRFOnboardingEquipmentDraft;
+  for(const key of ['lightLifts','topSetFirst','runTemplate','fixedSessions','manualSplit','competitionIntakeVersion','competitionTimingReviewVersion','finalHeavyPreferences'])delete cfg[key];
   if(selected.split)cfg.manualSplit=selected.split;
   if(strength){cfg.competitionIntakeVersion=1;cfg.finalHeavyPreferences=requestedHeavyTiming();}
   return LHRFCoach.prepareNewProgramme(intakeConfig(cfg,selected),{data});
  }
  function renderPreview(){
-  for(const id of ['frSummary','frCycleChart','frWeeknav','frPreview','frFinalHeavyPreview','frWarnings','frSafetyNotice'])get(id).replaceChildren();
-  get('frFinalHeavyPreview').hidden=true;
+  const summary=get('frSummary'),milestones=get('frFinalHeavyPreview'),status=get('frReviewStatus'),coachTiming=get('frUseCoachTiming');
+  summary.replaceChildren();milestones.replaceChildren();milestones.hidden=true;status.hidden=true;coachTiming.hidden=true;
+  setReviewedProgramme(null);
   let c,proposal;
-  try{c=sync();proposal=wholeProgramme(c)}catch(e){get('frNext').disabled=true;get('frError').textContent='Could not generate preview: '+e.message;return}
-  const baseBuild=!c.runningTargetDate&&['half','marathon'].includes(String(c.runGoal).toLowerCase());
-  const phaseLabels=proposal.weeks.map(w=>scope()==='strength'?w.phase:scope()==='running'?w.runningPhase||w.phase:w.phase+(w.runningPhase?' / Running: '+w.runningPhase:''));
-  const ranges=[];phaseLabels.forEach((x,i)=>{if(!ranges.length||ranges[ranges.length-1].name!==x)ranges.push({name:x,start:i+1,end:i+1});else ranges[ranges.length-1].end=i+1});
-  const summary=[hasStrength()?goalNames[c.strengthGoal]+(c.strengthTarget?' ('+c.strengthTarget+')':'')+(c.strengthTargetDate?' · '+c.strengthTargetDate:''):null,hasRunning()?'Running: '+c.runGoal+(c.runningTarget?' ('+c.runningTarget+')':'')+(c.runningTargetDate?' · '+c.runningTargetDate:''):null].filter(Boolean);
-  const frequencies=[hasStrength()?c.squat+' squat · '+c.bench+' bench · '+c.deadlift+' deadlift':null,hasRunning()?c.runs+' runs':null].filter(Boolean);
-  get('frSummary').innerHTML='<strong>'+c.weeks+(baseBuild?'-week base-building block':'-week '+(scope()==='hybrid'?'hybrid':scope())+' training cycle')+(c.manualSplit?' · Your split':'')+'</strong><p>Starts '+esc(c.startDate)+' · '+esc(summary.join(' · '))+'</p><p>'+c.days+' available days ('+esc((c.availableDays||[]).join(', '))+') · '+esc(frequencies.join(' · '))+' / week</p><small>Blocks: '+ranges.map(x=>esc(x.name)+' (W'+x.start+(x.end>x.start?'–'+x.end:'')+')').join(' · ')+'</small>';
-  if(c.orderedGoals?.length>1){const next=c.orderedGoals[1];get('frSummary').innerHTML+='<p>After '+esc(c.orderedGoals[0].date)+' and '+c.orderedGoals[0].recoveryDays+' recovery days: '+esc(next.priority)+' priority · '+next.strengthVisits+' strength visits · '+next.runs+' runs per week.</p>';}
-  previewWeek=Math.min(previewWeek,c.weeks);
-  get('frWeeknav').innerHTML='<label for="frPreviewWeek">Training week</label><select id="frPreviewWeek">'+Array.from({length:c.weeks},(_,i)=>'<option value="'+(i+1)+'"'+(previewWeek===i+1?' selected':'')+'>Week '+(i+1)+'</option>').join('')+'</select>';
-  get('frPreviewWeek').onchange=()=>{previewWeek=+get('frPreviewWeek').value;renderPreview()};
-  const colors={Foundation:'#4285d4',Development:'#25b7b0',Specificity:'#ab8deb','Taper / event':'#edb45f',Recovery:'#788b9f','Aerobic foundation':'#4285d4','Specific preparation':'#ab8deb'};
-  const workload=proposal.weeks.map(week=>{const w=week.week,phase=scope()==='running'&&week.runningPhase?week.runningPhase:week.deload?'Recovery':week.phase,sessions=week.sessions;return {w,phase,minutes:sessions.reduce((n,x)=>n+(x.runs||[]).reduce((a,r)=>a+Number(r.minutes||0),0),0),sets:sessions.reduce((n,x)=>n+(x.ex||[]).reduce((a,e)=>a+Number(e[1]||0),0),0),km:sessions.reduce((n,x)=>n+(x.runs||[]).reduce((a,r)=>a+Number(r.distanceKm||0),0),0)}});
-  const allRuns=proposal.weeks.flatMap(w=>w.sessions.flatMap(s=>s.runs||[])),timeOnlyVolume=allRuns.length>0&&allRuns.every(r=>r.distanceKnown===false);
-  const chart=(key,label)=>{const max=Math.max(1,...workload.map(x=>x[key])),bw=600/c.weeks;return '<h3>'+label+'</h3><svg viewBox="0 0 640 150" role="img" aria-label="'+label+' across '+c.weeks+' weeks"><text x="0" y="15" fill="#a9bed1" font-size="11">'+Math.ceil(max)+'</text><line x1="30" y1="120" x2="635" y2="120" stroke="#34495e"/>'+workload.map(x=>{const h=x[key]/max*95;return '<rect x="'+(32+(x.w-1)*bw)+'" y="'+(120-h)+'" width="'+Math.max(2,bw-3)+'" height="'+h+'" rx="2" fill="'+(colors[x.phase]||colors.Development)+'"><title>Week '+x.w+' · '+esc(x.phase)+' · '+Math.round(x[key]*10)/10+' '+(key==='km'?'km':key==='minutes'?'min':'sets')+'</title></rect>'+((x.w===1||x.w===c.weeks||x.w%Math.ceil(c.weeks/8)===0)?'<text x="'+(32+(x.w-1)*bw)+'" y="140" fill="#a9bed1" font-size="11">W'+x.w+'</text>':'')}).join('')+'</svg>'};
-  get('frCycleChart').innerHTML='<h2>Your cycle at a glance</h2><p class="fr-note">Planned workload from your generated sessions.</p>'+(hasStrength()?chart('sets','Strength volume · working sets'):'')+(hasRunning()?(timeOnlyVolume?chart('minutes','Running volume · planned minutes'):chart('km','Running volume · km')):'')+'<div class="fr-phase-legend">'+[...new Set(workload.map(x=>x.phase))].map(p=>'<span><i style="background:'+(colors[p]||colors.Development)+'"></i>'+esc(p)+'</span>').join('')+'</div><details><summary>Weekly volume figures</summary>'+workload.map(x=>'<p>Week '+x.w+' · '+esc(x.phase)+(hasStrength()?' · '+x.sets+' sets':'')+(hasRunning()?' · '+(timeOnlyVolume?x.minutes+' planned running min':x.km.toFixed(1)+' km'):'')+'</p>').join('')+'</details>';
+  try{c=sync();proposal=wholeProgramme(c)}catch(error){
+   setReviewedProgramme(null,error.message);
+   status.hidden=false;
+   get('frSafetyNotice').textContent='Check your answers';
+   get('frWarnings').textContent=error.message;
+   return;
+  }
+  setReviewedProgramme(proposal);
+  const dateLabel=date=>new Date(date+'T12:00:00Z').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'});
+  const runGoal=({fitness:'Running fitness','5k':'5K','10k':'10K',half:'Half marathon',marathon:'Marathon'})[String(c.runGoal).toLowerCase()]||c.runGoal;
+  const eventGoals=[c.strengthTargetDate?[goalNames[c.strengthGoal]||'Strength competition',c.strengthTargetDate]:null,c.runningTargetDate?[runGoal,c.runningTargetDate]:null].filter(Boolean);
+  const goal=eventGoals.length?'':scope()==='running'?runGoal:scope()==='strength'?(goalNames[c.strengthGoal]==='General fitness'?'Build strength':goalNames[c.strengthGoal]||'Build strength'):'Build hybrid fitness';
+  const completeWeek=new Date(c.startDate+'T12:00:00Z').getUTCDay()===1?1:2;
+  const sample=proposal.weeks.find(w=>w.week>=completeWeek&&w.sessions.some(s=>!s.eventDate))||proposal.weeks.find(w=>w.sessions.some(s=>!s.eventDate));
+  const sessions=sample?.sessions.filter(s=>!s.eventDate)||[];
+  const work=sessions.filter(s=>s.ex?.length||s.runs?.length);
+  const strength=work.filter(s=>s.ex?.length).length,running=work.reduce((count,s)=>count+(s.runs?.length||0),0);
+  const visits=work.reduce((count,s)=>count+(s.timeBudget?.separate&&s.ex?.length&&s.runs?.length?2:1),0);
+  const minutes=work.map(s=>s.timeBudget?.totalMinutes);
+  const duration=minutes.length&&minutes.every(m=>Number.isFinite(m)&&m>0)?'About '+minutes.reduce((total,m)=>total+m,0)+' min total':'';
+  const strip=weekdays.map(day=>{
+   const slots=work.filter(s=>String(s.day).slice(0,3)===day);
+   const types=[slots.some(s=>s.ex?.length)?'Lift':'',slots.some(s=>s.runs?.length)?'Run':''].filter(Boolean);
+   return '<li'+(types.length?' class="fr-review-day-active"':'')+'><b>'+day+'</b><span>'+types.join(' + ')+'</span></li>';
+  }).join('');
+  summary.innerHTML='<p class="fr-review-kicker">Your goal</p>'+
+   (goal?'<h2>'+esc(goal)+'</h2>':eventGoals.map(([name,date])=>'<div class="fr-review-event"><h2>'+esc(name)+'</h2><span>'+esc(dateLabel(date))+'</span></div>').join(''))+
+   '<p class="fr-note">'+c.weeks+'-week '+(!c.runningTargetDate&&['half','marathon'].includes(String(c.runGoal).toLowerCase())?'base-building block':'programme')+' · Starts '+esc(dateLabel(c.startDate))+'</p>'+
+   '<div class="fr-review-week"><p class="fr-review-kicker">Your training week</p>'+
+   (sample?'<p class="fr-review-rhythm"><strong>'+visits+' '+(visits===1?'visit':'visits')+'</strong><span>'+[strength?strength+' strength':'',running?running+' '+(running===1?'run':'runs'):''].filter(Boolean).join(' · ')+'</span></p><ul class="fr-review-days" aria-label="Training days in week '+sample.week+'">'+strip+'</ul><p class="fr-note">Week '+sample.week+' example'+(duration?' · '+duration:'')+' · Training changes as you progress.</p>':'<p>No regular training sessions in this proposal. Check your available days and goals.</p>')+'</div>';
   const timing=Object.entries(proposal.finalHeavyPlan||{});
   if(timing.length){
-   const name={single:'Final heavy single','rep-practice':'Last demanding rep practice',none:'No heavy session scheduled'};
-   const target=get('frFinalHeavyPreview');target.hidden=false;
-   target.innerHTML='<h2>Final heavy work before the meet</h2>'+timing.map(([lift,plan])=>'<div class="fr-timing-result"><h3>'+esc(lift)+' · '+(plan.mode==='athlete'?'Athlete request':'Coach choice')+'</h3><p>'+esc(name[plan.kind]||name.none)+(plan.date?' · '+esc(plan.date)+' ('+esc(plan.daysOut)+' days out)':'')+'</p><p class="fr-note">'+esc(plan.reason)+'</p>'+(plan.finalLightDate?'<p class="fr-note">Later light technique · '+esc(plan.finalLightDate)+'</p>':'')+'</div>').join('');
+   const title={single:'Final heavy single','rep-practice':'Final demanding rep practice',none:'Heavy single withheld'};
+   milestones.hidden=false;
+   milestones.innerHTML='<h2>Competition preparation</h2>'+timing.map(([lift,plan])=>'<div class="fr-timing-result"><h3>'+esc(lift)+'</h3><p><strong>'+esc(title[plan.kind]||title.none)+'</strong>'+(plan.date?' · '+esc(dateLabel(plan.date))+' ('+esc(plan.daysOut)+' days out)':'')+'</p>'+
+    (!plan.date&&plan.requestedDate?'<p class="fr-note">Requested '+esc(dateLabel(plan.requestedDate))+' ('+esc(plan.requestedDaysOut)+' days out)</p>':'')+
+    ((plan.kind!=='single'||plan.mode==='athlete')&&plan.reason?'<p class="fr-note">'+esc(plan.reason)+'</p>':'')+
+    (plan.nextStep?'<p class="fr-note">'+esc(plan.nextStep)+'</p>':'')+
+    (plan.finalLightDate?'<p class="fr-note">Light technique · '+esc(dateLabel(plan.finalLightDate))+'</p>':'')+'</div>').join('');
   }
-  try{
-   const sessions=ensureKnownLiftLoads(proposal.weeks.find(w=>w.week===previewWeek).sessions,c);
-   get('frPreview').innerHTML=sessions.map(s=>'<details class="fr-session"><summary>'+esc(s.day)+' · '+esc(s.name)+'</summary><div>'+(s.eventDate?'<p>'+esc(s.eventDate)+'</p>':'')+(s.eventType==='strength'?(s.variationNotes||[]).map(note=>'<p class="fr-note">'+esc(note)+'</p>').join(''):'')+((s.ex||[]).map(e=>'<p><b>'+esc(e[0])+'</b> · '+esc(e[1])+' × '+esc(e[2])+' @ RPE '+esc(e[4])+(+e[3]>=5?' · '+esc(e[3])+' kg':' · find working weight by warm-up (RPE '+esc(e[4])+')')+'</p>'+([e[5]?.rationale,e[5]?.reason].filter(Boolean).length?'<p class="fr-note">'+esc([...new Set([e[5]?.rationale,e[5]?.reason].filter(Boolean))].join(' '))+'</p>':'')).join(''))+((s.runs||[]).map(r=>'<div class="run-session-block"><b>'+esc(typeof r==='string'?r:r.name)+'</b>'+(typeof r==='object'?runStepsHtml(r):'')+'</div>').join(''))+'</div></details>').join('')||'<p>No sessions generated. Review your schedule.</p>';
-   const blocked=proposal.weeks.some(w=>w.feasible===false);const notes=[...new Set(proposal.weeks.flatMap(w=>w.warnings))];get('frWarnings').textContent=blocked?blockingMessage(proposal):notes.join(' ');get('frSafetyNotice').textContent=blocked?'Review the schedule or goals before approving. Open Coach’s notes for the affected weeks.':'';get('frCoachNotes').open=blocked;get('frNext').disabled=step===5&&blocked;
-  }catch(e){get('frNext').disabled=true;get('frPreview').textContent='Preview could not be generated: '+e.message}
+  const blocked=proposal.weeks.some(w=>w.feasible===false);
+  const caution=[...new Set(proposal.weeks.flatMap(w=>w.warnings||[]))].filter(note=>/adjacent competitions|running event immediately follows|pain|injury|worsening|safety hold/i.test(note));
+  if(blocked||caution.length){
+   status.hidden=false;
+   get('frSafetyNotice').textContent=blocked?'Changes needed before you start':'Recovery to review';
+   const issues=proposal.weeks.filter(w=>w.feasible===false).flatMap(w=>w.blockingIssues?.length?w.blockingIssues:w.warnings||[]);
+   const onlyTiming=issues.length&&issues.every(issue=>/^(Squat|Bench|Deadlift) final heavy single/i.test(issue));
+   get('frWarnings').textContent=blocked?(onlyTiming?'Review the final heavy requests under Competition preparation, or use coach timing for those lifts.':blockingMessage(proposal)):caution.join(' ');
+  }
+  const withheld=timing.filter(([,plan])=>plan.mode==='athlete'&&!plan.date);
+  if(blocked&&withheld.length){
+   coachTiming.hidden=false;
+   coachTiming.onclick=()=>{
+    for(const [lift] of withheld)get('frFinalHeavy'+lift+'Mode').value='coach';
+    renderPreview();
+    (get('frReviewStatus').hidden?get('frNext'):get('frWarnings')).focus();
+   };
+  }
  }
  function showError(message,field){
   get('frError').textContent=message;
@@ -1816,25 +1899,38 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  get('frNext').onclick=async()=>{
   if(step===2&&!validGoals()||step===3&&!validWeek()||step===4&&!validBaselines())return;
   if(step<5){step++;view();return}
-  const nextButton=get('frNext');nextButton.disabled=true;
+  if(approvalBlock||!reviewedProgramme){
+   const status=get('frReviewStatus');
+   if(!status.hidden){status.tabIndex=-1;status.focus({preventScroll:true});status.scrollIntoView({block:'start'});}
+   else showApprovalError(approvalBlock||'Review your answers before starting this programme.');
+   return;
+  }
+  const nextButton=get('frNext'),reviewed=reviewedProgramme;nextButton.disabled=true;
+  let activated;
+  get('frApprovalError').hidden=true;get('frApprovalError').textContent='';
   try{
-   const proposal=sync(),reviewed=wholeProgramme(proposal);if(reviewed.weeks.some(w=>w.feasible===false))throw Error(blockingMessage(reviewed));const c=LHRFCoach.approveProgrammeConfig(proposal),sessions=applyApprovedHybridRunning(carryForwardApprovedProgression(ensureKnownLiftLoads(generatedSessions(c,1),c),1),1);
-   if(!sessions.length)throw Error('No workouts were generated.');
-   const p=customPlan(c);if(p.feasible===false)throw Error(p.warnings.join(' '));if(c.manualSplit&&p.warnings.some(x=>/mismatch|Choose exactly|too many|two runs|requires both|needs permission/.test(x)))throw Error(p.warnings.join(' '));if(p.warnings.some(x=>x.startsWith('Could not schedule')))throw Error('Some sessions cannot fit your selected days. Allow double sessions on more days or adjust frequencies.');
-   if([c.strengthTargetDate,c.runningTargetDate].filter(Boolean).some(d=>d<c.startDate))throw Error('Event dates must follow the programme start date.');
    if(data.onboardingComplete&&data.customRoadmap){
     if(!window.LHRFReviewGeneratedProgramme)throw Error('Safe programme replacement is unavailable. Reopen online; your current programme is unchanged.');
     await window.LHRFReviewGeneratedProgramme(reviewed);closeSetup();go('settings');$('settingsProgramme').open=true;$('generatedProgrammeReview').scrollIntoView({block:'start'});return;
    }
-   const next={...data,customRoadmap:{...c,previewWeek:1},activeCustomWeek:1,overrides:{},activeSchedule:sessions,onboardingComplete:true,
+   if(window.LHRFLive?.get?.()||localStorage.getItem('lhrf_fresh_beta_live_v1114_pendingRun'))throw Error('Finish your active workout and any pending run first. Your draft is unchanged.');
+   // A valid partial opening week can have no training days. Keep the approved start date and calendar numbering.
+   const opening=reviewed.weeks.find(w=>w.sessions.length),week=opening.week;
+   const c=LHRFCoach.approveProgrammeConfig(reviewed.config);
+   const engine=coachEngine();
+   const sessions=opening.sessions.map(s=>orderedSessionCompat(engine,{...s,id:c.sessionNamespace+s.id,programmeId:c.programmeId}));
+   const next={...data,customRoadmap:{...c,previewWeek:week},activeCustomWeek:week,overrides:{},activeSchedule:sessions,onboardingComplete:true,
     onboardingManualMode:!!c.manualSplit,onboardingDraftDays:c.availableDays,onboardingDoubleDays:c.doubleDays,onboardingLongRunDay:c.longRunDay};
    if(c.manualSplit)next.onboardingManualSplit=c.manualSplit;
    if(hasStrength()&&window.LHRFOnboardingEquipmentDraft)next.equipmentInventory=c.equipmentInventory;
    if(data.customRoadmap)next.programmeArchive=[...(data.programmeArchive||[]),{programme:JSON.parse(JSON.stringify(data.customRoadmap)),schedule:JSON.parse(JSON.stringify(data.activeSchedule||[])),week:data.activeCustomWeek||1,overrides:JSON.parse(JSON.stringify(data.overrides||{})),decisions:JSON.parse(JSON.stringify(data.decisions||[])),archivedAt:c.approvedAt}];
-   if(!save(next))throw Error(lhrfSaveError||'Programme could not be saved on this device.');
-   data=next;schedule=sessions;populate();refresh();closeSetup();
-   planDashSelection=1;renderPlanDashboard();go('today');
-  }catch(e){get('frError').textContent='Could not activate programme: '+e.message;nextButton.disabled=false;}
+   if(!save(next,{notify:false}))throw Error(lhrfSaveError||'Programme could not be saved on this device.');
+   activated={next,week,sessions};
+  }catch(e){showApprovalError('Could not start your programme. '+e.message);return;}
+  finally{nextButton.disabled=false;}
+  data=activated.next;schedule=activated.sessions;planDashSelection=activated.week;
+  try{closeSetup();populate();refresh();}catch(error){console.error('Could not refresh the saved programme view.',error);}
+  go('today');
  };
  function openSetup(){
   const focus=document.activeElement,overflow=document.body.style.overflow;
@@ -1888,14 +1984,14 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   for(const [kind,date] of [['Strength',strength],['Running',running]]){const event=c.visitConstraints?.eventDays?.[date];if(event){get('fr'+kind+'EventConfirmed').checked=event.confirmed===true;set('fr'+kind+'EventMinutes',event.minutes)}}
   if(c.orderedGoals?.length>1){set('frGoalStrategy','staged');set('frRecoveryDays',c.orderedGoals[0].recoveryDays);const next=c.orderedGoals[1];for(const [key,field]of [['runs','Runs'],['bench','Bench'],['squat','Squat'],['deadlift','Deadlift'],['strengthVisits','StrengthVisits']])set('frAfter'+field,next[key])}
   get('frFatigueStatus').value='';get('frRecoveryObservations').replaceChildren();
-  weeklyEdited=!!days.length;updateScope();step=1;previewWeek=1;openSetup();
+  weeklyEdited=!!days.length;updateScope();step=1;get('frCancel').hidden=!existing();openSetup();
  }
  window.LHRFStartNewProgramme=startNewProgramme;
  window.LHRFCloseOnboarding=closeSetup;
  const restartLink=document.getElementById('restartOnboardingLink');if(restartLink)restartLink.addEventListener('click',e=>{e.preventDefault();startNewProgramme()});
- const cancel=document.createElement('button');cancel.type='button';cancel.id='frCancel';cancel.className='secondary';cancel.textContent='Cancel';cancel.hidden=!existing;get('frBack').parentNode.append(cancel);cancel.onclick=()=>{closeSetup();go('settings')};
- root.addEventListener('keydown',event=>{if(event.key==='Escape'&&existing){event.preventDefault();cancel.click();}});
- if(!existing){
+ const cancel=document.createElement('button');cancel.type='button';cancel.id='frCancel';cancel.className='secondary';cancel.textContent='Cancel';cancel.hidden=!existing();get('frBack').parentNode.append(cancel);cancel.onclick=()=>{closeSetup();go('settings')};
+ root.addEventListener('keydown',event=>{if(event.key==='Escape'&&existing()){event.preventDefault();cancel.click();}});
+ if(!existing()){
   openSetup();
  }
 })();
