@@ -31,7 +31,85 @@ function assess(state,now=new Date()){
  if(!state.garminSync?.savedAt)messages.push('No successful Garmin import review has been recorded yet.');
  return {messages,proposals:[...new Set(proposals)],appliedChanges:[]};
 }
-function mount({getData,commit}){
+const dayMs=86400000;
+function localDate(value){
+ if(typeof value!=='string'||!value)return '';
+ if(/^\d{4}-\d{2}-\d{2}$/.test(value)){
+  const date=new Date(value+'T12:00:00Z');
+  return Number.isFinite(+date)&&date.toISOString().slice(0,10)===value?value:'';
+ }
+ const date=new Date(value);
+ return Number.isFinite(+date)?date.toLocaleDateString('en-CA'):'';
+}
+function monday(date){
+ const d=new Date(date+'T12:00:00Z');
+ return +d-(d.getUTCDay()+6)%7*dayMs;
+}
+function reviewPeriod(state,week,now){
+ const start=localDate(state.customRoadmap?.startDate);
+ const base=start?monday(start)+(week-1)*7*dayMs:
+  week===Number(state.activeCustomWeek||1)?monday(localDate(now.toISOString())):NaN;
+ const key=offset=>Number.isFinite(base)?new Date(base+offset*dayMs).toISOString().slice(0,10):'';
+ return {start:key(0),end:key(6)};
+}
+function inPeriod(date,period,now){
+ const d=localDate(date);
+ return !!period.start&&d>=period.start&&d<=period.end&&Date.parse(date)<=+now;
+}
+function savedCheckin(state,key,period,now){
+ return (state.weeklyCheckins||[]).findLast(row=>
+  (row.programmeWeekKey===key&&localDate(state.customRoadmap?.startDate))||
+  ((!row.programmeWeekKey||row.programmeWeekKey===key)&&inPeriod(row.date,period,now)));
+}
+function distinctRuns(rows){
+ const seen=new Set();
+ return rows.filter(run=>{
+  const keys=[];
+  const activityId=run.sourceActivityId||run.garminActivityId;
+  if(activityId)keys.push('activity|'+activityId);
+  for(const record of [run,run.importOriginal].filter(Boolean)){
+   const time=Date.parse(record.date);
+   if(Number.isFinite(time)&&record.km>0&&record.min>0)keys.push(['record',time,Number(record.km),Number(record.min)].join('|'));
+  }
+  const duplicate=keys.some(key=>seen.has(key));
+  keys.forEach(key=>seen.add(key));
+  return !duplicate;
+ });
+}
+function weeklySummary({state,week,check,now=new Date(),sessions,nextSessions,parts,completion}){
+ const period=reviewPeriod(state,week,now),recorded=row=>inPeriod(row.date,period,now);
+ const actualSets=(state.sets||[]).filter(recorded);
+ const sets=actualSets.filter(row=>row.exercise&&Number(row.reps)>0&&Number.isFinite(Number(row.reps)));
+ const allRuns=distinctRuns((state.runs||[]).filter(r=>Date.parse(r.date)<=+now));
+ const runs=allRuns.filter(recorded);
+ const measured=runs.filter(r=>Number(r.km)>0&&Number.isFinite(Number(r.km)));
+ const distance=measured.reduce((sum,r)=>sum+Number(r.km),0);
+ const counts=completion({...state,activeCustomWeek:week,activeSchedule:sessions||[],
+  completedWorkouts:(state.completedWorkouts||[]).filter(w=>localDate(w.date)&&Date.parse(w.date)<=+now)},parts);
+ const planned=nextSessions?.flatMap(parts);
+ const next=planned&&{
+  strength:planned.filter(s=>s.ex?.length).length,
+  running:planned.filter(s=>s.runs?.length||s.run).length,
+  sessions:planned
+ };
+ const feedback=(state.sessionFeedback||[]).filter(recorded);
+ const discomfort=check.discomfort==='yes'||feedback.some(f=>f.discomfort==='yes');
+ const concern=discomfort?'Unusual discomfort reported.':
+  check.fatigue==='high'||check.soreness==='high'?'High '+[check.fatigue==='high'?'fatigue':'',check.soreness==='high'?'leg soreness':''].filter(Boolean).join(' and ')+' reported.':'';
+ const asOf=period.end&&period.end<localDate(now.toISOString())?new Date(period.end+'T23:59:59'):now;
+ const evidence=assess({...state,runs:allRuns,sessionFeedback:feedback,weeklyCheckins:[{...check,date:asOf.toISOString()}]},asOf);
+ const verdict=concern||evidence.proposals.length
+  ? 'Review recovery before adding training stress.'
+  : sets.length||runs.length?'The available logs and check-in give no clear reason to change the plan.':'There’s too little recorded training to assess this week.';
+ const lastSync=localDate(state.garminSync?.end||state.garminSync?.savedAt);
+ const coverage=state.garminSync?.truncated?'The last Garmin import was partial. Some runs may be missing.':
+  !lastSync||!period.start||lastSync<localDate(asOf.toISOString())||
+  (state.garminSync?.start&&localDate(state.garminSync.start)>period.start)?
+   'Garmin coverage is unconfirmed. Totals reflect saved runs.':'';
+ return {period,counts,sets:sets.length,incompleteSets:actualSets.length-sets.length,runs:runs.length,
+  distance:measured.length?distance:null,missingDistance:runs.length-measured.length,next,concern,verdict,coverage,evidence};
+}
+function mount({getData,commit,getSessions,parts}){
  const host=document.getElementById('progress');if(!host)return;const box=document.createElement('div');box.className='card';box.id='trainingHistory';host.insertBefore(box,document.getElementById('progressDetails'));const format=root.LHRFRunPresentation;
  const make=(tag,text,parent)=>{const el=document.createElement(tag);if(text!=null)el.textContent=text;if(parent)parent.append(el);return el};
  make('h2','Workout history',box);make('p','Open a session to review recorded work. Older records without a saved prescription show only what was recorded.',box).className='muted small';
@@ -62,19 +140,94 @@ function mount({getData,commit}){
  const provenance=make('details',null,actual);make('summary','Source & recorded timing',provenance);make('p','Source: '+(r.source||'athlete log')+(r.sourceActivityId?' · activity '+r.sourceActivityId:'')+(r.totalsSource?' · '+r.totalsSource:''),provenance);make('p','Recorded: '+r.date+(r.durationBasis?' · pace uses '+r.durationBasis+' time':''),provenance);
  if(r.source==='garmin-local')make('p','Timer: '+format.duration(r.timerMinutes)+' · elapsed: '+format.duration(r.elapsedMinutes)+' · moving: '+format.duration(r.movingMinutes),provenance);for(const warning of r.warnings||[])make('p',warning,provenance);
  const label=make('label',null,actual),check=make('input',null,label);check.type='checkbox';check.checked=r.comparableEasy===true;label.append(document.createTextNode(' Use for comparable easy-run trends'));const help=make('p','Select only for an easy run with similar route, terrain, weather and a reliable heart-rate reading. Your coach needs four confirmed comparable runs to review pace at similar heart rate. This does not change the run or its prescription.',actual);help.id='comparableHelp'+list.querySelectorAll('input[type="checkbox"]').length;help.className='muted small';check.setAttribute('aria-describedby',help.id);
- check.onchange=()=>{const next=JSON.parse(JSON.stringify(getData())),index=getData().runs.indexOf(r);if(index<0)return;next.runs[index].comparableEasy=check.checked;if(!commit(next)){check.checked=!check.checked;return}renderAssessment()};}
+ check.onchange=()=>{const next=JSON.parse(JSON.stringify(getData())),index=getData().runs.indexOf(r);if(index<0)return;next.runs[index].comparableEasy=check.checked;if(!commit(next))check.checked=!check.checked};}
  for(const note of new Set([row.notes,...row.sets.map(s=>s.notes),...row.runs.map(r=>r.notes||r.note)].filter(Boolean)))make('p','Notes: '+note,detail);for(const f of row.feedback)make('p','Feedback: '+[f.difficulty,f.energy,f.discomfort==='yes'?'unusual discomfort':null].filter(Boolean).join(' · '),detail);
  }more.hidden=items.length<=limit;}
- function pace(n){const s=Math.round(n*60);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
  for(const el of [from,to,type])el.onchange=()=>{limit=10;renderHistory()};more.onclick=()=>{limit+=20;renderHistory()};
- const review=document.createElement('div');review.className='card';review.id='weeklyCheckin';box.after(review);make('h2','Weekly check-in',review);make('p','Review recovery after your final workout of the week. You can return here any time.',review);
+ const review=document.createElement('div');review.className='card';review.id='weeklyCheckin';box.after(review);const heading=make('h2','Weekly check-in',review);make('p','Review recovery after your final workout of the week. You can return here any time.',review);
  const controls={};for(const [key,label,options]of [['fatigue','Overall fatigue',['low','moderate','high']],['soreness','Leg soreness',['low','moderate','high']],['discomfort','Unusual discomfort',['no','yes']]]){const wrap=make('label',label,review),select=make('select',null,wrap);for(const value of ['',...options]){const o=make('option',value||'Choose…',select);o.value=value}controls[key]=select}
  const notes=make('textarea',null,make('label','Anything affecting training? Heat, hills, sleep, illness or sensor problems',review));notes.rows=2;
- const actions=make('div',null,review);actions.className='actions';const save=make('button','Save weekly check-in',actions),sync=make('button','Pull recent Garmin runs',actions);sync.className='secondary';const status=make('p',null,review);status.setAttribute('aria-live','polite');const evidence=make('div',null,review);
- function renderAssessment(){evidence.replaceChildren();const state=getData(),result=assess(state);make('p',state.garminSync?.savedAt?'Last Garmin import reviewed: '+new Date(state.garminSync.savedAt).toLocaleString('en-GB'):'Garmin import has not been reviewed yet.',evidence).className='muted small';if(state.garminSync?.truncated)make('p','The last import was partial. Older runs may be missing; review coverage before drawing conclusions.',evidence);const latest=(state.weeklyCheckins||[]).slice(-1)[0];if(latest){make('p','Latest check-in: '+new Date(latest.date).toLocaleDateString('en-GB')+' · fatigue '+latest.fatigue+' · soreness '+latest.soreness+' · discomfort '+latest.discomfort,evidence);if(latest.notes)make('p','Context: '+latest.notes,evidence)}for(const text of result.messages)make('p',text,evidence);for(const text of result.proposals)make('p','Proposed for discussion: '+text,evidence).className='warn';make('p','No programme changes applied. These signals support the existing coach review; any prescription change still requires approval.',evidence).className='muted small'}
- save.onclick=()=>{if(Object.values(controls).some(x=>!x.value)){status.textContent='Choose fatigue, soreness and discomfort before saving.';return}const next=JSON.parse(JSON.stringify(getData()));next.weeklyCheckins=next.weeklyCheckins||[];next.weeklyCheckins.push({date:new Date().toISOString(),...Object.fromEntries(Object.entries(controls).map(([k,v])=>[k,v.value])),notes:notes.value.slice(0,2000),...(root.LHRFMobileUX?{programmeWeekKey:root.LHRFWeeklyReviewKey||root.LHRFMobileUX.weekKey(getData())}:{})});if(!commit(next)){status.textContent='Could not save the check-in. Please try again.';return}delete root.LHRFWeeklyReviewKey;status.textContent='Check-in saved. Pull recent Garmin runs to bring this assessment up to date.';renderAssessment()};
+ const actions=make('div',null,review);actions.className='actions';const save=make('button','Save weekly check-in',actions),sync=make('button','Pull recent Garmin runs',actions);sync.className='secondary';const status=make('p',null,review);status.setAttribute('aria-live','polite');
+ function openReview(state,week,check){
+  const sessions=getSessions(week),nextSessions=getSessions(week+1);
+  const result=weeklySummary({state,week,check,sessions,nextSessions,parts,completion:root.LHRFMobileUX.weekCompletion});
+  if(document.getElementById('weeklyReviewSheet'))return;
+  const sheet=make('dialog',null,document.body);sheet.className='training-sheet weekly-sheet';sheet.id='weeklyReviewSheet';
+  sheet.setAttribute('aria-labelledby','weeklyReviewTitle');
+  make('p','CHECK-IN SAVED',sheet).className='tag';
+  make('h2','Weekly review',sheet).id='weeklyReviewTitle';
+  const dateLabel=date=>new Date(date+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+  const {start,end}=result.period;
+  make('p',start?dateLabel(start)+' – '+dateLabel(end):'Training dates unavailable',sheet).className='muted small';
+  const plural=(n,word)=>n+' '+word+(n===1?'':'s');
+  const metrics=make('section',null,sheet);metrics.className='weekly-metrics';metrics.setAttribute('aria-label','Training recorded');
+  const metric=(value,label)=>{const item=make('div',null,metrics);make('strong',value,item);make('span',label,item)};
+  metric(result.counts.planned?result.counts.completed+' / '+result.counts.planned:'—','Planned sessions done');
+  metric(result.sets?String(result.sets):'—','Strength sets logged');
+  metric(result.distance===null?'—':format.distance(result.distance),plural(result.runs,'run')+' logged');
+  const gaps=[
+   !result.sets?'No verified sets logged.':result.incompleteSets?'Some set records lack details.':'',
+   !result.runs?'No runs logged.':result.missingDistance?'Some run distances are missing.':'',
+   !result.counts.planned?'Planned session count unavailable.':''
+  ].filter(Boolean);
+  if(gaps.length)make('p',gaps.join(' '),sheet).className='muted small';
+  const section=(label,copy)=>{const el=make('section',null,sheet);make('h3',label,el);make('p',copy,el);return el};
+  const level=(value,label)=>value?value[0].toUpperCase()+value.slice(1)+' '+label:label+' unrecorded';
+  const recovery=section('Recovery',[level(check.fatigue,'fatigue'),level(check.soreness,'leg soreness'),
+   check.discomfort==='yes'?'Unusual discomfort':check.discomfort==='no'?'No unusual discomfort':'Discomfort unrecorded'].join(' · '));
+  if(result.concern)make('p',result.concern,recovery).className='weekly-concern';
+  section('Coach’s assessment',result.verdict);
+  const next=result.next;
+  section('Next week',next?.sessions.length
+   ?[next.strength?plural(next.strength,'strength session'):'',next.running?plural(next.running,'run'):''].filter(Boolean).join(' · ')||'See the scheduled sessions below.'
+   :next?'No sessions scheduled in the saved plan.':'Next week’s sessions are unavailable in the saved plan.');
+  const details=make('details',null,sheet);details.className='weekly-evidence';make('summary','View details',details);
+  make('p','Recovery responses were saved on '+new Date(check.date).toLocaleDateString('en-GB')+'.',details);
+  if(check.notes)make('p','Your notes: '+check.notes,details);
+  make('p','Set and run totals use the dates in the saved activity logs. Planned completion uses saved workout links, so a workout done early or late can count towards a different planned week.',details);
+  if(result.coverage)make('p',result.coverage,details);
+  for(const text of [...result.evidence.messages,...result.evidence.proposals])make('p',text,details);
+  make('p','Heart rate is interpreted alongside comparable routes, conditions and sensor quality. Any programme adjustment needs your approval.',details);
+  if(next?.sessions.length){
+   make('h3','Scheduled sessions',details);
+   const list=make('ul',null,details);
+   for(const s of next.sessions)make('li',[s.day,s.name,s.recoveryReviewRequired?'conditional on recovery':''].filter(Boolean).join(' · '),list);
+  }
+  const close=make('button','Done',sheet);close.type='button';close.onclick=()=>sheet.close();
+  sheet.addEventListener('close',()=>sheet.remove(),{once:true});
+  sheet.showModal();
+ }
+ function reviewContext(){
+  const state=getData(),ux=root.LHRFMobileUX,current=Number(state.activeCustomWeek||1);
+  const requested=Number(root.LHRFWeeklyReviewKey?.split('|').at(-1));
+  const week=Number.isInteger(requested)&&requested>0&&requested<=current&&
+   root.LHRFWeeklyReviewKey===ux.weekKey({...state,activeCustomWeek:requested})?requested:current;
+  return {state,week,key:ux.weekKey({...state,activeCustomWeek:week})};
+ }
+ function updateCheckin(){
+  const {state,week,key}=reviewContext(),now=new Date();
+  const existing=savedCheckin(state,key,reviewPeriod(state,week,now),now);
+  for(const [name,field] of Object.entries(controls))field.value=existing?.[name]||'';
+  notes.value=existing?.notes||'';
+  for(const field of [...Object.values(controls),notes])field.disabled=!!existing;
+  save.textContent=existing?'View weekly review':'Save weekly check-in';
+  heading.textContent='Weekly check-in · Week '+week;
+  status.textContent=existing?'This week’s check-in is saved.':'';
+ }
+ root.LHRFRefreshWeeklyCheckin=updateCheckin;
+ save.onclick=()=>{
+  const {state,week,key}=reviewContext(),now=new Date();
+  const existing=savedCheckin(state,key,reviewPeriod(state,week,now),now);
+  if(existing){openReview(state,week,existing);return}
+  if(Object.values(controls).some(x=>!x.value)){status.textContent='Choose fatigue, soreness and discomfort before saving.';return}
+  const check={date:now.toISOString(),programmeWeekKey:key,
+   ...Object.fromEntries(Object.entries(controls).map(([k,v])=>[k,v.value])),notes:notes.value.slice(0,2000)};
+  const next={...state,weeklyCheckins:[...(state.weeklyCheckins||[]),check]};
+  if(!commit(next)){status.textContent='Could not save the check-in. Please try again.';return}
+  updateCheckin();openReview(getData(),week,check);
+ };
  sync.onclick=()=>root.LHRFOpenGarminReview?.(undefined,'Back to check-in');
- const oldRefresh=root.refresh;if(typeof oldRefresh==='function')root.refresh=function(){oldRefresh();renderHistory();renderAssessment()};renderHistory();renderAssessment();
+ const oldRefresh=root.refresh;if(typeof oldRefresh==='function')root.refresh=function(){oldRefresh();renderHistory()};renderHistory();
 }
-const api={history,strengthGroups,assess,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFTrainingReview=api;
+const api={history,strengthGroups,assess,weeklySummary,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFTrainingReview=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
