@@ -1066,7 +1066,9 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
       // RIR-adjusted e1RM; solve back-off load from target reps and RPE.
       // Actual top-set performance determines the next working load.
       live.ex.forEach((back,bi)=>{if(back[5]?.role!=='backoff'||back[5]?.topIndex!==i)return;
-       const rounded=back[5]?.backoffProfile?phaseBackoffLoad(topWeight,topReps,topRpe,back[5].backoffProfile):loadFromTopSet(topWeight,topReps,topRpe,back[2],back[4]);
+       const modeled=back[5]?.backoffProfile?phaseBackoffLoad(topWeight,topReps,topRpe,back[5].backoffProfile):loadFromTopSet(topWeight,topReps,topRpe,back[2],back[4]);
+       const cap=back[5]?.reviewedBackoffCapKg;
+       const rounded=Number.isFinite(cap)&&cap>0?Math.min(cap,modeled):modeled;
        back[3]=rounded;
        for(let k=0;k<back[1];k++){const key=bi+'_'+k,existing=live.entries[key];if(!existing||!existing.done&&existing.weightEdited===false&&!existing.weightHint)live.entries[key]={...(existing||{}),weight:rounded,reps:existing?.reps??back[2],rpe:existing?.rpe||'',done:false,weightEdited:false}}
        live.lastCoachNote='Top set '+topWeight+' kg × '+topReps+' @ RPE '+topRpe+' → suggested '+rounded+' kg back-offs at target RPE '+back[4]+'.';

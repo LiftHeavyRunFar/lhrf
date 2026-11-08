@@ -235,7 +235,7 @@ function assess(c,w=1,options={}){
    // Matched completions establish distances already covered. They do not
    // establish actual effort or next-day recovery, so only offer easy repeats.
    const hasConcern=Object.values(tasks).some(task=>task.restriction==='hold'||task.evidence.some(o=>['adverse','safety'].includes(o.status)));
-   const linked=week=>(week.activities||[]).filter(r=>r.plannedEasy&&r.minutes>0&&stamp(r.date.slice(0,10))>eventAt+14*DAY&&(r.rpe===null||r.effortReliable&&r.rpe<=4));
+   const linked=week=>(week.activities||[]).filter(r=>r.plannedEasy&&!r.uncertainty&&r.minutes>0&&stamp(r.date.slice(0,10))>eventAt+14*DAY&&(r.rpe===null||r.effortReliable&&r.rpe<=4));
    const activities=!hasConcern&&count>=2&&weeks.map(linked).filter(rows=>rows.length===count&&new Set(rows.map(r=>r.date.slice(0,10))).size===count).at(-1);
    if(activities){
     familiarEasy={weeklyKm:Math.min(h.base,sum(activities.map(r=>r.km))),longestKm:Math.max(...activities.map(r=>r.km))};
