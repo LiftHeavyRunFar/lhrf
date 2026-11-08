@@ -8,9 +8,13 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  let incomingRun=run;
  await context.route('https://lhrf-garmin-import.equalmelon128.chatgpt.site/**',route=>route.fulfill({contentType:'text/html',body:'<script>window.opener.postMessage({type:"lhrf-garmin-import",state:new URL(location.href).searchParams.get("state"),payload:'+JSON.stringify({version:1,runs:[incomingRun]})+'},"https://liftheavyrunfar.github.io");</script>'}));
  await page.goto('https://liftheavyrunfar.github.io/lhrf/');await page.locator('nav [data-screen="today"]').click();const before=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);
- await page.locator('#todaySyncGarmin').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});assert.match(await page.locator('#garminIncomingList').innerText(),/150 bpm/);assert.equal(await page.locator('#garminIncomingList img').count(),0);assert.equal(await page.locator('[data-planned-index="0"]').inputValue(),'');assert.match(await page.locator('[data-planned-index="0"]').textContent(),/Suggested/);
- await page.locator('#garminIncomingSave').click();assert.match(await page.locator('#garminIncomingStatus').innerText(),/1 runs saved/);const after=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(after.runs.length,1);assert.equal(after.runs[0].avgHr,150);for(const k of Object.keys(before).filter(k=>k!=='runs'))assert.deepEqual(after[k],before[k]);
- await page.locator('#garminImportOpen').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});assert.match(await page.locator('#garminIncomingList').innerText(),/Already imported/);await page.locator('#garminIncomingSave').click();assert.equal(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)).runs.length,KEY),1);await page.locator('nav [data-screen="progress"]').click();
+ assert.equal(await page.locator('#todaySyncGarmin').count(),0);
+ const target=await page.evaluate(run=>LHRFGarminImport.plannedSessions(data,run).find(t=>t.plannedDate==='2026-10-31'),run);
+ assert.ok(target);
+ await page.evaluate(id=>openWorkout(id),target.id);
+ await page.locator('#previewSyncGarmin').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});assert.match(await page.locator('#garminIncomingList').innerText(),/150 bpm/);assert.equal(await page.locator('#garminIncomingList img').count(),0);assert.equal(await page.locator('[data-planned-index="0"]').inputValue(),'');assert.match(await page.locator('[data-planned-index="0"]').textContent(),/Suggested/);
+ await page.locator('#garminIncomingSave').click();await page.locator('#livePreview').waitFor({state:'visible'});assert.equal(await page.locator('#today.active').count(),1);assert.match(await page.locator('#garminIncomingStatus').textContent(),/1 runs saved/);const after=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(after.runs.length,1);assert.equal(after.runs[0].avgHr,150);for(const k of Object.keys(before).filter(k=>!['runs','garminSync'].includes(k)))assert.deepEqual(after[k],before[k]);
+ await page.locator('#previewSyncGarmin').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});assert.match(await page.locator('#garminIncomingList').innerText(),/Already imported/);await page.locator('#garminIncomingSave').click();assert.equal(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)).runs.length,KEY),1);await page.locator('#previewClose').click();await page.locator('nav [data-screen="progress"]').click();
  await page.locator('#trainingHistory details').filter({hasText:'6.00 km'}).first().locator(':scope > summary').click();
  assert.match(await page.locator('#trainingHistory').innerText(),/average HR 150 bpm/);
  await page.locator('nav [data-screen="today"]').click();await page.locator('#weeklyRecovery>summary').click();await page.locator('#weeklyCheckin select').nth(0).selectOption('low');await page.locator('#weeklyCheckin select').nth(1).selectOption('low');await page.locator('#weeklyCheckin select').nth(2).selectOption('no');
@@ -19,11 +23,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.getByRole('button',{name:'Pull recent Garmin runs',exact:true}).click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});
  // Link the already imported Friday activity to Saturday without re-importing or starting LHRF tracking.
  await page.locator('#garminSavedLinks summary').click();
- const target=await page.evaluate(()=>LHRFGarminImport.plannedSessions(data,data.runs[0]).find(t=>t.plannedDate==='2026-10-31'));
- assert.ok(target);await page.locator('#garminSavedLinks select').selectOption(target.key);await page.getByRole('button',{name:'Save session link',exact:true}).click();
+await page.locator('#garminSavedLinks select').selectOption(target.key);await page.getByRole('button',{name:'Save session link',exact:true}).click();
  const linked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(linked.runs.length,1);assert.equal(linked.runs[0].sessionId,target.id);assert.equal(linked.completedWorkouts.length,1);assert.equal(linked.completedWorkouts[0].plannedDate,'2026-10-31');assert.equal(linked.runs[0].date,'2026-10-30T06:00:00.000Z');
  for(const k of ['customRoadmap','activeSchedule','sets','overrides'])assert.deepEqual(linked[k],checked[k]);
  await page.locator('nav [data-screen="today"]').click();assert.match(await page.locator('[data-session-id="'+target.id+'"]').innerText(),/Completed Fri,? 30 Oct · planned Sat,? 31 Oct/);
+ await page.evaluate(id=>openWorkout(id),target.id);
+ assert.match(await page.locator('#livePreview').innerText(),/Recorded run.*6.00 km · 30:00 · 5:00\/km/s);
+ assert.equal(await page.locator('#previewSyncGarmin').count(),0);
+ await page.locator('#previewClose').click();
  await page.reload();assert.deepEqual(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY),linked);
  await page.locator('nav [data-screen="settings"]').click();await page.locator('#settingsServices').evaluate(e=>e.open=true);await page.locator('#garminSavedLinks summary').click();await page.locator('#garminSavedLinks select').selectOption('');await page.getByRole('button',{name:'Save session link',exact:true}).click();
  const unlinked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(unlinked.runs.length,1);assert.equal(unlinked.completedWorkouts.length,0);assert.equal(unlinked.runs[0].sessionId,undefined);

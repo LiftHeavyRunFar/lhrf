@@ -79,3 +79,16 @@ test('Garmin planned links use frozen future prescriptions and retain protected 
  const g=require('../src/garmin-import'),x=await setup(),n=x.p.next;const later=api.sessions(n,2).find(s=>s.runs.length),before=clone(later.runs);n.customRoadmap.runProfile.seconds=3600;const candidates=g.plannedSessions(n,{date:later.scheduledDate}),target=candidates.find(t=>t.id===later.id||(t.parentId===later.id));assert.ok(target);assert.deepEqual(target.prescription.runs,before);
  const s=athlete();s.customRoadmap.startDate='2026-10-26';s.activeCustomWeek=2;s.activeSchedule=engine.createEngine({data:s}).generatedSessions(s.customRoadmap,2);const old=s.activeSchedule.find(s=>s.day==='Thu');s.runs.push({sessionId:old.id,week:2,date:'2026-11-05',km:3,min:20});const y=await setup(s),protectedTarget=g.plannedSessions(y.p.next,{date:'2026-11-05'}).find(t=>t.id===old.id);assert.equal(protectedTarget.week,2);assert.equal(protectedTarget.calendarWeek,1);assert.equal(protectedTarget.plannedDate,'2026-11-05');
 });
+test('reviewed package binds the frozen calendar while retaining the protected active visit as shown',async()=>{
+ const state=athlete(),native=programme();
+ state.reviewedProgramme={config:clone(state.customRoadmap),weeks:clone(native.weeks)};
+ const current=state.activeSchedule.find(s=>s.ex.length);
+ const day=api.dateOf(state.customRoadmap,1,current);
+ current.name='Current protected visit';
+ const packet=await api.createPackage(native,state,{reviewedCommit:'synthetic-review'});
+ await api.verifyPackage(packet,packet.reviewFingerprint,state);
+ const changed=clone(state);changed.reviewedProgramme.weeks[0].sessions[0].name='Different frozen visit';
+ await assert.rejects(api.verifyPackage(packet,packet.reviewFingerprint,changed),/differs/);
+ const preview=api.createReplacement(state,packet,engine,{now:day+'T08:00:00Z'});
+ assert.equal(preview.rows.find(r=>r.date===day).after.find(s=>s.id===current.id).name,current.name);
+});

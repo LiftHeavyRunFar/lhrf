@@ -22,19 +22,22 @@ function validateProgramme(p){
 }
 function identity(state){const out={};for(const key of ['athleteId','userId'])if(state[key]!=null)out[key]=state[key];for(const key of ['athlete','profile','athleteProfile'])if(state[key]?.id!=null)out[key]=state[key].id;return out}
 async function anchors(state){const out={};for(const key of ['sets','runs'])out[key]=await Promise.all((state[key]||[]).map(r=>digest(r)));return out}
-async function createPackage(programme,sourceState,{reviewedCommit,approvalContext=[]}={}){validateProgramme(programme);const packet={schema:'lhrf-reviewed-replacement-v1',reviewedCommit,programmeDigest:await digest(programme),sourceProgrammeDigest:await digest(sourceState.customRoadmap),sourceIdentityDigest:await digest(identity(sourceState)),sourceTrainingAnchors:await anchors(sourceState),approvalContext:clone(approvalContext),programme:clone(programme)};packet.reviewFingerprint=await digest(packet);return packet}
+async function createPackage(programme,sourceState,{reviewedCommit,approvalContext=[]}={}){validateProgramme(programme);const packet={schema:'lhrf-reviewed-replacement-v1',reviewedCommit,programmeDigest:await digest(programme),sourceProgrammeDigest:await digest(sourceState.customRoadmap),sourceIdentityDigest:await digest(identity(sourceState)),sourceTrainingAnchors:await anchors(sourceState),...(sourceState.reviewedProgramme?.weeks?{sourceCalendarDigest:await digest(sourceState.reviewedProgramme.weeks)}:{}),approvalContext:clone(approvalContext),programme:clone(programme)};packet.reviewFingerprint=await digest(packet);return packet}
 async function verifyPackage(packet,expectedDigest,state){
  const payload=clone(packet||{});delete payload.reviewFingerprint;
  if(packet?.schema!=='lhrf-reviewed-replacement-v1'||!/^([a-f0-9]{64})$/.test(expectedDigest||'')||packet.reviewFingerprint!==expectedDigest||await digest(payload)!==expectedDigest||await digest(packet.programme)!==packet.programmeDigest)throw Error('Reviewed fingerprint mismatch. Use the exact package and fingerprint supplied with the review.');
  validateProgramme(packet.programme);
  if(await digest(identity(state))!==packet.sourceIdentityDigest)throw Error('This package belongs to a different athlete identity.');
  const current=await anchors(state);for(const key of ['sets','runs'])if(!Array.isArray(packet.sourceTrainingAnchors?.[key])||packet.sourceTrainingAnchors[key].some(h=>!current[key].includes(h)))throw Error('Reviewed training evidence is missing or changed. Obtain a fresh comparison.');
- if(!state.programmeReplacementHistory?.some(x=>x.id==='reviewed-'+packet.programmeDigest.slice(0,24))&&await digest(state.customRoadmap)!==packet.sourceProgrammeDigest)throw Error('The saved programme differs from the review source. Obtain a fresh coaching comparison; no replacement was applied.');
+ const alreadyApplied=state.programmeReplacementHistory?.some(x=>x.id==='reviewed-'+packet.programmeDigest.slice(0,24));
+ if(!alreadyApplied&&(await digest(state.customRoadmap)!==packet.sourceProgrammeDigest||packet.sourceCalendarDigest&&(!state.reviewedProgramme?.weeks||await digest(state.reviewedProgramme.weeks)!==packet.sourceCalendarDigest)))throw Error('The saved programme differs from the review source. Obtain a fresh coaching comparison; no replacement was applied.');
  return packet;
 }
 
 function calendar(state,engine,now){
- if(state.reviewedProgramme&&state.reviewedProgramme.config?.programmeId===state.customRoadmap?.programmeId)return clone(state.reviewedProgramme.weeks);
+ if(state.reviewedProgramme&&state.reviewedProgramme.config?.programmeId===state.customRoadmap?.programmeId){
+  return state.reviewedProgramme.weeks.map(w=>({...clone(w),sessions:clone(w.week===Number(state.activeCustomWeek||1)&&Array.isArray(state.activeSchedule)?state.activeSchedule:w.sessions)}));
+ }
  const c=state.customRoadmap;if(!c||!isoDate(c.startDate)||!Number.isInteger(c.weeks)||c.weeks<1||c.weeks>104)throw Error('The existing programme needs a trustworthy dated archive before replacement.');
  const e=engine.createEngine({data:clone(state),now:()=>Date.parse(now)}),out=[];
  for(let w=1;w<=c.weeks;w++)out.push({week:w,sessions:clone(w===Number(state.activeCustomWeek||1)&&Array.isArray(state.activeSchedule)?state.activeSchedule:e.generatedSessions(c,w))});

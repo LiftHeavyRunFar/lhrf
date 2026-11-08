@@ -32,7 +32,7 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
    return LHRFCoach.createEngine({data:{decisions:[{approved:true,kind:'hybrid-load',week:2,key:'synthetic-check',factor:.9,intervention:'running-duration'}]}}).applyApprovedHybridRunning([{id:'synthetic',ex:[],runs:[run]}],2)[0].runs[0].distanceKm;
   });
   assert.equal(await correctedDistance(),9,'Updated app must execute the corrected engine');
-  assert.ok((await page.evaluate(()=>caches.keys())).includes('lhrf-shell-v1.35.0-runtime-coaching'));
+  assert.ok((await page.evaluate(()=>caches.keys())).includes('lhrf-shell-v1.36.0-reviewed-programme'));
   await context.setOffline(true);await page.reload();await page.waitForFunction(()=>!!window.LHRFCoach);
   assert.equal(await correctedDistance(),9);assert.deepEqual(await stored(),before);assert.deepEqual(errors,[]);
   assert.equal(await page.evaluate(()=>LHRFCoach.prepareNewProgramme({coachingRulesVersion:2,weeks:1,bench:1,squat:0,deadlift:0,runs:0},{data:{sets:[],runs:[]}}).coachingRuntimeVersion),1,'Corrected new-proposal engine and its evidence dependency must be available offline');

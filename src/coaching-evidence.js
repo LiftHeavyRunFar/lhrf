@@ -16,6 +16,14 @@ function purpose(row,state){
  for(const done of state.completedWorkouts||[])if(base(done.id)===base(row.sessionId)&&date(done.date)===date(row.date))for(const ex of done.prescription?.ex||[])if(norm(ex[0])===norm(row.exercise)&&(!row.role||!ex[5]?.role||row.role===ex[5].role))add(ex[5]);
  const unique=[...new Set(values)];return unique.length===1&&unique[0]!=='ambiguous'?unique[0]:unique.length?'ambiguous':null;
 }
+function strengthIdentity(raw,meta,inventory,linked){
+ const keys=['exerciseId','variantId','loadType','doseUnit'];
+ const recorded=Object.fromEntries(keys.map(key=>[key,raw[key]||meta[key]||null]));
+ if(!linked||inventory?.venueId&&inventory.venueId!=='unknown'||keys.some(key=>recorded[key])||!['bench','squat','deadlift'].includes(norm(raw.exercise)))return recorded;
+ const registry=typeof module==='object'&&module.exports?require('./exercise-registry.js'):root.LHRFExercises;
+ const standard=registry?.identity(raw.exercise);
+ return standard?{...standard,setupSource:'Exact legacy main lift and role in a completed prescription; commercial kit, venue unverified'}:recorded;
+}
 function capture(config,{data={},now=Date.now()}={}){
  const asOf=typeof now==='function'?Number(now()):Number(now),strength={},observations=[],invalid=[];
  for(const lift of new Set(['Squat','Bench','Deadlift',...(data.sets||[]).map(row=>String(row.exercise||'').trim()).filter(Boolean)])){
@@ -25,7 +33,7 @@ function capture(config,{data={},now=Date.now()}={}){
    const typedPurpose=purpose(raw,data),review=raw.evidenceReview?.rpe,reliable=raw.rpeReliable!==false&&!review?.approximate;
    if(typedPurpose==='ambiguous')continue;
    const base=id=>String(id||'').replace(/::strength$/,''),saved=(data.completedWorkouts||[]).filter(done=>base(done.id)===base(raw.sessionId)&&date(done.date)===date(raw.date)).flatMap(done=>done.prescription?.ex||[]).filter(ex=>norm(ex[0])===norm(raw.exercise)&&ex[5]?.role===raw.role),meta=saved.length===1?saved[0][5]:{};
-   rows.push({date:raw.date,set:raw.set??null,exercise:lift,kg:Number(raw.weight),reps:Number(raw.reps),rpe:Number(raw.rpe),target:Number(raw.target)||null,role:raw.role||null,purpose:typedPurpose,reliable,unreliable:raw.rpeReliable===false,approximate:!!review?.approximate,execution:raw.execution||meta.execution||null,executionSource:raw.execution?'recorded or explicitly reviewed':meta.execution?'saved-prescription-intent':null,competition:raw.competition===true||meta.competition===true,exerciseId:raw.exerciseId||meta.exerciseId||null,variantId:raw.variantId||meta.variantId||null,loadType:raw.loadType||meta.loadType||null,doseUnit:raw.doseUnit||meta.doseUnit||null,...(review?{review:clone(review)}:{})});
+   rows.push({date:raw.date,set:raw.set??null,exercise:lift,kg:Number(raw.weight),reps:Number(raw.reps),rpe:Number(raw.rpe),target:Number(raw.target)||null,role:raw.role||null,purpose:typedPurpose,reliable,unreliable:raw.rpeReliable===false,approximate:!!review?.approximate,execution:raw.execution||meta.execution||null,executionSource:raw.execution?'recorded or explicitly reviewed':meta.execution?'saved-prescription-intent':null,competition:raw.competition===true||meta.competition===true,...strengthIdentity(raw,meta,data.equipmentInventory??config.equipmentInventory,saved.length===1),...(review?{review:clone(review)}:{})});
   }
   rows.sort((a,b)=>time(a.date)-time(b.date));strength[lift]={rows:rows.slice(-24),evidenceHorizonDays:42,note:'Evidence horizon is a planning default, not biological expiry. Low/approximate effort is practice context, never a maximum.'};
  }
