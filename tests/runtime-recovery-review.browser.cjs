@@ -8,7 +8,8 @@ const fixture={equipmentInventory:inventory,onboardingComplete:true,customRoadma
  await page.route('http://recovery-review.test/**',route=>{const file=new URL(route.request().url()).pathname;return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',file==='/'?'index.html':file)),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':'text/html'})});
  await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture});await page.goto('http://recovery-review.test/');const before=await page.evaluate(KEY=>localStorage.getItem(KEY),KEY),beforeData=await page.evaluate(()=>JSON.parse(JSON.stringify(data)));
  await page.evaluate(()=>{const prepare=LHRFCoach.prepareNewProgramme;LHRFCoach.prepareNewProgramme=(c,o)=>{const result=prepare(c,o);window.recoveryProposal=result;return result};LHRFStartNewProgramme()});
- for(let step=0;step<4;step++)await page.locator('#frNext').click();
+ for(let step=1;step<4;step++)await page.locator('#frNext').click();
+ assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'4');
  await page.locator('#frFatigueStatus').selectOption('normal');await page.locator('#frTaskRecovery summary').click();await page.locator('#frAddRecoveryObservation').click();
  const row=page.locator('.fr-recovery-observation').last();await row.locator('[data-recovery-task]').selectOption('strength|Bench|heavy');await row.locator('[data-recovery-performance]').fill('2026-11-05');await row.locator('[data-recovery-date]').fill('2026-11-05');await row.locator('[data-recovery-status]').selectOption('normal');await page.locator('#frNext').click();
  assert.match(await page.locator('#frError').innerText(),/following calendar day|next-day/);assert.equal(await page.locator('#frNext').isDisabled(),true);

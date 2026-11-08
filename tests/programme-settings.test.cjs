@@ -12,7 +12,7 @@ test('editing creates a versioned proposal while preserving saved dates, split a
  }
  for(const [id,value]of Object.entries({runPbDistance:10,runPbTime:'1:05:00',runPbRecency:'recent',runWeeklyKm:25}))controls[id]={value};
  const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
- const source=html.slice(html.indexOf('function customConfig(){'),html.indexOf('function runningPaces(...args)'));
+ const source=html.slice(html.indexOf('function customConfig('),html.indexOf('function runningPaces(...args)'));
  const ctx=vm.createContext({LHRFCoach:require('../src/coach-engine.js'),data,customFields:fields,$:id=>controls[id],estimatedMax:engine.estimatedMax,pbSeconds:engine.pbSeconds});vm.runInContext(source,ctx);const result=ctx.customConfig();
  for(const key of ['strengthTargetDate','runningTargetDate','startDate','topSetFirst'])assert.equal(result[key],config[key],key);
  assert.equal(result.coachingRulesVersion,2);assert.equal(result.coachingRuntimeVersion,1);assert.equal(result.coachingPolicy,'review-v2');assert.equal(data.customRoadmap.coachingPolicy,'review-v1');assert.equal(result.runGoal,'10k');assert.equal(JSON.stringify(result.manualSplit),JSON.stringify(config.manualSplit));assert.equal(JSON.stringify(result.availableDays),JSON.stringify(config.availableDays));assert.equal(JSON.stringify(data),before);

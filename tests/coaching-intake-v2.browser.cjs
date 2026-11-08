@@ -32,23 +32,36 @@ async function contextFor(browser){
 }
 async function enter(page,id){
  const c=cases.find(x=>x.id===id).config,v=c.visitConstraints,h=c.runningHistory||{};
- await page.locator('#frNext').click();await page.locator('[name="frFocus"][value="'+c.hybridFocus+'"]').check();await page.locator('#frNext').click();
- for(const [field,value]of Object.entries({frGoal:c.event,frExperience:c.trainingAge,frStrengthMode:c.orderedGoals?.[0]?.strengthMode||c.strengthMode,frStartDate:c.startDate,frStrengthDate:c.strengthTargetDate||'',frRunningDate:c.runningTargetDate||'',frRunGoal:c.runGoal,frRunningTarget:c.runningGoalSeconds?Math.floor(c.runningGoalSeconds/60)+':'+String(c.runningGoalSeconds%60).padStart(2,'0'):'',frLiftPriority:'Squat',frGoalStrategy:c.orderedGoals?'staged':'joint',frStrengthGoal:c.event==='powerlifting'?'powerlifting':'general'}))await set(page,field,value);
- if(c.orderedGoals)await set(page,'frRecoveryDays',c.orderedGoals[0].recoveryDays??7);
+ await page.locator('#frScope').selectOption('hybrid');await page.locator('[name="frFocus"][value="'+c.hybridFocus+'"]').check();await page.locator('#frNext').click();
+ await page.locator('#frGoalDetails > summary').click();
+ for(const [field,value]of Object.entries({frGoal:c.event,frExperience:c.trainingAge,frStrengthMode:c.orderedGoals?.[0]?.strengthMode||c.strengthMode,frStartDate:c.startDate,frLiftPriority:'Squat'}))if(await page.locator('#'+field).isVisible())await set(page,field,value);
+ if(c.strengthTargetDate)await set(page,'frStrengthDate',c.strengthTargetDate);
+ if(c.event!=='running')await page.locator('#frAddRunningGoal').setChecked(Boolean(c.runningTargetDate));
+ if(c.runningTargetDate){await set(page,'frRunGoal',c.runGoal);await set(page,'frRunningDate',c.runningTargetDate);if(c.runningGoalSeconds)await set(page,'frRunningTarget',Math.floor(c.runningGoalSeconds/60)+':'+String(c.runningGoalSeconds%60).padStart(2,'0'));}
+ if(c.orderedGoals){await set(page,'frGoalStrategy','staged');await set(page,'frRecoveryDays',c.orderedGoals[0].recoveryDays??7);}
+ else if(c.strengthTargetDate&&c.runningTargetDate)await set(page,'frGoalStrategy','joint');
  if(!await page.getByText('Event-day availability',{exact:true}).evaluate(el=>el.parentElement.open))await page.getByText('Event-day availability',{exact:true}).click();
  for(const [kind,date]of [['Strength',c.strengthTargetDate],['Running',c.runningTargetDate]])if(date){const event=v.eventDays[date];await page.locator('#fr'+kind+'EventConfirmed').setChecked(event?.confirmed===true);await set(page,'fr'+kind+'EventMinutes',event?.minutes??'');}
  await page.locator('#frNext').click();
  await page.locator('#frModeCoach').click();
- for(const [field,value]of Object.entries({frDays:c.availableDays.length,frSquat:c.squat,frBench:c.bench,frDeadlift:c.deadlift,frRuns:c.runs,frStrengthVisits:v.strengthVisits,frLongDay:c.longRunDay||'Sun'}))await set(page,field,value);
+ await page.locator('#frWeeklyDetails > summary').click();
  for(const day of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])await page.locator('.fr-day[value="'+day+'"]').setChecked(c.availableDays.includes(day));
+ for(const [field,value]of Object.entries({frSquat:c.squat,frBench:c.bench,frDeadlift:c.deadlift,frRuns:c.runs,frStrengthVisits:v.strengthVisits,frLongDay:c.longRunDay||'Sun'}))await set(page,field,value);
  await page.getByText('Hard time limits and separate visits (optional)',{exact:true}).click();
- for(const day of c.availableDays){await page.locator('.fr-double[value="'+day+'"]').setChecked(v.combinedDays.includes(day));await page.locator('.fr-separate[value="'+day+'"]').setChecked(v.separateDays.includes(day));await page.locator('.fr-minute[data-day="'+day+'"]').fill(String(v.minutes[day]));}
- await set(page,'frGapHours',v.minimumGapHours||6);
+ for(const day of c.availableDays){const combined=page.locator('.fr-double[value="'+day+'"]');if(await combined.isVisible())await combined.setChecked(v.combinedDays.includes(day));await page.locator('.fr-separate[value="'+day+'"]').setChecked(v.separateDays.includes(day));await page.locator('.fr-minute[data-day="'+day+'"]').fill(String(v.minutes[day]));}
+ if(await page.locator('#frGapHours').isVisible())await set(page,'frGapHours',v.minimumGapHours||6);
  if(c.orderedGoals){if(!await page.locator('#frAfterWrap').evaluate(el=>el.open))await page.locator('#frAfterWrap > summary').click();const next=c.orderedGoals[1];for(const [key,field]of [['runs','Runs'],['bench','Bench'],['squat','Squat'],['deadlift','Deadlift'],['strengthVisits','StrengthVisits']])await set(page,'frAfter'+field,next[key]);}
  await page.locator('#frNext').click();
- for(const name of ['Squat','Bench','Deadlift']){await set(page,'frMax'+name,c.liftProfiles[name].kg||'');await set(page,'frMax'+name+'Reps',c.liftProfiles[name].reps||1);}
+ for(const name of ['Squat','Bench','Deadlift']){
+  const weight=page.locator('#frMax'+name);
+  if(!await weight.isVisible())continue;
+  await set(page,'frMax'+name,c.liftProfiles[name].kg||'');
+  if(c.liftProfiles[name].kg)await set(page,'frMax'+name+'Reps',c.liftProfiles[name].reps||1);
+ }
  await page.getByText('Recent running history',{exact:true}).click();
- for(const [field,value]of Object.entries({frRunDistance:c.runProfile.distance,frRunTime:c.runProfile.time,frRunKm:c.runProfile.weeklyKm,frResultDate:c.runProfile.resultDate||'',frResultEffort:c.runProfile.effort,frResultEnvironment:c.runProfile.environment==='outside'?'outdoor':c.runProfile.environment||'outdoor',frRunHistory:(h.weeklyKm||[]).join(', '),frLongKm:h.longRun?.km??'',frLongMinutes:h.longRun?.minutes??'',frLongRecovery:h.longRun?.recoveryHours??'',frRecentMarathon:h.recentMarathonDate||'',frFatigueStatus:'normal'}))await set(page,field,value);
+ await page.locator('#frRunningResult > summary').click();
+ if(c.runProfile.time)await set(page,'frRunTime',c.runProfile.time);
+ for(const [field,value]of Object.entries({frRunDistance:c.runProfile.distance,frRunKm:c.runProfile.weeklyKm,frResultDate:c.runProfile.resultDate||'',frResultEffort:c.runProfile.effort,frResultEnvironment:c.runProfile.environment==='outside'?'outdoor':c.runProfile.environment||'outdoor',frRunHistory:(h.weeklyKm||[]).join(', '),frLongKm:h.longRun?.km??'',frLongMinutes:h.longRun?.minutes??'',frLongRecovery:h.longRun?.recoveryHours??'',frRecentMarathon:h.recentMarathonDate||'',frFatigueStatus:'normal'}))if(await page.locator('#'+field).isVisible())await set(page,field,value);
  await page.locator('#frNext').click();assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'5');
 }
 async function backToGoals(page){for(let i=0;i<3;i++)await page.locator('#frBack').click();assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'2')}
@@ -85,7 +98,7 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
   }
   // O3: unknown pace remains a timed health run throughout preview, timer and actual logging.
   {
-   const {context,page,before,errors}=await contextFor(browser);await enter(page,'O3');assert.equal(await page.locator('#frNext').isEnabled(),true);preserved(await read(page),before);await page.locator('#frNext').click();await approveGeneratedProgramme(page);
+   const {context,page,before,errors}=await contextFor(browser);await enter(page,'O3');assert.equal(await page.locator('#frNext').isEnabled(),true,await page.locator('#frError').textContent()+' '+await page.locator('#frWarnings').textContent());preserved(await read(page),before);await page.locator('#frNext').click();await approveGeneratedProgramme(page);
    const accepted=await read(page),health=accepted.activeSchedule.find(s=>s.runs?.some(r=>r.distanceKnown===false));assert.ok(health);assert.ok(health.runs.every(r=>r.minutes===20&&r.distanceKnown===false));
    await page.locator('nav [data-screen="today"]').click();await page.locator(`[data-session-id="${health.id}"]`).first().click();assert.match(await page.locator('#livePreview').innerText(),/20 min|20:00/i);await page.locator('#previewStart').click();
    if(await page.locator('#readinessModal[open]').count()){await page.locator('#readinessContinue').click();}

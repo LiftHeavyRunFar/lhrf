@@ -7,6 +7,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const {reopenForWaitingUpdate}=require('./workout-update-helpers.cjs');
 const root=path.join(__dirname,'..');
 const baseline=process.env.LHRF_WEEKLY_REVIEW_BASE;
+const currentShell=fs.readFileSync(path.join(root,'sw.js'),'utf8').match(/const CACHE = '([^']+)'/)[1];
 const DATA='lhrf_beta_v1118_clean', LIVE='lhrf_fresh_beta_live_v1114';
 const strength={id:'strength',day:'Monday',name:'Bench',ex:[['Bench press',1,5,60,7]]};
 const run={id:'run',day:'Sunday',name:'Easy run',ex:[],runs:[{name:'Easy run',role:'easy-run',distanceKm:4,minutes:25,pace:'6:00/km',steps:[{label:'Easy running',distanceKm:4,pace:'6:00/km'}]}]};
@@ -87,8 +88,8 @@ const seed={
   }
   await context.setOffline(true);
   await page.reload();
-  await page.waitForFunction(async()=>!!navigator.serviceWorker.controller&&
-   (await caches.keys()).includes('lhrf-shell-v1.36.2-weekly-review'));
+  await page.waitForFunction(async shell=>!!navigator.serviceWorker.controller&&
+   (await caches.keys()).includes(shell),currentShell);
   await page.locator('nav [data-screen=today]').click();
   assert.equal(await page.locator('#today #weeklyRecovery, #today #preWorkoutReadiness').count(),0);
   if(!baseline){

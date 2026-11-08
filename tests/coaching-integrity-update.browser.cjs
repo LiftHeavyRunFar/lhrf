@@ -3,6 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const {reopenForWaitingUpdate}=require('./workout-update-helpers.cjs');
 const clone=x=>JSON.parse(JSON.stringify(x)),root=path.join(__dirname,'..'),base=process.env.LHRF_INTEGRITY_BASE;
+const currentShell=fs.readFileSync(path.join(root,'sw.js'),'utf8').match(/const CACHE = '([^']+)'/)[1];
 const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
 (async()=>{
  if(!base)throw Error('Set LHRF_INTEGRITY_BASE to pinned production commit b59a720.');
@@ -33,7 +34,7 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
    return LHRFCoach.createEngine({data:{decisions:[{approved:true,kind:'hybrid-load',week:2,key:'synthetic-check',factor:.9,intervention:'running-duration'}]}}).applyApprovedHybridRunning([{id:'synthetic',ex:[],runs:[run]}],2)[0].runs[0].distanceKm;
   });
   assert.equal(await correctedDistance(),9,'Updated app must execute the corrected engine');
-  await page.waitForFunction(async()=>(await caches.keys()).includes('lhrf-shell-v1.36.2-weekly-review')&&!!navigator.serviceWorker.controller);
+  await page.waitForFunction(async shell=>(await caches.keys()).includes(shell)&&!!navigator.serviceWorker.controller,currentShell);
   await context.setOffline(true);await page.reload();await page.waitForFunction(()=>!!window.LHRFCoach);
   assert.equal(await correctedDistance(),9);assert.deepEqual(await stored(),before);assert.deepEqual(errors,[]);
   assert.equal(await page.evaluate(()=>LHRFCoach.prepareNewProgramme({coachingRulesVersion:2,weeks:1,bench:1,squat:0,deadlift:0,runs:0},{data:{sets:[],runs:[]}}).coachingRuntimeVersion),1,'Corrected new-proposal engine and its evidence dependency must be available offline');

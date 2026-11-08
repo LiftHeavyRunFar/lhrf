@@ -9,8 +9,10 @@ async function confirmOnboardingEquipment(page){
   // The specialist inventory intentionally has no venue input.
   panel.querySelectorAll('select[aria-label]').forEach(x=>x.value=inv.items[x.getAttribute('aria-label')]||'unknown');
   panel.querySelectorAll('input[type="checkbox"][aria-label]').forEach(x=>{x.equipmentState=inv.items[x.getAttribute('aria-label')]||'unknown'});
-  panel.querySelectorAll('input[type="checkbox"]').forEach(x=>{if(!x.disabled)x.checked=true});
-  [...panel.querySelectorAll('button')].find(b=>b.textContent==='Save equipment').click();return data.equipmentInventory;
+  const legacySave=[...panel.querySelectorAll('button')].find(b=>b.textContent==='Save equipment');
+  if(legacySave)legacySave.click();
+  else panel.querySelector('input[type="checkbox"]').dispatchEvent(new Event('change',{bubbles:true}));
+  return window.LHRFOnboardingEquipmentDraft||data.equipmentInventory;
  },fullInventory());
  assert.equal(inventory.source,'athlete-confirmed');assert.equal(inventory.items['straight-bar'],'available');
 }

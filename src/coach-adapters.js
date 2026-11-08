@@ -35,7 +35,7 @@ function createProfileEngine(input,options={}){
  return {config:c,data,engine:coach.createEngine({data,schedule:options.schedule||data.activeSchedule||[],now:options.now})};
 }
 function buildProgramme(input,options={}){
- const {config:c,data,engine}=createProfileEngine(input,options),weeks=[];
+ const {config:c,data,engine}=createProfileEngine(input,options),weeks=[],finalHeavyPlan={};
  if(c.coachingPolicy==='review-v2'){
   if(!Number.isInteger(c.weeks)||c.weeks<1||c.weeks>104)throw new RangeError('Programme horizon must be 1–104 whole weeks.');
   if(['bench','squat','deadlift','runs'].some(k=>!Number.isInteger(c[k])||c[k]<0||c[k]>7))throw new RangeError('Weekly frequencies must be whole numbers from 0–7.');
@@ -43,12 +43,31 @@ function buildProgramme(input,options={}){
  }
  for(let week=1;week<=c.weeks;week++){
   const described=engine.describeWeek(c,week),{sessions,phase}=described,cycle=engine.cycleWeek(week,c.weeks);
+  for(const [lift,selection] of Object.entries(described.constraints?.finalHeavyPlan||{})){
+   if(!finalHeavyPlan[lift]?.date||selection.date)finalHeavyPlan[lift]=selection;
+  }
   const constraints=engine.customPlan(c,week),warnings=constraints.warnings.slice();
   if(described.constraints)warnings.push(...described.constraints.warnings.filter(x=>!warnings.includes(x)));
   if([3,4].includes(c.runningGuidanceVersion)){const running=engine.runningAssessment(c,week);warnings.push(...running.warnings.filter(x=>!warnings.includes(x)));}
   weeks.push({week,phase,deload:described.deload??cycle.deload,sessions,warnings,...(Number(c.coachingRulesVersion)>=2||c.equipmentPolicyVersion===1?{priority:described.priority,runningPhase:described.runningSummary?.phase,hybridFocus:described.hybridFocus,activeGoal:described.activeGoal,coachingInstructions:described.coachingInstructions,blockingIssues:[...(constraints.runningReview?.blocking||[]),...(described.constraints?.blockingIssues||[])]}:{}),...(described.runningSummary?{runningSummary:described.runningSummary}:{}),...(constraints.unscheduled?{unscheduled:constraints.unscheduled,feasible:constraints.feasible&&described.constraints?.feasible!==false&&(![3,4].includes(c.runningGuidanceVersion)||engine.runningAssessment(c,week).feasible)}:{}),reviewRequired:warnings.length>0});
  }
- return {schema:'lhrf-shared-programme-v1',config:c,framework:engine.selectTrainingFramework(c),weeks,
+ if(c.competitionIntakeVersion===1){
+  const sessions=weeks.flatMap(w=>w.sessions);
+  const finalLightExposures=sessions.flatMap(s=>s.ex||[]).map(ex=>ex[5]?.finalLightExposure).filter(Boolean);
+  for(const [lift,selection] of Object.entries(finalHeavyPlan))if(selection.finalLightDate&&!finalLightExposures.some(exposure=>exposure.lift===lift&&exposure.date===selection.finalLightDate))selection.finalLightDate=null;
+  const meetWeek=weeks.find(w=>w.sessions.some(session=>session.competitionType));
+  if(meetWeek){
+   const conflicts=coach.unconfirmedCompetitionChoices(c,sessions);
+   for(const lift of meetWeek.sessions.find(session=>session.competitionType).competitionLifts){
+    if(finalHeavyPlan[lift])continue;
+    const reason=conflicts[lift]||'No final demanding exposure could be confirmed across the actual event stages. Review availability and recovery.';
+    finalHeavyPlan[lift]={mode:conflicts[lift]?'athlete':'coach',kind:'none',date:null,daysOut:null,finalLightDate:null,reason};
+    meetWeek.warnings.push(reason);
+    if(conflicts[lift]){meetWeek.blockingIssues.push(reason);meetWeek.feasible=false;}
+   }
+  }
+ }
+ return {schema:'lhrf-shared-programme-v1',config:c,framework:engine.selectTrainingFramework(c),weeks,...(c.competitionIntakeVersion===1?{finalHeavyPlan}:{}),
   requiresAthleteApproval:true,limitations:Number(c.coachingRulesVersion)>=1?['Versioned coaching heuristics; tests do not establish individual competition readiness.','Existing approved programmes keep their saved policy until explicitly replaced.']:['Current live coaching rules, not a new programme-policy rollout.','Known programme acceptance gaps remain; generation alone does not establish coaching quality.']};
 }
 function previewProgramme(input,options={}){
@@ -57,7 +76,7 @@ function previewProgramme(input,options={}){
  const weeks=native.weeks.map(w=>{
   const strengths=[],runs=[],calendar=[];const exposures={};
   for(const session of w.sessions){
-   if(session.eventDate){calendar.push({id:session.id,kind:'event',sport:session.eventType,date:session.eventDate,day:session.day});continue}
+   if(session.eventDate){calendar.push({id:session.id,kind:'event',sport:session.eventType,date:session.eventDate,day:session.day,...(session.competitionType?{name:session.name,competitionType:session.competitionType,competitionLifts:clone(session.competitionLifts),competitionNotes:clone(session.variationNotes)}:{})});continue}
    (session.ex||[]).forEach((ex,i)=>{
     const meta=ex[5]||{};if(!['top','straight'].includes(meta.role)||meta.optional)return;
     const lift=Object.keys(names).find(k=>String(ex[0]).toLowerCase().includes(k));if(!lift)return;

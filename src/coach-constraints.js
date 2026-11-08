@@ -71,19 +71,23 @@ function allocate(c,warnings=[],activities=[],context={}){
   return {slots:out,warnings:[...warnings,...unscheduled.map(x=>x.reason)],total:work.length,scheduled:work.length-pending.length,unscheduled,feasible:!unscheduled.length};
  }
  let best=null,legacyBest=null;
+ const required=context.requiredStrengthDays||{},requiredDays=Object.values(required);
  for(const strengthDays of combinations(allowed,visits))for(const runDays of permutations(allowed,runs.length)){
+  if(requiredDays.some(day=>!strengthDays.includes(day)))continue;
   if(longIndex>=0&&c.longRunDay&&runDays[longIndex]!==short(c.longRunDay))continue;
   if(runDays.some((day,i)=>strengthDays.includes(day)&&(!combined.has(day)&&!separate.has(day)||i===longIndex)))continue;
   if(new Set([...strengthDays,...runDays]).size>(Number(c.days)||7))continue;
   const out=slots();runs.forEach((x,i)=>out.find(s=>s.day===runDays[i]).items.push(x));
   let score=0,valid=true;
+  const pinned=new Set();
   // Place repeated lifts on distinct visits; prefer lower work away from the long run.
   for(const item of strength.slice().sort((a,b)=>Number(lower(b))-Number(lower(a)))){
-   const choices=strengthDays.map(day=>out.find(s=>s.day===day)).filter(s=>!s.items.some(x=>x.type==='strength'&&x.name===item.name));
+   const pin=pinned.has(item.name)?null:required[item.name];
+   const choices=strengthDays.map(day=>out.find(s=>s.day===day)).filter(s=>(!pin||s.day===pin)&&!s.items.some(x=>x.type==='strength'&&x.name===item.name));
    choices.sort((a,b)=>{
     const rank=s=>{const i=DAYS.indexOf(s.day),long=longIndex>=0?DAYS.indexOf(runDays[longIndex]):-9,others=s.items.filter(x=>x.type==='strength'),adjacent=out.some(x=>Math.abs(DAYS.indexOf(x.day)-i)===1&&x.items.some(y=>y.type==='strength'&&y.name===item.name));return others.length*3+(!strengthFirstHealth&&lower(item)&&((long-i+7)%7===1)?24:0)+(lower(item)&&others.some(lower)?7:0)+(adjacent?12:0)+(s.items.some(x=>x.type==='run')&&!separate.has(s.day)?4:0)+i*.02};return rank(a)-rank(b)
    });
-   if(!choices.length){valid=false;break}choices[0].items.push(item);
+   if(!choices.length){valid=false;break}choices[0].items.push(item);if(pin)pinned.add(item.name);
   }
   if(!valid||strengthDays.some(day=>!out.find(s=>s.day===day).items.some(x=>x.type==='strength')))continue;
   for(const s of out){const i=DAYS.indexOf(s.day),ss=s.items.filter(x=>x.type==='strength'),cap=Number(cfg.minutes?.[s.day]);score+=ss.length**2*(strengthFirstHealth&&cap>0?75/cap:1);if(!strengthFirstHealth&&ss.some(lower)&&longIndex>=0&&(DAYS.indexOf(runDays[longIndex])-i+7)%7===1)score+=40;if(ss.length&&s.items.some(x=>x.type==='run')&&!separate.has(s.day))score+=2;}
@@ -102,6 +106,7 @@ function allocate(c,warnings=[],activities=[],context={}){
   // not marginal heuristic gains that churn an otherwise coherent calendar.
   if(best.score+moved>=legacyBest.score+weeklyStress(c,legacyBest.slots,context))best=legacyBest;
  }
+ if(!best&&requiredDays.length)return allocate(c,warnings,activities,{...context,requiredStrengthDays:null});
  if(!best)return fail('No complete visit calendar fits the requested strength visits, runs, protected long run and mixed/separate permissions. Review frequencies or availability.');
  return {warnings:warnings.slice(),slots:best.slots,total:work.length,scheduled:work.length,unscheduled:[],feasible:true,visitModel:'strength visits group multiple distinct lift exposures; one run per day'};
 }
