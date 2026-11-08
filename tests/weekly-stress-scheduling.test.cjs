@@ -2,13 +2,15 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const adapters=require('../src/coach-adapters.js'),constraints=require('../src/coach-constraints.js');
 const original=freeze(require('./fixtures/original-three-engine-inputs.json')),fresh=freeze(require('./fixtures/stage-two-new-athletes.json'));
 const {dateOf}=require('../scripts/audit-stage-two.cjs');
+const legacyPrepare=require('../scripts/compare-runtime-coaching.cjs').legacyEngine().coach.prepareNewProgramme;
+const storedPolicyProgramme=(config,options)=>adapters.buildProgramme(legacyPrepare(config,options),options);
 // Replay the frozen Stage 1–6 duration policy; Stage 7 latest-policy checks live in flexible-session-time.test.cjs.
 function freeze(f){return ({...f,cases:f.cases.map(r=>({...r,config:{...r.config,sessionTimeVersion:0}}))})}
 
 const clone=x=>JSON.parse(JSON.stringify(x)),now=f=>()=>Date.parse(f.clock),lower=s=>(s.ex||[]).filter(e=>e[5]?.category==='primary'&&/squat|deadlift/i.test(e[0])&&e[4]>=8);
 test('original strength benchmarks regain weekly recovery without losing complete visits, progression or competition preparation',()=>{
  for(const id of ['O1','O3']){
-  const row=original.cases.find(r=>r.id===id),p=adapters.buildNewProgramme(row.config,{data:row.historicalData,now:now(original)}),old=require('../docs/qa/stage-four/current/'+id+'.json').programme;
+  const row=original.cases.find(r=>r.id===id),p=storedPolicyProgramme(row.config,{data:row.historicalData,now:now(original)}),old=require('../docs/qa/stage-four/current/'+id+'.json').programme;
   assert.equal(p.config.weeklyStressVersion,1);assert.ok(p.weeks.every(w=>w.feasible&&w.sessions.every(s=>s.timeBudget.feasible!==false)));
   assert.deepEqual(p.weeks[2].sessions.filter(s=>s.ex.length).map(s=>s.day),['Mon','Wed','Fri']);
   const hard=p.weeks.flatMap(w=>w.sessions.filter(s=>lower(s).length).map(s=>({date:dateOf(row.config,w.week,s.day),s}))).sort((a,b)=>a.date.localeCompare(b.date));
@@ -42,7 +44,7 @@ test('weekly spread follows shifted availability and respects explicit athlete s
 });
 test('small scheduling-score gains do not churn Idris, and all Stage 3 safety conditions stay intact',()=>{
  for(const row of fresh.cases){
-  const p=adapters.buildNewProgramme(row.config,{data:row.historicalData,now:now(fresh)}),old=require('../docs/qa/stage-three/'+row.id+'.json').programme;
+  const p=storedPolicyProgramme(row.config,{data:row.historicalData,now:now(fresh)}),old=require('../docs/qa/stage-three/'+row.id+'.json').programme;
   const doses=p=>p.weeks.map(w=>w.sessions.map(s=>[s.day,s.ex,s.runs]));assert.deepEqual(doses(p),doses(old),row.id+' retains every actual prescription and day');
   assert.deepEqual(p.weeks.map(w=>w.feasible),old.weeks.map(w=>w.feasible));
  }
@@ -56,6 +58,6 @@ test('saved Stage 4, Stage 3 and Taylor programmes reproduce exactly and generat
  }
 });
 test('browser-global generation uses the same new weekly recovery policy as Node',()=>{
- const sandbox=vm.createContext({Date,console});for(const name of ['running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+name+'.js','utf8'),sandbox);
+ const sandbox=vm.createContext({Date,console});for(const name of ['gym-equipment','exercise-registry','coaching-evidence','running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+name+'.js','utf8'),sandbox);
  for(const row of original.cases){const opts={data:row.historicalData,now:now(original)};assert.equal(JSON.stringify(sandbox.LHRFCoachAdapters.buildNewProgramme(row.config,opts)),JSON.stringify(adapters.buildNewProgramme(row.config,opts)));}
 });

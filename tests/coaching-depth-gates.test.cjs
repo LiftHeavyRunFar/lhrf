@@ -6,7 +6,9 @@ const gate=(rows,id)=>audit(rows).gates.find(g=>g.id===id);
 test('coaching audit rejects day-after-race lifting even when calendar labels claim feasibility',()=>{
  const rows=copy(native.cases),n=rows.find(r=>r.id==='N');
  assert.equal(gate(rows,'N-day-after-half-recovery-coordination').status,'pass');
- n.programme.weeks[6].sessions.find(s=>s.day.slice(0,3)==='Mon').ex.push(['Squat',2,3,125,7.5,{category:'primary'}]);
+ const week=n.programme.weeks[6];let monday=week.sessions.find(s=>s.day.slice(0,3)==='Mon');
+ if(!monday){monday={id:'controlled-unsafe-monday',day:'Mon',ex:[],runs:[]};week.sessions.push(monday);}
+ monday.ex.push(['Squat',2,3,125,7.5,{category:'primary'}]);
  n.programme.weeks[6].feasible=true;
  assert.equal(gate(rows,'N-day-after-half-recovery-coordination').status,'blocked');
 });

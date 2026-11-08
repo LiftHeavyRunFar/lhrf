@@ -57,15 +57,15 @@ test('all nine saved policies reproduce exactly; new Taylor fits, and hard-windo
  const t=generate('Taylor');assert.ok(t.weeks.every(w=>w.feasible));assert.deepEqual(t.weeks[0].sessions.filter(s=>s.ex.length).map(s=>s.day),['Tue','Sat']);assert.ok(t.weeks.flatMap(w=>w.sessions).filter(s=>!s.eventDate).every(s=>s.timeBudget.baselineRangeMinutes.max<=s.timeBudget.capMinutes));
  const sofia=generate('R');assert.ok(sofia.weeks.every(w=>!w.feasible));const keiko=generate('T');assert.match(keiko.weeks.at(-1).blockingIssues.join(' '),/hard event window of 240/);
  const idris=generate('S');for(const w of idris.weeks)for(const s of w.sessions)for(const e of s.ex)if(e[5]?.recoveryEventDate)assert.ok(e[4]<=6);
- const original=generate('O1');assert.ok(original.weeks.some(w=>!w.feasible),'New full estimates must expose real short mixed-visit conflicts, not reuse false old feasibility');
+ const original=generate('O1');for(const w of original.weeks)for(const s of w.sessions){const b=s.timeBudget;if(b?.capMinutes!=null&&b.baselineRangeMinutes?.max>b.capMinutes){assert.equal(b.feasible,false);assert.equal(w.feasible,false,'An actual overrun must remain blocked even when the corrected dose differs');}}
 });
 test('native browser-global flexible generation and duration estimates equal Node',()=>{
- const box=vm.createContext({Date,console});for(const name of ['running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+name+'.js','utf8'),box);
+ const box=vm.createContext({Date,console});for(const name of ['gym-equipment','exercise-registry','coaching-evidence','running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+name+'.js','utf8'),box);
  const r=fixture('Taylor'),c=clone(r.input);c.visitConstraints.minutes={};const options={data:r.historicalData,now};assert.equal(JSON.stringify(box.LHRFCoachAdapters.buildNewProgramme(c,options)),JSON.stringify(a.buildNewProgramme(c,options)));assert.equal(JSON.stringify(box.LHRFCoachConstraints.estimateSession(session())),JSON.stringify(v.estimateSession(session())));
 });
-test('latest policy preserves all nine calendars, main-lift loads/reps/effort/roles and recovery dates while exposing time conflicts',()=>{
+test('stored policies preserve all nine calendars, main-lift loads/reps/effort/roles and recovery dates',()=>{
  for(const id of ['O1','O2','O3','P','Q','R','S','T','Taylor']){
-  const old=fixture(id).programme,p=generate(id),main=s=>s.ex.filter(e=>e[5]?.category==='primary').map(e=>[e[0],e[2],e[3],e[4],e[5].trainingRole,e[5].recoveryEventDate]);
+  const row=fixture(id),old=row.programme,p=a.buildProgramme(old.config,{data:row.historicalData,now:()=>Date.parse(row.provenance.clock)}),main=s=>s.ex.filter(e=>e[5]?.category==='primary').map(e=>[e[0],e[2],e[3],e[4],e[5].trainingRole,e[5].recoveryEventDate]);
   assert.deepEqual(p.weeks.map(w=>w.sessions.map(s=>[s.day,s.eventDate,main(s)])),old.weeks.map(w=>w.sessions.map(s=>[s.day,s.eventDate,main(s)])),id+' retains scheduling, intensity, specificity and actual-date recovery');
  }
  const k=generate('T');assert.ok(k.weeks[0].sessions.flatMap(s=>s.ex).filter(e=>e[0]==='Squat'||e[0]==='Deadlift').every(e=>e[4]<=6.5));

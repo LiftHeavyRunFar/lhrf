@@ -4,7 +4,11 @@ const coach=require('../src/coach-engine.js'),adapters=require('../src/coach-ada
 const {fitSessions}=require('../src/coach-constraints.js'),{dateOf,inspect}=require('../scripts/audit-stage-two.cjs');
 const fixture=require('./fixtures/stage-two-new-athletes.json'),copy=x=>JSON.parse(JSON.stringify(x)),now=()=>Date.parse(fixture.clock);
 const profile=id=>{const p=copy(fixture.cases.find(p=>p.id===id));p.config.sessionTimeVersion=0;return p},previous=id=>require('../docs/qa/stage-two/programmes/'+id+'.json');
-const generate=(id,patch={})=>{const p=profile(id);return adapters.buildNewProgramme({...p.config,...patch},{data:p.historicalData,now})};
+const legacyPrepare=require('../scripts/compare-runtime-coaching.cjs').legacyEngine().coach.prepareNewProgramme;
+// These are historical Stage 1–6 contracts. Render their captured prepared policy
+// with the current engine; the current new-proposal safety cases live in runtime assurance.
+const storedPolicyProgramme=(config,options={})=>adapters.buildProgramme(legacyPrepare(config,options),options);
+const generate=(id,patch={})=>{const p=profile(id);return storedPolicyProgramme({...p.config,...patch},{data:p.historicalData,now})};
 const doses=p=>p.weeks.map(w=>w.sessions.map(s=>[s.day,s.ex,s.runs]));
 const main=(w,lift)=>w.sessions.flatMap(s=>s.ex||[]).filter(e=>e[5]?.category==='primary'&&(!lift||e[0]===lift));
 const event=(permission,minutes=90,patch={})=>fitSessions({coachingSafeguardsVersion:1,availableDays:['Sun'],visitConstraints:{minutes:{Sun:120},eventDays:{'2026-11-08':permission}}},[{day:'Sunday',eventDate:'2026-11-08',eventType:'running',ex:[],runs:[{minutes,durationRangeMinutes:minutes===null?null:{min:minutes-2,max:minutes}}],...patch}]);
@@ -46,7 +50,7 @@ test('Keiko is blocked by her actual 240-minute allowance, while the preferred 3
  assert.match(w.blockingIssues.join(' '),/hard event window of 240/);
  assert.deepEqual(race.runs,previous('T').programme.weeks.at(-1).sessions.find(s=>s.eventDate).runs);
  const c=profile('T').config;c.visitConstraints.eventDays['2027-03-07']={confirmed:true,preferredFinishMinutes:225};
- const preferred=adapters.buildNewProgramme(c,{now}),eventWeek=preferred.weeks.at(-1);
+ const preferred=storedPolicyProgramme(c,{now}),eventWeek=preferred.weeks.at(-1);
  assert.equal(eventWeek.feasible,true,'A soft target alone does not cause a calendar failure');assert.equal(eventWeek.reviewRequired,true,'Fatigue and endurance readiness still require review');
  assert.deepEqual(eventWeek.sessions.find(s=>s.eventDate).runs,race.runs);
 });
@@ -62,20 +66,20 @@ test('maintenance fatigue reduces affected intensity while preserving lifting, n
  }
  assert.ok(main(p.weeks[0],'Squat')[0][3]<105);assert.ok(main(p.weeks[0],'Deadlift')[0][3]<127.5);
  const c=profile('T').config;delete c.recoveryEvidence;delete c.recoveryContext;
- assert.equal(adapters.buildNewProgramme(c,{now}).weeks[0].sessions.flatMap(s=>s.ex).find(e=>e[0]==='Squat')[4],7.5);
+ assert.equal(storedPolicyProgramme(c,{now}).weeks[0].sessions.flatMap(s=>s.ex).find(e=>e[0]==='Squat')[4],7.5);
 });
 test('explicit lower-body recovery reports and novice maintenance stay bounded without manufacturing sleep/readiness scores',()=>{
  const p=profile('T');delete p.config.recoveryEvidence;
- const current=adapters.buildNewProgramme(p.config,{data:p.historicalData,now});assert.ok(main(current.weeks[0],'Squat').every(e=>e[4]<=6.5));assert.equal(main(current.weeks[0],'Bench')[0][4],7.5);
- p.config.trainingAge='returning';const novice=adapters.buildNewProgramme(p.config,{data:p.historicalData,now});assert.ok(main(novice.weeks[0],'Squat').every(e=>e[4]<=5.5&&e[1]===1));
+ const current=storedPolicyProgramme(p.config,{data:p.historicalData,now});assert.ok(main(current.weeks[0],'Squat').every(e=>e[4]<=6.5));assert.equal(main(current.weeks[0],'Bench')[0][4],7.5);
+ p.config.trainingAge='returning';const novice=storedPolicyProgramme(p.config,{data:p.historicalData,now});assert.ok(main(novice.weeks[0],'Squat').every(e=>e[4]<=5.5&&e[1]===1));
  const cleared=profile('T').config;cleared.recoveryEvidence.cleared=true;
- assert.equal(main(adapters.buildNewProgramme(cleared,{now}).weeks[0],'Squat')[0][4],7.5,'Explicit clearance is distinct from elapsed weeks');
- p.config.trainingAge='intermediate';p.config.recoveryContext.reportedAt='2027-01-01';assert.equal(main(adapters.buildNewProgramme(p.config,{now}).weeks[0],'Squat')[0][4],7.5,'Future reports are not current evidence');
+ assert.equal(main(storedPolicyProgramme(cleared,{now}).weeks[0],'Squat')[0][4],7.5,'Explicit clearance is distinct from elapsed weeks');
+ p.config.trainingAge='intermediate';p.config.recoveryContext.reportedAt='2027-01-01';assert.equal(main(storedPolicyProgramme(p.config,{now}).weeks[0],'Squat')[0][4],7.5,'Future reports are not current evidence');
 });
 test('Idris has no hard lifting or long/quality running before the actual recovery end date, including partial weeks',()=>{
  for(const days of [10,14,21]){
   const c=profile('S').config;c.orderedGoals[0].recoveryDays=days;
-  const p=adapters.buildNewProgramme(c,{now});
+  const p=storedPolicyProgramme(c,{now});
   for(const w of p.weeks)for(const s of w.sessions){const elapsed=(Date.parse(dateOf(c,w.week,s.day))-Date.parse('2026-11-28'))/86400000;
    if(elapsed>0&&elapsed<days){assert.ok((s.ex||[]).every(e=>e[4]<=6));assert.ok((s.runs||[]).every(r=>r.role!=='long-run'&&!r.steps.some(s=>s.role==='work')));}
   }
@@ -87,7 +91,7 @@ test('Idris has no hard lifting or long/quality running before the actual recove
 });
 test('date-based recovery spans the UK daylight-saving transition without losing a recovery day',()=>{
  const c=profile('S').config;c.startDate='2027-03-01';c.weeks=13;c.strengthTargetDate='2027-03-27';c.runningTargetDate='2027-05-30';c.orderedGoals[0].date=c.strengthTargetDate;c.orderedGoals[1].date=c.runningTargetDate;c.visitConstraints.eventDays={'2027-03-27':{confirmed:true},'2027-05-30':{confirmed:true,minutes:240}};
- const p=adapters.buildNewProgramme(c,{now}),monday=p.weeks[5].sessions.find(s=>s.day==='Mon');assert.equal(dateOf(c,6,'Mon'),'2027-04-05');assert.ok(monday.ex.every(e=>e[4]<=6));
+ const p=storedPolicyProgramme(c,{now}),monday=p.weeks[5].sessions.find(s=>s.day==='Mon');assert.equal(dateOf(c,6,'Mon'),'2027-04-05');assert.ok(monday.ex.every(e=>e[4]<=6));
  assert.ok(!inspect([{id:'DST',input:c,programme:p}]).findings.some(f=>f.kind==='hard-work-within-requested-recovery'));
 });
 test('all 64 saved Stage 2 athlete-weeks remain exactly unchanged; generation does not mutate retained logs or approvals',()=>{
@@ -100,6 +104,6 @@ test('all 64 saved Stage 2 athlete-weeks remain exactly unchanged; generation do
  }
 });
 test('browser-global canonical entry has the same event and recovery safeguards as Node',()=>{
- const sandbox=vm.createContext({Date,console});for(const file of ['running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+file+'.js','utf8'),sandbox);
- for(const id of ['S','T']){const p=profile(id);assert.equal(JSON.stringify(sandbox.LHRFCoachAdapters.buildNewProgramme(p.config,{data:p.historicalData,now})),JSON.stringify(generate(id)));}
+ const sandbox=vm.createContext({Date,console});for(const file of ['gym-equipment','exercise-registry','coaching-evidence','running-workouts','running-preparation','coach-constraints','coach-engine','coach-adapters'])vm.runInContext(fs.readFileSync('src/'+file+'.js','utf8'),sandbox);
+ for(const id of ['S','T']){const p=profile(id);assert.equal(JSON.stringify(sandbox.LHRFCoachAdapters.buildNewProgramme(p.config,{data:p.historicalData,now})),JSON.stringify(adapters.buildNewProgramme(p.config,{data:p.historicalData,now})));}
 });

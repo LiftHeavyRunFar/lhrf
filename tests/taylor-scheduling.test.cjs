@@ -7,11 +7,13 @@ const saved=require('./fixtures/pre-taylor-saved-programmes.json');
 const clone=x=>JSON.parse(JSON.stringify(x)),now=()=>Date.parse(fixture.clock);
 const taylor=()=>{const p=clone(fixture.cases.find(p=>p.id==='O'));p.config.sessionTimeVersion=0;return p};
 const mains=s=>(s.ex||[]).filter(e=>e[5]?.category==='primary');
+const runDose=run=>Object.fromEntries(['role','distanceKnown','distanceKm','minutes','durationRangeMinutes','pace','rpe','workMinutes','workoutFamily','steps'].map(key=>[key,run[key]]));
 
 test('Taylor uses the longer visits, separates lower lifts and retains the full health-running dose',()=>{
  const {config,historicalData}=taylor(),before=JSON.stringify({config,historicalData});
  const programme=adapters.buildNewProgramme(config,{data:historicalData,now});
  const previous=adapters.buildProgramme(saved.rows.find(r=>r.fixture==='five-scenario-round-three-inputs'&&r.id==='O').config,{data:historicalData,now});
+ const runningKm=w=>w.sessions.flatMap(s=>s.runs||[]).reduce((n,r)=>n+Number(r.distanceKm||0),0),familiarKm=runningKm(previous.weeks[0]);
  assert.deepEqual(adapters.buildNewProgramme(config,{data:historicalData,now}),programme);
  assert.equal(JSON.stringify({config,historicalData}),before);
  assert.equal(programme.config.visitAllocationVersion,1);
@@ -23,7 +25,15 @@ test('Taylor uses the longer visits, separates lower lifts and retains the full 
    assert.ok(s.timeBudget.includesWarmups&&s.timeBudget.includesRest&&s.timeBudget.includesTransitions);
    assert.equal(s.timeBudget.adjustments,undefined,'No time-driven volume cuts are needed');
   }
-  assert.deepEqual(w.sessions.flatMap(s=>s.runs||[]),previous.weeks[w.week-1].sessions.flatMap(s=>s.runs||[]),'Only run days change, not dose or pace');
+  const currentRuns=w.sessions.flatMap(s=>s.runs||[]),oldRuns=previous.weeks[w.week-1].sessions.flatMap(s=>s.runs||[]);
+  if(w.week===1)assert.deepEqual(currentRuns.map(runDose),oldRuns.map(runDose),'The familiar initial running dose is preserved');
+  assert.deepEqual(currentRuns.map(r=>[r.role,r.pace,r.rpe]),oldRuns.map(r=>[r.role,r.pace,r.rpe]),'Purpose, pace and effort are retained');
+  // General fitness now holds the familiar base; the superseded policy's
+  // unrequested growth is not a requirement on a newly reviewed programme.
+  assert.ok(runningKm(w)<=familiarKm+.001);
+  const running=coach.createEngine({data:historicalData,now}).runningAssessment(programme.config,w.week);
+  if(!w.deload&&!running.deload&&!running.taper&&w.phase!=='Taper / event'&&running.phase!=='Recovery')assert.ok(Math.abs(runningKm(w)-familiarKm)<.001,'Normal fitness weeks retain the familiar base');
+  else assert.ok(runningKm(w)<=runningKm(previous.weeks[w.week-1])+.001,'A justified recovery/taper reduction is not silently restored');
   if(w.week<=14){
    const lifting=w.sessions.filter(s=>s.ex?.length);
    assert.deepEqual(lifting.map(s=>s.day),['Tue','Sat']);
