@@ -27,7 +27,7 @@ function createWakeLockController({request,visible=()=>true,onState=()=>{}}={}){
  }
  return {setActive(active){if(active&&!wanted)blocked=false;wanted=!!active;return sync();},retry(){blocked=false;return sync();}};
 }
-const api={paceSpeeds,defaultSpeed,stages,create,advance,changeSpeed,createWakeLockController};
+const api={paceSpeeds,defaultSpeed,stages,create,advance,changeSpeed,createWakeLockController,restGuidance};
 if(typeof module==='object'&&module.exports){module.exports=api;return;}root.LHRFWorkoutTools=api;
 const LIVE='lhrf_fresh_beta_live_v1114',STORE='lhrf_treadmill_v1',REST='lhrf_rest_v1';
 let current=null,rest=null;const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
@@ -125,7 +125,7 @@ function paint(){
  const next=current.steps[i+1];put('tmNextLabel',next?'UP NEXT · LAP '+(i+2):'UP NEXT');put('tmNext',next?next.label+' · '+(next.distanceKm>0?next.distanceKm.toFixed(2)+' km':clock(next.seconds))+' · '+targetText(next):current.complete?'Review and confirm your treadmill totals.':'Finish and review your run');
  const input=p.querySelector('#tmSpeed');if(document.activeElement!==input)input.value=current.speed.toFixed(1);const button=p.querySelector('#tmPause');button.textContent=current.running?'Pause':'Start / Resume';button.disabled=current.complete;
 }
-function tick(){const l=live();if(!l?.ex?.length&&rest.start!==null){rest.elapsed+=Date.now()-rest.start;rest.start=null;localStorage.setItem(REST,JSON.stringify(rest));}if(current?.running){if(!l||identity(l)!==current.key||l.runLogged){current=advance(current,Date.now());current.running=false;save();}else{const i=current.index;current=advance(current,Date.now());save();if(i!==current.index){const el=document.getElementById('tmError');if(el)el.textContent=current.complete?'Stages complete. Verify and copy your totals.':'Lap speed set to '+current.speed.toFixed(1)+' km/h. Match the treadmill belt.';}paint();}}paintRest();syncTheme();syncWake();}
+function tick(){const l=live();if(!l?.ex?.length&&rest.start!=null){rest.elapsed+=Date.now()-rest.start;rest.start=null;localStorage.setItem(REST,JSON.stringify(rest));}if(current?.running){if(!l||identity(l)!==current.key||l.runLogged){current=advance(current,Date.now());current.running=false;save();}else{const i=current.index;current=advance(current,Date.now());save();if(i!==current.index){const el=document.getElementById('tmError');if(el)el.textContent=current.complete?'Stages complete. Verify and copy your totals.':'Lap speed set to '+current.speed.toFixed(1)+' km/h. Match the treadmill belt.';}paint();}}paintRest();syncTheme();syncWake();}
 if(typeof document!=='undefined'){document.addEventListener('lhrf:set-completed',event=>{
  const l=live(),index=Number(event.detail?.index);
  if(!l||!Number.isInteger(index)||l.ex?.[index]===undefined||event.detail?.lastInExercise)return;
