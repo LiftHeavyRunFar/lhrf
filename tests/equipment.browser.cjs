@@ -7,7 +7,7 @@ const {fullInventory}=require('./equipment-fixtures.cjs');
  try{
   const context=await browser.newContext(),page=await context.newPage(),errors=[],dialogs=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',async d=>{dialogs.push(d.message());await d.dismiss()});
   await page.goto('http://localhost:8765/');
-  assert.equal(await page.locator('#firstRun [data-step="2"] summary').filter({hasText:/^Equipment$/}).count(),1);
+  assert.equal(await page.locator('#frEquipment summary').filter({hasText:/^Equipment$/}).count(),1);
   assert.equal(await page.locator('#settings input[aria-label="safety-squat-bar"]').evaluate(e=>e.equipmentState),'unavailable');
   const inv=fullInventory();await page.evaluate(inv=>{data.onboardingComplete=true;data.equipmentInventory=inv;data.customRoadmap={programmeId:'synthetic-frozen',weeks:1};data.activeSchedule=[{id:'saved',day:'Tue',name:'Frozen bench',ex:[['Safety-bar squat',3,5,100,7]],runs:[]}];schedule=data.activeSchedule;save();document.getElementById('firstRun').hidden=true;go('settings')},inv);
   await page.reload();await page.evaluate(()=>go('settings'));
