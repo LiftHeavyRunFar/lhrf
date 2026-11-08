@@ -31,8 +31,7 @@ function mount({getData}){
    card.classList.toggle('training-complete',complete);card.classList.toggle('training-active',card.open);
   }
   const active=document.querySelector('#liveExercises > .live-ex[open]'),ex=active&&live.ex[Number(active.dataset.exerciseIndex)];
-  const purpose=ex?root.LHRFPerformanceHistory.purpose(ex[5]).value:null;
-  header.querySelector('.training-purpose').textContent=purpose?purpose+' practice':live.ex?.length?'Strength training':'Running training';
+  // The session purpose lives in the exercise information panel, not the training header.
  }
  function render(){
   sync();const live=getLive(),host=$('liveTrainRoot');if(!live||!host?.firstElementChild)return;
@@ -46,13 +45,10 @@ function mount({getData}){
    // Replace only the existing presentation header; exercise inputs stay in place.
    header.replaceChildren();
    const top=document.createElement('div');top.className='training-topline';
-   const mode=document.createElement('span');mode.className='tag';mode.textContent='LHRF / TRAINING MODE';
-   const leave=document.createElement('button');leave.type='button';leave.className='secondary training-leave';leave.textContent='Leave & resume';leave.onclick=()=>root.go('today');top.append(mode,leave);
-   const title=document.createElement('h2');title.textContent=live.name;
-   const purpose=document.createElement('p');purpose.className='training-purpose';
-   const count=document.createElement('span');count.className='live-status';
-   const bar=document.createElement('div');bar.className='live-progress';bar.append(document.createElement('div'));
-   header.append(top,title,purpose,count,bar);
+   const mode=document.createElement('span');mode.className='tag';mode.textContent='WORKOUT';
+   const count=document.createElement('span');count.className='live-status';count.setAttribute('aria-live','polite');
+   const leave=document.createElement('button');leave.type='button';leave.className='secondary training-leave';leave.textContent='Leave & resume';leave.onclick=()=>root.go('today');
+   top.append(mode,count,leave);header.append(top);
   }
   for(const card of cards){
    const index=Number(card.dataset.exerciseIndex),ex=live.ex[index],content=card.querySelector('.ex-content');
@@ -67,6 +63,22 @@ function mount({getData}){
     content.prepend(prescription);
     if(original!==ex[3]){const guidance=document.createElement('p');guidance.className='working-guidance';guidance.textContent='Current RPE-based back-off suggestion: '+practical.value+' kg. Original prescription remains above.';prescription.after(guidance)}
     let hintShown=false;card.querySelectorAll('.live-set').forEach((row,j)=>{const entry=live.entries[index+'_'+j];if(!entry?.done&&entry?.weightHint?.kind==='carry-forward'){const input=row.querySelector('[data-field=weight]');input.dataset.suggested='carry-forward';input.setAttribute('aria-description','Editable suggestion from recorded set '+entry.weightHint.fromSet);input.parentElement.querySelector('label').textContent+=' · suggested';if(!hintShown){const hint=document.createElement('small');hint.className='weight-carry-hint';hint.textContent='Working suggestion: '+entry.weight+(ex[5]?.loadType==='per-hand-kg'?' kg / hand':ex[5]?.loadType==='assistance-kg'?' kg assistance':' kg')+' · editable';prescription.after(hint);hintShown=true}}});
+   }
+   if(!card.querySelector('.training-info-button')){
+    const info=document.createElement('button');info.type='button';info.className='training-info-button';info.textContent='ⓘ';info.setAttribute('aria-label','Exercise coaching notes and previous performance for '+ex[0]);info.title='Exercise guidance and history';
+    const summary=card.querySelector(':scope > summary');summary?.appendChild(info);
+    info.addEventListener('click',event=>{
+     event.preventDefault();event.stopPropagation();
+     const source=getLive(),current=source?.ex?.[index];if(!current)return;
+     const dialog=document.createElement('section');dialog.className='training-info-dialog';
+     const title=document.createElement('h2');title.textContent=current[0]+' · '+(root.LHRFPerformanceHistory.purpose(current[5]).value||'Exercise');dialog.appendChild(title);
+     const close=document.createElement('button');close.type='button';close.className='secondary';close.textContent='Close';close.onclick=()=>dialog.remove();dialog.appendChild(close);
+     const h=document.createElement('h3');h.textContent='Coach’s notes';dialog.appendChild(h);
+     const note=document.createElement('p');note.textContent=current[5]?.cue||card.querySelector('.exercise-notes p')?.textContent||'Follow the prescribed sets, effort and your exercise setup.';dialog.appendChild(note);
+     const history=card.querySelector('.exercise-history');
+     if(history){const h2=document.createElement('h3');h2.textContent='Previous comparable performance';dialog.appendChild(h2);const copy=history.cloneNode(true);copy.classList.add('training-dialog-history');dialog.appendChild(copy)}
+     document.body.appendChild(dialog);root.LHRFMobileUX?.modal(dialog);
+    });
    }
    if(!card.dataset.trainingBound){card.dataset.trainingBound='true';
     card.querySelector(':scope > summary').addEventListener('click',()=>{const current=getLive();if(!card.isConnected||!current||card.open)return;host.querySelectorAll('#liveExercises > .live-ex').forEach(other=>{if(other!==card)other.open=false});root.LHRFLive?.selectExercise?.(index);remember(current,index);requestAnimationFrame(refresh)});
