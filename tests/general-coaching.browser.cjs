@@ -17,7 +17,7 @@ const KEY='lhrf_beta_v1118_clean';
  await page.evaluate(()=>document.getElementById('restartOnboardingLink').click());await page.locator('#frScope').selectOption('hybrid');await page.locator('[name="frFocus"][value="strength"]').check();await page.locator('#frNext').click();
  await page.locator('#frGoal').selectOption('bench');await page.locator('#frExperience').selectOption('advanced');
  await page.locator('#frGoalDetails > summary').click();await page.locator('#frStrengthMode').selectOption('progression');await page.locator('#frStartDate').fill('2027-01-04');
- await page.locator('#frStrengthDate').fill('2027-03-27');await page.locator('#frAddRunningGoal').uncheck();await page.locator('#frStrengthEventConfirmed').check();await page.locator('#frNext').click();
+ await page.locator('#frStrengthDate').fill('2027-03-27');await page.locator('#frAddRunningGoal').uncheck();await page.locator('#frNext').click();
  await page.locator('#frModeCoach').click();await page.locator('#frWeeklyDetails > summary').click();await page.locator('#frStrengthVisits').fill('3');
  for(const [id,v]of Object.entries({frBench:'3',frRuns:'2'}))await page.locator('#'+id).selectOption(v);
  await page.locator('#frNext').click();await page.locator('#frMaxBench').fill('120');await page.locator('#frRunningResult > summary').click();await page.locator('#frRunTime').fill('50:00');await page.locator('#frRunKm').fill('20');await page.locator('#frFatigueStatus').selectOption('normal');await page.locator('#frNext').click();

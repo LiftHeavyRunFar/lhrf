@@ -175,7 +175,6 @@ async function exportBackup(page) {
       await set(page, 'frGoal', test.goal);
       await set(page, 'frExperience', 'advanced');
       await set(page, 'frStrengthDate', eventDate);
-      await loc(page, 'frStrengthEventConfirmed').check();
       await next(page);
       assert.equal(await step(page), '3');
       await chooseDays(page, ['Mon','Tue','Thu','Sat','Sun']);
@@ -221,12 +220,15 @@ async function exportBackup(page) {
         assert.equal(final.date, choice.mode === 'date' ? choice.value : '2026-12-13');
         assert.ok(final.finalLightDate == null || final.finalLightDate > final.date);
         const exercises = proposal.weeks.flatMap(week => week.sessions.flatMap(session => session.ex || []));
-        const singles = exercises.filter(ex => ex[2] === 1 && ex[5]?.finalHeavyExposure?.lift === lift);
-        assert.deepEqual(singles.map(ex => ex[5].finalHeavyExposure.date), [final.date]);
+        const conditional = final.kind === 'conditional-single';
+        const marker = conditional ? 'conditionalFinalHeavy' : 'finalHeavyExposure';
+        const planned = exercises.filter(ex => ex[5]?.[marker]?.lift === lift && ex[5][marker].date === final.date);
+        assert.equal(planned.length, 1);
+        assert.equal(planned[0][2] === 1, !conditional);
         if (final.finalLightDate) {
           const practice = exercises.find(ex => ex[5]?.finalLightExposure?.lift === lift);
           assert.equal(practice?.[5].finalLightExposure.date, final.finalLightDate);
-          assert.ok(practice[4] < singles[0][4], 'Later technique practice is lighter than the final single');
+          assert.ok(practice[4] < planned[0][4], 'Later technique practice is lighter than final rehearsal');
         }
       }
       if (test.goal === 'powerlifting') {
@@ -244,7 +246,6 @@ async function exportBackup(page) {
       await set(page, 'frGoal', 'bench');
       await set(page, 'frExperience', 'beginner');
       await set(page, 'frStrengthDate', eventDate);
-      await loc(page, 'frStrengthEventConfirmed').check();
       await next(page);
       await set(page, 'frFinalHeavyBenchMode', 'days');
       await set(page, 'frFinalHeavyBenchDays', 1);
@@ -270,7 +271,6 @@ async function exportBackup(page) {
       await set(page, 'frGoal', 'deadlift');
       await set(page, 'frExperience', 'intermediate');
       await set(page, 'frStrengthDate', eventDate);
-      await loc(page, 'frStrengthEventConfirmed').check();
       await next(page);
       await next(page);
       assert.equal(await step(page), '4');
@@ -291,7 +291,7 @@ async function exportBackup(page) {
       const original = trainingState();
       original.readinessDay = '2026-11-09';
       const packet = await replacement.createPackage(eventProgramme({equipmentInventory:original.equipmentInventory}),
-        original, {reviewedCommit:'babc279', approvalContext:['Synthetic upgrade fixture']});
+        original, {reviewedCommit:'6e0a0e9', approvalContext:['Synthetic upgrade fixture']});
       const approved = replacement.createReplacement(original, packet, coach, {now:date}).next;
       servePrevious = true;
       const context = await browser.newContext({viewport:pixel, isMobile:true, hasTouch:true,
