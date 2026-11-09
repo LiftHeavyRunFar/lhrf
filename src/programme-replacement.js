@@ -18,6 +18,11 @@ function validateProgramme(p){
    for(const r of s.runs)if(!Number.isFinite(r.distanceKm)||r.distanceKm<0||!Array.isArray(r.steps))throw Error('Malformed running prescription.');
   }
  }
+ if(p.config.runningReviewVersion===1){
+  const running=typeof module==='object'&&module.exports?require('./running-preparation.js'):root.LHRFRunningPreparation;
+  if(running.racePreparationReview(p)?.accepted===false)
+   throw Error('Review the running goal or explicitly choose provisional training before approving this programme.');
+ }
  return p;
 }
 function identity(state){const out={};for(const key of ['athleteId','userId'])if(state[key]!=null)out[key]=state[key];for(const key of ['athlete','profile','athleteProfile'])if(state[key]?.id!=null)out[key]=state[key].id;return out}

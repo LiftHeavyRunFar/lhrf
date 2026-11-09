@@ -170,3 +170,19 @@ test('programme calendar renders the actual frequency, preserves the selected lo
  }
  assert.equal(runs(programme.weeks[2]).filter(run=>run.frequencyTrial).length,1);
 });
+
+test('plan-first familiar running has executable scheduled progression without a workout-start unlock',()=>{
+ const records=history([10,10,12,16]),c=prepared({...profile({planFirstVersion:1}),runProfile:{weeklyKm:48}},records);
+ const first=assessment(c,1),second=assessment(c,2),deload=assessment(c,4),fifth=assessment(c,5);
+ assert.equal(first.actualKm,48);
+ assert.ok(second.actualKm>first.actualKm&&fifth.actualKm>second.actualKm);
+ assert.ok(deload.actualKm<second.actualKm);
+ assert.ok(second.runs.every(run=>!run.conditionalAerobicBuild));
+ const pain={sport:'running',task:'easy',status:'pain',observedAt:'2026-11-07'};
+ const restricted=prepared({...profile({planFirstVersion:1}),runProfile:{weeklyKm:48},recoveryObservations:[pain]},records);
+ assert.deepEqual(assessment(restricted,1).runs,[]);
+ const novice=prepared(profile({runs:2,planFirstVersion:1}),data());
+ assert.ok(assessment(novice,6).runs.every(run=>run.conditionalAerobicBuild));
+ const frequency=prepared({...profile({runs:7,planFirstVersion:1}),runProfile:{weeklyKm:48}},records);
+ assert.equal(assessment(frequency,3).runs.filter(run=>run.frequencyTrial).length,1);
+});

@@ -146,6 +146,36 @@ async function exportBackup(page) {
     }
     {
       const {page, context, errors} = await fresh(browser, origin);
+      await set(page, 'frScope', 'running');
+      await next(page);
+      await set(page, 'frGoal', 'running');
+      await set(page, 'frRunGoal', '10K');
+      await set(page, 'frRunningDate', eventDate);
+      await set(page, 'frRunningTarget', '55:00');
+      await next(page);
+      await next(page);
+      const lastRun = loc(page, 'frLastRunBeforeBreak');
+      await lastRun.locator('xpath=ancestor::details').locator('summary').click();
+      await lastRun.fill('2026-10-24');
+      await currentRecovery(page);
+      assert.equal(await loc(page, 'frRaceReview').isVisible(), true);
+      assert.match(await loc(page, 'frRaceReviewReason').innerText(), /reported break/);
+      assert.equal(await loc(page, 'frNext').getAttribute('aria-disabled'), 'true');
+      assert.notEqual(JSON.parse(await state(page))?.onboardingComplete, true);
+      await loc(page, 'frAcceptProvisionalRace').click();
+      assert.match(await loc(page, 'frRaceReviewReason').innerText(), /No race workout/);
+      const installed = await accept(page);
+      assert.equal(installed.customRoadmap.provisionalRaceDate, eventDate);
+      assert.deepEqual(installed.activeSchedule.flatMap(s => s.runs).map(r => r.minutes), [15]);
+      const draft = await rebuild(page, installed.customRoadmap);
+      const event = draft.weeks.flatMap(w => w.sessions).find(s => s.eventDate === eventDate);
+      assert.equal(event.raceDecisionDeferred, true);
+      assert.deepEqual(event.runs, []);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    {
+      const {page, context, errors} = await fresh(browser, origin);
       // Keep defaults for general hybrid fitness, availability and baselines.
       await next(page);
       assert.equal(await step(page), '2');
@@ -159,6 +189,27 @@ async function exportBackup(page) {
       assert.ok(installed.activeSchedule.some(session => session.ex?.length));
       assert.ok(installed.activeSchedule.some(session => session.runs?.length));
       assert.equal(await loc(page, 'frFinalHeavyPreview').isVisible(), false);
+      assert.deepEqual(errors, []);
+      await context.close();
+    }
+    {
+      const {page, context, errors} = await fresh(browser, origin);
+      await set(page, 'frScope', 'strength');
+      await next(page);
+      await set(page, 'frGoal', 'bench');
+      await set(page, 'frExperience', 'intermediate');
+      await set(page, 'frStrengthDate', eventDate);
+      await next(page);
+      await next(page);
+      await confirmOnboardingEquipment(page);
+      await set(page, 'frMaxBench', 160);
+      await loc(page, 'frMaxBenchEstimate').check();
+      assert.equal(await loc(page, 'frMaxBenchSingle').isVisible(), false);
+      await currentRecovery(page);
+      const installed = await accept(page);
+      assert.equal(installed.customRoadmap.liftProfiles.Bench.currentEstimate, true);
+      assert.ok(installed.activeSchedule.some(session => session.ex.some(ex =>
+        ex[0] === 'Bench' && ex[2] > 1 && ex[3] > 0 && ex[5]?.provisionalEstimateKg === 160)));
       assert.deepEqual(errors, []);
       await context.close();
     }

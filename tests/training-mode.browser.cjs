@@ -16,6 +16,13 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114',root=path.jo
    await page.evaluate(()=>openWorkout('replacement-heavy'));await page.locator('#previewStart').click();await page.locator('.live-ex').first().waitFor();await page.locator('#previousWorkout').evaluate(e=>e.open=true);assert.match(await page.locator('#previousWorkout').innerText(),/03\/11\/2026/);await capture('before-active');
    const oldDraft=await draft();current=true;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});await reopenForWaitingUpdate(page);assert.deepEqual(await draft(),oldDraft,'PWA update never restarts a workout');
   }else{await page.evaluate(()=>openWorkout('replacement-heavy'));await page.locator('#previewStart').click();}
+  await page.evaluate(()=>openWorkout('replacement-heavy'));
+  const preview=page.locator('#livePreview');
+  assert.equal(await preview.getByText('Prescribed · Top set',{exact:true}).count(),1);
+  assert.equal(await preview.getByText('Prescribed · Back-off sets',{exact:true}).count(),1);
+  assert.equal(await preview.locator('.exercise-history[aria-label="Previous performance for Bench"]').count(),1);
+  assert.match(await preview.locator('.exercise-history[aria-label="Previous performance for Bench"]').innerText(),/137\.25 kg × 2 reps · RPE 8\.5/);
+  await page.locator('#previewClose').click();
   const first=page.locator('#liveExercises > .live-ex').nth(0),second=page.locator('#liveExercises > .live-ex').nth(1);
   assert.equal(await page.locator('#appHeader').isVisible(),false);assert.equal(await page.locator('body').getAttribute('data-training-mode'),'active');
   await page.evaluate(()=>document.fonts.ready);assert.equal(await first.locator('.ex-text strong').evaluate(el=>getComputedStyle(el).fontFamily.includes('LHRFTraining')),true);assert.ok(await first.locator('.ex-text strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize))<=30);

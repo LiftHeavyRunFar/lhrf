@@ -25,7 +25,8 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
   const url='http://localhost:'+server.address().port+'/';await page.goto(url);await page.evaluate(()=>navigator.serviceWorker.ready);await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
   const before=await stored();assert.deepEqual(JSON.parse(before.data),data);
   candidate=true;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});
-  await page.locator('#lhrf-update-banner').waitFor({state:'visible'});
+  await page.waitForFunction(async()=>!!(await navigator.serviceWorker.getRegistration())?.waiting);
+  assert.equal(await page.locator('#lhrf-update-banner').isVisible(),false,'Do not prompt an update during an active workout');
   await reopenForWaitingUpdate(page);
   await page.waitForFunction(()=>!!window.LHRFCoach);
   assert.deepEqual(await stored(),before,'PWA update must preserve the entire saved programme, history, Garmin links and active draft');
@@ -43,6 +44,7 @@ const KEY='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
   assert.match(await logged.innerText(),/Set 1 · 121\.75 kg × 5 reps · RPE 8\.5/);
   assert.deepEqual(await stored(),before,'Viewing the log offline preserves the saved records and active draft');
   assert.equal(await page.evaluate(()=>LHRFCoach.prepareNewProgramme({coachingRulesVersion:2,weeks:1,bench:1,squat:0,deadlift:0,runs:0},{data:{sets:[],runs:[]}}).coachingRuntimeVersion),1,'Corrected new-proposal engine and its evidence dependency must be available offline');
+  assert.equal(await page.evaluate(()=>typeof LHRFRunningPreparation.racePreparationReview),'function','The race review gate must be available offline');
   console.log('PASS production -> coaching-integrity app update and offline reload; exact saved programme/history/RPE/Garmin/draft preservation; corrected engine active.');
   await context.close();
  }finally{if(browser)await browser.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}

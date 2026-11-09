@@ -93,3 +93,20 @@ test('reported speed and recovery work cannot recalibrate a main-lift baseline',
  }
  assert.ok(prepare('heavy',7).baselines.Bench<125,'Genuine capacity-relevant work remains eligible');
 });
+
+test('plan-first review follows planned strength progression and keeps corroborated fatigue interventions',()=>{
+ const healthy=fixture({low:false,overshoot:false});
+ assert.equal(review(healthy).status,'progress');
+ healthy.data.customRoadmap.planFirstVersion=1;
+ assert.equal(review(healthy).status,'on-track');
+ assert.equal(review(healthy).changes,undefined);
+ const isolated=fixture({overshoot:false});
+ isolated.data.customRoadmap.planFirstVersion=1;
+ isolated.data.sets.findLast(row=>row.sessionId==='bench-heavy::strength').rpe=9;
+ assert.equal(review(isolated).changes,undefined);
+ const repeated=fixture();
+ const original=review(repeated);
+ repeated.data.customRoadmap.planFirstVersion=1;
+ assert.deepEqual(review(repeated),original);
+ assert.equal(original.status,'fatigue');
+});

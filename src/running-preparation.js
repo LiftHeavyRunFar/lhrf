@@ -14,7 +14,7 @@ const text=x=>{const n=Math.round(x);return Math.floor(n/60)+':'+String(n%60).pa
 const range=(a,b=a)=>text(a)+' to '+text(b);
 const work=s=>s.role==='work';
 const easyType=r=>!/quality|interval|threshold|tempo|race|long/i.test(r.type||r.role||'');
-const normalEasyOuting=r=>r.minutes>0&&easyType(r)&&!r.reducedDose&&confirmedEasyEffort(r);
+const normalEasyOuting=r=>r.minutes>0&&easyType(r)&&!r.reducedDose&&!r.shortenedDose&&!r.interruption&&confirmedEasyEffort(r);
 const usefulRun=r=>r.completed!==false&&!r.failed&&!r.warmup&&!r.unreliable&&!['failed','aborted','unreliable'].includes(r.status);
 const easyFeedback=f=>f?.discomfort==='no'&&['good','okay'].includes(f.energy)&&['expected','easier'].includes(f.difficulty);
 const adverseFeedback=f=>f?.discomfort==='yes'||f?.energy==='low'||f?.difficulty==='harder';
@@ -27,6 +27,11 @@ function workoutFeedback(rows,done,now){
   .sort((a,b)=>Date.parse(b.date)-Date.parse(a.date))[0];
 }
 const confirmedEasyEffort=r=>r.rpe==null?r.easyEffortConfirmed===true&&!r.uncertainty:r.effortReliable!==false&&r.rpe<=4;
+function interruptionReason(row,feedback,done){
+ const declared=[row?.interruptionReason,feedback?.interruptionReason];
+ for(const reason of ['pain','illness','fatigue','time','logistics'])if(declared.includes(reason))return reason;
+ return done?.timeAdaptation?.reason==='unexpected-time-limit'?'time':null;
+}
 // Capture observations at the explicit proposal boundary. A partial device/log
 // extract is not a completed-week capacity estimate, and missing runs are not rest.
 function prepareEvidence(c,options={}){
@@ -42,6 +47,13 @@ function prepareEvidence(c,options={}){
  }
  const completions=(options.data?.completedWorkouts||[]).filter(done=>done.completedRun===true&&done.prescription?.runs?.length===1&&easyPrescription(done.prescription.runs[0]));
  const easyCompletions=new Set(completions.map(done=>activityKey(done.id,done.date?.slice(0,10))));
+ const sameDayEasy=new Map();
+ if(c.trainingContinuityVersion===1)for(const done of completions){
+  const day=evidence.date(done.date);
+  if(!done.id||!day||Date.parse(done.date)>now)continue;
+  const key=activityKey(done.id,day);
+  sameDayEasy.set(key,sameDayEasy.has(key)?null:done);
+ }
  const nativeEasy=c.runningDosePolicyVersion===1?new Map(completions.filter(done=>done.id&&Number.isFinite(Date.parse(done.date))&&Date.parse(done.date)<=now)
   .map(done=>[activityKey(done.id,done.date),done])):null;
  const nextDayReports=c.runningDosePolicyVersion===1?[...(c.recoveryObservations||[]),...(c.recoveryEvidence?.observations||[])]:[];
@@ -56,7 +68,14 @@ function prepareEvidence(c,options={}){
   const linkedEasy=minutes!=null&&row.sessionId&&easyCompletions.has(activityKey(row.sessionId,row.date.slice(0,10)));
   const done=nativeEasy?.get(activityKey(row.sessionId,row.date)),planned=done?.prescription.runs[0];
   const feedback=done&&workoutFeedback(options.data?.sessionFeedback||[],done,now);
-  const day=row.date.slice(0,10);
+  const day=evidence.date(row.date);
+  const continuityDone=c.trainingContinuityVersion===1?sameDayEasy.get(activityKey(row.sessionId,day)):done;
+  const continuityPlan=continuityDone?.prescription.runs[0];
+  const continuityFeedback=continuityDone&&workoutFeedback(options.data?.sessionFeedback||[],continuityDone,now);
+  const interruption=c.trainingContinuityVersion===1&&interruptionReason(row,continuityFeedback,continuityDone);
+  const plannedKm=c.trainingContinuityVersion===1&&continuityPlan?.distanceKnown!==false?Number(continuityPlan?.distanceKm):NaN;
+  const shortened=c.trainingContinuityVersion===1&&((plannedKm>0&&km<plannedKm*.85)||
+   (continuityPlan?.distanceKnown===false&&continuityPlan.minutes>0&&minutes>0&&minutes<continuityPlan.minutes*.85));
   const nextDayEasy=nextDayReports.some(report=>{
    const observed=(report.observedAt||report.reportedAt||report.date||'').slice(0,10);
    return report.sport==='running'&&report.task==='easy'&&report.status==='normal'&&
@@ -77,7 +96,10 @@ function prepareEvidence(c,options={}){
    effortReliable:row.rpeReliable!==false&&!row.approximateRpe&&!row.evidenceReview?.rpe?.approximate,sourceActivityId:row.sourceActivityId||row.garminActivityId||null,
    ...(linkedEasy?{plannedEasy:true}:{}),...(easyEffortConfirmed?{easyEffortConfirmed:true}:{}),...(reduced?{reducedDose:true}:{}),
    ...(verifiedFrequencyTrial?{verifiedFrequencyTrial:true}:{}),
-   ...(c.integratedCoachingVersion===1&&(adverseFeedback(feedback)||evidence.symptomObservation(row)||evidence.symptomObservation(feedback))?{adverseResponse:true}:{})};
+   ...(plannedKm>0?{plannedKm}:{}),...(shortened?{shortenedDose:true}:{}),...(interruption?{interruption}:{}),
+   ...(c.trainingContinuityVersion===1&&continuityFeedback?.difficulty==='harder'&&continuityFeedback.energy==='low'?{hardLowResponse:true}:{}),
+   ...(c.integratedCoachingVersion===1&&(adverseFeedback(continuityFeedback)||['pain','illness','fatigue'].includes(interruption)||
+    evidence.symptomObservation(row)||evidence.symptomObservation(continuityFeedback))?{adverseResponse:true}:{})};
   const native=c.integratedCoachingVersion===1?nativeKey(row):null;
   const source=linkedSources.get(native)||item.sourceActivityId;
   const key=source?'activity:'+source:native||JSON.stringify([row.date,km,item.minutes]);
@@ -89,6 +111,10 @@ function prepareEvidence(c,options={}){
   if(days.size>1||kms.length>1||minutes.length>1){rejected.push({date:group[0].date,reason:'conflicting-linked-activity'});continue}
   const merged={...group[0],minutes:minutes[0]??null,rpe:efforts.length===1?efforts[0]:null,effortReliable:efforts.length===1&&group.every(x=>x.effortReliable),...(group.length>1?{sourceObservations:group}:{}),...(efforts.length>1?{uncertainty:'Conflicting effort reports; distance is retained, effort is unsuitable for progression.'}:{})};
   if(group.some(x=>x.adverseResponse))merged.adverseResponse=true;
+  if(group.some(x=>x.hardLowResponse))merged.hardLowResponse=true;
+  if(group.some(x=>x.shortenedDose))merged.shortenedDose=true;
+  if(!group.every(x=>x.plannedKm===merged.plannedKm))delete merged.plannedKm;
+  if(!group.every(x=>x.interruption===merged.interruption))delete merged.interruption;
   if(!group.every(x=>x.plannedEasy))delete merged.plannedEasy;
   if(!group.every(x=>x.easyEffortConfirmed)||efforts.length>1)delete merged.easyEffortConfirmed;
   if(!group.every(x=>x.verifiedFrequencyTrial)||efforts.length>1)delete merged.verifiedFrequencyTrial;
@@ -96,7 +122,17 @@ function prepareEvidence(c,options={}){
  }
  rows.sort((a,b)=>a.date.localeCompare(b.date));
  const lastWeek=rows.filter(r=>validDate(r.date)>=at-WEEK&&validDate(r.date)<at),currentWeek=rows.filter(r=>validDate(r.date)>=at);
- return {version:1,asOf:today,validActivityCount:rows.length,rejected,recentActivities:rows.filter(r=>validDate(r.date)>=now-42*DAY),latestCompletedCalendarWeek:{from:new Date(at-WEEK).toISOString().slice(0,10),to:new Date(at-DAY).toISOString().slice(0,10),observedKm:Number(sum(lastWeek.map(r=>r.km)).toFixed(3)),activities:lastWeek},currentCalendarWeek:{observedKm:Number(sum(currentWeek.map(r=>r.km)).toFixed(3)),activities:currentWeek},coverage:'Partial logs are observations only; completeness and habitual capacity are not inferred.',progressionUse:'Future increases are conditional proposals. Confirm completed dose, adherence and recovery at review; a week number is not evidence of adaptation.'};
+ const lastRun=c.runningHistory?.lastRunBeforeBreak;
+ let confirmedBreak;
+ if(c.runningReviewVersion===1&&lastRun){
+  if(evidence.date(lastRun)!==lastRun||lastRun>today)throw new RangeError('Choose a valid last completed run date on or before today.');
+  if([...groups.values()].some(group=>group.some(row=>evidence.date(row.date)>lastRun))||
+   (options.data?.completedWorkouts||[]).some(row=>row.completedRun===true&&validDate(row.date)<=now&&evidence.date(row.date)>lastRun))
+   throw new RangeError('A later run is recorded. Check the last completed run date or leave it blank.');
+  if((stamp(today)-stamp(lastRun))/DAY>=14)confirmedBreak={lastRun,asOf:today};
+ }
+ return {version:1,asOf:today,validActivityCount:rows.length,rejected,recentActivities:rows.filter(r=>validDate(r.date)>=now-42*DAY),
+  ...(confirmedBreak?{confirmedBreak}:{}),latestCompletedCalendarWeek:{from:new Date(at-WEEK).toISOString().slice(0,10),to:new Date(at-DAY).toISOString().slice(0,10),observedKm:Number(sum(lastWeek.map(r=>r.km)).toFixed(3)),activities:lastWeek},currentCalendarWeek:{observedKm:Number(sum(currentWeek.map(r=>r.km)).toFixed(3)),activities:currentWeek},coverage:'Partial logs are observations only; completeness and habitual capacity are not inferred.',progressionUse:'Future increases are conditional proposals. Confirm completed dose, adherence and recovery at review; a week number is not evidence of adaptation.'};
 }
 function history(c){
  const h=c.runningHistory||{},p=c.runProfile||{};
@@ -174,6 +210,39 @@ function easyRecoveryResponse(log,feedback){
   log?.completed===false||log?.failed||['failed','aborted'].includes(log?.status)||rpe>=7;
  return {acute,uncertain:!log||!usefulRun(log)||adverseFeedback(feedback)||relevant(feedback)||relevant(log)||
   rpe>4||log.rpe!=null&&rpe===null};
+}
+function familiarReturnAfterInterruption(c,h,count,eventAt,now){
+ const eligible=(c.runningDoseEvidence?.recentActivities||[]).filter(r=>{
+  const at=stamp(evidence.date(r.date));
+  return at>eventAt&&(c.runningReviewVersion===1||now-at<=28*DAY)&&r.plannedEasy&&r.plannedKm>0&&r.minutes>0&&!r.uncertainty;
+ });
+ const harder=eligible.filter(r=>now-stamp(evidence.date(r.date))<=14*DAY&&(r.hardLowResponse||r.interruption==='fatigue'));
+ const adverse=eligible.some(r=>['pain','illness'].includes(r.interruption))||new Set(harder.map(r=>evidence.date(r.date))).size>=2;
+ if(adverse)return {adverse:true};
+ const usable=eligible.filter(r=>!r.adverseResponse&&(r.rpe==null||r.effortReliable&&r.rpe<=4));
+ const afterInitialReturn=r=>stamp(evidence.date(r.date))>eventAt+14*DAY;
+ const covered=usable.filter(r=>afterInitialReturn(r)&&!r.shortenedDose&&!r.reducedDose&&!r.interruption);
+ const anchor=covered.reduce((best,r)=>!best||r.km>=best.km?r:best,null);
+ const reference=anchor?.km||0;
+ const weeks=new Map();
+ for(const row of usable.filter(afterInitialReturn)){
+  const week=monday(stamp(evidence.date(row.date)));
+  if(!weeks.has(week))weeks.set(week,[]);
+  weeks.get(week).push(row);
+ }
+ const complete=[...weeks].sort(([a],[b])=>b-a).map(([,rows])=>rows).find(rows=>
+  rows.length===count&&new Set(rows.map(r=>evidence.date(r.date))).size===count);
+ const latestCovered=Math.max(...covered.map(r=>stamp(evidence.date(r.date))));
+ const nearby=[...new Map(usable.filter(r=>Math.abs(stamp(evidence.date(r.date))-latestCovered)<=7*DAY)
+  .map(r=>[evidence.date(r.date),r])).values()].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,count);
+ const source=complete||(nearby.length===count?nearby:null);
+ if(!source||!(reference>0))return {};
+ const supported=source.map(r=>!complete||r.shortenedDose||r.reducedDose||r.interruption
+  ?Math.min(r.plannedKm||r.km,reference):r.km);
+ const age=(stamp(c.runningDoseEvidence?.asOf)-Math.min(...[...source,anchor].map(row=>stamp(evidence.date(row.date)))))/DAY;
+ const weight=c.runningReviewVersion===1&&Number.isFinite(age)?Math.max(0,Math.min(1,(42-age)/14)):1;
+ return {familiar:{weeklyKm:Math.min(h.base,sum(supported)),longestKm:Math.max(...supported)},weight,
+  interrupted:!complete||source.some(r=>r.shortenedDose||r.reducedDose||r.interruption)};
 }
 function runningSymptomReview(data,{now,task='easy'}){
  const hasConcern=[...(data.checkins||[]),...(data.recoveryObservations||[]),...(data.customRoadmap?.recoveryObservations||[])].some(evidence.symptomObservation);
@@ -330,19 +399,19 @@ function ordinaryOuting(activities,distinctDays=false){
   secondsPerKm:Math.max(...activities.map(r=>r.minutes*60/r.km)),source:'recent comfortable easy outings'};
 }
 const roundDownDistance=km=>Math.floor(km*20+1e-8)/20;
-function verifiedFitnessRoutine(c,h){
+function verifiedFitnessRoutine(c,h,afterEvent=-Infinity){
  const asOf=stamp(c.runningDoseEvidence?.asOf);
  if(!(h.base>0)||!Number.isFinite(asOf))return null;
  const currentWeek=monday(asOf),calendar=new Map();
  for(const row of c.runningDoseEvidence.recentActivities||[]){
   const day=stamp(evidence.date(row.date)),week=monday(day);
-  if(!Number.isFinite(day)||week>=currentWeek||week<currentWeek-3*WEEK)continue;
+  if(!Number.isFinite(day)||day<=afterEvent||week>=currentWeek||week<currentWeek-3*WEEK)continue;
   if(!calendar.has(week))calendar.set(week,[]);
   calendar.get(week).push(row);
  }
  const complete=[...calendar].sort(([a],[b])=>b-a).flatMap(([,rows])=>{
   const days=new Set(rows.map(row=>evidence.date(row.date))),km=sum(rows.map(row=>row.km));
-  const normal=rows.every(row=>row.minutes>0&&(!row.reducedDose||row.verifiedFrequencyTrial)&&!row.adverseResponse&&!row.uncertainty&&
+  const normal=rows.every(row=>row.minutes>0&&(!row.reducedDose||row.verifiedFrequencyTrial)&&!row.adverseResponse&&!row.shortenedDose&&!row.interruption&&!row.uncertainty&&
    !/quality|interval|threshold|tempo|race/i.test(row.type)&&confirmedEasyEffort(row));
   if(!normal||days.size!==rows.length||km<h.base*.85||km>h.base*1.15)return [];
   return [rows.slice().sort((a,b)=>a.km-b.km||a.minutes-b.minutes)];
@@ -405,7 +474,7 @@ function routineFitnessDoses(c,{frequency,p,factor,base,requestedKm,canBuild,del
   run.fitnessDistanceDose=true;
   run.reason=trial?'Shorter familiar work makes room for one easy trial without adding weekly distance.':
    'This easy outing reflects your verified weekly pattern. Shorten if needed.';
-  if(canBuild&&!steady&&!longBounded&&target>0)run.conditionalAerobicBuild={version:1,mode:'distance',
+  if(c.planFirstVersion!==1&&canBuild&&!steady&&!longBounded&&target>0)run.conditionalAerobicBuild={version:1,mode:'distance',
    startingDose:roundDownDistance(row.km*openingMultiplier),rate:c.hybridFocus==='strength'?.025:.03,
    integratedCoachingVersion:1,capacitySlot:row.capacitySlot};
   return run;
@@ -423,7 +492,8 @@ function routineFitnessDoses(c,{frequency,p,factor,base,requestedKm,canBuild,del
 }
 function fitnessDoses(c,w,{h,count,p,requestedKm,factor,base,canBuild,deload,reduced,returnEvent,returnActivities}){
  const recent=(c.runningDoseEvidence?.recentActivities||[]).filter(r=>r.minutes>0&&easyType(r)&&
-  (returnEvent?stamp(r.date.slice(0,10))>stamp(returnEvent.date):!r.reducedDose)&&confirmedEasyEffort(r));
+  (returnEvent?stamp(r.date.slice(0,10))>stamp(returnEvent.date):!r.reducedDose)&&
+  !r.shortenedDose&&!r.interruption&&(c.trainingContinuityVersion!==1||!r.adverseResponse)&&confirmedEasyEffort(r));
  const supported=returnEvent?returnActivities:recent;
  const proof=ordinaryOuting(supported,c.integratedCoachingVersion===1);
  // A single reported longest outing is a ceiling, not a repeatable dose.
@@ -548,12 +618,14 @@ function assess(c,w=1,options={}){
  const count=fitnessFrequency?.effective??requestedFrequency,goal=String(c.runGoal||'fitness').toLowerCase(),h=history(c),warnings=[],blocking=[];
  const now=typeof options.now==='function'?options.now():Number(options.now)||Date.now();
  const resultStamp=stamp(c.runProfile?.resultDate),futureOrInvalidResult=!!c.runProfile?.resultDate&&(!Number.isFinite(resultStamp)||resultStamp>now),p=runtime&&futureOrInvalidResult?null:paceSet(c,options.paces);
- const start=stamp(c.startDate),target=stamp(c.runningTargetDate),raceWeek=Number.isFinite(start)&&Number.isFinite(target)?Math.round((monday(target)-monday(start))/WEEK)+1:null;
+ const raceDeferred=c.runningReviewVersion===1&&!!c.runningTargetDate&&c.provisionalRaceDate===c.runningTargetDate;
+ const start=stamp(c.startDate),target=stamp(c.runningTargetDate),raceWeek=!raceDeferred&&Number.isFinite(start)&&Number.isFinite(target)?Math.round((monday(target)-monday(start))/WEEK)+1:null;
  const until=raceWeek===null?null:raceWeek-w,event=until===0,postRace=until!==null&&until<0&&until>=-2;
  const taper=until!==null&&until>=0&&until<=(goal==='marathon'?2:goal==='half'?1:0),deload=!taper&&!postRace&&w%4===0;
+ const confirmedBreak=c.runningReviewVersion===1&&!!c.runningDoseEvidence?.confirmedBreak;
  if(!Number.isInteger(Number(c.runs))||requestedFrequency!==Number(c.runs))blocking.push('Running frequency must be zero to seven whole sessions per week.');
  if(!['fitness','5k','10k','half','marathon'].includes(goal))blocking.push('Unsupported running goal.');
- if(count&&c.runningTargetDate&&(!h.base||!p))blocking.push('Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.');
+ if(count&&c.runningTargetDate&&!raceDeferred&&!confirmedBreak&&(!h.base||!p))blocking.push('Confirm recent weekly mileage and a representative current running performance before approving dated race preparation.');
  if(c.runningTargetDate&&(!Number.isFinite(start)||!Number.isFinite(target)||target<start))blocking.push('Running preparation requires valid ordered programme and event dates.');
  const resultAge=c.runProfile?.resultDate?(now-stamp(c.runProfile.resultDate))/DAY:null;
  if(c.runProfile?.resultDate&&(!Number.isFinite(resultAge)||resultAge<0))blocking.push('Running result date is invalid or in the future; confirm the baseline before approval.');
@@ -571,10 +643,10 @@ function assess(c,w=1,options={}){
  const daysSinceMarathon=Number.isFinite(recentMarathon)?(weekStart-recentMarathon)/DAY:null;
  let recoveringMarathon=refined||runtime?recovery.recoveringMarathon:daysSinceMarathon!==null&&daysSinceMarathon>=0&&daysSinceMarathon<21;
  const tasks=recovery.runningTasks,returnEvent=runtime?(c.coachingEvidence?.recovery?.events||[]).find(e=>e.date===tasks.easy.eventDate&&e.sport==='running'):null,eventAt=stamp(returnEvent?.date),reviewDays=returnEvent?.goal==='half'?7:21;
- // A dated performance after the provisional event context, together with a
- // reported recent routine, can make an OLD event context rather than a ban.
- // This is new fitness evidence, never clearance from advancing the clock.
- const continuingRoutine=!!(runtime&&returnEvent&&baselineCurrent&&resultStamp>eventAt+reviewDays*DAY&&h.weeks.length>=3&&h.base>0&&!Object.values(tasks).some(t=>t.restriction==='hold'||t.evidence.some(o=>['adverse','safety'].includes(o.status))));
+ // Preserve the legacy exception for saved policies. New proposals use the
+ // same observed return dose and task-specific evidence checks regardless of pace result date.
+ const continuingRoutine=!!(c.runningReviewVersion!==1&&runtime&&returnEvent&&baselineCurrent&&resultStamp>eventAt+reviewDays*DAY&&h.weeks.length>=3&&h.base>0&&
+  !Object.values(tasks).some(t=>t.restriction==='hold'||t.evidence.some(o=>['adverse','safety'].includes(o.status))));
  if(continuingRoutine){recoveringMarathon=false;recovery.runningContinuityEvidence={resultDate:c.runProfile.resultDate,reportedWeeklyKm:h.base,source:'dated-post-event-performance-and-reported-recent-routine',fullReadinessEstablished:false};warnings.push('The later dated performance and reported recent routine support preserving familiar running. This does not establish full recovery or justify extra mileage; historical event timing alone does not impose a permanent restriction.');}
  const runBounded=runtime&&tasks.easy.restriction!=='none'&&!continuingRoutine,runHeld=runtime&&tasks.easy.restriction==='hold',qualityBounded=runtime&&(tasks.quality.restriction!=='none'||tasks.quality.eventDate&&!tasks.quality.canProgress)&&!continuingRoutine,longBounded=runtime&&(tasks.long.restriction!=='none'||tasks.long.eventDate&&!tasks.long.canProgress)&&!continuingRoutine;
  let returnDoseCap=null,returnDoseBase=null,returnDoseBaseWeek=0,familiarEasy=null,returnActivities=[];
@@ -583,27 +655,48 @@ function assess(c,w=1,options={}){
   const post=week=>(week.activities||[]).filter(r=>{
    const task=taskOf(r),typed=r.effortReliable!==false&&r.rpe!=null&&r.rpe<=(task==='easy'?4:8);
    const supported=typed||c.runningDosePolicyVersion===1&&task==='easy'&&confirmedEasyEffort(r);
-   return stamp(r.date.slice(0,10))>eventAt&&supported&&tasks[task].status==='normal'&&
+   return stamp(r.date.slice(0,10))>eventAt&&supported&&!r.shortenedDose&&!r.interruption&&
+    (c.trainingContinuityVersion!==1||!r.adverseResponse)&&tasks[task].status==='normal'&&
     String(tasks[task].observedAt||'').slice(0,10)>r.date.slice(0,10);
   }),observed=weeks.flatMap(post);
   const complete=weeks.filter(week=>new Set(post(week).map(r=>r.date.slice(0,10))).size>=count).at(-1);
+  const hasConcern=Object.values(tasks).some(task=>task.restriction==='hold'||task.evidence.some(o=>['adverse','safety'].includes(o.status)));
+  const established=c.runningReviewVersion===1&&!hasConcern&&tasks.easy.restriction==='none'?verifiedFitnessRoutine(c,h,eventAt):null;
   if(complete){returnActivities=post(complete);returnDoseBase=Math.min(h.base,sum(returnActivities.map(r=>r.km)));returnDoseBaseWeek=Math.floor((monday(stamp(returnActivities[0].date.slice(0,10)))-monday(start))/WEEK)+1;}
-  else {
+  else if(established?.length===count){
+   returnDoseBase=Math.min(h.base,sum(established.map(r=>r.km)));
+   warnings.push('Verified weeks after the earlier event support the familiar easy dose. Harder and longer work still needs its own evidence.');
+  }else {
    // Missing observations never move to a later return stage just because a
    // new proposal is made later. The first trial remains provisional.
    const latest=observed.map(r=>stamp(r.date.slice(0,10))).sort((a,b)=>a-b).at(-1),observedDays=latest?(latest-eventAt)/DAY:0,familiar=observed.length?Math.max(...observed.map(r=>r.km))*count:Infinity;
    returnDoseCap=Math.min(h.base*(returnEvent.goal==='half'?.40:observedDays<7?.20:observedDays<14?.40:.60),familiar);
    // Matched completions establish distances already covered. They do not
    // establish actual effort or next-day recovery, so only offer easy repeats.
-   const hasConcern=Object.values(tasks).some(task=>task.restriction==='hold'||task.evidence.some(o=>['adverse','safety'].includes(o.status)));
    const linked=week=>(week.activities||[]).filter(r=>r.plannedEasy&&!r.uncertainty&&r.minutes>0&&stamp(r.date.slice(0,10))>eventAt+14*DAY&&(r.rpe===null||r.effortReliable&&r.rpe<=4));
-   const activities=!hasConcern&&count>=2&&weeks.map(linked).filter(rows=>rows.length===count&&new Set(rows.map(r=>r.date.slice(0,10))).size===count).at(-1);
-   if(activities){
+   const continuity=c.trainingContinuityVersion===1&&!hasConcern&&count>=2?familiarReturnAfterInterruption(c,h,count,eventAt,now):null;
+   const activities=c.trainingContinuityVersion!==1&&!hasConcern&&count>=2&&weeks.map(linked).filter(rows=>rows.length===count&&new Set(rows.map(r=>r.date.slice(0,10))).size===count).at(-1);
+   if(c.initialBuildVersion===1&&!hasConcern&&!continuity?.adverse){
+    const familiarOuting=(c.runningDoseEvidence?.recentActivities||[]).filter(r=>r.plannedEasy&&r.plannedKm>0&&r.minutes>0&&
+     !r.adverseResponse&&!r.uncertainty&&!r.reducedDose&&(!r.interruption||['time','logistics'].includes(r.interruption))&&
+     (r.rpe==null||r.effortReliable&&r.rpe<=4)&&stamp(evidence.date(r.date))>=eventAt+7*DAY).at(-1);
+    if(familiarOuting&&familiarOuting.km>returnDoseCap){
+     returnDoseCap=Math.min(h.base,familiarOuting.km);
+     warnings.push('A recorded outing from the easy return plan supports repeating up to the actual distance across the week. Faster work and added weekly distance need a separate review.');
+    }
+   }
+   if(continuity?.adverse)warnings.push('Repeated difficult recovery or a reported health interruption needs review before restoring the familiar running dose.');
+   if(continuity?.familiar&&continuity.weight>0){
+    familiarEasy=continuity.familiar;
+    returnDoseCap+=Math.max(0,familiarEasy.weeklyKm-returnDoseCap)*continuity.weight;
+    if(continuity.weight<1)warnings.push('Older running records support a provisional repeat at a lower dose. Review actual attendance and recovery before increasing it.');
+    if(continuity.interrupted)warnings.push('A shortened or time-limited outing is recorded separately from the familiar dose. Repeat bounded easy work supported by the recent comparable outing. Do not add missed kilometres or progress from an unknown response.');
+   }else if(activities){
     familiarEasy={weeklyKm:Math.min(h.base,sum(activities.map(r=>r.km))),longestKm:Math.max(...activities.map(r=>r.km))};
     returnDoseCap=Math.max(returnDoseCap,familiarEasy.weeklyKm);
    }
   }
-  warnings.push('Running dose review: comfortable individual activity does not establish habitual weekly mileage. '+(complete?'Completed post-event running and its subsequent responses provide an observed temporary build base, not a new habitual-capacity estimate.':'This graded return retains a provisional planning fraction and any familiar completed-run bound; advancing the date does not expand it.')+' Review actual completed mileage and subsequent response before extending the plan; fractions are planning conventions, not recovery thresholds.');
+  warnings.push('Running dose review: comfortable individual activity does not establish habitual weekly mileage. '+(complete?'Completed post-event running and its subsequent responses provide an observed temporary build base, not a new habitual-capacity estimate.':returnDoseBase!==null?'Verified weeks support a repeat of the familiar dose.':'This graded return retains a provisional planning fraction and any familiar completed-run bound; advancing the date does not expand it.')+' Review actual completed mileage and subsequent response before extending the plan; fractions are planning conventions, not recovery thresholds.');
  }
  if(runtime)for(const [task,decision]of Object.entries(tasks))if(decision.reviewRequired)warnings.push(task+' running review: '+decision.reasons.join(' ')+' '+decision.reassessment);
  if(runHeld&&(requestedFrequency>0||c.runningTargetDate))blocking.push('Running is held for a task-relevant safety or initial recovery concern. Review before approving running or race participation.');
@@ -670,10 +763,21 @@ function assess(c,w=1,options={}){
  if(strengthRecoveryWeek&&supportEndurance)warnings.push('After the strength meet: provisional reduced easy running, with no long run until recovery is confirmed before the endurance-priority handover.');
  if(supportEndurance)warnings.push('Maintain an easy aerobic base for the later '+futureEnduranceGoal.runGoal+' while strength has priority. Race-specific running starts after the dated handover and recovery review.');
  if(handoverEnduranceBuild)warnings.push('The post-meet marathon build is conditional on restored recovery and completed aerobic support. Confirm actual mileage at the handover before progressing; proposed future kilometres are not evidence that those runs were completed.');
- const easy=km=>easyRun(km,p),commonEasyOnly=taper||postRace||recoveringMarathon||strengthEventWeek||(strengthRecoveryWeek&&supportEndurance)||(goal==='fitness'&&!supportEndurance)||lowerFatigue,noLong=commonEasyOnly||longBounded;
+ const easy=km=>easyRun(km,p),commonEasyOnly=raceDeferred||taper||postRace||recoveringMarathon||strengthEventWeek||(strengthRecoveryWeek&&supportEndurance)||(goal==='fitness'&&!supportEndurance)||lowerFatigue,noLong=commonEasyOnly||longBounded;
  if(!count||runHeld)return {runs:[],warnings,blocking,feasible:!blocking.length,reviewRequired:!!warnings.length,requestedKm:0,allocatedKm:0,km:0,longKm:0,longShare:0,phase,deload,taper,remaining:until===null?null:until+1,
   ...(fitnessFrequency?{runningFrequency:{...fitnessFrequency,effective:0,trial:false}}:{}),
   ...(runtime?{recoveryContext:recovery,baselineCurrent:!!baselineCurrent,eventPaceAvailable,reportedPerformance:!!reportedPerformance}:{})};
+ if(confirmedBreak||raceDeferred&&(!h.base||!p)){
+  const frequency=confirmedBreak?1:Math.min(count,2);
+  const reason=confirmedBreak?'You confirmed a break from running. Start with one short easy run or run/walk. Review how it felt and the next-day response before adding another visit, more distance or faster work.':
+   'With the race decision deferred, start with short conversational outings and review the recorded duration and response before increasing the dose.';
+  const name=confirmedBreak?'Easy return run':'Provisional easy run';
+  return {runs:Array.from({length:frequency},()=>({...timedEasyRun(15),name,reason})),warnings:[...warnings,reason],blocking,feasible:!blocking.length,reviewRequired:true,
+   requestedKm:0,allocatedKm:0,actualKm:0,km:0,distanceKnown:false,phase:confirmedBreak?'Return to running':'Aerobic foundation',deload,taper,
+   remaining:null,longKm:0,longShare:0,qualityAllowed:false,eventPaceAvailable:false,recoveryContext:recovery,
+   preparationMode:confirmedBreak?'confirmed-break-return':'provisional-easy-running',progressionLimited:true,
+   runningFrequency:{requested:requestedFrequency,effective:frequency,trial:false,reason}};
+ }
  if(c.runningDosePolicyVersion===1&&aerobicBuild){
   const canBuild=tasks.easy.canProgress&&returnDoseCap===null&&!lowerFatigue&&!recoveringMarathon&&!taper&&!postRace&&!strengthEventWeek;
   const reduced=lowerFatigue||recoveringMarathon||strengthEventWeek||postRace||taper||returnDoseCap!==null;
@@ -717,7 +821,8 @@ function assess(c,w=1,options={}){
   return {runs,warnings,blocking,feasible:!blocking.length,reviewRequired:!!(warnings.length||blocking.length),requestedKm:0,allocatedKm:0,actualKm:0,km:0,distanceKnown:false,phase,preparationMode:'timed-health-running',progressionLimited:false,deload,taper,remaining:until===null?null:until+1,longKm:0,longShare:0,qualityAllowed:false,...(runtime?{baselineCurrent:false,recoveryContext:recovery}:{}),reviewGates:{baselineConfirmed:false,longRunHistoryConfirmed:!!Number(h.long.km),recoveryCheckRequired:lowerFatigue||strengthEventWeek}};
  }
  const capRaceOutings=c.runningDosePolicyVersion===1&&goal!=='fitness'&&!returnEvent;
- const raceOutings=capRaceOutings?(c.runningDoseEvidence?.recentActivities||[]).filter(normalEasyOuting):[];
+ const raceOutings=capRaceOutings?(c.runningDoseEvidence?.recentActivities||[]).filter(r=>normalEasyOuting(r)&&
+  (c.trainingContinuityVersion!==1||!r.adverseResponse)):[];
  const typicalRaceOuting=ordinaryOuting(raceOutings,c.integratedCoachingVersion===1),reportedLongest=Number(h.long.km)||0;
  if(capRaceOutings&&count<=2&&h.base&&!typicalRaceOuting&&reportedLongest<=0){
   const review='Confirm a familiar running outing before concentrating the reported weekly mileage into one or two race-preparation runs.';
@@ -758,8 +863,11 @@ function assess(c,w=1,options={}){
   longKm=Math.min(longKm,distances[count===1?0:1]);
  }
  const shortTwoRun=Number(c.runningEvidenceVersion)>=1&&count===2&&['5k','10k'].includes(goal);
- const qualityAllowed=baselineCurrent&&h.base>=12&&(count>=3||shortTwoRun)&&!commonEasyOnly&&!qualityBounded&&!deload&&(!refined||!recovery.longRunRecoveryReview&&!recovery.longRunDurationReview&&!blocking.length)&&goal!=='fitness'&&phase!=='Recovery';
- const runs=distances.map((km,i)=>easyRun(km,p,i===1&&(!noLong||familiarLong)?'long-run':'easy-run'));
+ const reportedQualityPace=!!(c.trainingContinuityVersion===1&&reportedPerformance&&tasks?.quality.familiarTaskSupported&&tasks.quality.canProgress);
+ const qualityAllowed=(baselineCurrent||reportedQualityPace)&&h.base>=12&&(count>=3||shortTwoRun)&&!commonEasyOnly&&!qualityBounded&&!deload&&(!refined||!recovery.longRunRecoveryReview&&!recovery.longRunDurationReview&&!blocking.length)&&goal!=='fitness'&&phase!=='Recovery';
+ if(c.trainingContinuityVersion===1&&c.runningTargetDate&&!taper&&!postRace&&!qualityAllowed&&(qualityBounded||!baselineCurrent&&!reportedQualityPace))
+  warnings.push('Race-specific quality remains in review. Confirm a representative current performance and a comfortable comparable session with a dated normal subsequent response before adding faster work.');
+ const runs=distances.map((km,i)=>easyRun(km,p,i===1&&(!noLong||familiarLong&&c.trainingContinuityVersion!==1)?'long-run':'easy-run'));
  if(familiarEasy)for(const run of runs){
   run.recoveryReviewRequired=true;
   run.coachNote='Use conversational RPE 3–4 and shorten or walk if it feels harder than usual. Record effort and next-day response before adding faster or longer work.';
@@ -812,11 +920,36 @@ function assess(c,w=1,options={}){
  const longest=Math.max(...runs.map(r=>r.minutes||0));
  const longDurationReview=goal==='marathon'&&runs.some(r=>r.role==='long-run'&&r.minutes>210);
  if(longDurationReview)warnings.push('This long-run rehearsal exceeds 3.5 hours. Its use is conditional on recovery, fuelling tolerance and an agreed visit window; review duration versus distance instead of forcing 30 km or a fixed percentage.');
- return {runs,warnings:[...warnings,...blocking],blocking,feasible:!blocking.length,reviewRequired:!!(warnings.length||blocking.length),requestedKm,allocatedKm:actualKm,actualKm,km:requestedKm,factor,phase,preparationMode:supportEndurance?'endurance-support':raceWeek?'dated-event':'base-building',supportEndurance,...(refined||runtime?{recoveryContext:recovery}:{}),...(runtime?{baselineCurrent:!!baselineCurrent,eventPaceAvailable,reportedPerformance:!!reportedPerformance,progressionEvidence:c.runningDoseEvidence||null,progressionStatus:tasks.easy.canProgress&&returnDoseCap===null?'conditional-planned-build':'familiar-dose-pending-review'}:{}),progressionLimited:longCapLimited,deload,taper,remaining:until===null?null:until+1,longShare:actualKm&&(!noLong||familiarLong)?longKm/actualKm:0,longKm:noLong&&!familiarLong?0:longKm,qualityAllowed,
+ const publishedLongKm=c.trainingContinuityVersion===1?runs.find(run=>run.role==='long-run')?.distanceKm||0:noLong&&!familiarLong?0:longKm;
+ return {runs,warnings:[...warnings,...blocking],blocking,feasible:!blocking.length,reviewRequired:!!(warnings.length||blocking.length),requestedKm,allocatedKm:actualKm,actualKm,km:requestedKm,factor,phase,preparationMode:supportEndurance?'endurance-support':raceWeek?'dated-event':'base-building',supportEndurance,...(refined||runtime?{recoveryContext:recovery}:{}),...(runtime?{baselineCurrent:!!baselineCurrent,eventPaceAvailable,reportedPerformance:!!reportedPerformance,progressionEvidence:c.runningDoseEvidence||null,progressionStatus:tasks.easy.canProgress&&returnDoseCap===null?'conditional-planned-build':'familiar-dose-pending-review'}:{}),progressionLimited:longCapLimited,deload,taper,remaining:until===null?null:until+1,longShare:actualKm?publishedLongKm/actualKm:0,longKm:publishedLongKm,qualityAllowed,
   reviewGates:{baselineConfirmed:!!h.base,longRunHistoryConfirmed:!!longReference,recoveryCheckRequired:recoveringMarathon||postRace||strengthEventWeek||(strengthRecoveryWeek&&supportEndurance)||(refined&&recovery.longRunRecoveryReview),...(refined?{longRunRecoveryReview:recovery.longRunRecoveryReview,longRunDurationReview:recovery.longRunDurationReview}:{}),marathonEnduranceReview:goal==='marathon'&&phase==='Specific preparation'&&!deload&&!taper&&(requestedKm<40||longKm<20),halfEnduranceReview,handoverProgressionReview:handoverEnduranceBuild,longDurationReview},
   fuelling:longest>=75?['Practise carbohydrate and fluid intake during long runs, rather than introducing it on race day. Start with familiar small portions totalling about 30 g carbohydrate/hour; progress towards 45–60 g/hour on longer rehearsals if tolerated.','Drink to conditions and thirst; record what you actually tolerate. Use the same foods/drinks in later race rehearsals.']:[],
   qualityBudget:{workKm:Number(hard.toFixed(3)),weeklyKm:actualKm,maximumShare:qualityLimit,domain:goal==='marathon'&&phase==='Specific preparation'?'marathon-pace rehearsal':'threshold and faster'},
   policyNote:'Progression percentages, duration limits and endurance review points are adjustable planning defaults, not universal safety thresholds or performance guarantees.'};
 }
-const api={assess,history,recoveryContext,paceSet,buildRun,fitRunToMinutes,prepareEvidence,resolveAerobicBuild,integratedFitnessFrequency,runningSymptomReview};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFRunningPreparation=api;
+function racePreparationReview({config,weeks}){
+ const date=config?.runningTargetDate;
+ if(config?.runningReviewVersion!==1||!date)return null;
+ const sessions=weeks.flatMap(week=>week.sessions);
+ const events=sessions.filter(s=>s.eventType==='running'&&s.eventDate===date);
+ if(events.length!==1)return {date,accepted:false,reason:'The running goal needs one calendar entry on the selected date. Review the programme dates.'};
+ const [event]=events;
+ if(config.provisionalRaceDate===date)return event.raceDecisionDeferred&&!event.runs.length&&!event.ex.length?{date,accepted:true}:
+  {date,accepted:false,reason:'A deferred race date is for review only. Rebuild the provisional programme before approving.'};
+ const confirmedBreak=!!config.runningDoseEvidence?.confirmedBreak;
+ if(config.initialBuildVersion===1&&String(config.runGoal).toLowerCase()==='marathon'&&Number(config.runs)<3)
+  return {date,accepted:false,reason:'Choose provisional training on your available running days. Review completed endurance and recovery before deciding on the marathon.'};
+ if(!confirmedBreak&&!(Number(config.runningGoalSeconds)>0||Number(config.runningPersonalBestSeconds)>0))return null;
+ const supported=weeks.some(week=>week.sessions.some(s=>{
+  const index=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(String(s.day).slice(0,3));
+  const sessionDate=stamp(s.scheduledDate)||(index>=0?monday(stamp(config.startDate))+(week.week-1)*WEEK+index*DAY:NaN);
+  return !s.eventDate&&sessionDate<stamp(date)&&s.runs.some(r=>
+   (r.role==='quality-run'||r.workoutFamily==='marathon-pace-long-run')&&r.workoutFamily!=='taper-race-rhythm'&&r.steps.some(step=>step.role==='work'&&step.distanceKm>0));
+ }));
+ if(!confirmedBreak&&supported)return null;
+ return {date,accepted:false,reason:confirmedBreak
+  ?'This plan starts with an easy return after your reported break. Decide on the race after reviewing your return.'
+  :'The generated plan contains no performance work before this race. Choose provisional training with the race decision deferred, or review the goal and evidence.'};
+}
+const api={assess,history,recoveryContext,paceSet,buildRun,fitRunToMinutes,prepareEvidence,resolveAerobicBuild,integratedFitnessFrequency,runningSymptomReview,racePreparationReview};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFRunningPreparation=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

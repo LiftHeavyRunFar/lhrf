@@ -46,6 +46,7 @@ function purpose(meta={}){
  const values=[meta.trainingPurpose,meta.trainingRole,meta.benchRole].map(x=>purposes[norm(x)]).filter(Boolean);
  return {value:values.length&&new Set(values).size===1?values[0]:null,ambiguous:new Set(values).size>1};
 }
+const referenceKey=ex=>JSON.stringify([identity(ex[0],ex[5]),purpose(ex[5]).value]);
 function frozenSessions(state){
  const out=[];
  const add=(weeks,config)=>{for(const week of weeks||[])for(const session of week.sessions||[]){
@@ -80,7 +81,7 @@ function references(state,live,history,now=new Date(),{comparableOnly=false}={})
  const cutoff=day(live.started)||day(now.toISOString());if(!cutoff)return [];
  const out=[],snapshots=frozenSessions(state);
  for(const ex of live.ex||[]){
-  const currentPurpose=purpose(ex[5]),key=JSON.stringify([identity(ex[0],ex[5]),currentPurpose.value]);
+  const currentPurpose=purpose(ex[5]),key=referenceKey(ex);
   if(ex[5]?.optional||ex[5]?.role==='optional'||out.some(x=>x.key===key))continue;
   const candidates=[];
   for(const row of history||[]){
@@ -110,5 +111,5 @@ function previousRun(live,history,now=new Date()){
  const rows=(history||[]).map(row=>({...row,runs:(row.runs||[]).filter(r=>{const date=day(r.date||row.date);return date&&date<cutoff&&r.km>0&&r.min>0&&!r.failed&&r.completed!==false&&(!role||r.type===role)})})).filter(row=>row.runs.length);
  return rows.sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0]||null;
 }
-const api={day,identity,suitable,matches,purpose,frozenSessions,recordedPurpose,references,previousRun};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFPerformanceHistory=api;
+const api={day,identity,suitable,matches,purpose,referenceKey,frozenSessions,recordedPurpose,references,previousRun};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFPerformanceHistory=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

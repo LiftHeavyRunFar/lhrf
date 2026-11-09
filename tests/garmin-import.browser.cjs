@@ -34,6 +34,9 @@ await page.locator('#garminSavedLinks select').selectOption(target.key);await pa
  const actual=await log.locator('.run-summary-table tbody tr td:last-child').allTextContents();
  assert.deepEqual(actual,['6.00 km','30:00','5:00/km']);
  assert.equal(await page.locator('#previewSyncGarmin').count(),0);
+ await log.getByLabel('If you cut the run short, why?').selectOption('logistics');
+ await log.getByRole('button',{name:'Save run reason',exact:true}).click();
+ linked.runs[0].interruptionReason='logistics';
  await page.reload();assert.deepEqual(await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY),linked);
  await page.locator('nav [data-screen="settings"]').click();await page.locator('#settingsServices').evaluate(e=>e.open=true);await page.locator('#garminSavedLinks summary').click();await page.locator('#garminSavedLinks select').selectOption('');await page.getByRole('button',{name:'Save session link',exact:true}).click();
  const unlinked=await page.evaluate(KEY=>JSON.parse(localStorage.getItem(KEY)),KEY);assert.equal(unlinked.runs.length,1);assert.equal(unlinked.completedWorkouts.length,0);assert.equal(unlinked.runs[0].sessionId,undefined);

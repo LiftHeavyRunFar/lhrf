@@ -10,9 +10,9 @@ function symptomText(value){
 function symptomObservation(row,defaults={}){
  if(!row)return null;
  const text=symptomText(row.symptoms),status=norm(row.status),when=row.observedAt||row.reportedAt||row.date;
- const systemic=row.illness===true||/chest (?:pain|tightness|pressure)|shortness of breath|breath(?:ing)? (?:is )?difficult|faint|dizz|fever|vomit|illness/i.test(text);
+ const systemic=row.illness===true||row.interruptionReason==='illness'||/chest (?:pain|tightness|pressure)|shortness of breath|breath(?:ing)? (?:is )?difficult|faint|dizz|fever|vomit|illness/i.test(text);
  const severe=systemic||row.safetyConcern===true||row.worsening===true||row.severe===true||status==='worsening'||/\bsevere\b|worsen|unable to bear weight/i.test(text);
- const pain=severe||row.pain===true||row.injury===true||status==='pain'||/pain|injur|limp/i.test(text);
+ const pain=severe||row.pain===true||row.injury===true||row.interruptionReason==='pain'||status==='pain'||/pain|injur|limp/i.test(text);
  const adverse=['fatigue','unrecovered','poor','restricted','recovery-review'].includes(status)&&!!(row.sport||row.task);
  if(!text&&!pain&&!adverse&&norm(row.discomfort)!=='yes')return null;
  const explicit=['running','strength'].includes(row.sport)?row.sport:defaults.sport;
@@ -57,12 +57,31 @@ function validSet(row,asOf,{practice=false,generic=false}={}){
  const validDose=Number.isFinite(reps)&&reps>0&&(generic&&row.doseUnit==='seconds'||Number.isInteger(reps)&&(generic||reps<=8)),validLoad=Number.isFinite(kg)&&(kg>0||generic&&kg===0&&['bodyweight','assistance-kg'].includes(row.loadType));
  return Number.isFinite(when)&&when<=asOf&&asOf-when<=42*DAY&&validLoad&&validDose&&rpe>=1&&rpe<=10&&row.completed!==false&&!row.skipped&&!row.failed&&!row.techniqueFailed&&!row.warmup&&!row.warmUp&&!row.optional&&!row.unreliable&&![row.role,row.setRole,row.category].some(x=>['warmup','warm-up','optional','failed'].includes(norm(x)))&&(practice||row.rpeReliable!==false&&!row.evidenceReview?.rpe?.approximate)&&row.evidenceReview?.rpe?.value!==null;
 }
-function purpose(row,state){
+function completedPrescription(row,state,config){
+ const base=id=>String(id||'').replace(/::strength$/,'');
+ if(!row.sessionId)return [];
+ const completions=(state.completedWorkouts||[]).filter(done=>base(done.id)===base(row.sessionId)&&date(done.date)===date(row.date));
+ if(completions.length!==1)return [];
+ const [done]=completions;
+ if(done.prescription?.ex)return done.prescription.ex;
+ if(config?.initialBuildVersion!==1||!(Number(done.completedSets)>0)||Number(done.week)!==Number(row.week))return [];
+ const matches=(state.programmeArchive||[]).flatMap(archive=>{
+  const plan=archive.programme;
+  if(!plan?.sessionNamespace||!base(row.sessionId).startsWith(plan.sessionNamespace)||!(time(plan.approvedAt)<=time(row.date)))return [];
+  return (archive.weeks||[]).filter(week=>week.week===Number(row.week)).flatMap(week=>week.sessions||[])
+   .filter(session=>base(session.id)===base(row.sessionId)&&(!session.scheduledDate||session.scheduledDate===date(row.date)));
+ });
+ if(matches.length!==1)return [];
+ return (matches[0].ex||[]).filter(ex=>norm(ex[0])===norm(row.exercise)&&ex[5]?.role===row.role&&
+  Number(ex[2])===Number(row.reps)&&Number(ex[4])===Number(row.target));
+}
+function purpose(row,state,prescription){
  const aliases={heavy:'heavy',strength:'strength',volume:'volume',speed:'speed',technique:'speed',practice:'speed',recovery:'recovery',maintenance:'maintenance'},values=[];
  const add=meta=>{for(const key of ['trainingPurpose','trainingRole','benchRole'])if(meta?.[key])values.push(aliases[norm(meta[key])]||'ambiguous');};add(row);
  if(row.evidenceReview?.rpe?.purpose)add({trainingPurpose:row.evidenceReview.rpe.purpose});
  const base=id=>String(id||'').replace(/::strength$/,'');
- for(const done of state.completedWorkouts||[])if(base(done.id)===base(row.sessionId)&&date(done.date)===date(row.date))for(const ex of done.prescription?.ex||[])if(norm(ex[0])===norm(row.exercise)&&(!row.role||!ex[5]?.role||row.role===ex[5].role))add(ex[5]);
+ const entries=prescription??(state.completedWorkouts||[]).filter(done=>base(done.id)===base(row.sessionId)&&date(done.date)===date(row.date)).flatMap(done=>done.prescription?.ex||[]);
+ for(const ex of entries)if(norm(ex[0])===norm(row.exercise)&&(!row.role||!ex[5]?.role||row.role===ex[5].role))add(ex[5]);
  const unique=[...new Set(values)];return unique.length===1&&unique[0]!=='ambiguous'?unique[0]:unique.length?'ambiguous':null;
 }
 function strengthIdentity(raw,meta,inventory,linked){
@@ -79,9 +98,10 @@ function capture(config,{data={},now=Date.now()}={}){
   const seen=new Set(),rows=[];
   for(const raw of data.sets||[]){if(norm(raw.exercise)!==norm(lift)||!validSet(raw,asOf,{practice:true,generic:true}))continue;
    const key=JSON.stringify([raw.date,raw.sessionId,raw.set,raw.exercise,raw.weight,raw.reps,raw.rpe,raw.role,raw.variantId]);if(seen.has(key))continue;seen.add(key);
-   const typedPurpose=purpose(raw,data),review=raw.evidenceReview?.rpe,reliable=raw.rpeReliable!==false&&!review?.approximate;
+   const prescription=config.initialBuildVersion===1?completedPrescription(raw,data,config):undefined;
+   const typedPurpose=purpose(raw,data,prescription),review=raw.evidenceReview?.rpe,reliable=raw.rpeReliable!==false&&!review?.approximate;
    if(typedPurpose==='ambiguous')continue;
-   const base=id=>String(id||'').replace(/::strength$/,''),saved=(data.completedWorkouts||[]).filter(done=>base(done.id)===base(raw.sessionId)&&date(done.date)===date(raw.date)).flatMap(done=>done.prescription?.ex||[]).filter(ex=>norm(ex[0])===norm(raw.exercise)&&ex[5]?.role===raw.role),meta=saved.length===1?saved[0][5]:{};
+   const base=id=>String(id||'').replace(/::strength$/,''),saved=(prescription??(data.completedWorkouts||[]).filter(done=>base(done.id)===base(raw.sessionId)&&date(done.date)===date(raw.date)).flatMap(done=>done.prescription?.ex||[])).filter(ex=>norm(ex[0])===norm(raw.exercise)&&ex[5]?.role===raw.role),meta=saved.length===1?saved[0][5]:{};
    rows.push({date:raw.date,set:raw.set??null,exercise:lift,kg:Number(raw.weight),reps:Number(raw.reps),rpe:Number(raw.rpe),target:Number(raw.target)||null,role:raw.role||null,purpose:typedPurpose,reliable,unreliable:raw.rpeReliable===false,approximate:!!review?.approximate,execution:raw.execution||meta.execution||null,executionSource:raw.execution?'recorded or explicitly reviewed':meta.execution?'saved-prescription-intent':null,competition:raw.competition===true||meta.competition===true,...strengthIdentity(raw,meta,data.equipmentInventory??config.equipmentInventory,saved.length===1),...(review?{review:clone(review)}:{})});
   }
   rows.sort((a,b)=>time(a.date)-time(b.date));strength[lift]={rows:rows.slice(-24),evidenceHorizonDays:42,note:'Evidence horizon is a planning default, not biological expiry. Low/approximate effort is practice context, never a maximum.'};
@@ -101,14 +121,21 @@ function capture(config,{data={},now=Date.now()}={}){
   observations.push(observation);
  };
  const context=config.recoveryContext;
- add(context,{source:'recoveryContext',sport:'all',scope:context?.status==='lower'?'lower':null});
+ // The wizard records one coarse fatigue answer in two fields. It is context
+ // for review, not two observations of a task-specific concern.
+ const generalIntakeFatigue=config.planFirstVersion===1&&['lower','all'].includes(context?.status)&&!symptomObservation(context);
+ if(!generalIntakeFatigue)add(context,{source:'recoveryContext',sport:'all',scope:context?.status==='lower'?'lower':null});
  const evidence=config.recoveryEvidence;
- add(evidence,{source:'recoveryEvidence',sport:evidence?.affectedLifts?.length?'strength':'all'});
+ if(!(generalIntakeFatigue&&evidence?.source==='athlete-intake'&&evidence.status==='fatigue'&&!symptomObservation(evidence)))
+  add(evidence,{source:'recoveryEvidence',sport:evidence?.affectedLifts?.length?'strength':'all'});
  if(evidence?.runningFatigue)add({...evidence,status:'fatigue',affectedLifts:undefined},{source:'running fatigue evidence',sport:'running'});
  if(evidence?.lowerBodyFatigue)add({...evidence,status:'fatigue',affectedLifts:undefined},{source:'lower-body fatigue evidence',sport:'all',scope:'lower'});
  for(const entry of evidence?.lifts||[])if(typeof entry==='object')add({...entry,observedAt:entry.observedAt||evidence.observedAt},{source:'lift recovery evidence',sport:'strength'});
  for(const observation of [...(config.recoveryObservations||[]),...(evidence?.observations||[]),
   ...(config.integratedCoachingVersion===1?data.recoveryObservations||[]:[])])add(observation,{source:'task recovery observation'});
+ if(config.trainingContinuityVersion===1)for(const row of data.runs||[]){
+  if(['pain','illness'].includes(row.interruptionReason))add(row,{sport:'running',source:'recorded running interruption'});
+ }
  // Actual app feedback can add a concern, never positive readiness. Scope is
  // taken only from its preserved completed prescription, not guessed anatomy.
  for(const [source,rows]of [['session feedback',data.sessionFeedback||[]],['check-in',data.checkins||[]]])for(const row of rows){
@@ -127,9 +154,9 @@ function capture(config,{data={},now=Date.now()}={}){
  for(const [lift,proof]of Object.entries(strength))if(['Squat','Bench','Deadlift'].includes(lift))for(const row of proof.rows)if(row.reliable&&row.reps<=8)performances.push({date:row.date,sport:'strength',task:row.reps<=3&&row.rpe>=7&&row.purpose!=='speed'?'heavy':'lifting',lift,kg:row.kg,reps:row.reps,rpe:row.rpe});
  const events=[],profile=config.runProfile||{},races=[config.runningHistory?.recentRace,profile.recentRace,config.recentRace,...(Number(profile.distance)>=40&&Number(profile.seconds)>0&&profile.effort==='performance'?[{distanceKm:Number(profile.distance),date:profile.resultDate}]:[])];
  const marathonDates=[config.runningHistory?.recentMarathonDate,profile.recentMarathonDate,config.recentMarathonDate,...races.filter(r=>Number(r?.distanceKm)>=40).map(r=>r.date)].filter(value=>date(value)&&time(value)<=asOf).map(date);
- for(const marathon of new Set(marathonDates))events.push({date:marathon,sport:'running',goal:'marathon'});
  for(const goal of config.orderedGoals||[])if(date(goal.date))events.push({date:goal.date,sport:goal.sport,goal:goal.runGoal||goal.goal||'event'});
  if(date(config.runningTargetDate))events.push({date:config.runningTargetDate,sport:'running',goal:config.runGoal||'event'});
+ for(const marathon of new Set(marathonDates))events.push({date:marathon,sport:'running',goal:'marathon',...(config.runningReviewVersion===1?{completed:true}:{})});
  const uniqueEvents=[...new Map(events.map(e=>[JSON.stringify([e.date,e.sport,norm(e.goal)]),e])).values()].sort((a,b)=>a.date.localeCompare(b.date)||String(a.sport).localeCompare(String(b.sport))||String(a.goal).localeCompare(String(b.goal)));
  return {version:1,asOf:new Date(asOf).toISOString(),strength,recovery:{observations,performances,events:uniqueEvents,invalid},originalHistoryUnchanged:true};
 }
@@ -138,10 +165,14 @@ function recovery(config,{atDate,now=Date.now(),sport='strength',task='lifting',
  if(!packet||!Number.isFinite(asOf)||!Number.isFinite(when))return {...base,status:'review',canProgress:false,reviewRequired:true,reasons:['Dated frozen proposal evidence is missing.']};
  const relevant=o=>(o.sport==='all'||o.sport===sport)&&(!o.scope||o.scope!=='lower'||sport==='running'||lift!=='Bench')&&(!o.lifts.length||sport==='strength'&&o.lifts.some(x=>norm(x)===norm(lift)))&&(o.task==='all'||o.task===task||sport==='strength'&&task==='lifting'&&o.task==='heavy'||o.status!=='normal'&&(sport==='strength'&&task==='heavy'&&o.task==='lifting'||sport==='running'&&o.task==='easy'));
  const observations=packet.recovery.observations.filter(o=>time(o.date)<=asOf&&time(o.date)<=when&&relevant(o)).sort((a,b)=>time(a.date)-time(b.date)),latest=observations.at(-1);
- const events=packet.recovery.events.filter(e=>e.sport==='running'&&['marathon','half'].includes(norm(e.goal))&&time(e.date)<when).sort((a,b)=>time(a.date)-time(b.date)),event=events.at(-1),eventDays=event?(when-time(event.date))/DAY:null,eventAge=event?Math.max(0,(asOf-time(event.date))/DAY):null;
+ const events=packet.recovery.events.filter(e=>e.sport==='running'&&['marathon','half'].includes(norm(e.goal))&&time(e.date)<when&&
+  !(config.runningReviewVersion===1&&e.date===config.provisionalRaceDate&&e.completed!==true)).sort((a,b)=>time(a.date)-time(b.date)),event=events.at(-1),eventDays=event?(when-time(event.date))/DAY:null,eventAge=event?Math.max(0,(asOf-time(event.date))/DAY):null;
  const reasons=[],invalid=packet.recovery.invalid||[];
  const finish=extra=>({...base,...extra,eventDate:event?.date||null,observedAt:extra.observedAt??latest?.date??null,reasons:[...reasons,...(extra.reasons||[])],evidence:extra.evidence||observations.map(clone)});
  const uncertain=invalid.filter(o=>relevant(o)&&['safety','adverse'].includes(o.status));
+ const historicalEnduranceForStrength=config.planFirstVersion===1&&sport==='strength'&&event&&eventAge>(norm(event.goal)==='marathon'?21:7);
+ if(historicalEnduranceForStrength&&!uncertain.length&&!observations.some(o=>['safety','adverse'].includes(o.status)))
+  return finish({reasons:['The historical endurance event alone does not limit ordinary lifting. Use the prescribed effort and review any task-specific concerns.']});
  const uncertainReview=()=>finish({status:'review',restriction:uncertain.some(o=>o.status==='safety'&&o.invalidTiming!=='future')?'hold':'bounded',canProgress:false,reviewRequired:true,reasons:['A task-relevant concern has uncertain timing. Clarify its date and current symptoms before loading; missing timing is not recovery clearance. A later completed task and explicit subsequent response must follow when the concern was documented.'],evidence:uncertain.map(clone)});
  const laterRoutine=event&&sport==='strength'&&packet.recovery.performances.some(p=>p.sport==='strength'&&p.lift===lift&&p.rpe>=6&&p.rpe<=8&&time(p.date)>time(event.date)+(norm(event.goal)==='marathon'?21:7)*DAY&&time(p.date)<=asOf&&time(p.date)<=when);
  if(latest){
@@ -172,8 +203,8 @@ function recovery(config,{atDate,now=Date.now(),sport='strength',task='lifting',
  if(event||latest?.status==='unknown'||invalid.some(relevant))return finish({status:'review',restriction:'none',canProgress:false,reviewRequired:true,reasons:['Historical event or incomplete report is context requiring review, not a permanent task ban or proof of full readiness. Preserve familiar training without assuming further progression.']});
  return finish({});
 }
-function anchor(config,{exercise,purpose:requested,reps,target,execution,variantId}={}){
- const packet=config.coachingEvidence,proof=packet?.strength?.[exercise],rows=(proof?.rows||[]).filter(row=>(!variantId||row.variantId===variantId)&&(!execution||row.execution===execution));
+function anchor(config,{exercise,purpose:requested,reps,target,execution,variantId,role}={}){
+ const packet=config.coachingEvidence,proof=packet?.strength?.[exercise],rows=(proof?.rows||[]).filter(row=>(!variantId||row.variantId===variantId)&&(!execution||row.execution===execution)&&(!role||row.role===role));
  const purposeMatch=row=>row.purpose===requested||(requested==='speed'&&row.purpose==='speed'),eligible=rows.filter(row=>!row.unreliable&&purposeMatch(row)&&row.reps===reps&&row.rpe<=target&&row.rpe>=target-2&&(row.reliable||requested==='speed'&&row.approximate&&row.review?.source==='athlete-confirmation'));
  const latest=eligible.at(-1);if(!latest)return null;
  return {...clone(latest),suggestedKg:latest.kg,confidence:latest.reliable?'reported-compatible-practice':'approximate-practice-only',automaticIncrease:false,velocityMeasured:false,reason:'Repeat a familiar same-purpose load within the prescribed effort ceiling; it is not a maximum, velocity measurement or guaranteed RPE.'};

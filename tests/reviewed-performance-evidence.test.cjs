@@ -84,3 +84,34 @@ test('browser and Node apply the same explicit review without changing source ev
  assert.equal(JSON.stringify(sandbox.LHRFCoachAdapters.buildNewProgramme(x.config,{data:x.data,now,performanceReviews:x.reviews})),JSON.stringify(generate(x)));
  assert.equal(JSON.stringify(x),before);
 });
+
+test('one heavy overshoot does not cut familiar speed work in a plan-first proposal',()=>{
+ const x=example();
+ for(const row of x.data.sets.slice(2))row.date='2026-10-28T09:00:00Z';
+ x.reviews[1].match.date=x.data.sets[2].date;
+ Object.assign(x.data.sets[1],{trainingRole:'heavy',target:8});
+ const speed=p=>mains(p).find(e=>e[5].trainingRole==='speed');
+ const original=speed(generate(x));
+ assert.equal(original[5].practiceEvidence.kg,60);
+ assert.ok(original[3]<60);
+ x.config.planFirstVersion=1;
+ assert.equal(speed(generate(x))[3],60);
+});
+
+test('a current estimated max supplies working loads but cannot stand in for a completed competition single',()=>{
+ const x=example();
+ x.config.initialBuildVersion=1;
+ x.config.trainingAge='intermediate';
+ x.config.competitionIntakeVersion=1;
+ x.config.liftProfiles.Bench={kg:110,reps:1,currentEstimate:true,competitionTechnique:true,resultDate:'2026-11-01'};
+ x.config.visitConstraints.eventDays={'2026-11-28':{confirmed:true}};
+ const plan=adapters.buildNewProgramme(x.config,{data:{sets:[],runs:[]},now});
+ const main=mains(plan).find(e=>e[5]?.role==='top');
+ assert.ok(main?.[3]>0);
+ assert.equal(main[5].provisionalEstimateKg,110);
+ assert.equal(main[5].loadUnconfirmed,false);
+ assert.equal(main[5].peakEvidence.singleSupported,false);
+ assert.ok(mains(plan).every(e=>e[2]!==1));
+ delete x.config.liftProfiles.Bench.currentEstimate;
+ assert.equal(mains(adapters.buildNewProgramme(x.config,{data:{sets:[],runs:[]},now})).find(e=>e[5]?.role==='top')[3],0);
+});

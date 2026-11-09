@@ -2,6 +2,7 @@
 (function(root){
 'use strict';
 const coach=typeof module==='object'&&module.exports?require('./coach-engine.js'):root.LHRFCoach;
+const running=typeof module==='object'&&module.exports?require('./running-preparation.js'):root.LHRFRunningPreparation;
 const names={bench:'Bench',squat:'Squat',deadlift:'Deadlift'};
 const clone=x=>JSON.parse(JSON.stringify(x));
 function normalizeProfile(input={}){
@@ -70,7 +71,8 @@ function buildProgramme(input,options={}){
    }
   }
  }
- return {schema:'lhrf-shared-programme-v1',config:c,framework:engine.selectTrainingFramework(c),weeks,...(c.competitionIntakeVersion===1?{finalHeavyPlan}:{}),
+ const racePreparationReview=c.runningReviewVersion===1?running.racePreparationReview({config:c,weeks}):null;
+ return {schema:'lhrf-shared-programme-v1',config:c,framework:engine.selectTrainingFramework(c),weeks,...(racePreparationReview?{racePreparationReview}:{}),...(c.competitionIntakeVersion===1?{finalHeavyPlan}:{}),
   requiresAthleteApproval:true,limitations:Number(c.coachingRulesVersion)>=1?['Versioned coaching heuristics; tests do not establish individual competition readiness.','Existing approved programmes keep their saved policy until explicitly replaced.']:['Current live coaching rules, not a new programme-policy rollout.','Known programme acceptance gaps remain; generation alone does not establish coaching quality.']};
 }
 function previewProgramme(input,options={}){
