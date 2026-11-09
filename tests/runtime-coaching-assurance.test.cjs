@@ -329,14 +329,9 @@ test('independent runtime assurance: complete running weeks include Monday morni
   assert.equal(prepared.currentCalendarWeek.observedKm,3);assert.equal(JSON.stringify(data),before);
  }
 });
-test('independent runtime assurance: the actual proposal form forwards undated concerns without inventing their onset date',()=>{
- const fs=require('node:fs'),vm=require('node:vm'),intake=require('../src/coach-intake');
- const html=fs.readFileSync(require.resolve('../index.html'),'utf8'),start=html.indexOf(' function recoveryObservationRows(){'),end=html.indexOf(" get('frStartDate').value",start);
- const previous={recoveryContext:{status:'lower'}};previous.coachingEvidence=evidence.capture(previous,{data:{},now});
- const data={customRoadmap:previous},before=JSON.stringify(data),box={data,get:()=>({children:[]}),LHRFCoachingEvidence:evidence};
- vm.createContext(box);vm.runInContext(html.slice(start,end),box);const carried=clone(box.recoveryObservationRows());
- assert.ok(carried.some(o=>o.source==='preserved-recovery-concern'&&!o.observedAt));
- assert.equal(carried[0].recordedAt,previous.coachingEvidence.asOf);assert.equal(JSON.stringify(data),before);
+test('independent runtime assurance: retained recovery evidence can be reassessed without inventing its onset date',()=>{
+ const intake=require('../src/coach-intake');
+ const carried=[{observedAt:null,recordedAt:new Date(now()).toISOString(),sport:'strength',task:'lifting',lift:'Squat',status:'fatigue',source:'preserved-recovery-concern'}];
  const base=clone(makeRuntimeAthletes().find(a=>a.id==='general-hybrid').config),limits={strengthVisits:3,minutes:base.visitConstraints.minutes};
  const prepared=intake.build(base,{...limits,recoveryObservations:carried});
  assert.equal(prepared.recoveryObservations[0].observedAt,null);

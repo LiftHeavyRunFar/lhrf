@@ -62,9 +62,8 @@ async function chooseDays(page, days) {
     await page.locator('.fr-day[value="' + day + '"]').setChecked(days.includes(day));
   }
 }
-async function currentRecovery(page, fatigue = 'normal') {
+async function review(page) {
   assert.equal(await step(page), '4');
-  await set(page, 'frFatigueStatus', fatigue);
   await next(page);
   assert.equal(await step(page), '5');
 }
@@ -123,6 +122,7 @@ async function exportBackup(page) {
       await next(page);
       assert.equal(await step(page), '3');
       assert.equal(await loc(page, 'frStrengthVisits').isVisible(), false);
+      await chooseDays(page, ['Mon','Tue','Thu','Sat','Sun']);
       await next(page);
       assert.equal(await step(page), '4');
       assert.equal(await loc(page, 'frMaxBench').isVisible(), false);
@@ -131,8 +131,7 @@ async function exportBackup(page) {
       await set(page, 'frRunKm', 10);
       await disclose(page, 'frRunningResult');
       await set(page, 'frRunTime', '55:00');
-      await set(page, 'frResultDate', '2026-10-29');
-      await currentRecovery(page);
+      await review(page);
       assert.equal(JSON.parse(await state(page))?.onboardingComplete === true, false);
       const installed = await accept(page);
       assert.equal(installed.customRoadmap.runs > 0, true);
@@ -153,20 +152,19 @@ async function exportBackup(page) {
       await set(page, 'frRunningDate', eventDate);
       await set(page, 'frRunningTarget', '55:00');
       await next(page);
+      await chooseDays(page, ['Mon','Tue','Thu','Sat','Sun']);
       await next(page);
-      const lastRun = loc(page, 'frLastRunBeforeBreak');
-      await lastRun.locator('xpath=ancestor::details').locator('summary').click();
-      await lastRun.fill('2026-10-24');
-      await currentRecovery(page);
+      assert.equal(await loc(page, 'frLastRunBeforeBreak').count(), 0);
+      await review(page);
       assert.equal(await loc(page, 'frRaceReview').isVisible(), true);
-      assert.match(await loc(page, 'frRaceReviewReason').innerText(), /reported break/);
+      assert.match(await loc(page, 'frRaceReviewReason').innerText(), /record|mileage|evidence/i);
       assert.equal(await loc(page, 'frNext').getAttribute('aria-disabled'), 'true');
       assert.notEqual(JSON.parse(await state(page))?.onboardingComplete, true);
       await loc(page, 'frAcceptProvisionalRace').click();
       assert.match(await loc(page, 'frRaceReviewReason').innerText(), /No race workout/);
       const installed = await accept(page);
       assert.equal(installed.customRoadmap.provisionalRaceDate, eventDate);
-      assert.deepEqual(installed.activeSchedule.flatMap(s => s.runs).map(r => r.minutes), [15]);
+      assert.ok(installed.activeSchedule.flatMap(s => s.runs).every(r => r.minutes === 15));
       const draft = await rebuild(page, installed.customRoadmap);
       const event = draft.weeks.flatMap(w => w.sessions).find(s => s.eventDate === eventDate);
       assert.equal(event.raceDecisionDeferred, true);
@@ -183,8 +181,9 @@ async function exportBackup(page) {
       await set(page, 'frExperience', 'beginner');
       await next(page);
       assert.equal(await step(page), '3');
+      await chooseDays(page, ['Mon','Tue','Thu','Sat','Sun']);
       await next(page);
-      await currentRecovery(page);
+      await review(page);
       const installed = await accept(page);
       assert.ok(installed.activeSchedule.some(session => session.ex?.length));
       assert.ok(installed.activeSchedule.some(session => session.runs?.length));
@@ -200,12 +199,13 @@ async function exportBackup(page) {
       await set(page, 'frExperience', 'intermediate');
       await set(page, 'frStrengthDate', eventDate);
       await next(page);
+      await chooseDays(page, ['Mon','Tue','Thu','Sat','Sun']);
       await next(page);
       await confirmOnboardingEquipment(page);
       await set(page, 'frMaxBench', 160);
       await loc(page, 'frMaxBenchEstimate').check();
       assert.equal(await loc(page, 'frMaxBenchSingle').isVisible(), false);
-      await currentRecovery(page);
+      await review(page);
       const installed = await accept(page);
       assert.equal(installed.customRoadmap.liftProfiles.Bench.currentEstimate, true);
       assert.ok(installed.activeSchedule.some(session => session.ex.some(ex =>
@@ -247,7 +247,7 @@ async function exportBackup(page) {
         await set(page, 'frMax' + lift + 'Date', '2026-11-02');
         await loc(page, 'frMax' + lift + 'Technique').check();
       }
-      await currentRecovery(page);
+      await review(page);
       const preview = await loc(page, 'frFinalHeavyPreview').innerText();
       for (const lift of test.lifts) assert.match(preview, new RegExp(lift, 'i'));
       assert.match(preview, /heavy.*single/is);
@@ -260,7 +260,7 @@ async function exportBackup(page) {
         assert.equal(await loc(page, 'frFinalHeavy' + lift + 'Mode').inputValue(), choice.mode);
       }
       await next(page);
-      await currentRecovery(page);
+      await review(page);
       const installed = await accept(page);
       assert.equal(installed.customRoadmap.event, test.goal);
       const proposal = await rebuild(page, installed.customRoadmap);
@@ -300,12 +300,13 @@ async function exportBackup(page) {
       await set(page, 'frExperience', 'beginner');
       await set(page, 'frStrengthDate', eventDate);
       await next(page);
+      await chooseDays(page, ['Mon','Tue','Thu','Sat','Sun']);
       await set(page, 'frFinalHeavyBenchMode', 'days');
       await set(page, 'frFinalHeavyBenchDays', 1);
       await next(page);
       if (await step(page) === '4') {
         await confirmOnboardingEquipment(page);
-        await currentRecovery(page, 'all');
+        await review(page);
         assert.equal(await loc(page, 'frNext').isDisabled(), true);
         assert.match(await loc(page, 'frWarnings').innerText(), /coach timing|heavy|experience|recovery|taper/i);
         assert.match(await loc(page, 'frFinalHeavyPreview').innerText(), /heavy|experience|recovery|taper/i);
@@ -325,13 +326,12 @@ async function exportBackup(page) {
       await set(page, 'frExperience', 'intermediate');
       await set(page, 'frStrengthDate', eventDate);
       await next(page);
+      await chooseDays(page, ['Mon','Tue','Thu','Sat','Sun']);
       await next(page);
       assert.equal(await step(page), '4');
       await confirmOnboardingEquipment(page);
-      await loc(page, 'frEquipment').locator(':scope > details > summary').click();
-      const bar = loc(page, 'frEquipment').getByRole('checkbox', {name:'straight-bar', exact:true});
-      await bar.uncheck();
-      await currentRecovery(page);
+      await page.evaluate(() => {window.LHRFOnboardingEquipmentDraft.items['straight-bar']='unavailable';});
+      await review(page);
       assert.equal(await loc(page, 'frNext').isDisabled(), true);
       assert.match((await loc(page, 'frWarnings').textContent()) + (await loc(page, 'frError').textContent()),
         /equipment|deadlift|bar/i);

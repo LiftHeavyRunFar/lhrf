@@ -12,14 +12,14 @@ const fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInvent
  await page.click('#previewStart');// Verify the actual live handoff below; approved storage is checked separately.
  assert.equal(await page.locator('#liveTrainRoot').getByRole('button',{name:'Finish workout'}).count(),1);
  const store=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);for(const field of ['customRoadmap','activeSchedule','sets','runs','completedWorkouts'])assert.deepEqual(store[field],fixture[field]);
- await page.evaluate(()=>{localStorage.removeItem('lhrf_fresh_beta_live_v1114');window.confirm=()=>true;cancelLiveWorkout();document.getElementById('restartOnboardingLink').click()});assert.equal(await page.locator('#frTimePreference').count(),0);assert.deepEqual(await page.locator('.fr-minute').evaluateAll(els=>Object.fromEntries(els.map(e=>[e.dataset.day,e.value]))),Object.fromEntries(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>[d,String(fixture.customRoadmap.visitConstraints?.minutes?.[d]??'')])));
+ await page.evaluate(()=>{localStorage.removeItem('lhrf_fresh_beta_live_v1114');window.confirm=()=>true;cancelLiveWorkout();document.getElementById('restartOnboardingLink').click()});assert.equal(await page.locator('#frTimePreference').count(),0);assert.equal(await page.locator('.fr-minute').count(),0);
  // Exercise the real first-run path with all time preferences left blank.
  await page.locator('#frScope').selectOption('hybrid');await page.click('#frNext');await page.selectOption('#frGoal','general');await page.selectOption('#frExperience','intermediate');
  if(await page.locator('#frAddRunningGoal').isVisible())await page.locator('#frAddRunningGoal').uncheck();
- await page.click('#frNext');await page.click('#frNext');await page.locator('#frRunningResult > summary').click();
+ await page.click('#frNext');for(const day of ['Mon','Tue','Thu','Sat','Sun'])await page.locator('.fr-day[value='+day+']').check();await page.click('#frNext');await page.locator('#frRunningResult > summary').click();
  for(const [field,value]of Object.entries({frMaxSquat:'150',frMaxBench:'100',frMaxDeadlift:'190',frRunTime:'28:00',frRunKm:'10'}))await page.locator('#'+field).fill(value);
- await page.selectOption('#frFatigueStatus','normal');await page.click('#frNext');assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'5');assert.equal(await page.locator('#frNext').isEnabled(),true,'Unknown ordinary minutes must not block otherwise complete onboarding');
- assert.deepEqual((await onboardingProposal(page)).config.sessionDurationPreference,fixture.customRoadmap.sessionDurationPreference);
+ await page.click('#frNext');assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'5');assert.equal(await page.locator('#frNext').isEnabled(),true,'Unknown ordinary minutes must not block otherwise complete onboarding');
+ assert.equal((await onboardingProposal(page)).config.sessionDurationPreference,undefined);
  const unchanged=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);for(const field of ['customRoadmap','activeSchedule','sets','runs','completedWorkouts'])assert.deepEqual(unchanged[field],fixture[field]);
  assert.deepEqual(errors,[]);await context.close();console.log('PASS Android-style viewport: estimates, impossible short limit, explicit shorter-session acceptance, live handoff and unchanged approved programme/logs; onboarding minutes optional.');
 }finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

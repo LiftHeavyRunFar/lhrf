@@ -67,6 +67,27 @@ test('two credible fatigue reports preserve a recovery review, and explicit pain
   assert.equal(assess(proposed(reported)).recoveryContext.runningTasks.easy.restriction,'hold');
  }
 });
+test('new return proposals select one dose without reusing a low-week observation ceiling',()=>{
+ const version={initialBuildVersion:1,runningTargetDate:'2026-12-27',weeks:7};
+ for(const [reason,omit] of [['time',false],['logistics',false],['fatigue',false],[null,true]]){
+  const c=proposed(fixture(reason,omit),version);
+  assert.equal(c.endurancePlanningVersion,1);
+  assert.equal(c.runningReturnObservation,undefined);
+  const expected=assess(c);
+  assert.equal(expected.actualKm,10);
+  assert.equal(expected.qualityAllowed,false);
+  assert.equal(expected.warnings.filter(note=>note.startsWith('Running dose review:')).length,1);
+  assert.equal(assess({...c,runningReturnObservation:{initialWeeklyCeilingKm:2}},1).actualKm,10);
+  assert.equal(assess(c,4).actualKm,8.2,'A planned deload reduces this week only');
+  assert.equal(assess(c,5).actualKm,10);
+ }
+ const fatigued=fixture('fatigue');
+ fatigued.sessionFeedback.push({sessionId:'run-2026-11-03',date:'2026-11-03T10:00:00Z',week:1,difficulty:'harder',energy:'low'});
+ const review=assess(proposed(fatigued,version));
+ assert.equal(review.actualKm,4);
+ assert.ok(review.warnings.some(note=>/Repeated difficult recovery/.test(note)));
+ assert.deepEqual(assess(proposed(fixture('pain'),version)).runs,[]);
+});
 test('old or ambiguously linked attendance cannot stand in for a missed familiar outing',()=>{
  const s=fixture(null,true);
  s.runs[0].date='2026-10-22T09:15:00Z';
@@ -324,5 +345,87 @@ test('a two-day marathon can keep its date as a provisional marker and approve t
  assert.ok(draft.weeks.every(w=>w.feasible));
  assert.deepEqual(draft.racePreparationReview,{date,accepted:true});
  assert.equal(draft.weeks.flatMap(w=>w.sessions).flatMap(s=>s.runs).some(r=>r.role==='race'),false);
+ assert.equal(running.assess(draft.config,13,{now:clock}).taper,true);
  await replacement.createPackage(draft,{...s,customRoadmap:{programmeId:'synthetic-baseline'}});
+});
+
+test('established two-day marathon preparation progresses and tapers without a frequency veto',()=>{
+ const date='2027-02-28',s=state(),clock=()=>Date.parse('2026-11-09T08:00:00Z');
+ for(const [day,km] of [['2026-10-27',12],['2026-10-31',18],['2026-11-03',12],['2026-11-07',18]]){
+  run(s,day,km,km,{effort:3});
+  s.runs.at(-1).min=7*km;
+ }
+ const c=coach.prepareNewProgramme({...config({initialBuildVersion:1,runGoal:'marathon',runningTargetDate:date,
+  weeks:16,runs:2,availableDays:['Tue','Sat'],longRunDay:'Sat',days:2,
+  visitConstraints:{strengthVisits:0,eventDays:{[date]:{confirmed:true}}}}),
+  runProfile:{weeklyKm:30,distance:21.0975,seconds:6960,resultDate:'2026-10-11',effort:'performance'},
+  runningHistory:{longRun:{km:18,minutes:126}}
+ },{data:s,now:clock});
+ const draft=adapters.buildProgramme(c,{data:s,now:clock});
+ const training=w=>draft.weeks[w-1].sessions.flatMap(session=>session.runs).filter(r=>r.role!=='race');
+ assert.ok(draft.weeks.every(w=>w.feasible),JSON.stringify(draft.weeks.filter(w=>!w.feasible).map(w=>[w.week,w.blockingIssues,w.unscheduled])));
+ assert.equal(draft.racePreparationReview,undefined);
+ assert.deepEqual(training(1).map(r=>r.distanceKm),[12,18]);
+ assert.ok(training(13).find(r=>r.role==='long-run').distanceKm>18);
+ assert.ok(training(15).reduce((km,r)=>km+r.distanceKm,0)<training(13).reduce((km,r)=>km+r.distanceKm,0));
+ assert.equal(draft.weeks[15].sessions.flatMap(s=>s.runs).filter(r=>r.role==='race').length,1);
+ assert.equal(draft.weeks[15].sessions.find(s=>s.eventType==='running').marathonPreparationReview,true);
+ for(const km of [19.99,20]){
+  const clipped=structuredClone(draft);
+  for(const {sessions} of clipped.weeks)for(const session of sessions)for(const r of session.runs){
+   if(r.role==='long-run'&&r.preparationPhase==='Specific preparation'&&r.distanceKm>km){
+    r.minutes=Math.round(r.minutes*km/r.distanceKm);
+    r.distanceKm=km;
+   }
+  }
+  assert.equal(running.racePreparationReview(clipped),null);
+ }
+ const oneRehearsal=structuredClone(draft);
+ for(const w of oneRehearsal.weeks)if(w.week!==13)for(const s of w.sessions)
+  s.runs=s.runs.filter(r=>r.role!=='long-run'||r.preparationPhase!=='Specific preparation');
+ assert.equal(running.racePreparationReview(oneRehearsal).accepted,false);
+ const insufficient=structuredClone(draft);
+ for(const {sessions} of insufficient.weeks)for(const s of sessions)for(const r of s.runs)
+  if(r.preparationPhase==='Specific preparation'){r.distanceKm=4;r.minutes=30;}
+ assert.equal(running.racePreparationReview(insufficient).accepted,false);
+ const capped={...c,visitConstraints:{...c.visitConstraints,minutes:{Tue:45,Sat:60}}};
+ assert.equal(adapters.buildProgramme(capped,{data:s,now:clock}).racePreparationReview.accepted,false);
+ const provisional=adapters.buildProgramme({...capped,provisionalRaceDate:date},{data:s,now:clock});
+ assert.ok(provisional.weeks.every(w=>w.feasible),JSON.stringify(provisional.weeks.filter(w=>!w.feasible).map(w=>[w.week,w.blockingIssues])));
+ assert.ok(provisional.weeks[0].sessions.every(s=>s.timeBudget.totalMinutes<=capped.visitConstraints.minutes[s.day.slice(0,3)]));
+ assert.ok(provisional.weeks[0].sessions.some(s=>s.runs.some(r=>r.capacityLimited)));
+ assert.ok(provisional.weeks[0].sessions.every(s=>s.timeAdaptation?.makeUpWorkScheduled!==true));
+ assert.ok(!provisional.weeks.some(w=>w.sessions.some(s=>s.runs.some(r=>r.role==='race'))));
+ assert.deepEqual(provisional.racePreparationReview,{date,accepted:true});
+ const feasibleWindows={...c,visitConstraints:{...c.visitConstraints,minutes:{Tue:110,Sat:180}}};
+ const fitted=adapters.buildProgramme(feasibleWindows,{data:s,now:clock});
+ assert.ok(fitted.weeks.every(w=>w.feasible));
+ assert.ok(fitted.weeks.some(w=>w.sessions.some(s=>s.runs.some(r=>r.capacityLimited))));
+ assert.equal(fitted.racePreparationReview,undefined);
+ assert.equal(coach.approveProgrammeConfig(c,new Date(clock()).toISOString()).endurancePlanningVersion,1);
+ const legacy={...c};delete legacy.endurancePlanningVersion;
+ assert.equal(adapters.buildProgramme(legacy,{data:s,now:clock}).racePreparationReview.accepted,false);
+ const returnInput={...c,runningHistory:{...c.runningHistory,recentMarathonDate:'2026-09-20'}};
+ const returning=coach.prepareNewProgramme(returnInput,{data:s,now:clock});
+ assert.equal(running.assess(returning,1,{now:clock}).actualKm,30);
+ assert.ok(running.assess(returning,13,{now:clock}).longKm>18);
+ const adverse=structuredClone(s);
+ adverse.runs.at(-1).interruptionReason='pain';
+ const held=coach.prepareNewProgramme(returnInput,{data:adverse,now:clock});
+ assert.deepEqual(running.assess(held,1,{now:clock}).runs,[]);
+ assert.equal(adapters.buildProgramme(held,{data:adverse,now:clock}).racePreparationReview.accepted,false);
+});
+
+test('new direct and staged marathon proposals with no long outings defer the race at higher frequencies',()=>{
+ const fixture=require('./fixtures/original-three-engine-inputs.json'),clock=()=>Date.parse(fixture.clock);
+ for(const {config,data} of fixture.cases.slice(0,2).map(row=>({config:row.config,data:row.historicalData}))){
+  const p=adapters.buildNewProgramme({...config,initialBuildVersion:1,integratedCoachingVersion:1,planFirstVersion:1},{data,now:clock});
+  assert.ok(p.weeks.every(w=>w.feasible));
+  assert.equal(p.racePreparationReview?.accepted,false);
+  assert.match(p.racePreparationReview.reason,/no marathon-specific long outing/);
+  const provisional=adapters.buildProgramme({...p.config,provisionalRaceDate:p.config.runningTargetDate},{data,now:clock});
+  assert.ok(provisional.weeks.every(w=>w.feasible));
+  assert.equal(provisional.racePreparationReview?.accepted,true);
+  assert.ok(!provisional.weeks.some(w=>w.sessions.some(s=>s.runs.some(r=>r.role==='race'))));
+ }
 });

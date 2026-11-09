@@ -134,7 +134,7 @@ header{padding-top:16px;padding-bottom:4px}header h1{font-size:24px}header p{fon
 .fr-progress{display:flex;gap:5px;margin:22px 0 30px}.fr-progress i{height:4px;flex:1;border-radius:6px;background:#26334b}.fr-progress i.on{background:#5d9eff}
 .fr-daygrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:12px}.fr-daygrid label{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11px;padding:9px 2px;border:1px solid #3b4d67;border-radius:8px}.fr-daygrid input{accent-color:#6baaff}.fr-daygrid .double{font-size:10px;color:#b6c5dd}.fr-daygrid label:has(input:checked){border-color:#67a7ff}#firstRun h1{font-size:30px;line-height:1.12;margin:8px 0 12px;color:#fff}#firstRun p{color:#b6c5dd;line-height:1.5}
 .fr-step{display:none}.fr-step.on{display:block}
-.fr-visitrow{display:grid;grid-template-columns:42px minmax(70px,1fr) minmax(110px,1fr);gap:10px;align-items:center;margin:10px 0}.fr-visitrow input[type=number]{width:100%;min-width:0}.fr-visitrow label{font-size:12px}.fr-event-line{display:flex;gap:9px;align-items:center;margin:10px 0}
+.fr-event-line{display:flex;gap:9px;align-items:center;margin:10px 0}
 .fr-card{border:1px solid #2d3c54;border-radius:16px;padding:16px;margin:10px 0;background:#121c2c}
 .fr-card:has(input:checked){border-color:#6eaaff;background:#172b45}
 .fr-card label{display:block;cursor:pointer}
@@ -238,7 +238,8 @@ html{scroll-padding-top:125px}
 #firstRun .fr-card p{margin:8px 0 0;font-size:14px}
 #firstRun .fr-fields{gap:18px}
 #firstRun .fr-field{margin:16px 0}
-#firstRun .fr-field>label{font-size:12px;font-weight:650;color:#c3d5e4;margin-bottom:9px}
+#firstRun .fr-field>label{min-height:0;font-size:12px;font-weight:650;color:#c3d5e4;margin:0 0 6px}
+#firstRun .fr-field>.fr-note{margin:6px 0 0}
 #firstRun .fr-mode{display:flex;gap:8px;padding:5px;background:#07121e;border:1px solid #22394e;border-radius:14px}
 #firstRun .fr-mode button{flex:1;min-height:48px;border-radius:10px;font-size:13px;padding:10px}
 #firstRun .fr-actions{position:sticky;bottom:0;padding:16px 0 max(16px,env(safe-area-inset-bottom));margin-top:28px;background:#030910f5;border-top:1px solid #1d3042;z-index:2}
@@ -399,6 +400,13 @@ function plannedRunningVolume(sessions){
  const unspecified=runs.filter(r=>!measured(r)).length-timed.length;
  return [km>0?km.toFixed(1)+' km':'',minutes>0?Math.round(minutes)+' min by effort':'',unspecified?unspecified+' '+(unspecified===1?'run without a distance or time estimate':'runs without distance or time estimates'):''].filter(Boolean).join(' + ');
 }
+function strengthBlockFinishText(config,sessions=[]){
+ if(!config.strengthBlockFinish)return '';
+ const lifts=sessions.flatMap(s=>(s.ex||[]).filter(ex=>ex[5]?.strengthBenchmark).map(ex=>ex[0]));
+ if(lifts.length)return 'Week '+config.weeks+' includes a controlled benchmark for '+lifts.join(', ')+'. Log the set, then compare it with earlier work before deciding on your next block.';
+ return (config.strengthBlockFinish==='benchmark'?'A benchmark did not fit the final week. ':'')+
+  'In week '+config.weeks+', compare your logged loads, reps and effort on the same lifts with the start of the block. Use that review to choose your next goal.';
+}
 function renderPlanDashboard(){
  const root=$('planDashboard');if(!root)return;
  const c=data.customRoadmap || (typeof customConfig==='function'?customConfig():null);
@@ -428,12 +436,16 @@ function renderPlanDashboard(){
  // Use actual generated sessions rather than an illustrative shape. This is a planning projection,
  // not completed tonnage; intensity is calculated from load / exercise-specific estimated 1RM.
  const metrics=[];
+ let finalSessions=[];
  for(let w=1;w<=n;w++){
   let sessions=[];try{sessions=generatedSessions(c,w)}catch(e){console.warn('Could not calculate week',w,e)}
+  if(w===n)finalSessions=sessions;
   let sets=0,reps=0,weightedPct=0,pctReps=0,topPct=0;
   sessions.forEach(s=>(s.ex||[]).forEach(e=>{const meta=e[5]||{};if(!['primary','secondary'].includes(meta.category))return;const count=Number(e[1])||0,repCount=Number(e[2])||0,n=count*repCount;sets+=count;reps+=n;const baseline=Number(meta.baseline)||0;if(baseline>0&&e[3]>0){const pct=100*e[3]/baseline;weightedPct+=n*pct;pctReps+=n;if(meta.role==='top'&&/bench/i.test(e[0]))topPct=Math.max(topPct,pct)}}));
   metrics.push({week:w,sets,reps,rpe:pctReps?weightedPct/pctReps:0,topPct,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||customPhase(w,n,c),deload:variationBlock(w,n).deload,runningVolume:plannedRunningVolume(sessions)});
  }
+ const finish=strengthBlockFinishText(c,finalSessions);
+ if(finish){const note=document.createElement('p');note.className='muted small';note.textContent=finish;$('planDashProgramme').append(note);}
  const maxReps=Math.max(1,...metrics.map(m=>m.reps));
  const rpes=metrics.filter(m=>m.rpe).map(m=>m.rpe),minRpe=rpes.length?Math.min(...rpes):0,maxRpe=rpes.length?Math.max(...rpes):1;
  const x=i=>20+i*300/Math.max(1,n-1),ySets=m=>112-94*m.reps/maxReps,yRpe=m=>112-94*Math.min(110,m.rpe)/110;
@@ -1304,9 +1316,11 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   if(current.raceDecisionDeferred||!liveStartAllowed(current))return;
   if(data.reviewedProgramme&&session.eventDate&&session.eventType==='running'){
    if(session.eventDate!==dayKey()){alert('This reviewed race is scheduled for '+session.eventDate+'. Do not start it on a different date without a coaching review.');return}
-   if(session.recoveryReviewRequired&&!data.eventRecoveryDecisions?.some(d=>d.sessionId===session.id&&d.date===dayKey()&&d.approved)){
-    if(!confirm('This 10K is conditional on actual recovery after the bench competition. Confirm you feel recovered, have no concerning symptoms and choose to proceed within the reviewed plan. Otherwise cancel and defer the attempt.'))return;
-    const prior=data.eventRecoveryDecisions;data.eventRecoveryDecisions=[...(prior||[]),{sessionId:session.id,date:dayKey(),approved:true,reportedAt:new Date().toISOString(),source:'explicit-post-meet-athlete-decision'}];if(!save()){data.eventRecoveryDecisions=prior;return}
+   if((session.recoveryReviewRequired||session.marathonPreparationReview)&&!data.eventRecoveryDecisions?.some(d=>d.sessionId===session.id&&d.date===dayKey()&&d.approved)){
+    const marathon=session.marathonPreparationReview;
+    const prompt=marathon?'Review the long outings you actually completed and your current recovery. Confirm that your training and how you feel today support taking part, with no concerning symptoms. Cancel to defer the attempt.':'This race is conditional on actual recovery after the strength competition. Confirm you feel recovered, have no concerning symptoms and choose to proceed within the reviewed plan. Otherwise cancel and defer the attempt.';
+    if(!confirm(prompt))return;
+    const prior=data.eventRecoveryDecisions;data.eventRecoveryDecisions=[...(prior||[]),{sessionId:session.id,date:dayKey(),approved:true,reportedAt:new Date().toISOString(),source:marathon?'explicit-marathon-athlete-decision':'explicit-post-meet-athlete-decision'}];if(!save()){data.eventRecoveryDecisions=prior;return}
    }
   }
 
@@ -1619,15 +1633,14 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  <div class="fr-field" hidden><label for="frStrengthEventEstimate">Representative meet duration (minutes, if known)</label><input id="frStrengthEventEstimate" type="number" min="1"><p class="fr-note">Use an estimate from a comparable event.</p></div>
  <div class="fr-field"><label for="frRunningEventMinutes">Running event time allowance (minutes, optional)</label><input id="frRunningEventMinutes" type="number" min="1" placeholder="Whole event day available"></div>
  <div class="fr-field" hidden><label for="frRunningEventEstimate">Representative race duration (minutes, if known)</label><input id="frRunningEventEstimate" type="number" min="1"><p class="fr-note">Use an estimate from a comparable event.</p></div></details>
- <details class="fr-card" id="frGoalDetails"><summary>Adjust programme details</summary>
+ <h2>Programme dates and targets</h2>
  <div class="fr-field"><label for="frStartDate">Programme start date</label><input id="frStartDate" type="date"><p class="fr-note">Defaults to today. Sessions stay on your selected weekdays.</p></div>
  <div class="fr-field" id="frUndatedWrap"><label for="frWeeks">Initial training block (weeks)</label><input id="frWeeks" type="number" min="1" max="52" value="8"></div>
- <p class="fr-note">The latest dated event sets the final calendar week.</p>
- <div class="fr-fields"><div class="fr-field"><label for="frStrengthMode">Strength objective</label><select id="frStrengthMode"><option value="auto">Follow training priority</option><option value="progression">Build strength</option><option value="maintenance">Maintain strength</option></select></div>
- <div class="fr-field"><label for="frLiftPriority">Priority strength lift</label><select id="frLiftPriority"><option value="Squat">Squat</option><option value="Bench">Bench</option><option value="Deadlift">Deadlift</option></select></div></div>
+
+ <div class="fr-field"><label for="frStrengthMode">Strength objective</label><select id="frStrengthMode"><option value="auto">Follow training priority</option><option value="progression">Build strength</option><option value="maintenance">Maintain strength</option></select></div>
+ <div id="frStrengthFinishWrap" class="fr-field" hidden><label for="frStrengthFinish">How do you want to finish the block?</label><select id="frStrengthFinish"><option value="review">Review my progress</option><option value="benchmark">Schedule a strength benchmark</option></select><p class="fr-note" id="frStrengthFinishNote"></p></div>
  <div class="fr-field"><label for="frStrengthTarget">Other strength targets (optional)</label><input id="frStrengthTarget" type="text" placeholder="e.g. 10 pull-ups"></div>
  <div class="fr-fields"><div class="fr-field"><label for="frTargetSquat">Squat target (kg, optional)</label><input id="frTargetSquat" type="number" min="1" step="2.5"></div><div class="fr-field"><label for="frTargetBench">Bench target (kg, optional)</label><input id="frTargetBench" type="number" min="1" step="2.5"></div><div class="fr-field"><label for="frTargetDeadlift">Deadlift target (kg, optional)</label><input id="frTargetDeadlift" type="number" min="1" step="2.5"></div></div>
- </details>
  </section>
  <section class="fr-step" data-step="3"><h1>Build your week</h1><p>Let the coach arrange your sessions, or choose exactly what you want on each day.</p>
 <div class="fr-mode"><button type="button" id="frModeCoach" class="active">Coach builds my week</button><button type="button" id="frModeManual">I'll build my split</button></div>
@@ -1640,7 +1653,6 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  <div class="fr-field"><label for="frRuns">Runs per week</label><select id="frRuns"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div></div><div class="fr-field"><label for="frLongDay">Preferred long-run day</label><select id="frLongDay"><option value="">No preference</option><option value="Mon">Monday</option><option value="Tue">Tuesday</option><option value="Wed">Wednesday</option><option value="Thu">Thursday</option><option value="Fri">Friday</option><option value="Sat" selected>Saturday</option><option value="Sun">Sunday</option></select></div><p class="fr-note">Long-run placement is a fixed preference when you have two or more runs. We will flag scheduling conflicts rather than silently move it.</p></details>
  </div><div id="frManualPanel" hidden><p class="fr-note">Assign sessions to days. Lower body includes squat and deadlift in one workout. Select Long run for exactly one day; other runs use Run. Training priorities change the prescriptions, not this split.</p><div id="frManualDays"></div><p class="fr-note" id="frManualStatus"></p></div>
  <div id="frFinalHeavy" class="fr-card" hidden><h2>Final heavy singles</h2><p class="fr-note">Choose coach timing, or request an exact date or number of days before the meet for each lift. The coach checks that each date fits the calendar and taper. A future heavy single is conditional on training evidence and recovery closer to the meet. A later light technique session is separate.</p><div id="frFinalHeavyLifts"></div></div>
- <details class="fr-card" id="frAdvancedAvailability"><summary>Advanced availability</summary><p class="fr-note">Set hard visit time limits only if needed. Include warm-up, rests and transitions. Leave minutes blank when flexible. Use Double above for one combined visit. Separate visits each get the stated allowance.</p><div id="frVisitWindows"></div><div class="fr-field"><label for="frGapHours">Hours between separate visits</label><input id="frGapHours" type="number" min="6" value="6"></div></details>
  <details class="fr-card" id="frAfterWrap" hidden><summary>Your week after the first event</summary><p class="fr-note" id="frAfterNote">The coach switches priority after the first event and recovery. Set the frequencies for the next goal.</p><div class="fr-fields">
  <div class="fr-field"><label for="frAfterStrengthVisits">Strength visits</label><input id="frAfterStrengthVisits" type="number" min="1" max="7" value="2"></div><div class="fr-field"><label for="frAfterRuns">Runs</label><input id="frAfterRuns" type="number" min="1" max="7" value="3"></div>
  <div class="fr-field"><label for="frAfterSquat">Squat exposures</label><input id="frAfterSquat" type="number" min="0" max="7" value="1"></div><div class="fr-field"><label for="frAfterBench">Bench exposures</label><input id="frAfterBench" type="number" min="0" max="7" value="2"></div><div class="fr-field"><label for="frAfterDeadlift">Deadlift exposures</label><input id="frAfterDeadlift" type="number" min="0" max="7" value="1"></div></div></details>
@@ -1648,15 +1660,12 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  <section class="fr-step" data-step="4"><h1>Where are you starting?</h1><p>Enter known lifting or running results to guide your starting loads and paces. Leave unknown results blank.</p>
  <div id="frStrengthBaselines"><p id="frSingleEvidence" class="fr-note" hidden></p><div class="fr-fields" id="frBaselines"></div><div id="frEquipment"></div></div>
  <div id="frRunningBaselines">
- <details class="fr-card" id="frRunningResult"><summary>Add a recent run result</summary><div class="fr-fields"><div class="fr-field"><label for="frRunDistance">Distance</label><select id="frRunDistance"><option value="5">5K</option><option value="10" selected>10K</option><option value="21.0975">Half marathon</option><option value="42.195">Marathon</option></select></div><div class="fr-field"><label for="frRunTime">Time (hh:mm:ss or mm:ss)</label><input id="frRunTime" placeholder="e.g. 55:00"></div></div>
- <div class="fr-fields" id="frRunResultDetails" hidden><div class="fr-field"><label for="frResultDate">Result date (optional)</label><input id="frResultDate" type="date"></div><div class="fr-field"><label for="frResultEffort">Type of effort</label><select id="frResultEffort"><option value="performance">Race / hard time trial</option><option value="training">Normal training run</option></select></div><div class="fr-field"><label for="frResultEnvironment">Where was it run?</label><select id="frResultEnvironment"><option value="outdoor">Outdoors</option><option value="treadmill">Treadmill</option></select></div></div></details>
+ <details class="fr-card" id="frRunningResult"><summary>Add your recent best run</summary><div class="fr-fields"><div class="fr-field"><label for="frRunDistance">Distance</label><select id="frRunDistance"><option value="5">5K</option><option value="10" selected>10K</option><option value="21.0975">Half marathon</option><option value="42.195">Marathon</option></select></div><div class="fr-field"><label for="frRunTime">Time (hh:mm:ss or mm:ss)</label><input id="frRunTime" placeholder="e.g. 55:00"></div></div>
+ </details>
  <div class="fr-field"><label for="frRunKm">Recent running distance (km/week)</label><input id="frRunKm" type="number" min="0" placeholder="Optional"></div>
  <div class="fr-field" id="frRunningModeWrap"><label for="frRunningMode">General running objective</label><select id="frRunningMode"><option value="auto">Follow training priority</option><option value="development">Build running fitness</option><option value="maintenance">Maintain my familiar running routine</option></select></div>
  <details class="fr-card"><summary>Recent running history</summary><p class="fr-note">Optional facts improve the starting dose. Leave unknown history blank rather than estimating it.</p><div class="fr-field"><label for="frRunHistory">Completed weekly kilometres, oldest to newest</label><input id="frRunHistory" placeholder="e.g. 20, 22, 24, 22, 25, 25"></div><div class="fr-fields"><div class="fr-field"><label for="frLongKm">Recent long run (km)</label><input id="frLongKm" type="number" min="0" step="0.1"></div><div class="fr-field"><label for="frLongMinutes">Long run duration (minutes)</label><input id="frLongMinutes" type="number" min="1"></div><div class="fr-field"><label for="frLongRecovery">Hours until normal recovery</label><input id="frLongRecovery" type="number" min="0"></div><div class="fr-field"><label for="frRecentMarathon">Most recent completed marathon date</label><input id="frRecentMarathon" type="date"></div></div></details>
- <details class="fr-card"><summary>Returning after a break (optional)</summary><div class="fr-field"><label for="frLastRunBeforeBreak">Last completed run before the break</label><input id="frLastRunBeforeBreak" type="date"></div><p class="fr-note">Enter a date only if you know you have done no running since that day. Leave it blank if your training records are incomplete.</p></details>
  <p class="fr-note">Without a recent result, the coach uses effort to guide your initial runs.</p></div>
- <div class="fr-card"><div class="fr-field"><label for="frFatigueStatus">How is your recovery now?</label><select id="frFatigueStatus"><option value="">Choose your current recovery</option><option value="normal">Normal for me</option><option value="lower">My legs feel more fatigued than usual</option><option value="all">Fatigue is affecting training overall</option></select></div><details id="frSleepDetails"><summary>Add recent sleep (optional)</summary><div class="fr-fields"><div class="fr-field"><label for="frSleepRecent">Recent sleep (hours, optional)</label><input id="frSleepRecent" type="number" min="0" max="24" step="0.5"></div><div class="fr-field"><label for="frSleepUsual">Usual sleep (hours, optional)</label><input id="frSleepUsual" type="number" min="0" max="24" step="0.5"></div></div></details></div>
- <details class="fr-card" id="frTaskRecovery"><summary>Activity-specific recovery review (optional)</summary><p class="fr-note">Record how you felt on the day after a completed activity. A normal response must match an actual logged activity. Comfortable easy running or light lifting does not establish readiness for harder work or a full training week. Unknown can stay unknown. These observations belong to this proposal; original sessions and RPE stay unchanged.</p><div id="frRecoveryObservations"></div><button type="button" class="secondary" id="frAddRecoveryObservation">Add a recovery observation</button></details>
  </section>
  <section class="fr-step" data-step="5"><h1>Your programme</h1>
  <section id="frReviewStatus" class="fr-card fr-review-alert" aria-labelledby="frSafetyNotice" hidden><h2 id="frSafetyNotice"></h2><div id="frWarnings" role="status" tabindex="-1"></div><button type="button" id="frReviewEditAvailability" class="secondary" hidden>Review event details</button><button type="button" id="frUseCoachTiming" class="secondary" hidden>Use coach timing for blocked lifts</button></section>
@@ -1693,42 +1702,23 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  const today=()=>new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'});
  const shiftedDate=(date,days)=>new Date(Date.parse(date+'T12:00:00Z')+days*86400000).toISOString().slice(0,10);
  let step=1,weeklyEdited=false,dialogRestore=null,reviewedProgramme=null,approvalBlock='';
- const recoveryChoices=[['running|easy','Easy running'],['running|quality','Quality running'],['running|long','Long running'],...['Squat','Bench','Deadlift'].flatMap(lift=>[['strength|'+lift+'|lifting',lift+' familiar lifting'],['strength|'+lift+'|heavy',lift+' heavy singles/triples']])];
- get('frAddRecoveryObservation').onclick=()=>{
-  const row=document.createElement('div');row.className='fr-card fr-recovery-observation';
-  const tasks=recoveryChoices.filter(([value])=>scope()==='hybrid'||value.startsWith(scope()+'|'));
-  row.innerHTML='<div class="fr-fields"><label>Activity<select data-recovery-task><option value="">Choose activity</option>'+tasks.map(([value,label])=>'<option value="'+value+'">'+label+'</option>').join('')+'</select></label><label>Completed activity date<input type="date" data-recovery-performance></label><label>Response date<input type="date" data-recovery-date></label><label>Subsequent response<select data-recovery-status><option value="">Choose response</option><option value="unknown">Unknown</option><option value="normal">Normal on the following day</option><option value="resolved">Symptoms resolved and response normal</option><option value="fatigue">Fatigue remained</option><option value="pain">Pain or concerning symptoms</option><option value="worsening">Worsening symptoms</option></select></label></div><button type="button" class="ghost">Remove this draft observation</button>';
-  row.querySelector('button').onclick=()=>row.remove();get('frRecoveryObservations').appendChild(row);
- };
- function recoveryObservationRows(){
-  const previous=data.customRoadmap||{},packet=previous.coachingEvidence||LHRFCoachingEvidence.capture({...previous,integratedCoachingVersion:1},{data}),preserved=[...(packet.recovery?.observations||[]),...(packet.recovery?.invalid||[])].filter(o=>['adverse','safety'].includes(o.status)).map(o=>({observedAt:o.date,recordedAt:o.recordedAt||packet.asOf,sport:o.sport,task:o.task,...(o.lifts?.length?{affectedLifts:o.lifts}:{}),...(o.scope?{scope:o.scope}:{}),status:o.status==='safety'?'pain':'fatigue',...(o.severity==='severe'?{severe:true}:{}),source:'preserved-recovery-concern',...(o.symptoms?{symptoms:o.symptoms}:{})}));
-  const fresh=[...get('frRecoveryObservations').children].flatMap(row=>{
-   const value=selector=>row.querySelector(selector).value,task=value('[data-recovery-task]'),status=value('[data-recovery-status]'),observedAt=value('[data-recovery-date]'),referencePerformanceDate=value('[data-recovery-performance]');
-   if(!task&&!status&&!observedAt&&!referencePerformanceDate)return [];
-   const [sport,activity,effort]=task.split('|');return [{sport,task:sport==='running'?activity:effort,...(sport==='strength'?{lift:activity}:{}),status:status==='resolved'?'normal':status,observedAt,...(referencePerformanceDate?{referencePerformanceDate}:{}),...(['normal','resolved'].includes(status)?{nextDayResponse:'normal'}:{}),...(status==='resolved'?{resolved:true}:{}),source:'athlete-recovery-review'}];
-  });
-  return [...new Map([...(previous.recoveryObservations||[]).filter(o=>o.observedAt||o.reportedAt||o.date),...preserved,...fresh].map(o=>[JSON.stringify(o),o])).values()];
- }
  get('frStartDate').value=today();
  get('frLongDay').value='';
- get('frDaygrid').innerHTML=weekdays.map(d=>'<div class="fr-day-tile"><label><b>'+d+'</b><input type="checkbox" class="fr-day" value="'+d+'" '+(['Mon','Tue','Thu','Sat','Sun'].includes(d)?'checked':'')+'></label><label class="fr-double-label"><span class="double">Double</span><input aria-label="Allow lifting and running on '+d+'" type="checkbox" class="fr-double" value="'+d+'" '+(d==='Tue'?'checked':'')+'></label></div>').join('');
+ get('frDaygrid').innerHTML=weekdays.map(d=>'<div class="fr-day-tile"><label><b>'+d+'</b><input type="checkbox" class="fr-day" value="'+d+'"></label><label class="fr-double-label"><span class="double">Double</span><input aria-label="Allow lifting and running on '+d+'" type="checkbox" class="fr-double" value="'+d+'"></label></div>').join('');
  function daySelection(){const days=[...root.querySelectorAll('.fr-day:checked')].map(x=>x.value);return {days,double:[...root.querySelectorAll('.fr-double:checked')].map(x=>x.value).filter(d=>days.includes(d))}}
- get('frVisitWindows').innerHTML=weekdays.map(d=>'<div class="fr-visitrow" data-visit-day="'+d+'"><b>'+d+'</b><label>Minutes<input class="fr-minute" data-day="'+d+'" type="number" min="15" placeholder="No fixed limit" aria-label="'+d+' whole-visit minutes"></label><label class="fr-separate-label"><input class="fr-separate" type="checkbox" value="'+d+'"> Two separate visits</label></div>').join('');
 
  const dayLabels=weekdays;
  let manualMode=false;
- const defaults={Mon:[],Tue:['bench','run'],Wed:[],Thu:['lower'],Fri:['bench'],Sat:['long'],Sun:['run']};
  const choices=[['bench','Bench'],['lower','Lower body (squat + deadlift)'],['run','Run'],['long','Long run']];
- const manualState=JSON.parse(JSON.stringify(defaults));
  function readManual(){const split={};for(const d of dayLabels)split[d]=[...root.querySelectorAll('.fr-activity[data-day="'+d+'"]:checked')].map(x=>x.value);return split}
  function updateManualStatus(){
   const split=readManual();const counts={bench:0,lower:0,run:0,long:0};
   for(const vals of Object.values(split))for(const v of vals)counts[v]++;
   get('frManualStatus').textContent='Bench '+counts.bench+' · Lower body '+counts.lower+' · Runs '+(counts.run+counts.long)+' (including '+counts.long+' long run)';
   // Status rendering must not mutate an existing athlete draft. sync() captures deliberate onboarding edits.
-  updateVisitWindows();
+  updateSetupFields();
  }
- get('frManualDays').innerHTML=dayLabels.map(d=>'<div class="fr-splitday"><strong>'+d+'</strong><div class="fr-chips">'+choices.map(([key,label])=>'<label><input class="fr-activity" data-day="'+d+'" type="checkbox" value="'+key+'" '+(manualState[d].includes(key)?'checked':'')+'>'+label+'</label>').join('')+'</div></div>').join('');
+ get('frManualDays').innerHTML=dayLabels.map(d=>'<div class="fr-splitday"><strong>'+d+'</strong><div class="fr-chips">'+choices.map(([key,label])=>'<label><input class="fr-activity" data-day="'+d+'" type="checkbox" value="'+key+'">'+label+'</label>').join('')+'</div></div>').join('');
  root.querySelectorAll('.fr-activity').forEach(el=>el.addEventListener('change',()=>{
    if(el.checked&&el.value==='long')root.querySelectorAll('.fr-activity[value="long"]').forEach(other=>{if(other!==el)other.checked=false});
    if(el.checked&&el.value==='run')root.querySelector('.fr-activity[data-day="'+el.dataset.day+'"][value="long"]').checked=false;
@@ -1743,18 +1733,17 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const node=document.createElement('div');node.className='fr-field';node.dataset.baselineLift=lift;
   node.innerHTML='<label for="'+id+'">'+lift+' (kg, optional)</label><input type="number" id="'+id+'" min="0" step="any" placeholder="Optional"><div id="'+id+'Details" hidden><label for="'+id+'Reps">Repetitions</label><select id="'+id+'Reps">'+Array.from({length:10},(_,i)=>'<option value="'+(i+1)+'">'+(i+1)+'</option>').join('')+'</select><label class="fr-event-line"><input type="checkbox" id="'+id+'Estimate"> Use this as a current estimated 1RM</label></div><div id="'+id+'Single" hidden><label for="'+id+'Date">'+lift+' single completed on (optional)</label><input type="date" id="'+id+'Date"><label class="fr-event-line"><input type="checkbox" id="'+id+'Technique"> Used competition technique for this single</label></div>';
   get('frBaselines').appendChild(node);
-  get(id).addEventListener('input',updateVisitWindows);
-  get(id+'Reps').addEventListener('change',updateVisitWindows);
-  get(id+'Estimate').addEventListener('change',updateVisitWindows);
+  get(id).addEventListener('input',updateSetupFields);
+  get(id+'Reps').addEventListener('change',updateSetupFields);
+  get(id+'Estimate').addEventListener('change',updateSetupFields);
   const prefix='frFinalHeavy'+lift;
   const timing=document.createElement('fieldset');timing.className='fr-timing-lift';timing.dataset.timingLift=lift;
   timing.innerHTML='<legend>'+lift+'</legend><div class="fr-field"><label for="'+prefix+'Mode">'+lift+' final heavy timing</label><select id="'+prefix+'Mode"><option value="coach">Let the coach decide</option><option value="date">Choose a date</option><option value="days">Choose days before the meet</option></select></div><div class="fr-field" hidden><label for="'+prefix+'Date">'+lift+' final heavy date</label><input type="date" id="'+prefix+'Date"></div><div class="fr-field" hidden><label for="'+prefix+'Days">'+lift+' days before the meet</label><input type="number" id="'+prefix+'Days" min="1" step="1"></div><p class="fr-note" id="'+prefix+'Hint"></p>';
   get('frFinalHeavyLifts').append(timing);
-  get(prefix+'Mode').addEventListener('change',updateVisitWindows);
-  get(prefix+'Days').addEventListener('input',updateVisitWindows);
+  get(prefix+'Mode').addEventListener('change',updateSetupFields);
+  get(prefix+'Days').addEventListener('input',updateSetupFields);
  }
- function updateVisitWindows(){
-  const days=manualMode?dayLabels.filter(d=>readManual()[d].length):daySelection().days;
+ function updateSetupFields(){
   const meet=meetLifts(),strength=strengthDate(),running=runningDate(),dual=!!(strength&&running);
   get('frFocusChoices').hidden=scope()!=='hybrid';
   get('frExperience').parentElement.hidden=!hasStrength();
@@ -1765,14 +1754,18 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   for(const id of ['frRunningTarget','frRunningDate'])get(id).parentElement.hidden=!runningEventEnabled();
   get('frDualGoalFields').hidden=!dual;
   get('frUndatedWrap').hidden=!!(strength||running);
+  const finish=get('frStrengthFinish'),eligible=Number(get('frWeeks').value)>=8;
+  const mode=get('frStrengthMode').value;
+  get('frStrengthFinishWrap').hidden=!hasStrength()||!!(strength||running)||mode==='maintenance'||(mode==='auto'&&focus()==='running');
+  finish.options[1].disabled=!eligible;
+  if(!eligible)finish.value='review';
+  get('frStrengthFinishNote').textContent=eligible?'A benchmark gives you a controlled rep set in the final week, with less supporting work.':'A scheduled benchmark is available for blocks of eight weeks or more.';
   get('frEventLimits').hidden=!(strength||running);
   const start=get('frStartDate').value,end=[strength,running].filter(Boolean).sort().at(-1);
   const coverage=get('frEventCoverage');
   coverage.hidden=!(start&&end&&end>=start);
   coverage.textContent=coverage.hidden?'':eventCoverageText(start,end);
-  const fixedPriority=meet.length===1||['squat','bench-strength','deadlift-strength'].includes(goal());
   for(const id of ['frStrengthMode','frStrengthTarget'])get(id).parentElement.hidden=!hasStrength();
-  get('frLiftPriority').parentElement.hidden=!hasStrength()||fixedPriority;
   for(const lift of lifts)get('frTarget'+lift).parentElement.hidden=!hasStrength()||(meet.length===1&&!meet.includes(lift));
   for(const [kind,date] of [['Strength',strength],['Running',running]]){
    const window=get('fr'+kind+'EventMinutes');
@@ -1784,9 +1777,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   get('frRecoveryDays').parentElement.hidden=get('frAfterWrap').hidden;
   if(!get('frAfterWrap').hidden)get('frAfterNote').textContent=(strength<running?'Running':'Strength')+' becomes the priority after the first event and recovery. Review the next goal’s weekly visits and exposures.';
   get('frModeCoach').parentElement.hidden=scope()!=='hybrid';
-  root.querySelectorAll('[data-visit-day]').forEach(el=>{el.hidden=!days.includes(el.dataset.visitDay)});
-  root.querySelectorAll('.fr-double-label,.fr-separate-label').forEach(el=>{el.hidden=scope()!=='hybrid'});
-  get('frGapHours').parentElement.hidden=scope()!=='hybrid'||!days.some(day=>root.querySelector('.fr-separate[value="'+day+'"]').checked);
+  root.querySelectorAll('.fr-double-label').forEach(el=>{el.hidden=scope()!=='hybrid'});
   get('frFinalHeavy').hidden=!strength;
   for(const lift of lifts){
    const id='frFinalHeavy'+lift,mode=get(id+'Mode').value;
@@ -1810,7 +1801,6 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   singleEvidence.textContent=requestedSingles.length?'Optional for '+requestedSingles.join(', ')+': if you recently completed a competition-technique single, enter its weight, 1 rep and date. The coach checks evidence and recovery again before any conditional single.':'';
   get('frEquipment').hidden=existing();
   get('frRunningBaselines').hidden=!hasRunning();
-  get('frRunResultDetails').hidden=!get('frRunTime').value.trim();
   for(const id of ['frStrengthVisits','frSquat','frBench','frDeadlift'])get(id).parentElement.hidden=!hasStrength();
   get('frRuns').parentElement.hidden=!hasRunning();
   get('frLongDay').parentElement.hidden=!hasRunning()||+get('frRuns').value<2;
@@ -1829,7 +1819,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    }
    get('frRuns').value=String(runs);
   }
-  updateVisitWindows();
+  updateSetupFields();
  }
  function updateScope(){
   for(const option of get('frGoal').options){
@@ -1841,17 +1831,17 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   defaultWeek();
  }
  root.querySelectorAll('.fr-day').forEach(el=>el.addEventListener('change',defaultWeek));
- root.querySelectorAll('.fr-double').forEach(el=>el.addEventListener('change',()=>{if(el.checked)root.querySelector('.fr-separate[value="'+el.value+'"]').checked=false;updateVisitWindows()}));
- root.querySelectorAll('.fr-separate').forEach(el=>el.addEventListener('change',()=>{if(el.checked)root.querySelector('.fr-double[value="'+el.value+'"]').checked=false;updateVisitWindows()}));
+ root.querySelectorAll('.fr-double').forEach(el=>el.addEventListener('change',updateSetupFields));
  get('frScope').addEventListener('change',()=>{weeklyEdited=false;updateScope()});
  get('frGoal').addEventListener('change',defaultWeek);
- for(const id of ['frStrengthVisits','frSquat','frBench','frDeadlift','frRuns','frLongDay'])get(id).addEventListener('change',()=>{weeklyEdited=true;updateVisitWindows()});
- for(const id of ['frGoalStrategy','frAddRunningGoal','frRunGoal','frStartDate'])get(id).addEventListener('change',updateVisitWindows);
+ for(const id of ['frStrengthVisits','frSquat','frBench','frDeadlift','frRuns','frLongDay'])get(id).addEventListener('change',()=>{weeklyEdited=true;updateSetupFields()});
+ for(const id of ['frGoalStrategy','frAddRunningGoal','frRunGoal','frStartDate','frStrengthMode'])get(id).addEventListener('change',updateSetupFields);
+ get('frWeeks').addEventListener('input',updateSetupFields);
+ root.querySelectorAll('[name="frFocus"]').forEach(input=>input.addEventListener('change',updateSetupFields));
  for(const kind of ['Strength','Running']){
-  get('fr'+kind+'Date').addEventListener('change',updateVisitWindows);
-  get('fr'+kind+'EventMinutes').addEventListener('input',updateVisitWindows);
+  get('fr'+kind+'Date').addEventListener('change',updateSetupFields);
+  get('fr'+kind+'EventMinutes').addEventListener('input',updateSetupFields);
  }
- get('frRunTime').addEventListener('input',updateVisitWindows);
  function requestedHeavyTiming(){
   return Object.fromEntries(meetLifts().map(lift=>{
    const id='frFinalHeavy'+lift,mode=get(id+'Mode').value;
@@ -1862,9 +1852,6 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   const value=id=>get(id).value,number=id=>{const text=value(id);return text===''?null:Number(text)};
   const manual=manualMode?readManual():null;
   const strengthVisits=!hasStrength()?0:manual?dayLabels.filter(d=>manual[d].some(x=>['lower','bench'].includes(x))).length:number('frStrengthVisits');
-  const separateDays=scope()==='hybrid'?[...root.querySelectorAll('.fr-separate:checked')].map(x=>x.value).filter(d=>selected.days.includes(d)):[];
-  const combinedDays=selected.double.filter(d=>!separateDays.includes(d));
-  const minutes=Object.fromEntries(selected.days.map(day=>[day,root.querySelector('.fr-minute[data-day="'+day+'"]').value]));
   const eventDays={};
   for(const [sport,date] of [['Strength',cfg.strengthTargetDate],['Running',cfg.runningTargetDate]]){
    if(!date)continue;
@@ -1873,10 +1860,6 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    const estimate=value('fr'+sport+'EventEstimate');
    eventDays[date]={...limits,confirmed:true,minutes:value('fr'+sport+'EventMinutes'),...(estimate?{estimatedMinutes:estimate}:{})};
   }
-  const status=value('frFatigueStatus');if(!status)throw new RangeError('Choose your current recovery before reviewing the programme.');
-  const recent=number('frSleepRecent'),usual=number('frSleepUsual');if((recent===null)!==(usual===null)||[recent,usual].some(x=>x!==null&&(!Number.isFinite(x)||x<0||x>24)))throw new RangeError('Enter both recent and usual sleep hours between zero and 24, or leave both blank.');
-  let recoveryEvidence=status==='normal'?null:{status:'fatigue',affectedLifts:status==='lower'?['Squat','Deadlift']:['Squat','Bench','Deadlift'],source:'athlete-intake',observedAt:new Date().toISOString().slice(0,10)};
-  if(recoveryEvidence&&recent!==null)Object.assign(recoveryEvidence,{sleepHours:recent,usualSleepHours:usual});
   let orderedGoals;
   if(cfg.strengthTargetDate&&cfg.strengthTargetDate===cfg.runningTargetDate)throw new RangeError('Two events on the same date need an individual timing review before a programme can be approved.');
   if(cfg.strengthTargetDate&&cfg.runningTargetDate&&value('frGoalStrategy')==='staged'){
@@ -1889,7 +1872,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    cfg.priority=orderedGoals[0].priority;cfg.hybridFocus=orderedGoals[0].hybridFocus;
    const next=orderedGoals[1];if(next.strengthVisits>selected.days.length||next.strengthVisits<Math.max(next.bench,next.squat,next.deadlift))throw new RangeError('After-event strength visits must cover the most frequent lift and fit your available days.');
   }
-  return LHRFCoachIntake.build(cfg,{sessionTimeVersion:1,sessionDurationPreference:data.customRoadmap?.sessionDurationPreference,strengthVisits,minutes,combinedDays,separateDays,separateMinutes:Object.fromEntries(separateDays.map(d=>[d,minutes[d]])),minimumGapHours:number('frGapHours'),eventDays,weeklyKmHistory:hasRunning()?value('frRunHistory'):'',longRun:hasRunning()?{km:value('frLongKm'),minutes:value('frLongMinutes'),recoveryHours:value('frLongRecovery')}:null,recentMarathonDate:hasRunning()?value('frRecentMarathon'):'',lastRunBeforeBreak:hasRunning()?value('frLastRunBeforeBreak'):'',recoveryEvidence,recoveryContext:{status,reportedAt:today(),...(recent!==null?{sleepHours:recent,usualSleepHours:usual}:{})},recoveryObservations:recoveryObservationRows(),orderedGoals});
+  return LHRFCoachIntake.build(cfg,{sessionTimeVersion:1,strengthVisits,combinedDays:selected.double,eventDays,weeklyKmHistory:hasRunning()?value('frRunHistory'):'',longRun:hasRunning()?{km:value('frLongKm'),minutes:value('frLongMinutes'),recoveryHours:value('frLongRecovery')}:null,recentMarathonDate:hasRunning()?value('frRecentMarathon'):'',orderedGoals});
  }
  function wholeProgramme(c){return LHRFCoachAdapters.buildProgramme(c,{data});}
  function programmeBlockers(proposal,events){
@@ -1930,8 +1913,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   error.focus({preventScroll:true});error.scrollIntoView({block:'center'});
  }
  function view(){
-  updateVisitWindows();
-  get('frStepLabel').textContent='Step '+step+' of 5 · '+['Training type','Goals','Week','Baselines and recovery','Review'][step-1];
+  updateSetupFields();
+  get('frStepLabel').textContent='Step '+step+' of 5 · '+['Training type','Goals','Week','Starting results','Review'][step-1];
   root.querySelectorAll('.fr-step').forEach(el=>el.classList.toggle('on',+el.dataset.step===step));
   get('frProgress').setAttribute('aria-valuenow',step);
   get('frProgress').innerHTML=Array.from({length:5},(_,i)=>'<i class="'+(i<step?'on':'')+'" aria-hidden="true"></i>').join('');
@@ -1956,7 +1939,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    ?'Covers '+durationWeeks+' weeks through '+dateLabel(end)+'. The partial opening week places the last event in calendar week '+calendarWeeks+'.'
    :'Includes '+dateLabel(end)+' in calendar week '+calendarWeeks+'.';
  }
- function priorityLift(){return ({bench:'Bench',deadlift:'Deadlift',squat:'Squat','bench-strength':'Bench','deadlift-strength':'Deadlift'}[goal()])||get('frLiftPriority').value}
+ function priorityLift(){return ({bench:'Bench',deadlift:'Deadlift',squat:'Squat','bench-strength':'Bench','deadlift-strength':'Deadlift'}[goal()])||'Balanced'}
  function trainingWeek(){
   if(!manualMode){
    const selected=daySelection();
@@ -1984,8 +1967,15 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    runningGoalSeconds:Number.isFinite(targetSeconds)&&targetSeconds>0?targetSeconds:null,
    strengthTargetDate:strength,runningTargetDate:running,hybridFocus:focus(),coachingPolicy:'review-v2',exerciseSelectionVersion:2,runningGuidanceVersion:4,runningPaceVersion:2,runningWorkoutVersion:1,onboardingAerobicBuildVersion:1,integratedCoachingVersion:1,planFirstVersion:1,initialBuildVersion:1,
    trainingAge:hasStrength()?get('frExperience').value:'',strengthMode:hasStrength()?get('frStrengthMode').value:'auto'});
-  cfg.runProfile={...cfg.runProfile,distance:Number(get('frRunDistance').value),seconds:pbSeconds(runTime),time:runTime,weeklyKm:hasRunning()?Number(get('frRunKm').value):0,
-   resultDate:runTime?get('frResultDate').value||null:null,effort:runTime?get('frResultEffort').value:'performance',environment:runTime?get('frResultEnvironment').value:'unknown'};
+  cfg.runProfile={distance:Number(get('frRunDistance').value),seconds:pbSeconds(runTime),time:runTime,weeklyKm:hasRunning()?Number(get('frRunKm').value):0,
+   ...(runTime?{source:'onboarding-recent-best',recency:'recent',effort:'performance',confirmedAt:new Date().toISOString()}: {})};
+  if(cfg.recoveryEvidence?.source==='athlete-intake'&&cfg.recoveryEvidence.status==='fatigue'&&!LHRFCoachingEvidence.symptomConcern(cfg.recoveryEvidence))delete cfg.recoveryEvidence;
+  if(['normal','lower','all'].includes(cfg.recoveryContext?.status)&&!LHRFCoachingEvidence.symptomConcern(cfg.recoveryContext))delete cfg.recoveryContext;
+  delete cfg.sessionDurationPreference;
+  delete cfg.strengthModes;
+  delete cfg.strengthExposureRoles;
+  delete cfg.strengthBlockFinish;
+  if(!get('frStrengthFinishWrap').hidden)cfg.strengthBlockFinish=get('frStrengthFinish').value;
   delete cfg.runningMode;
   if(hasRunning()&&runGoal==='fitness'){
    const mode=get('frRunningMode').value;
@@ -2026,6 +2016,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   ].filter(Boolean);
   const end=eventGoals.map(([,date])=>date).sort().at(-1);
   const durationWeeks=end?eventHorizon(c.startDate,end).durationWeeks:c.weeks;
+  const finish=strengthBlockFinishText(c,proposal.weeks.at(-1)?.sessions);
   const blockers=programmeBlockers(proposal,eventGoals);
   const runningReview=proposal.racePreparationReview;
   setReviewedProgramme(proposal,blockers.length?'Resolve the highlighted issues before starting.':runningReview?.accepted===false?'Review your running goal or choose provisional training.':'');
@@ -2053,6 +2044,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   summary.innerHTML='<p class="fr-review-kicker">Your goal</p>'+
    (goal?'<h2>'+esc(goal)+'</h2>':eventGoals.map(([name,date])=>'<div class="fr-review-event"><h2>'+esc(name)+'</h2><span>'+esc(dateLabel(date))+'</span></div>').join(''))+
    '<p class="fr-note">'+durationWeeks+'-week '+(!c.runningTargetDate&&['half','marathon'].includes(String(c.runGoal).toLowerCase())?'base-building block':'programme')+' · Starts '+esc(dateLabel(c.startDate))+'</p>'+
+   (finish?'<p class="fr-note"><b>Finish the block.</b> '+esc(finish)+'</p>':'')+
    (end&&durationWeeks!==c.weeks?'<p class="fr-note">The partial opening week puts the last event in calendar week '+c.weeks+'.</p>':'')+
    '<div class="fr-review-week"><p class="fr-review-kicker">Your training week</p>'+
    (sample?'<p class="fr-review-rhythm"><strong>'+visits+' '+(visits===1?'visit':'visits')+'</strong><span>'+[strength?strength+' strength':'',running?running+' '+(running===1?'run':'runs'):''].filter(Boolean).join(' · ')+'</span></p><ul class="fr-review-days" aria-label="Training days in week '+sample.week+'">'+strip+'</ul><p class="fr-note">Week '+sample.week+' example'+(duration?' · '+duration:'')+' · Training changes as you progress.</p>':'<p>No regular training sessions in this proposal. Check your available days and goals.</p>')+'</div>';
@@ -2163,11 +2155,9 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   return true;
  }
  function validBaselines(){
-  if(!get('frFatigueStatus').value)return showError('Choose your current recovery before reviewing the programme.','frFatigueStatus');
   if(hasRunning()){
    const time=get('frRunTime').value.trim();
    if(time&&!(pbSeconds(time)>0))return showError('Enter a valid run time, such as 55:00, or leave it blank.','frRunTime');
-   if(time&&get('frResultDate').value>today())return showError('Choose a running result date on or before today.','frResultDate');
   }
   for(const lift of meetLifts()){
    const id='frMax'+lift;
@@ -2240,12 +2230,13 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   root.querySelectorAll('details').forEach(el=>el.open=false);
   window.LHRFOnboardingEquipmentDraft=null;window.LHRFRefreshEquipmentForms?.();
   const c=data.customRoadmap||{},set=(id,value)=>{if(value==null||!get(id))return;const el=get(id);if(el.tagName==='SELECT'){const option=[...el.options].find(o=>o.value.toLowerCase()===String(value).toLowerCase());if(!option)return;el.value=option.value}else el.value=String(value)};
+  set('frStrengthFinish','review');
   const savedStrength=+c.squat>0||+c.bench>0||+c.deadlift>0;
   const savedScope=c.runs===0&&savedStrength?'strength':+c.runs>0&&!savedStrength?'running':'hybrid';
   const strength=c.strengthTargetDate>=today()?c.strengthTargetDate:'',running=c.runningTargetDate>=today()?c.runningTargetDate:'';
   const savedMeet=c.strengthTargetDate&&(competitionLifts[c.strengthGoal]?c.strengthGoal:competitionLifts[c.event]?c.event:null);
   const savedGoal=savedMeet||(['bench','deadlift'].includes(c.event)?c.event+'-strength':c.event==='powerlifting'?'general':c.event);
-  const values={frScope:savedScope,frGoal:savedGoal,frExperience:c.trainingAge,frStrengthMode:c.strengthMode,frLiftPriority:c.priority,frStartDate:c.startDate>=today()?c.startDate:today(),frWeeks:c.weeks,frStrengthTarget:c.strengthTarget,frStrengthDate:strength,frRunningDate:running,frRunningTarget:c.runningTarget,frRunGoal:c.runGoal||c.rungoal,frRunTime:c.runProfile?.time,frRunDistance:c.runProfile?.distance,frRunKm:c.runProfile?.weeklyKm,frResultDate:c.runProfile?.resultDate,frResultEffort:c.runProfile?.effort,frResultEnvironment:c.runProfile?.environment,frSquat:c.squat,frBench:c.bench,frDeadlift:c.deadlift,frRuns:c.runs,frLongDay:c.longRunDay,frStrengthVisits:c.visitConstraints?.strengthVisits||(data.activeSchedule||[]).filter(s=>s.ex?.length).length};
+  const values={frScope:savedScope,frGoal:savedGoal,frExperience:c.trainingAge,frStrengthMode:c.strengthMode,frStartDate:c.startDate>=today()?c.startDate:today(),frWeeks:c.weeks,frStrengthTarget:c.strengthTarget,frStrengthDate:strength,frRunningDate:running,frRunningTarget:c.runningTarget,frRunGoal:c.runGoal||c.rungoal,frRunTime:'',frRunDistance:c.runProfile?.distance,frRunKm:c.runProfile?.weeklyKm,frSquat:c.squat,frBench:c.bench,frDeadlift:c.deadlift,frRuns:c.runs,frLongDay:'',frStrengthVisits:c.visitConstraints?.strengthVisits||(data.activeSchedule||[]).filter(s=>s.ex?.length).length};
   for(const [id,value]of Object.entries(values))set(id,value);
   get('frAddRunningGoal').checked=!!(running||c.runGoal&&c.runGoal!=='fitness');
   get('frRunningMode').value=c.runningMode||'auto';
@@ -2256,17 +2247,13 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    if(timing?.mode==='athlete'){set(prefix+'Mode',timing.date?'date':'days');set(prefix+'Date',timing.date);set(prefix+'Days',timing.daysOut);}
   }
   const focus=root.querySelector('[name="frFocus"][value="'+(c.hybridFocus||'balanced')+'"]');if(focus)focus.checked=true;
-  const days=c.availableDays||data.onboardingDraftDays||[],double=c.visitConstraints?.combinedDays||c.doubleDays||data.onboardingDoubleDays||[];
-  if(days.length)root.querySelectorAll('.fr-day').forEach(e=>e.checked=days.some(d=>String(d).slice(0,3)===e.value));root.querySelectorAll('.fr-double').forEach(e=>e.checked=double.some(d=>String(d).slice(0,3)===e.value));
-  const split=c.manualSplit||data.onboardingManualSplit;root.querySelectorAll('.fr-activity').forEach(e=>e.checked=(split?.[e.dataset.day]||split?.[({Mon:'Monday',Tue:'Tuesday',Wed:'Wednesday',Thu:'Thursday',Fri:'Friday',Sat:'Saturday',Sun:'Sunday'})[e.dataset.day]]||[]).includes(e.value));setMode(!!c.manualSplit);
-  root.querySelectorAll('.fr-minute').forEach(e=>e.value=c.visitConstraints?.minutes?.[e.dataset.day]??'');
-  root.querySelectorAll('.fr-separate').forEach(e=>e.checked=(c.visitConstraints?.separateDays||[]).includes(e.value));set('frGapHours',c.visitConstraints?.minimumGapHours);
-  const h=c.runningHistory||{};set('frRunHistory',h.weeklyKm?.join(', '));set('frLongKm',h.longRun?.km);set('frLongMinutes',h.longRun?.minutes);set('frLongRecovery',h.longRun?.recoveryHours);set('frRecentMarathon',h.recentMarathonDate);set('frLastRunBeforeBreak','');
+  root.querySelectorAll('.fr-day,.fr-double,.fr-activity').forEach(input=>input.checked=false);
+  setMode(false);
+  const h=c.runningHistory||{};set('frRunHistory',h.weeklyKm?.join(', '));set('frLongKm',h.longRun?.km);set('frLongMinutes',h.longRun?.minutes);set('frLongRecovery',h.longRun?.recoveryHours);set('frRecentMarathon',h.recentMarathonDate);
   if(c.runningGoalSeconds>0)set('frRunningTarget',Math.floor(c.runningGoalSeconds/60)+':'+String(c.runningGoalSeconds%60).padStart(2,'0'));
   for(const [kind,date] of [['Strength',strength],['Running',running]]){const event=c.visitConstraints?.eventDays?.[date];if(event){set('fr'+kind+'EventMinutes',event.minutes);set('fr'+kind+'EventEstimate',event.estimatedMinutes)}}
   if(c.orderedGoals?.length>1){set('frGoalStrategy','staged');set('frRecoveryDays',c.orderedGoals[0].recoveryDays);const next=c.orderedGoals[1];for(const [key,field]of [['runs','Runs'],['bench','Bench'],['squat','Squat'],['deadlift','Deadlift'],['strengthVisits','StrengthVisits']])set('frAfter'+field,next[key])}
-  get('frFatigueStatus').value='';get('frRecoveryObservations').replaceChildren();
-  weeklyEdited=!!days.length;updateScope();step=1;get('frCancel').hidden=!existing();openSetup();
+  weeklyEdited=false;updateScope();step=1;get('frCancel').hidden=!existing();openSetup();
  }
  window.LHRFStartNewProgramme=startNewProgramme;
  window.LHRFCloseOnboarding=closeSetup;
@@ -2383,25 +2370,21 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 </script><script>
 (function(){
  const kit=LHRFExercises,gym=window.LHRFGymEquipment,panels=[];if(!gym)return;
- const basicGear=[['straight-bar','Straight barbell'],['plates','Weight plates'],['collars','Collars'],['rack','Rack'],['safeties','Rack safeties or safety arms'],['floor','Stable lifting area'],['flat-bench','Flat bench'],['lifting-floor','Floor suitable for deadlifts'],['dumbbells','Dumbbells'],['cable-station','Cable station']];
  const inventoryFor=onboarding=>(onboarding&&window.LHRFOnboardingEquipmentDraft)||currentEquipmentInventory();
  window.LHRFRefreshEquipmentForms=()=>{for(const p of panels)for(const [key,input]of Object.entries(p.fields))input.checked=gym.availability(key,inventoryFor(p.onboarding))==='available'};
  function mount(host,onboarding){
   const panel=document.createElement('details');panel.className='card equipment-panel';
-  panel.innerHTML='<summary>Equipment</summary><p class="muted small">'+(onboarding?'A standard commercial gym is assumed. Adjust this if any essentials are missing or you want to include specialist equipment.':'Standard commercial gym equipment is included. Select only specialist equipment you can use.')+'</p>';
+  panel.innerHTML=onboarding
+   ?'<summary>Specialist equipment (optional)</summary><p class="muted small">Standard gym equipment is assumed. Select any specialist equipment you can use.</p>'
+   :'<summary>Equipment</summary><p class="muted small">Standard commercial gym equipment is included. Select only specialist equipment you can use.</p>';
   const fields={};
   function addChoices(container,choices){
    for(const item of choices){const label=document.createElement('label');label.className='specialist-choice';const input=document.createElement('input');input.type='checkbox';input.setAttribute('aria-label',item.key);input.checked=gym.availability(item.key,inventoryFor(onboarding))==='available';Object.defineProperty(input,'equipmentState',{get:()=>input.checked?'available':'unavailable',set:v=>input.checked=v==='available'});label.append(input,document.createTextNode(item.label));container.append(label);fields[item.key]=input;}
   }
   if(onboarding){
-   const basic=document.createElement('fieldset');basic.innerHTML='<legend>Equipment you can use</legend>';
-   addChoices(basic,basicGear.map(([key,label])=>({key,label})));
-   const specialist=document.createElement('details');specialist.innerHTML='<summary>Specialist equipment (optional)</summary>';
-   addChoices(specialist,gym.specialists);panel.append(basic,specialist);
+   addChoices(panel,gym.specialists);
    panel.addEventListener('change',()=>{
-    const original=inventoryFor(true),items={...original?.items};
-    for(const [key] of basicGear)items[key]=fields[key].checked?'available':'unavailable';
-    window.LHRFOnboardingEquipmentDraft=gym.update({...original,items},Object.fromEntries(gym.specialists.map(({key})=>[key,fields[key].checked])),kit.exercises,kit.equipment);
+    window.LHRFOnboardingEquipmentDraft=gym.update(inventoryFor(true),Object.fromEntries(Object.entries(fields).map(([key,input])=>[key,input.checked])),kit.exercises,kit.equipment);
    });
    panels.push({fields,onboarding});host.append(panel);return;
   }

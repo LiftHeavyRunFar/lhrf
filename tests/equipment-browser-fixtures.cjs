@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const {fullInventory}=require('./equipment-fixtures.cjs');
 async function confirmOnboardingEquipment(page){
  const inventory=await page.evaluate(inv=>{
-  const panel=[...document.querySelectorAll('#firstRun details')].find(p=>p.querySelector('summary')?.textContent==='Equipment');
+  const panel=[...document.querySelectorAll('#firstRun details')].find(p=>['Equipment','Specialist equipment (optional)'].includes(p.querySelector('summary')?.textContent));
   if(!panel)throw Error('Missing onboarding equipment controls');
   // The specialist inventory intentionally has no venue input.
   panel.querySelectorAll('select[aria-label]').forEach(x=>x.value=inv.items[x.getAttribute('aria-label')]||'unknown');
