@@ -38,10 +38,10 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
 <label>Running result effort <select name="runResultEffort"><option value="performance">Race or representative performance</option><option value="training">Training effort</option></select></label>
 <label>Recent running minutes/week (optional) <input name="runningBaselineMinutes" type="number" min="0" max="1200" step="5" placeholder="e.g. 150"></label>
 </div><p class="muted">Suggested loads are provisional estimates; adjust to prescribed RPE. The final assessment is optional.</p>
-<label><input type="checkbox" name="v2Enabled" checked style="width:auto"> Use the current planner with visit limits and recovery history</label>
-<details id="v2Options"><summary>Training windows and recent running</summary>
-<p class="muted">Minutes include warm-ups, lifting rests and transitions. For separate visits, the limit applies to each visit; allow at least six hours between them.</p>
-<div class="grid"><label>Strength visits/week <input name="v2StrengthVisits" type="number" min="0" max="7" value="3"></label><label>Long-run day <select name="v2LongDay"><option>Mon</option><option>Tue</option><option>Wed</option><option>Thu</option><option>Fri</option><option selected>Sat</option><option>Sun</option></select></label><label>Separate-visit gap (hours) <input name="v2Gap" type="number" min="6" value="6"></label></div>
+<label><input type="checkbox" name="v2Enabled" checked style="width:auto"> Use the current planner with training days and recovery history</label>
+<details id="v2Options"><summary>Training days and recent running</summary>
+<p class="muted">Choose your training days and whether lifting and running can share a day.</p>
+<div class="grid"><label>Strength visits/week <input name="v2StrengthVisits" type="number" min="0" max="7" value="3"></label><label>Long-run day <select name="v2LongDay"><option>Mon</option><option>Tue</option><option>Wed</option><option>Thu</option><option>Fri</option><option selected>Sat</option><option>Sun</option></select></label></div>
 <div id="v2Days" class="grid"></div>
 <div class="grid"><label>Recent weekly km <input name="v2WeeklyKm" type="number" min="0" step="0.1" placeholder="If known"></label><label>Completed weekly km, oldest first <input name="v2History" placeholder="20, 22, 24, 23, 25, 25"></label><label>Recent longest run (km) <input name="v2LongKm" type="number" min="0" step="0.1"></label><label>Its duration (minutes) <input name="v2LongMinutes" type="number" min="1"></label><label>Hours until recovered <input name="v2LongRecovery" type="number" min="0"></label><label>Last completed marathon <input name="v2RecentMarathon" type="date"></label><label>Current recovery <select name="v2Fatigue"><option value="">Please choose</option><option value="normal">Normal for me</option><option value="lower">Repeated lower-body fatigue</option><option value="all">Repeated fatigue across lifting</option></select></label></div>
 <p class="muted">Leave unknown history blank. A race result does not establish habitual mileage. The optional long-run fields belong to the same completed run.</p>
@@ -70,7 +70,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
  const form=document.getElementById('builder'),out=document.getElementById('output');
  const storageKey='lhrf-v2-preview-athlete-inputs';
  const dayNames=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
- document.getElementById('v2Days').innerHTML=dayNames.map(day=>'<div><label><input name="v2Day'+day+'" type="checkbox" style="width:auto" '+(['Tue','Thu','Fri','Sat','Sun'].includes(day)?'checked':'')+'> '+day+'</label><label>Hard limit (optional) <input name="v2Minutes'+day+'" type="number" min="15" placeholder="No fixed limit"></label><label>Visit arrangement <select name="v2Mode'+day+'"><option value="solo">One sport</option><option value="combined" '+(['Tue','Thu'].includes(day)?'selected':'')+'>Combined run + lift</option><option value="separate">Separate run and lift visits</option></select></label></div>').join('');
+ document.getElementById('v2Days').innerHTML=dayNames.map(day=>'<div><label><input name="v2Day'+day+'" type="checkbox" style="width:auto" '+(['Tue','Thu','Fri','Sat','Sun'].includes(day)?'checked':'')+'> '+day+'</label><label>Visit arrangement <select name="v2Mode'+day+'"><option value="solo">One sport</option><option value="combined" '+(['Tue','Thu'].includes(day)?'selected':'')+'>Combined run + lift</option></select></label></div>').join('');
  function syncV2Options(){const enabled=form.elements.namedItem('v2Enabled').checked;document.getElementById('v2Options').querySelectorAll('input,select').forEach(el=>el.disabled=!enabled);if(enabled)document.getElementById('v2Options').open=true;}
  form.elements.namedItem('v2Enabled').addEventListener('change',syncV2Options);
  document.getElementById('clearTrialData').addEventListener('click',()=>{
@@ -80,7 +80,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
   catch(err){document.getElementById('clearTrialStatus').textContent='Could not clear all trial data. Please retry.'}
  });
  const fields=['trainingAge','strengthMode','runGoal','startDate','strengthTargetDate','runningTargetDate','weeks','bench','squat','deadlift','runs','priority','benchMax','squatMax','deadliftMax','tenKTime','runningBaselineMinutes'];
- fields.push('runResultDate','runResultEffort','v2Enabled','v2StrengthVisits','v2LongDay','v2Gap','v2WeeklyKm','v2History','v2LongKm','v2LongMinutes','v2LongRecovery','v2RecentMarathon','v2Fatigue','v2StrengthEventConfirmed','v2StrengthEventMinutes','v2RunningEventConfirmed','v2RunningEventMinutes',...dayNames.flatMap(d=>['v2Day'+d,'v2Minutes'+d,'v2Mode'+d]));
+ fields.push('runResultDate','runResultEffort','v2Enabled','v2StrengthVisits','v2LongDay','v2WeeklyKm','v2History','v2LongKm','v2LongMinutes','v2LongRecovery','v2RecentMarathon','v2Fatigue','v2StrengthEventConfirmed','v2StrengthEventMinutes','v2RunningEventConfirmed','v2RunningEventMinutes',...dayNames.flatMap(d=>['v2Day'+d,'v2Mode'+d]));
  try{
   const saved=JSON.parse(localStorage.getItem(storageKey)||'null');
   if(saved&&typeof saved==='object')for(const name of fields){
@@ -236,7 +236,7 @@ small,.muted{color:#a9bbcd}.warn{color:#ffd18a}.error{color:#ff9e9e}
     else if(history.length)base.runProfile.weeklyKm=Number(history.at(-1));
     const events={};for(const [date,prefix]of [[base.strengthTargetDate,'v2StrengthEvent'],[base.runningTargetDate,'v2RunningEvent']])if(date)events[date]={confirmed:field(prefix+'Confirmed').checked,minutes:value(prefix+'Minutes')};
     const recoveryDate=new Date().toISOString().slice(0,10),recovery=value('v2Fatigue')==='normal'?null:{status:'accumulating-fatigue',reportedAt:recoveryDate,affectedLifts:value('v2Fatigue')==='lower'?['Squat','Deadlift']:['Squat','Bench','Deadlift']};
-    const updated=LHRFCoachIntake.build(base,{sessionTimeVersion:1,strengthVisits:value('v2StrengthVisits'),minutes:Object.fromEntries(days.map(d=>[d,value('v2Minutes'+d)])),combinedDays:days.filter(d=>value('v2Mode'+d)==='combined'),separateDays:days.filter(d=>value('v2Mode'+d)==='separate'),minimumGapHours:value('v2Gap'),eventDays:events,weeklyKmHistory:history,longRun:{km:value('v2LongKm'),minutes:value('v2LongMinutes'),recoveryHours:value('v2LongRecovery')},recentMarathonDate:value('v2RecentMarathon'),recoveryEvidence:recovery,recoveryContext:{status:value('v2Fatigue'),reportedAt:recoveryDate}});
+    const updated=LHRFCoachIntake.build(base,{simpleAvailability:true,sessionTimeVersion:1,strengthVisits:value('v2StrengthVisits'),combinedDays:days.filter(d=>value('v2Mode'+d)==='combined'),eventDays:events,weeklyKmHistory:history,longRun:{km:value('v2LongKm'),minutes:value('v2LongMinutes'),recoveryHours:value('v2LongRecovery')},recentMarathonDate:value('v2RecentMarathon'),recoveryEvidence:recovery,recoveryContext:{status:value('v2Fatigue'),reportedAt:recoveryDate}});
     Object.assign(c,updated);
    }
    c.equipmentPolicyVersion=1;c.equipmentInventory=readPreviewEquipment();const p=LHRFCoachAdapters.previewNewProgramme(c,{data:LHRFCoachAdapters.previewLogState(readLogs(),c)});Object.assign(c,p.config);const blocked=p.weeks.some(w=>w.feasible===false);

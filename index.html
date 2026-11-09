@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.39.4"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script>
 /* Explicit one-time fresh start, invoked only via ?fresh=1 on this device.
    Clear the beta and trial records before any app code reads storage. */
 (function(){
@@ -1872,7 +1872,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    cfg.priority=orderedGoals[0].priority;cfg.hybridFocus=orderedGoals[0].hybridFocus;
    const next=orderedGoals[1];if(next.strengthVisits>selected.days.length||next.strengthVisits<Math.max(next.bench,next.squat,next.deadlift))throw new RangeError('After-event strength visits must cover the most frequent lift and fit your available days.');
   }
-  return LHRFCoachIntake.build(cfg,{sessionTimeVersion:1,strengthVisits,combinedDays:selected.double,eventDays,weeklyKmHistory:hasRunning()?value('frRunHistory'):'',longRun:hasRunning()?{km:value('frLongKm'),minutes:value('frLongMinutes'),recoveryHours:value('frLongRecovery')}:null,recentMarathonDate:hasRunning()?value('frRecentMarathon'):'',orderedGoals});
+  return LHRFCoachIntake.build(cfg,{simpleAvailability:true,sessionTimeVersion:1,strengthVisits,combinedDays:selected.double,eventDays,weeklyKmHistory:hasRunning()?value('frRunHistory'):'',longRun:hasRunning()?{km:value('frLongKm'),minutes:value('frLongMinutes'),recoveryHours:value('frLongRecovery')}:null,recentMarathonDate:hasRunning()?value('frRecentMarathon'):'',orderedGoals});
  }
  function wholeProgramme(c){return LHRFCoachAdapters.buildProgramme(c,{data});}
  function programmeBlockers(proposal,events){
@@ -1971,7 +1971,6 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    ...(runTime?{source:'onboarding-recent-best',recency:'recent',effort:'performance',confirmedAt:new Date().toISOString()}: {})};
   if(cfg.recoveryEvidence?.source==='athlete-intake'&&cfg.recoveryEvidence.status==='fatigue'&&!LHRFCoachingEvidence.symptomConcern(cfg.recoveryEvidence))delete cfg.recoveryEvidence;
   if(['normal','lower','all'].includes(cfg.recoveryContext?.status)&&!LHRFCoachingEvidence.symptomConcern(cfg.recoveryContext))delete cfg.recoveryContext;
-  delete cfg.sessionDurationPreference;
   delete cfg.strengthModes;
   delete cfg.strengthExposureRoles;
   delete cfg.strengthBlockFinish;
@@ -2277,7 +2276,9 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
         bar.className='card';
         bar.style.cssText='position:fixed;z-index:6;bottom:calc(78px + env(safe-area-inset-bottom));left:12px;right:12px;max-width:520px;margin:auto';
         bar.setAttribute('role','status');
-        bar.textContent='New LHRF version ready. Close and reopen LHRF to update.';
+        bar.textContent='New LHRF version ready. ';
+        const link=document.createElement('a');link.href='./refresh.html';link.textContent='Update LHRF';
+        bar.append(link);
         document.body.appendChild(bar);
       }
       reg.addEventListener('updatefound',()=>reg.installing?.addEventListener('statechange',showUpdate));
