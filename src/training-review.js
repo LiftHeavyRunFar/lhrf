@@ -26,6 +26,16 @@ function recordedSet(set){
  return (set.weight??'—')+' '+loadUnits(set)+' × '+(set.reps??'—')+
   (set.doseUnit==='seconds'?' sec':' reps')+' · RPE '+(set.rpe??'—');
 }
+function runInterruptionField(value='',id=''){
+ const field=document.createElement('label'),select=document.createElement('select');
+ field.className='field';field.textContent='If you cut the run short, why?';
+ if(id)select.id=id;
+ for(const [key,label] of [['','Not answered'],['time','Time available'],['logistics','Logistics'],
+  ['fatigue','Unusual fatigue'],['pain','Pain or discomfort'],['illness','Illness']]){
+  const option=document.createElement('option');option.value=key;option.textContent=label;select.append(option);
+ }
+ select.value=value;field.append(select);return field;
+}
 function strengthGroups(row){
  const groups=new Map(),key=(name,variant)=>name+'|'+(variant||'');
  const get=(name,variant)=>{const id=key(name,variant);if(!groups.has(id))groups.set(id,{name,variant,prescribed:[],actual:[]});return groups.get(id)};
@@ -34,15 +44,16 @@ function strengthGroups(row){
  return [...groups.values()];
 }
 function assess(state,now=new Date()){
+ const planFirst=state.customRoadmap?.planFirstVersion===1;
  const since=+now-14*86400000,recent=(state.runs||[]).filter(r=>Date.parse(r.date)>=since&&Date.parse(r.date)<=+now),messages=[],proposals=[];
  const reviews=(state.weeklyCheckins||[]).filter(c=>Date.parse(c.date)>=+now-7*86400000).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)),check=reviews[0];
  const comparable=recent.filter(r=>r.comparableEasy===true&&Number.isFinite(r.avgHr)&&r.avgHr>=40&&r.avgHr<=230&&r.km>0&&r.min>0).sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
  if(comparable.length>=4){const a=comparable.slice(-4,-2),b=comparable.slice(-2),avg=(xs,fn)=>xs.reduce((n,r)=>n+fn(r),0)/xs.length;
  const slower=avg(b,r=>r.min/r.km)/avg(a,r=>r.min/r.km)>=1.05,hr=Math.abs(avg(b,r=>r.avgHr)-avg(a,r=>r.avgHr))<=5;
- if(slower&&hr){messages.push('The latest two confirmed comparable easy runs were at least 5% slower than the previous two, at average heart rate within 5 bpm. Check conditions, sensor quality and recovery.');proposals.push('Review running stress before progressing; retain priority bench work and consider trimming optional accessories first.')}}
+ if(slower&&hr){messages.push('The latest two confirmed comparable easy runs were at least 5% slower than the previous two, at average heart rate within 5 bpm. Check conditions, sensor quality and recovery.');if(!planFirst)proposals.push('Review running stress before progressing; retain priority bench work and consider trimming optional accessories first.')}}
  const feedback=(state.sessionFeedback||[]).filter(f=>Date.parse(f.date)>=+now-7*86400000),hard=feedback.filter(f=>f.difficulty==='harder'||f.energy==='low').length;
- if(check&&(check.fatigue==='high'||check.soreness==='high'||check.discomfort==='yes')||hard>=2||feedback.some(f=>f.discomfort==='yes'))proposals.push('Review recovery before adding training stress. Consider reducing optional accessory volume first; reassess main lifts and running using warm-ups and actual RPE.');
- const rated=recent.filter(r=>Number.isFinite(r.rpe)&&r.rpe>0);if(rated.filter(r=>r.rpe>=8).length>=2)proposals.push('At least two recent runs were rated RPE 8 or above. Check their intended intensity and recovery before progressing running.');
+ if(!planFirst&&(check&&(check.fatigue==='high'||check.soreness==='high'||check.discomfort==='yes')||hard>=2||feedback.some(f=>f.discomfort==='yes')))proposals.push('Review recovery before adding training stress. Consider reducing optional accessory volume first; reassess main lifts and running using warm-ups and actual RPE.');
+ const rated=recent.filter(r=>Number.isFinite(r.rpe)&&r.rpe>0);if(!planFirst&&rated.filter(r=>r.rpe>=8).length>=2)proposals.push('At least two recent runs were rated RPE 8 or above. Check their intended intensity and recovery before progressing running.');
  if(!check)messages.push('Weekly recovery information is missing. Readiness has not been assumed.');
  if(comparable.length<4)messages.push('Heart-rate comparisons need four easy runs you confirm had similar terrain, conditions and reliable heart-rate readings. No heart-rate adjustment is justified yet.');
  if(!rated.length)messages.push('Recent run effort ratings are missing. Garmin heart rate alone does not establish readiness.');
@@ -116,9 +127,10 @@ function weeklySummary({state,week,check,now=new Date(),sessions,nextSessions,pa
   check.fatigue==='high'||check.soreness==='high'?'High '+[check.fatigue==='high'?'fatigue':'',check.soreness==='high'?'leg soreness':''].filter(Boolean).join(' and ')+' reported.':'';
  const asOf=period.end&&period.end<localDate(now.toISOString())?new Date(period.end+'T23:59:59'):now;
  const evidence=assess({...state,runs:allRuns,sessionFeedback:feedback,weeklyCheckins:[{...check,date:asOf.toISOString()}]},asOf);
- const verdict=concern||evidence.proposals.length
-  ? 'Review recovery before adding training stress.'
-  : sets.length||runs.length?'The available logs and check-in give no clear reason to change the plan.':'There’s too little recorded training to assess this week.';
+ const verdict=state.customRoadmap?.planFirstVersion===1&&concern
+  ? discomfort?'Review the reported discomfort before the affected training.':'Check sleep, food and stress alongside the training trend.'
+  : concern||evidence.proposals.length?'Review recovery before adding training stress.'
+   : sets.length||runs.length?'The available logs and check-in give no clear reason to change the plan.':'There’s too little recorded training to assess this week.';
  const lastSync=localDate(state.garminSync?.end||state.garminSync?.savedAt);
  const coverage=state.garminSync?.truncated?'The last Garmin import was partial. Some runs may be missing.':
   !lastSync||!period.start||lastSync<localDate(asOf.toISOString())||
@@ -153,6 +165,20 @@ function mount({getData,commit,getSessions,parts,openProgress}){
  const table=make('table',null,actual);table.className='run-summary-table';const head=make('tr',null,make('thead',null,table));for(const label of ['','Prescribed','Actual'])make('th',label,head);const body=make('tbody',null,table);
  for(const [name,target,value]of [['Distance',comparison.distance,format.distance(r.km)],['Time',comparison.duration,format.duration(r.min)],['Pace',comparison.pace,format.pace(r.min,r.km)]]){const tr=make('tr',null,body);make('th',name,tr).scope='row';make('td',target,tr);make('td',value,tr)}
  if(comparison.changes.length)make('p',comparison.changes.join(' · '),actual).className='run-difference';
+ if(r.sessionId&&prescribed&&(r.sourceActivityId||r.garminActivityId)){
+  const field=runInterruptionField(r.interruptionReason),reason=field.querySelector('select');
+  actual.append(field);
+  const saveReason=make('button','Save run reason',actual);saveReason.type='button';saveReason.className='secondary';
+  const reasonStatus=make('p',null,actual);reasonStatus.setAttribute('aria-live','polite');
+  saveReason.onclick=()=>{
+   const state=getData(),index=state.runs.indexOf(r);
+   if(index<0)return;
+   const next=JSON.parse(JSON.stringify(state));
+   if(reason.value)next.runs[index].interruptionReason=reason.value;
+   else delete next.runs[index].interruptionReason;
+   if(!commit(next))reasonStatus.textContent='Could not save the reason. Try again.';
+  };
+ }
  if(r.source==='garmin-local')make('p','Recorded outcome: '+(r.outcome||'unconfirmed')+(r.activityAssociation?' · planned '+r.activityAssociation.plannedDate+' · '+r.activityAssociation.name:''),actual);
  make('p',[r.avgHr?'average HR '+r.avgHr+' bpm':'',r.maxHr?'max HR '+r.maxHr+' bpm':'',r.rpe!=null?'RPE '+r.rpe:''].filter(Boolean).join(' · '),actual);
  format.renderSplits(actual,r);
@@ -263,5 +289,5 @@ function mount({getData,commit,getSessions,parts,openProgress}){
  sync.onclick=()=>root.LHRFOpenGarminReview?.(undefined,'Back to check-in');
  const oldRefresh=root.refresh;if(typeof oldRefresh==='function')root.refresh=function(){oldRefresh();renderHistory()};renderHistory();
 }
-const api={history,completedRecord,recordedWorkout,recordedSet,strengthGroups,assess,weeklySummary,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFTrainingReview=api;
+const api={history,completedRecord,recordedWorkout,recordedSet,runInterruptionField,strengthGroups,assess,weeklySummary,mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFTrainingReview=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

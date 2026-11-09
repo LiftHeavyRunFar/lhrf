@@ -36,6 +36,7 @@ function build(base,raw={}){
  const long=raw.longRun||{},longValues=['km','minutes','recoveryHours'].map(k=>long[k]);
  if(longValues.some(v=>v!==''&&v!==null&&v!==undefined))c.runningHistory.longRun={km:number(long.km,'Recent long-run kilometres',{minimum:.1}),minutes:number(long.minutes,'Recent long-run minutes',{minimum:1}),recoveryHours:number(long.recoveryHours,'Recent long-run recovery hours')};
  const recent=date(raw.recentMarathonDate,'Recent marathon date');if(recent){if(recent>new Date().toISOString().slice(0,10)||(c.startDate&&recent>c.startDate))throw new RangeError('A completed marathon must not be after the programme start.');c.runningHistory.recentMarathonDate=recent;}
+ const lastRun=date(raw.lastRunBeforeBreak,'Last completed run date');if(lastRun)c.runningHistory.lastRunBeforeBreak=lastRun;
  if(own(raw,'recoveryEvidence')){if(raw.recoveryEvidence===null)delete c.recoveryEvidence;else {const evidence=clone(raw.recoveryEvidence);if(!['fatigue','accumulating-fatigue','recovery-review'].includes(evidence.status)||!Array.isArray(evidence.affectedLifts)||evidence.affectedLifts.some(l=>!['Squat','Bench','Deadlift'].includes(l)))throw new RangeError('Recovery evidence needs the affected lifts and current recovery status.');c.recoveryEvidence=evidence;}}
  if(raw.recoveryContext){
   const context=clone(raw.recoveryContext);if(!['normal','lower','all'].includes(context.status))throw new RangeError('Choose your current recovery status.');

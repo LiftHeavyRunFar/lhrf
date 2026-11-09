@@ -215,6 +215,7 @@ function fitSessions(c,input){
   const day=short(session.day),cap=Number(cfg.minutes?.[day]),permission=cfg.eventDays?.[session.eventDate];
   let runMinutes=(session.runs||[]).reduce((n,r)=>n+Number(r.durationRangeMinutes?.max??r.minutes),0);const knownRuns=(session.runs||[]).every(r=>Number.isFinite(Number(r.durationRangeMinutes?.max??r.minutes))&&(r.durationRangeMinutes?.max??r.minutes)!==null);
   if(session.eventDate){
+   if(c.runningReviewVersion===1&&session.raceDecisionDeferred&&session.eventType==='running'&&session.eventDate===c.provisionalRaceDate&&!session.ex?.length&&!session.runs?.length)continue;
    if(Number(c.coachingSafeguardsVersion)>=1){
     const runtime=Number(c.coachingRuntimeVersion)>=1;
     const duration=session.runs?.length?(knownRuns?runMinutes:runtime?permission?.estimatedMinutes??null:null):(permission?.estimatedMinutes??null),known=Number.isFinite(duration)&&duration>0,logistics=Number(permission?.logisticsMinutes)||0;
