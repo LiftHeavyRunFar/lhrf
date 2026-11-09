@@ -284,7 +284,7 @@ function prepareNewProgramme(input={},options={}){
  if((input.strengthTargetDate||input.runningTargetDate)&&!input.startDate)throw new RangeError('A dated programme needs a start date.');
  if([input.strengthTargetDate,input.runningTargetDate].some(x=>x&&input.startDate&&x<input.startDate))throw new RangeError('Event dates must follow the programme start.');
  const c=JSON.parse(JSON.stringify(input));if(input.equipmentPolicyVersion===1||input.equipmentInventory)c.equipmentPolicyVersion=1;c.coachingRulesVersion=input.coachingRulesVersion===undefined||Number(input.coachingRulesVersion)>=2?2:1;c.coachingPolicy='review-v2';c.exerciseSelectionVersion=2;
- if(c.integratedCoachingVersion===1){c.trainingContinuityVersion=1;c.runningReviewVersion=1;}
+ if(c.integratedCoachingVersion===1&&!options.suspendNewProposalPolicy){c.trainingContinuityVersion=1;c.runningReviewVersion=1;}
  if(c.integratedCoachingVersion===1&&c.runningMode!=null&&!['maintenance','development'].includes(c.runningMode))throw new RangeError('Choose whether to maintain or build running fitness.');
  if(c.competitionIntakeVersion===1){
   if(!hasCompetitionIntake(c)||c.coachingRulesVersion<2)throw new RangeError('Choose a dated full powerlifting, bench-only or deadlift-only competition.');

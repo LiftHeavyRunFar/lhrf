@@ -1982,7 +1982,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    squat:selected.counts.Squat,bench:selected.counts.Bench,deadlift:selected.counts.Deadlift,runs:selected.runs,runGoal,rungoal:runGoal,
    strengthGoal:hasStrength()&&event!=='running'?event:'general',strengthTargets,strengthTarget,runningTarget,
    runningGoalSeconds:Number.isFinite(targetSeconds)&&targetSeconds>0?targetSeconds:null,
-   strengthTargetDate:strength,runningTargetDate:running,hybridFocus:focus(),coachingPolicy:'review-v2',exerciseSelectionVersion:2,runningGuidanceVersion:4,runningPaceVersion:2,runningWorkoutVersion:1,onboardingAerobicBuildVersion:1,integratedCoachingVersion:1,planFirstVersion:1,initialBuildVersion:1,
+   strengthTargetDate:strength,runningTargetDate:running,hybridFocus:focus(),coachingPolicy:'review-v2',exerciseSelectionVersion:2,runningGuidanceVersion:4,runningPaceVersion:2,runningWorkoutVersion:1,onboardingAerobicBuildVersion:1,integratedCoachingVersion:1,
    trainingAge:hasStrength()?get('frExperience').value:'',strengthMode:hasStrength()?get('frStrengthMode').value:'auto'});
   cfg.runProfile={...cfg.runProfile,distance:Number(get('frRunDistance').value),seconds:pbSeconds(runTime),time:runTime,weeklyKm:hasRunning()?Number(get('frRunKm').value):0,
    resultDate:runTime?get('frResultDate').value||null:null,effort:runTime?get('frResultEffort').value:'performance',environment:runTime?get('frResultEnvironment').value:'unknown'};
@@ -2002,7 +2002,9 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   for(const key of ['lightLifts','topSetFirst','runTemplate','fixedSessions','manualSplit','competitionIntakeVersion','competitionTimingReviewVersion','finalHeavyPreferences','provisionalRaceDate'])delete cfg[key];
   if(selected.split)cfg.manualSplit=selected.split;
   if(strength){cfg.competitionIntakeVersion=1;cfg.finalHeavyPreferences=requestedHeavyTiming();}
-  return LHRFCoach.prepareNewProgramme(intakeConfig(cfg,selected),{data});
+  // Recovery build: keep existing approvals readable while suspending the new proposal policy.
+  for(const key of ['trainingContinuityVersion','runningReviewVersion','planFirstVersion','initialBuildVersion'])delete cfg[key];
+  return LHRFCoach.prepareNewProgramme(intakeConfig(cfg,selected),{data,suspendNewProposalPolicy:true});
  }
  function renderPreview(provisionalRaceDate=null){
   const summary=get('frSummary'),milestones=get('frFinalHeavyPreview'),status=get('frReviewStatus');
