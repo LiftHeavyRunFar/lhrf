@@ -51,7 +51,8 @@ async function fillMeet(page, {experience='advanced', eventMinutes, evidenceDate
   }
   await next(page);
   assert.equal(await loc(page,'frTimePreference').count(),0);
-  assert.equal(await loc(page,'frAdvancedAvailability').evaluate(el => el.open),false);
+  assert.equal(await loc(page,'frAdvancedAvailability').count(),0);
+  for (const day of ['Mon','Tue','Thu','Sat','Sun']) await page.locator('.fr-day[value='+day+']').check();
   for (const [lift,{daysOut}] of Object.entries(timings)) {
     await loc(page,'frFinalHeavy'+lift+'Mode').selectOption('days');
     await loc(page,'frFinalHeavy'+lift+'Days').fill(String(daysOut));
@@ -67,10 +68,8 @@ async function fillMeet(page, {experience='advanced', eventMinutes, evidenceDate
   if (paceOnly) {
     await page.locator('#frRunningResult > summary').tap();
     await loc(page,'frRunTime').fill('55:00');
-    await loc(page,'frResultDate').fill('2026-11-01');
     await loc(page,'frRunKm').fill('');
   }
-  await loc(page,'frFatigueStatus').selectOption('normal');
   await next(page);
   assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'5',await loc(page,'frError').textContent());
   return onboardingProposal(page);

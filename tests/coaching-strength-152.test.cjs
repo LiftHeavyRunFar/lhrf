@@ -110,3 +110,44 @@ test('plan-first review follows planned strength progression and keeps corrobora
  assert.deepEqual(review(repeated),original);
  assert.equal(original.status,'fatigue');
 });
+
+test('a lower-body reduction from either review route prevents a second cut from the same visits',()=>{
+ const sample=fixture();
+ const {data,now}=sample,c=data.customRoadmap,squat=registry.identity('Squat',inventory);
+ Object.assign(c,{bench:0,squat:3,runs:1,priority:'Squat',integratedCoachingVersion:1,planFirstVersion:1});
+ for(const {sessions} of data.reviewedProgramme.weeks)for(const s of sessions){
+  Object.assign(s.ex[0][5],squat);
+  s.ex[0][0]='Squat';
+  s.ex[0][3]=200;
+  s.ex[1][0]='Leg extension';
+ }
+ for(const row of data.sets)Object.assign(row,squat,{exercise:'Squat',weight:200});
+ const heavy=data.sets.findLast(row=>row.sessionId==='bench-heavy::strength');
+ for(let set=2;set<=9;set++)data.sets.push({...heavy,role:'backoff',weight:180,rpe:8,set});
+ for(const done of data.completedWorkouts.slice(-2))data.sessionFeedback.push({
+  sessionId:done.id,date:done.date,week:done.week,difficulty:'harder',energy:'low'
+ });
+ assert.equal(coach.createEngine({data,now}).hybridWorkloadRecommendation().intervention,'lower-accessory');
+ assert.equal(review(sample).trainingPurpose,'heavy');
+ const prior={approved:true,programmeId:c.programmeId,week:4,date:'2026-11-30T07:00:00Z'};
+ data.decisions=[{...prior,kind:'hybrid-load',intervention:'lower-accessory'}];
+ assert.equal(review(sample).changes,undefined);
+
+ // The same repeated feedback can still trigger the broader review after
+ // the purpose-specific concern is no longer selected.
+ data.sets.find(row=>row.sessionId==='bench-heavy::strength').rpe=7.5;
+ data.decisions=[];
+ assert.equal(review(sample).hybridIntervention,'lower-accessory');
+ data.decisions=[{...prior,kind:'fatigue-intervention',affectedLift:'Squat',trainingPurpose:'heavy'}];
+ assert.equal(review(sample).changes,undefined);
+ data.decisions[0].date='2026-11-26T08:00:00Z';
+ assert.equal(review(sample).changes,undefined,'One later difficult lower-body visit does not repeat the cut');
+ data.decisions[0].date='2026-11-23T08:00:00Z';
+ assert.equal(review(sample).hybridIntervention,'lower-accessory','Two new linked visits can reopen the decision');
+ data.decisions[0].date=prior.date;
+ data.decisions[0].affectedLift='Bench';
+ assert.equal(review(sample).hybridIntervention,'lower-accessory');
+ data.decisions[0].affectedLift='Squat';
+ data.decisions[0].programmeId='archived';
+ assert.equal(review(sample).hybridIntervention,'lower-accessory');
+});

@@ -27,15 +27,13 @@ async function contextFor(browser){
  await page.route('https://intake.test/**',route=>{const p=new URL(route.request().url()).pathname,file=path.join(__dirname,'..',p==='/'?'index.html':p);return route.fulfill({body:fs.readFileSync(file),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.png')?'image/png':'text/html'})});
  await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture:legacy()});
  await page.goto('https://intake.test/');await observeOnboardingProposal(page);
- // Preserve frozen Stage 1–6 UI acceptance under its original duration policy. Latest policy has a separate mobile suite.
- await page.evaluate(()=>{const prepare=LHRFCoach.prepareNewProgramme;LHRFCoach.prepareNewProgramme=(c,o)=>prepare({...c,sessionTimeVersion:0},o)});const before=await read(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
+ const before=await read(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
  await page.evaluate(()=>document.getElementById('restartOnboardingLink').click());return {context,page,before,errors};
 }
 async function enter(page,id){
  const c=cases.find(x=>x.id===id).config,v=c.visitConstraints,h=c.runningHistory||{};
  await page.locator('#frScope').selectOption('hybrid');await page.locator('[name="frFocus"][value="'+c.hybridFocus+'"]').check();await page.locator('#frNext').click();
- await page.locator('#frGoalDetails > summary').click();
- for(const [field,value]of Object.entries({frGoal:c.event,frExperience:c.trainingAge,frStrengthMode:c.orderedGoals?.[0]?.strengthMode||c.strengthMode,frStartDate:c.startDate,frLiftPriority:'Squat'}))if(await page.locator('#'+field).isVisible())await set(page,field,value);
+ for(const [field,value]of Object.entries({frGoal:c.event,frExperience:c.trainingAge,frStrengthMode:c.orderedGoals?.[0]?.strengthMode||c.strengthMode,frStartDate:c.startDate}))if(await page.locator('#'+field).isVisible())await set(page,field,value);
  if(c.strengthTargetDate)await set(page,'frStrengthDate',c.strengthTargetDate);
  if(c.event!=='running')await page.locator('#frAddRunningGoal').setChecked(Boolean(c.runningTargetDate));
  if(c.runningTargetDate){await set(page,'frRunGoal',c.runGoal);await set(page,'frRunningDate',c.runningTargetDate);if(c.runningGoalSeconds)await set(page,'frRunningTarget',Math.floor(c.runningGoalSeconds/60)+':'+String(c.runningGoalSeconds%60).padStart(2,'0'));}
@@ -48,9 +46,9 @@ async function enter(page,id){
  await page.locator('#frWeeklyDetails > summary').click();
  for(const day of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])await page.locator('.fr-day[value="'+day+'"]').setChecked(c.availableDays.includes(day));
  for(const [field,value]of Object.entries({frSquat:c.squat,frBench:c.bench,frDeadlift:c.deadlift,frRuns:c.runs,frStrengthVisits:v.strengthVisits,frLongDay:c.longRunDay||'Sun'}))await set(page,field,value);
- await page.locator('#frAdvancedAvailability > summary').click();
- for(const day of c.availableDays){const combined=page.locator('.fr-double[value="'+day+'"]');if(await combined.isVisible())await combined.setChecked(v.combinedDays.includes(day));await page.locator('.fr-separate[value="'+day+'"]').setChecked(v.separateDays.includes(day));await page.locator('.fr-minute[data-day="'+day+'"]').fill(String(v.minutes[day]));}
- if(await page.locator('#frGapHours').isVisible())await set(page,'frGapHours',v.minimumGapHours||6);
+ for(const day of c.availableDays){
+  await page.locator('.fr-double[value="'+day+'"]').setChecked([...v.combinedDays,...v.separateDays].includes(day));
+ }
  if(c.orderedGoals){if(!await page.locator('#frAfterWrap').evaluate(el=>el.open))await page.locator('#frAfterWrap > summary').click();const next=c.orderedGoals[1];for(const [key,field]of [['runs','Runs'],['bench','Bench'],['squat','Squat'],['deadlift','Deadlift'],['strengthVisits','StrengthVisits']])await set(page,'frAfter'+field,next[key]);}
  await page.locator('#frNext').click();
  for(const name of ['Squat','Bench','Deadlift']){
@@ -62,7 +60,7 @@ async function enter(page,id){
  await page.getByText('Recent running history',{exact:true}).click();
  await page.locator('#frRunningResult > summary').click();
  if(c.runProfile.time)await set(page,'frRunTime',c.runProfile.time);
- for(const [field,value]of Object.entries({frRunDistance:c.runProfile.distance,frRunKm:c.runProfile.weeklyKm,frResultDate:c.runProfile.resultDate||'',frResultEffort:c.runProfile.effort,frResultEnvironment:c.runProfile.environment==='outside'?'outdoor':c.runProfile.environment||'outdoor',frRunHistory:(h.weeklyKm||[]).join(', '),frLongKm:h.longRun?.km??'',frLongMinutes:h.longRun?.minutes??'',frLongRecovery:h.longRun?.recoveryHours??'',frRecentMarathon:h.recentMarathonDate||'',frFatigueStatus:'normal'}))if(await page.locator('#'+field).isVisible())await set(page,field,value);
+ for(const [field,value]of Object.entries({frRunDistance:c.runProfile.distance,frRunKm:c.runProfile.weeklyKm,frRunHistory:(h.weeklyKm||[]).join(', '),frLongKm:h.longRun?.km??'',frLongMinutes:h.longRun?.minutes??'',frLongRecovery:h.longRun?.recoveryHours??'',frRecentMarathon:h.recentMarathonDate||''}))if(await page.locator('#'+field).isVisible())await set(page,field,value);
  await page.locator('#frNext').click();assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'5');
 }
 async function backToGoals(page){for(let i=0;i<3;i++)await page.locator('#frBack').click();assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'2')}
@@ -76,9 +74,9 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
    assert.equal(await page.locator('#frNext').isEnabled(),true);
    assert.ok((await onboardingProposal(page)).weeks[0].sessions.some(s=>s.ex?.some(e=>/Squat|Bench/.test(e[0]))));
    await page.locator('#frNext').click();await approveGeneratedProgramme(page);assert.equal(await page.locator('#firstRun').isVisible(),false);
-   const after=await read(page);preserved(after,before,true);assert.equal(after.customRoadmap.coachingRulesVersion,2);assert.equal(after.customRoadmap.visitConstraints.strengthVisits,2);assert.deepEqual(after.customRoadmap.visitConstraints.minutes,{Tue:75,Thu:75,Sun:105});assert.deepEqual(after.customRoadmap.runningHistory.weeklyKm,[20,22,23,24,22,25]);assert.notEqual(after.customRoadmap.programmeId,before.customRoadmap.programmeId);
+   const after=await read(page);preserved(after,before,true);assert.equal(after.customRoadmap.coachingRulesVersion,2);assert.equal(after.customRoadmap.visitConstraints.strengthVisits,2);assert.deepEqual(after.customRoadmap.visitConstraints.minutes,{Tue:null,Thu:null,Sun:null});assert.deepEqual(after.customRoadmap.runningHistory.weeklyKm,[20,22,23,24,22,25]);assert.notEqual(after.customRoadmap.programmeId,before.customRoadmap.programmeId);
    assert.deepEqual(after.programmeArchive.at(-1).programme,before.customRoadmap);assert.deepEqual(after.programmeArchive.at(-1).schedule,before.activeSchedule);assert.ok(after.activeSchedule.every(s=>s.id.startsWith(after.customRoadmap.sessionNamespace)));
-   const native=await page.evaluate(c=>LHRFCoachAdapters.buildNewProgramme(c,{now:()=>Date.parse('2026-10-30T12:00:00Z')}),after.customRoadmap);assert.ok(native.weeks.every(w=>w.feasible));assert.ok(native.weeks[0].sessions.every(s=>s.timeBudget?.feasible));
+   const native=await page.evaluate(c=>LHRFCoachAdapters.buildNewProgramme(c,{now:()=>Date.now()}),after.customRoadmap);assert.ok(native.weeks.every(w=>w.feasible));assert.ok(native.weeks[0].sessions.every(s=>s.timeBudget?.feasible));
    await page.reload();assert.equal(await page.locator('#firstRun').isVisible(),false);assert.deepEqual(await read(page),after);assert.deepEqual(errors,[]);await context.close();
   }
   // B: a future event outside the stated time window blocks approval, not only week-one preview.
@@ -88,13 +86,13 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
    await backToGoals(page);await set(page,'frRunningEventMinutes',150);await returnToPreview(page);assert.equal(await page.locator('#frNext').isEnabled(),true);preserved(await read(page),before);
    await page.locator('#frNext').click();await approveGeneratedProgramme(page);const after=await read(page);preserved(after,before,true);assert.deepEqual(after.customRoadmap.visitConstraints.eventDays['2027-03-21'],{confirmed:true,minutes:150});assert.deepEqual(errors,[]);await context.close();
   }
-  // C: the real intake creates a dated sport handover and protects two separate Tuesday visits.
+  // C: the real intake creates a dated sport handover and uses a combined Tuesday visit.
   {
    const {context,page,before,errors}=await contextFor(browser);await enter(page,'C');preserved(await read(page),before);
    assert.equal(await page.locator('#frNext').isEnabled(),true);await page.locator('#frNext').click();await approveGeneratedProgramme(page);
-   const after=await read(page);preserved(after,before,true);const c=after.customRoadmap;assert.equal(c.orderedGoals.length,2);assert.equal(c.orderedGoals[0].priority,'Running');assert.equal(c.orderedGoals[1].priority,'Squat');assert.equal(c.orderedGoals[1].runs,2);assert.deepEqual(c.visitConstraints.separateDays,['Tue']);assert.equal(c.visitConstraints.minimumGapHours,6);
-   const p=await page.evaluate(c=>LHRFCoachAdapters.buildNewProgramme(c,{now:()=>Date.parse('2026-10-30T12:00:00Z')}),c);assert.equal(p.weeks[0].priority,'Running');assert.equal(p.weeks[7].priority,'Squat');const runs=p.weeks[7].sessions.flatMap(s=>s.runs||[]);assert.equal(runs.length,2);assert.ok(runs.every(r=>r.role==='easy-run'));
-   const separate=p.weeks[0].sessions.find(s=>s.day==='Tue').timeBudget;assert.equal(separate.separate,true);assert.equal(separate.visits.length,2);assert.ok(separate.visits.every(v=>v.totalMinutes<=75));assert.deepEqual(errors,[]);await context.close();
+   const after=await read(page);preserved(after,before,true);const c=after.customRoadmap;assert.equal(c.orderedGoals.length,2);assert.equal(c.orderedGoals[0].priority,'Running');assert.equal(c.orderedGoals[1].priority,'Balanced');assert.equal(c.orderedGoals[1].runs,2);assert.deepEqual(c.visitConstraints.separateDays,[]);assert.equal(c.visitConstraints.minimumGapHours,0);
+   const p=await page.evaluate(c=>LHRFCoachAdapters.buildNewProgramme(c,{now:()=>Date.now()}),c);assert.equal(p.weeks[0].priority,'Running');assert.equal(p.weeks[7].priority,'Balanced');const runs=p.weeks[7].sessions.flatMap(s=>s.runs||[]);assert.equal(runs.length,2);assert.ok(runs.every(r=>r.role==='easy-run'));
+   const separate=p.weeks[0].sessions.find(s=>s.day==='Tue').timeBudget;assert.equal(separate.separate,false);assert.deepEqual(errors,[]);await context.close();
   }
   // O3: unknown pace remains a timed health run throughout preview, timer and actual logging.
   {
@@ -107,6 +105,6 @@ async function returnToPreview(page){for(let i=0;i<3;i++)await page.locator('#fr
    await page.locator('#liveRunKm').fill('2.4');await page.locator('#liveRunMinutes').fill('20');await page.locator('#liveLogRun').click();await page.locator('#liveFinish').click();await page.locator('#finishAndSave').click();await page.locator('#liveFeedbackSkip').click();
    const finished=await read(page);assert.equal(finished.runs.length,before.runs.length+1);assert.equal(finished.runs.at(-1).km,2.4);assert.equal(finished.runs.at(-1).min,20);assert.equal(Object.hasOwn(finished.runs.at(-1),'rpe'),false);assert.deepEqual(finished.customRoadmap,accepted.customRoadmap);assert.deepEqual(finished.sets,before.sets);assert.equal(finished.completedWorkouts.length,before.completedWorkouts.length+1);assert.deepEqual(errors,[]);await context.close();
   }
-  console.log('PASS real v2 intake, full-horizon event gating, explicit proposal approval, legacy-history preservation, reload, ordered priority handover, independent separate-visit budgets and an unknown-pace health run timed and logged honestly.');
+  console.log('PASS real v2 intake, full-horizon event gating, explicit proposal approval, legacy-history preservation, reload, ordered priority handover, uncapped ordinary visits and an unknown-pace health run timed and logged honestly.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

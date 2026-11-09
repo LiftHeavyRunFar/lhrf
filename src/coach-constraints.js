@@ -386,13 +386,16 @@ function fitFlexibleSessions(c,input){
   for(const [e,top]of topRefs)if(s.ex.includes(e))e[5].topIndex=s.ex.indexOf(top);
   if(c.feasibleScheduleVersion===1&&hasCap&&!fits()&&s.runs.length===1){
    const run=s.runs[0],runTime=runDuration(run);
-   if(runTime&&run.aerobicDose&&run.distanceKnown===false){
+   const constrainedMarathonEasy=c.endurancePlanningVersion===1&&Number(c.runs)===2&&c.runGoal==='marathon'&&
+    !!c.runningTargetDate&&['easy-run','long-run'].includes(run.role)&&
+    run.steps?.every(step=>step.role==='easy');
+   if(runTime&&(run.aerobicDose&&run.distanceKnown===false||constrainedMarathonEasy)){
     const whole=estimate().baselineRangeMinutes?.max;
     const budget=separate?cap-5:cap-5-(whole-runTime.max);
     const fitted=running.fitRunToMinutes(run,budget);
     if(fitted.feasible&&fitted.capacityLimited){
      s.runs[0]=fitted.run;
-     changes.push({kind:'shorten-timed-easy-run',minutes:run.minutes-fitted.run.minutes});
+     changes.push({kind:run.distanceKnown===false?'shorten-timed-easy-run':'shorten-easy-run',minutes:run.minutes-fitted.run.minutes});
      warnings.push(day+': easy running is '+fitted.run.minutes+' min instead of '+run.minutes+
       ' min to fit the '+cap+' min visit including preparation.');
     }
@@ -408,7 +411,7 @@ function fitFlexibleSessions(c,input){
   s.plannedStress=plannedStress(s);
   if(changes.length){
    s.timeAdaptation={originalPrescription:prescribed,adjustedPrescription:clone({ex:s.ex,runs:s.runs}),reason:'hard-time-limit',changes,completedWorkChanged:false,makeUpWorkScheduled:false};
-   const changedRun=changes.some(change=>change.kind==='shorten-timed-easy-run');
+   const changedRun=changes.some(change=>['shorten-timed-easy-run','shorten-easy-run'].includes(change.kind));
    const note=changedRun?'The easy run is shorter to fit the full visit. Resume the normal dose when the visit allows and recovery supports it.':
     'Time adjustment: supporting/optional work reduced; essential work protected. Removed work is not stacked onto later days.';
    s.hybridNotes=[...(s.hybridNotes||[]),note];

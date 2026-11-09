@@ -13,10 +13,8 @@ test('proposal intake rejects same-day readiness disguised as a subsequent respo
  for(const extra of [{observedAt:'2026-11-05'},{referencePerformanceDate:''},{task:'easy'},{observedAt:'2026-02-30'}])assert.throws(()=>intake.build(base,raw([{...observation,...extra}])),RangeError);
  const concern={sport:'all',task:'all',observedAt:'2026-11-04',status:'pain',source:'preserved-recovery-concern'},prepared=intake.build(base,raw([concern,observation]));assert.deepEqual(prepared.recoveryObservations,[concern,observation]);
 });
-test('actual proposal controls carry an undated prior concern without inventing its symptom date and allow later evidenced reassessment',()=>{
- const fs=require('node:fs'),vm=require('node:vm'),html=fs.readFileSync(require.resolve('../index.html'),'utf8'),source=html.slice(html.indexOf(' function recoveryObservationRows(){'),html.indexOf(" get('frStartDate').value=",html.indexOf(' function recoveryObservationRows(){'))),previous={recoveryContext:{status:'lower'}};
- previous.coachingEvidence=evidence.capture(previous,{data:{},now:()=>Date.parse('2026-11-04T12:00:00Z')});const data={customRoadmap:previous},before=JSON.stringify(data),box=vm.createContext({data,LHRFCoachingEvidence:evidence,get:()=>({children:[]})});vm.runInContext(source,box);const observations=JSON.parse(JSON.stringify(box.recoveryObservationRows()));
- assert.ok(observations.some(o=>o.observedAt===null&&o.status==='fatigue'&&o.recordedAt==='2026-11-04T12:00:00.000Z'));assert.equal(JSON.stringify(data),before);
+test('legacy intake can reassess an undated task concern without inventing its onset date',()=>{
+ const observations=[{observedAt:null,recordedAt:'2026-11-04T12:00:00.000Z',sport:'strength',task:'lifting',lift:'Squat',status:'fatigue',source:'preserved-recovery-concern'}];
  const input=intake.build(base,raw(observations)),held=coach.prepareNewProgramme(input,{data:{sets:[],runs:[]},now});assert.equal(evidence.recovery(held,{now,sport:'strength',task:'heavy',lift:'Squat',atDate:'2026-11-09'}).canProgress,false);
  const response={...observation,lift:'Squat'},updated=intake.build(base,raw([...observations,response])),prepared=coach.prepareNewProgramme(updated,{data:{sets:[record('Squat',100,3,7,'top','2026-11-05T12:00:00Z',{trainingRole:'heavy'})],runs:[]},now});
  assert.equal(evidence.recovery(prepared,{now,sport:'strength',task:'heavy',lift:'Squat',atDate:'2026-11-09'}).status,'normal');assert.equal(prepared.recoveryObservations[0].observedAt,null,'The onset date remains unknown even when later task evidence supports reassessment.');

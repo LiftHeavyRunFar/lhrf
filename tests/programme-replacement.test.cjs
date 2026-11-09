@@ -12,6 +12,20 @@ test('exact reviewed prescriptions are installed under distinct stable IDs; no u
  for(const w of x.p.next.reviewedProgramme.weeks)for(const s of w.sessions){assert.ok(s.id.startsWith(x.p.id));const original=x.packet.programme.weeks[w.week-1].sessions.find(t=>t.day===s.day);assert.deepEqual(dose(s),dose(original));}
  assert.deepEqual(x.p.next.decisions,x.state.decisions);assert.deepEqual(x.p.next.overrides,x.state.overrides);
 });
+test('next-week coaching review reads the approved calendar rather than regenerating it',async()=>{
+ const {p:{next:state}}=await setup();
+ const c=state.customRoadmap,review=()=>engine.createEngine({data:state,now:()=>Date.parse(now)}).plannedNextWeek();
+ const generated=engine.createEngine({data:state,now:()=>Date.parse(now)}).generatedSessions(c,2);
+ const nextWeek=state.reviewedProgramme.weeks.find(week=>week.week===2);
+ const approvedLift=c.priority||'Squat';
+ nextWeek.sessions=[{id:'approved-preview',phase:'Approved phase',ex:[[approvedLift,1,5,123.5,7]],runs:[]}];
+ assert.ok(generated.length>1);
+ assert.equal(review().sessions,1);
+ assert.equal(review().phase,'Approved phase');
+ assert.match(review().next,/@ 123\.5 kg/);
+ nextWeek.sessions=[];
+ assert.equal(review().sessions,0);
+});
 test('independent fingerprint and source-programme binding reject corruption or a different athlete programme',async()=>{
  const x=await setup();await api.verifyPackage(x.packet,x.packet.reviewFingerprint,x.state);const bad=clone(x.packet);bad.programme.weeks[0].sessions[0].ex[0][3]+=2.5;await assert.rejects(api.verifyPackage(bad,x.packet.reviewFingerprint,x.state),/fingerprint/);await assert.rejects(api.verifyPackage(x.packet,'0'.repeat(64),x.state));await assert.rejects(api.verifyPackage(x.packet,x.packet.reviewFingerprint,{...x.state,customRoadmap:{other:true}}),/differs/);
 });

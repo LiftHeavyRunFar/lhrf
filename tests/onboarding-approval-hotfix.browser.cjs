@@ -33,7 +33,9 @@ async function fillMeet(page) {
   await loc(page,'frStrengthDate').fill('2027-03-21');
   if (await loc(page,'frStrengthEventConfirmed').count()) await loc(page,'frStrengthEventConfirmed').check();
   await next.tap();
+  for (const day of ['Mon','Tue','Thu','Sat']) await page.locator('.fr-day[value='+day+']').check();
   await page.locator('.fr-day[value=Sun]').uncheck();
+  await page.locator('.fr-double[value=Tue]').check();
   for (const [lift, days] of Object.entries(timing)) {
     await loc(page,'frFinalHeavy'+lift+'Mode').selectOption('days');
     await loc(page,'frFinalHeavy'+lift+'Days').fill(String(days));
@@ -42,7 +44,7 @@ async function fillMeet(page) {
   for (const [lift, kg] of Object.entries({Squat:140,Bench:105,Deadlift:165})) {
     await loc(page,'frMax'+lift).fill(String(kg));
   }
-  await loc(page,'frFatigueStatus').selectOption('normal');
+  if (await loc(page,'frFatigueStatus').count()) await loc(page,'frFatigueStatus').selectOption('normal');
   await next.tap();
 }
 
