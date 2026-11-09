@@ -23,6 +23,20 @@ test('separate visits retain per-visit limits and the actual gap while contradic
  assert.throws(()=>intake.build(config,{...raw,minimumGapHours:5}),/at least 6/);
  assert.throws(()=>intake.build(config,{...raw,combinedDays:['Tue']}),/combined or separate/);
 });
+test('new app and preview drafts discard advanced availability while keeping the chosen days',()=>{
+ const {config,raw}=input('C');
+ config.sessionDurationPreference={mode:'typical',minutes:45};
+ const proposal=intake.build(config,{...raw,simpleAvailability:true,combinedDays:['Tue'],minimumGapHours:1});
+ assert.deepEqual(proposal.availableDays,config.availableDays);
+ assert.deepEqual(proposal.doubleDays,['Tue']);
+ assert.deepEqual(proposal.visitConstraints.minutes,Object.fromEntries(config.availableDays.map(day=>[day,null])));
+ assert.deepEqual(proposal.visitConstraints.separateDays,[]);
+ assert.deepEqual(proposal.visitConstraints.separateMinutes,{});
+ assert.equal(proposal.visitConstraints.minimumGapHours,0);
+ assert.equal(proposal.sessionDurationPreference,undefined);
+ assert.deepEqual(proposal.visitConstraints.eventDays,raw.eventDays);
+ assert.deepEqual(config.visitConstraints.separateDays,['Tue']);
+});
 test('event availability and dated handover remain explicit inputs to canonical validation',()=>{
  const {config,raw}=input('C'),proposal=intake.build(config,raw);
  assert.equal(proposal.visitConstraints.eventDays['2027-03-06'].confirmed,false);

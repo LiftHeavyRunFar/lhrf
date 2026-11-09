@@ -6,13 +6,11 @@ const KEY='lhrf_beta_v1118_clean',fixture={equipmentInventory:require('./equipme
  const context=await browser.newContext({viewport:{width:390,height:844},timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.clock.install({time:new Date('2026-10-31T12:00:00Z')});
  await page.route('http://preview-intake.test/**',route=>{const f=new URL(route.request().url()).pathname;return route.fulfill({body:fs.readFileSync(path.join(__dirname,'..',f==='/'?'coaching-preview.html':f)),contentType:f.endsWith('.js')?'application/javascript':'text/html'})});
  await page.addInitScript(({KEY,fixture})=>{if(!localStorage.getItem(KEY))localStorage.setItem(KEY,JSON.stringify(fixture))},{KEY,fixture});await page.goto('http://preview-intake.test/');await require('./equipment-browser-fixtures.cjs').confirmPreviewEquipment(page);
- // Historical hard-window acceptance is replayed unchanged; latest-policy conflicts are covered separately.
- await page.evaluate(()=>{const prepare=LHRFCoach.prepareNewProgramme;LHRFCoach.prepareNewProgramme=(c,o)=>prepare({...c,sessionTimeVersion:0},o)});
  await page.locator('[name="v2Enabled"]').check();
  for(const [name,value]of Object.entries({weeks:'10',startDate:'2026-11-02',runningTargetDate:'2027-01-10',bench:'2',squat:'1',deadlift:'1',runs:'3',benchMax:'90',squatMax:'125',deadliftMax:'150',tenKTime:'50:30',runResultDate:'2026-10-25',v2StrengthVisits:'2',v2WeeklyKm:'25',v2History:'20,22,23,24,22,25',v2RunningEventMinutes:'90'}))await page.locator('[name="'+name+'"]').fill(value);
  for(const [name,value]of Object.entries({trainingAge:'intermediate',strengthMode:'maintenance',runGoal:'10k',priority:'Running',v2LongDay:'Sun',v2Fatigue:'normal'}))await page.locator('[name="'+name+'"]').selectOption(value);
  for(const day of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])await page.locator('[name="v2Day'+day+'"]').setChecked(['Tue','Thu','Sun'].includes(day));
- for(const [day,value]of Object.entries({Tue:'75',Thu:'75',Sun:'105'}))await page.locator('[name="v2Minutes'+day+'"]').fill(value);
+ assert.equal(await page.locator('[name^="v2Minutes"],[name="v2Gap"],[name^="v2Mode"] option[value="separate"]').count(),0);
  await page.getByRole('button',{name:'Generate preview',exact:true}).click();assert.match(await page.locator('#output').innerText(),/needs changes before training/);assert.equal(await page.locator('.trainPrescribed:not([disabled])').count(),0);
  await page.locator('[name="v2RunningEventConfirmed"]').check();await page.getByRole('button',{name:'Generate preview',exact:true}).click();
  assert.match(await page.locator('#output').innerText(),/Coaching policy 2/);assert.doesNotMatch(await page.locator('#output').innerText(),/needs changes before training/);assert.ok(await page.locator('.startPrescribed:not([disabled])').count()>0);

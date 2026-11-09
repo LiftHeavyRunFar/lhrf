@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Update LHRF</title>
+  <style>
+    body{margin:0;background:#07111b;color:#eff7ff;font:1rem/1.5 system-ui,sans-serif}
+    main{max-width:30rem;margin:12vh auto;padding:1.5rem}
+    button,a{display:inline-block;padding:.65rem 1rem;font:inherit;font-weight:650}
+    button{border:0;border-radius:.5rem;background:#79c6ff;color:#07111b}
+    a{color:#9bd3ff}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Update LHRF</h1>
+    <p>Install the latest app version in this browser and keep your programme and training history.</p>
+    <button id="update" type="button">Update now</button>
+    <a href="./">Open LHRF</a>
+    <p id="status" role="status"></p>
+  </main>
+  <script>
+    const button=document.getElementById('update');
+    const status=document.getElementById('status');
+    const liveKey='lhrf_fresh_beta_live_v1114';
+    function checkWorkout(){
+      if(localStorage.getItem(liveKey)||localStorage.getItem(liveKey+'_pendingRun')){
+        throw new Error('Finish your workout or pending run in LHRF, then return here to update.');
+      }
+    }
+    function waitFor(worker,states){
+      return new Promise((resolve,reject)=>{
+        const done=error=>{
+          clearTimeout(timer);
+          worker.removeEventListener('statechange',check);
+          if(error)reject(error);else resolve();
+        };
+        const check=()=>{
+          if(states.includes(worker.state))done();
+          else if(worker.state==='redundant')done(new Error('The update could not be installed. Try again while online.'));
+        };
+        const timer=setTimeout(()=>done(new Error('The update is taking longer than expected. Try again in a moment.')),20000);
+        worker.addEventListener('statechange',check);
+        check();
+      });
+    }
+    button.onclick=async()=>{
+      button.disabled=true;
+      try{
+        checkWorkout();
+        if(!('serviceWorker' in navigator))throw new Error('Open this page in the browser you normally use for LHRF.');
+        status.textContent='Checking for the latest version…';
+        const registration=await navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'});
+        await registration.update();
+        if(registration.installing)await waitFor(registration.installing,['installed','activating','activated']);
+        const waiting=registration.waiting;
+        if(waiting){
+          checkWorkout();
+          waiting.postMessage('LHRF_ACTIVATE_UPDATE');
+          await waitFor(waiting,['activated']);
+        }else if(registration.active){
+          await waitFor(registration.active,['activated']);
+        }else{
+          throw new Error('The update is still downloading. Try again in a moment.');
+        }
+        status.textContent='LHRF is ready. Tap Open LHRF.';
+      }catch(error){
+        status.textContent=error.message;
+      }finally{
+        button.disabled=false;
+      }
+    };
+  </script>
+</body>
+</html>

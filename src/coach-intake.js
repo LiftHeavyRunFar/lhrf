@@ -10,15 +10,18 @@ const number=(value,label,{minimum=0,integer=false,optional=false}={})=>{
 function date(value,label){if(!value)return '';if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value+'T12:00:00Z'))||new Date(value+'T12:00:00Z').toISOString().slice(0,10)!==value)throw new RangeError(label+' is invalid.');return value;}
 function build(base,raw={}){
  const c=clone(base||{}),days=(c.availableDays||[]).map(x=>String(x).slice(0,3));
+ // Legacy replay and saved configurations still support the original fields.
+ // A new app or preview draft gets only ordinary days and combined visits.
+ const simple=raw.simpleAvailability===true;
  if(c.strengthTargetDate&&c.strengthTargetDate===c.runningTargetDate)throw new RangeError('Two events on the same date need an individual timing review before a programme can be approved.');
  if(!days.length||days.some(d=>!DAYS.includes(d))||new Set(days).size!==days.length)throw new RangeError('Choose your available training days.');
- const minutes={};for(const day of days)minutes[day]=number(raw.minutes?.[day],day+' whole-visit minutes',{minimum:15,integer:true,optional:Number(raw.sessionTimeVersion)>=1});
+ const minutes={};for(const day of days)minutes[day]=simple?null:number(raw.minutes?.[day],day+' whole-visit minutes',{minimum:15,integer:true,optional:Number(raw.sessionTimeVersion)>=1});
  const strengthVisits=number(raw.strengthVisits,'Strength visits',{integer:true});
  if(strengthVisits>days.length)throw new RangeError('Strength visits cannot exceed available training days.');
  const lifts=['squat','bench','deadlift'].map(k=>Number(c[k])||0);
  if(lifts.some(x=>x>0)&&strengthVisits<1)throw new RangeError('Choose at least one strength visit for the requested lifts.');
  if(strengthVisits<Math.max(0,...lifts))throw new RangeError('Strength visits must cover the most frequent lift. Several different lifts can share a visit.');
- const combinedDays=[...new Set(raw.combinedDays||[])],separateDays=[...new Set(raw.separateDays||[])];
+ const combinedDays=[...new Set(raw.combinedDays||[])],separateDays=simple?[]:[...new Set(raw.separateDays||[])];
  if([...combinedDays,...separateDays].some(d=>!days.includes(d)))throw new RangeError('Mixed or separate visits must use available training days.');
  if(combinedDays.some(d=>separateDays.includes(d)))throw new RangeError('Choose combined or separate visits for a day, rather than both.');
  const minimumGapHours=separateDays.length?number(raw.minimumGapHours,'Gap between separate visits',{minimum:6}):0,separateMinutes={};
@@ -26,7 +29,8 @@ function build(base,raw={}){
  const eventDays={};for(const [when,value]of Object.entries(raw.eventDays||{})){date(when,'Event date');eventDays[when]={confirmed:value.confirmed===true,minutes:number(value.minutes,'Event time allowance',{minimum:1,integer:true,optional:true})};if(value.logisticsMinutes!==undefined)eventDays[when].logisticsMinutes=number(value.logisticsMinutes,'Event logistics minutes');}
  for(const [when,value]of Object.entries(raw.eventDays||{}))for(const key of ['hardLimitMinutes','preferredFinishMinutes','estimatedMinutes'])if(own(value,key))eventDays[when][key]=number(value[key],'Event '+key,{minimum:1,optional:true});
  if(own(raw,'strengthModes')){if(!raw.strengthModes||typeof raw.strengthModes!=='object'||Array.isArray(raw.strengthModes)||Object.entries(raw.strengthModes).some(([lift,mode])=>!['Squat','Bench','Deadlift'].includes(lift)||!['auto','maintenance','progression'].includes(mode)))throw new RangeError('Per-lift strength modes are invalid.');c.strengthModes=clone(raw.strengthModes);}
- if(raw.sessionDurationPreference)c.sessionDurationPreference=clone(raw.sessionDurationPreference);
+ if(simple)delete c.sessionDurationPreference;
+ else if(raw.sessionDurationPreference)c.sessionDurationPreference=clone(raw.sessionDurationPreference);
  c.coachingRulesVersion=2;c.visitConstraints={strengthVisits,minutes,combinedDays,separateDays,separateMinutes,minimumGapHours,eventDays};
  c.doubleDays=[...new Set([...combinedDays,...separateDays])];
  c.runningHistory={};
