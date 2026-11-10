@@ -17,24 +17,7 @@
     'paused-deadlift': 'Paused deadlift', 'romanian-deadlift': 'Romanian deadlift',
     'dumbbell-romanian-deadlift': 'Dumbbell Romanian deadlift', 'rear-delt-dumbbell-fly': 'Rear-delt raise',
     'triceps-pushdown': 'Cable pressdown', 'safety-bar-squat': 'Safety squat bar squat',
-  };
-  const variantOptions = {
-    squat: [
-      ['paused-squat', 'Pause squat · keep tension at depth', 'Pause about two seconds at legal depth.'],
-      ['tempo-squat', 'Tempo squat · control the descent', 'Take about three seconds down, then stand with normal intent.'],
-      ['safety-bar-squat', 'Safety squat bar · trunk and upper back', 'Keep the torso position repeatable throughout the rep.'],
-      ['front-squat', 'Front squat · upright position', 'Use a comfortable front rack and controlled depth.'],
-    ],
-    bench: [
-      ['spoto-press', 'Spoto press · control near the chest', 'Pause just above the chest before reversing.'],
-      ['close-grip-bench', 'Close-grip bench · elbow extension', 'Use a modestly narrower grip with a controlled full range.'],
-      ['pin-press', 'Pin press · practise a repeatable start', 'Set rack safeties at the chosen height and start each rep from a dead stop.'],
-    ],
-    deadlift: [
-      ['deficit-deadlift', 'Small deficit · start-position strength', 'Use a small stable deficit and retain stance, bracing and bar proximity.'],
-      ['below-knee-paused-deadlift', 'Below-knee pause · keep the bar close', 'Pause below the knee for one count without losing position.'],
-      ['low-block-pull', 'Low block pull · late-range practice', 'Choose this only if your start and knee passage are already sound.'],
-    ],
+    'below-knee-paused-deadlift': 'Deadlift paused below the knee',
   };
   let state;
   let preview = null;
@@ -144,29 +127,21 @@
     if (programme.continuationWeeks) settings.append(node('label', {},
       node('input', { type: 'checkbox', name: 'continuation' }), 'Include the optional ' + programme.continuationWeeks + '-week continuation'));
     if (programme.id === 'powerlifting-four-day') {
-      const choices = Object.entries(variantOptions).map(([lift, options]) => {
-        const select = node('select', { name: 'variant-' + lift },
-          node('option', { value: '' }, 'Keep the default'),
-          options.map(([id, title]) => node('option', { value: id }, title)));
-        return node('label', {}, humanise(lift) + ' support slot', select);
-      });
-      settings.append(node('details', { class: 'week' }, node('summary', {}, 'Optional variations · weeks 1–4'),
-        node('p', { class: 'hint' }, 'Choose a drill for a repeatable issue. It replaces one secondary slot at the same set and rep dose, with its own effort-based load. Week 5 returns to the written defaults.'),
-        choices));
-    }
-  }
-
-  function applyVariations(snapshot, form) {
-    if (snapshot.id !== 'powerlifting-four-day') return;
-    const slots = [['A', 'paused-deadlift', 'deadlift'], ['C', 'competition-squat', 'squat'], ['C', 'paused-bench', 'bench']];
-    for (const [slotId, exercise, lift] of slots) {
-      const choice = variantOptions[lift].find(item => item[0] === form.get('variant-' + lift));
-      if (!choice) continue;
-      for (const week of snapshot.weeks.slice(0, 4)) {
-        const group = week.sessions.find(item => item.id === slotId).groups.find(item => item.exerciseId === exercise);
-        Object.assign(group, { exerciseId: choice[0], technique: choice[2],
-          substitutedFor: exercise, suggestedWeightKg: null, referencePercent: null });
-      }
+      const setup = catalogue.powerliftingVariationSetup();
+      const questions = setup.weaknesses.map(({ lift, choices }) => node('label', {},
+        humanise(lift) + ' · where do you struggle?',
+        node('select', { name: 'weakness-' + lift, required: true },
+          node('option', { value: '', disabled: true, selected: true }, 'Choose what you notice'),
+          choices.map(({ id, label }) => node('option', { value: id }, label)))));
+      settings.append(node('fieldset', {}, node('legend', {}, 'Where the lifts break down'),
+        node('p', { class: 'hint' }, 'Choose the issue you see consistently. If you’re unsure, the plan will prescribe a technique drill.'),
+        questions));
+      settings.append(node('fieldset', {}, node('legend', {}, 'Specialist equipment'),
+        node('p', { class: 'hint' }, 'Tick what you can use regularly during the first four weeks. Leave boxes clear if you train with a standard setup.'),
+        setup.equipment.map(({ id, label }) => node('label', {},
+          node('input', { type: 'checkbox', name: 'equipment', value: id }), label)),
+        node('label', {}, node('input', { type: 'checkbox', name: 'comfortable-front-rack' }),
+          'I can comfortably front squat with a barbell')));
     }
   }
 
@@ -180,6 +155,9 @@
       const raceSeconds = Number(form.get('raceMinutes')) * 60;
       const snapshot = catalogue.previewProgramme(programme.id, {
         continuation: form.has('continuation'),
+        weaknesses: Object.fromEntries(['squat', 'bench', 'deadlift'].map(lift => [lift, form.get('weakness-' + lift)])),
+        equipment: form.getAll('equipment'),
+        comfortableFrontRack: form.has('comfortable-front-rack'),
         loadIncrementKg: Number(form.get('increment')) || 2.5,
         referenceKg: { 'competition-squat': Number(form.get('squat')), 'competition-bench': Number(form.get('bench')),
           'competition-deadlift': Number(form.get('deadlift')) },
@@ -187,7 +165,6 @@
         recentHalfSeconds: programme.id === 'half-marathon' ? raceSeconds : null,
         recentMarathonSeconds: programme.id.startsWith('marathon') ? raceSeconds : null,
       });
-      applyVariations(snapshot, form);
       training.makeOccurrences(snapshot, start, 'preview');
       preview = { snapshot, start, placements: {} };
       renderPreview();
@@ -211,7 +188,8 @@
       const effort = group.rpeMin ? group.rpeMin + '–' + group.rpe : group.rpe;
       const unit = group.doseUnit === 'seconds' ? ' sec' : '';
       const weight = group.suggestedWeightKg === null ? '' : ' · start ' + group.suggestedWeightKg + ' kg';
-      const replacement = group.substitutedFor ? 'Replaces ' + humanise(group.substitutedFor) + '. ' : '';
+      const original = group.openingVariationFor ?? group.substitutedFor;
+      const replacement = original && original !== group.exerciseId ? 'Replaces ' + humanise(original) + '. ' : '';
       return node('li', {}, node('strong', {}, humanise(group.exerciseId)),
         ' · ' + group.sets + ' × ' + group.reps + unit + (group.perSide ? ' each side' : '') +
         weight + ' · RPE ' + (group.rpeMode === 'cap' ? '≤' : '') + effort,
@@ -275,10 +253,15 @@
         return node('article', { class: 'session' }, heading(session.title, 'h3'), dosePanel(session),
           node('label', {}, 'Planned date', day));
       })));
+    const opening = snapshot.openingVariations ? node('div', { class: 'panel' }, heading('Your first four weeks'),
+      node('p', { class: 'hint' }, 'Use these drills in the secondary slots. The competition lifts stay in the week. Week 5 returns to the written defaults.'),
+      node('ul', { class: 'dose' }, snapshot.openingVariations.map(item => node('li', {},
+        node('strong', {}, humanise(item.lift) + ' · ' + humanise(item.exerciseId)),
+        node('small', {}, item.reason + (item.missingKit ? ' Uses an alternative because your setup does not include ' + item.missingKit.toLowerCase() + '.' : '')))))) : null;
     region.replaceChildren(node('div', { class: 'panel' }, heading(snapshot.title),
       node('p', { class: 'hint' }, snapshot.durationWeeks + ' weeks · first week ' + dateText(start)),
       node('label', {}, approved, 'I’ve reviewed the sessions and the dates.'), add),
-    conflictPanel(combined, 'preview'), ...weeks);
+    ...(opening ? [opening] : []), conflictPanel(combined, 'preview'), ...weeks);
   }
 
   let calendarWeek = null;

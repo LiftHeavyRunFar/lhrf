@@ -1,4 +1,4 @@
-const CACHE = 'lhrf-catalogue-preview-v1';
+const CACHE = 'lhrf-catalogue-preview-v2';
 const SHELL = [
   './', './index.html', './app.js', './app.css', './manifest.webmanifest',
   '../src/programme-catalogue.js', '../src/catalogue-training.js',
@@ -6,7 +6,11 @@ const SHELL = [
   '../icon-lhrf-192-v2.png', '../icon-lhrf-512-v2.png', '../icon-lhrf-maskable-v2.png',
 ].map(path => new URL(path, self.registration.scope).href);
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll(SHELL.map(url => new Request(url, { cache: 'reload' })));
+    await self.skipWaiting();
+  })());
 });
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {

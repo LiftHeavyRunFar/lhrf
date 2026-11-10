@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
 
-  const REVISION = 'phase-one-frequency-2026-11-10';
+  const REVISION = 'phase-one-frequency-2026-11-10-v2';
   const exercises = {
     SQ: 'competition-squat',
     BP: 'competition-bench',
@@ -87,6 +87,91 @@
       });
     }
     return result;
+  }
+
+  const variationEquipment = [
+    { id: 'safety-squat-bar', label: 'Safety squat bar' },
+    { id: 'bench-safeties', label: 'Rack safeties suitable for a bench pin press' },
+    { id: 'deficit-platform', label: 'Stable low deficit platform' },
+    { id: 'low-pull-blocks', label: 'Low pulling blocks' },
+  ];
+  const variationDrills = {
+    'paused-squat': 'Hold tension through a two-second pause at depth, then stand without a second dip.',
+    'tempo-squat': 'Take about three seconds down and stand with normal intent.',
+    'safety-bar-squat': 'Keep your torso and upper-back position repeatable through the rep.',
+    'front-squat': 'Use a comfortable front rack and keep an upright, repeatable position.',
+    'paused-bench': 'Hold a steady two-count pause at the chest before pressing.',
+    'spoto-press': 'Pause just above the chest before reversing.',
+    'close-grip-bench': 'Use a modestly narrower grip and a controlled full range.',
+    'pin-press': 'Set the safeties at the repeatable sticking height and start from a dead stop.',
+    'paused-deadlift': 'Pause one count just off the floor and reset each rep.',
+    'deficit-deadlift': 'Use a small stable deficit and keep your usual stance, bracing and bar proximity.',
+    'below-knee-paused-deadlift': 'Pause below the knee for one count while keeping the bar close.',
+    'low-block-pull': 'Use low blocks and practise a smooth finish from a sound position.',
+  };
+  const variationSlots = {
+    squat: {
+      slotId: 'C', original: exercises.SQ,
+      options: {
+        unsure: { label: 'No repeatable issue yet', drill: 'paused-squat', reason: 'Practise holding tension and depth.' },
+        depth: { label: 'Lose tension at the bottom', drill: 'paused-squat', reason: 'Practise staying tight at depth.' },
+        descent: { label: 'Shift or lose balance on the way down', drill: 'tempo-squat', reason: 'Practise controlling the descent and balance.' },
+        torso: { label: 'Torso folds as I stand', drill: 'safety-bar-squat', requires: 'safety-squat-bar',
+          alternative: { drill: 'front-squat', requires: 'comfortable-front-rack' }, fallback: 'paused-squat',
+          reason: 'Practise holding torso position out of the bottom.' },
+      },
+    },
+    bench: {
+      slotId: 'C', original: exercises.PB,
+      options: {
+        unsure: { label: 'No repeatable issue yet', drill: 'paused-bench', reason: 'Practise a stable touch and repeatable press.' },
+        chest: { label: 'Lose tension at the chest or just above it', drill: 'spoto-press', reason: 'Practise controlling the bar just above the chest.' },
+        middle: { label: 'Stall at the same height above the chest', drill: 'pin-press', requires: 'bench-safeties',
+          fallback: 'close-grip-bench', reason: 'Practise producing force through the later part of the press.' },
+        lockout: { label: 'Struggle to finish the press', drill: 'close-grip-bench', reason: 'Give elbow extension more emphasis.' },
+      },
+    },
+    deadlift: {
+      slotId: 'A', original: exercises.PD,
+      options: {
+        unsure: { label: 'No repeatable issue yet', drill: 'paused-deadlift', reason: 'Practise keeping your start position under load.' },
+        floor: { label: 'Lose position as the bar leaves the floor', drill: 'paused-deadlift', reason: 'Practise keeping your start position under load.' },
+        start: { label: 'Slow off the floor despite a steady start position', drill: 'deficit-deadlift', requires: 'deficit-platform',
+          fallback: 'paused-deadlift', reason: 'Practise producing force early in the pull.' },
+        knee: { label: 'Bar drifts or I lose position below the knee', drill: 'below-knee-paused-deadlift', reason: 'Practise keeping the bar close through the transition.' },
+        lockout: { label: 'Struggle to lock out after a clean pull past the knee', drill: 'low-block-pull', requires: 'low-pull-blocks',
+          fallback: 'below-knee-paused-deadlift', reason: 'Practise finishing from a sound position.' },
+      },
+    },
+  };
+
+  function powerliftingVariationSetup() {
+    return {
+      weaknesses: Object.entries(variationSlots).map(([lift, { options }]) => ({
+        lift, choices: Object.entries(options).map(([id, option]) => ({ id, label: option.label })),
+      })),
+      equipment: variationEquipment.map(item => ({ ...item })),
+    };
+  }
+
+  function prescribeOpeningVariations(weeks, weaknesses, equipment, comfortableFrontRack) {
+    const available = new Set(equipment);
+    if (comfortableFrontRack) available.add('comfortable-front-rack');
+    return Object.entries(variationSlots).map(([lift, { slotId, original, options }]) => {
+      const answer = weaknesses[lift] ?? 'unsure';
+      const choice = Object.hasOwn(options, answer) ? options[answer] : null;
+      if (!choice) throw new RangeError('Choose a listed ' + lift + ' weakness.');
+      const kitAvailable = !choice.requires || available.has(choice.requires);
+      const exerciseId = kitAvailable ? choice.drill :
+        choice.alternative && available.has(choice.alternative.requires) ? choice.alternative.drill : choice.fallback;
+      const missingKit = kitAvailable ? null : variationEquipment.find(item => item.id === choice.requires).label;
+      for (const week of weeks.slice(0, 4)) {
+        const group = week.sessions.find(session => session.id === slotId).groups.find(item => item.exerciseId === original);
+        Object.assign(group, { exerciseId, technique: variationDrills[exerciseId], referencePercent: null,
+          openingVariationFor: original });
+      }
+      return { lift, exerciseId, reason: choice.reason, missingKit };
+    });
   }
 
   function powerliftingWeeks() {
@@ -460,13 +545,18 @@
     return entries.map(({ build, ...summary }) => summary);
   }
 
-  function previewProgramme(id, { referenceKg = {}, loadIncrementKg = 2.5, recent10kSeconds = null, recentHalfSeconds = null, recentMarathonSeconds = null, continuation = false } = {}) {
+  function previewProgramme(id, {
+    referenceKg = {}, loadIncrementKg = 2.5, recent10kSeconds = null, recentHalfSeconds = null,
+    recentMarathonSeconds = null, continuation = false, weaknesses = {}, equipment = [], comfortableFrontRack = false,
+  } = {}) {
     const entry = entries.find(item => item.id === id);
     if (!entry) throw new RangeError('Unknown catalogue programme: ' + id);
     if (!Number.isFinite(loadIncrementKg) || loadIncrementKg <= 0) {
       throw new RangeError('The load increment must be positive.');
     }
     const weeks = entry.build({ continuation });
+    const openingVariations = id === 'powerlifting-four-day'
+      ? prescribeOpeningVariations(weeks, weaknesses, equipment, comfortableFrontRack) : null;
     const paceReferences = { '10k': [recent10kSeconds, 10], half: [recentHalfSeconds, 21.1], marathon: [recentMarathonSeconds, 42.195] };
     for (const { sessions } of weeks) {
       for (const session of sessions) {
@@ -486,10 +576,11 @@
         }
       }
     }
-    return { ...listProgrammes().find(item => item.id === id), revision: REVISION, durationWeeks: weeks.length, weeks };
+    return { ...listProgrammes().find(item => item.id === id), revision: REVISION, durationWeeks: weeks.length,
+      weeks, ...(openingVariations ? { openingVariations } : {}) };
   }
 
-  const api = Object.freeze({ listProgrammes, previewProgramme });
+  const api = Object.freeze({ listProgrammes, previewProgramme, powerliftingVariationSetup });
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.LHRFProgrammeCatalogue = api;
 })(typeof globalThis === 'object' ? globalThis : this);

@@ -85,11 +85,44 @@ test('the original catalogue, both marathon formats and continuations resolve ev
   assert.equal(base[13].sessions[2].durationSeconds, 95 * 60);
 });
 
-test('three-day and four-day powerlifting retain every identical prescribed main set group', () => {
+test('the four-day opener preserves main-lift doses and returns to the written exercises in week five', () => {
   const signatures = id => catalogue.previewProgramme(id).weeks.map(week =>
     week.sessions.flatMap(s => s.groups ?? []).filter(g => g.kind === 'lift')
-      .map(g => [g.exerciseId, g.sets, g.reps, g.referencePercent, g.rpe].join('/')).sort());
+      .map(g => [g.openingVariationFor ?? g.exerciseId, g.sets, g.reps,
+        week.week <= 4 ? null : g.referencePercent, g.rpe].join('/')).sort());
   assert.deepEqual(signatures('powerlifting-three-day'), signatures('powerlifting-four-day'));
+});
+
+test('opening variations use the available equipment and replace only named secondary slots for four weeks', () => {
+  const baseline = catalogue.previewProgramme('powerlifting-four-day');
+  const weaknesses = { squat: 'torso', bench: 'middle', deadlift: 'start' };
+  const equipment = ['safety-squat-bar', 'bench-safeties', 'deficit-platform'];
+  const options = { weaknesses, equipment, referenceKg: { 'competition-squat': 140, 'safety-bar-squat': 120 } };
+  const plan = catalogue.previewProgramme('powerlifting-four-day', options);
+  assert.deepEqual(plan.openingVariations.map(item => item.exerciseId),
+    ['safety-bar-squat', 'pin-press', 'deficit-deadlift']);
+  for (const [i, week] of plan.weeks.entries()) {
+    if (i >= 4) {
+      const other = baseline.weeks[i];
+      assert.deepEqual(week.sessions.map(s => (s.groups ?? []).map(g => g.exerciseId)),
+        other.sessions.map(s => (s.groups ?? []).map(g => g.exerciseId)));
+      assert.ok(week.sessions.every(s => (s.groups ?? []).every(g => !g.openingVariationFor)));
+      continue;
+    }
+    const groups = week.sessions.flatMap(s => s.groups);
+    assert.equal(groups.filter(g => g.openingVariationFor).length, 3);
+    assert.equal(week.sessions[0].groups[0].exerciseId, 'competition-squat');
+    assert.ok(groups.filter(g => g.openingVariationFor).every(g => g.referencePercent === null && g.suggestedWeightKg === null));
+  }
+  const withoutKit = catalogue.previewProgramme('powerlifting-four-day', { weaknesses });
+  assert.deepEqual(withoutKit.openingVariations.map(item => item.exerciseId),
+    ['paused-squat', 'close-grip-bench', 'paused-deadlift']);
+  assert.ok(withoutKit.openingVariations.every(item => item.missingKit));
+  const front = catalogue.previewProgramme('powerlifting-four-day', { weaknesses, comfortableFrontRack: true });
+  assert.equal(front.openingVariations[0].exerciseId, 'front-squat');
+  assert.deepEqual(baseline.openingVariations.map(item => item.exerciseId), ['paused-squat', 'paused-bench', 'paused-deadlift']);
+  assert.equal(catalogue.previewProgramme('powerlifting-three-day').openingVariations, undefined);
+  assert.throws(() => catalogue.previewProgramme('powerlifting-four-day', { weaknesses: { bench: 'custom' } }), /listed bench/);
 });
 
 test('distance plans reconcile against the reviewed weekly totals', () => {
