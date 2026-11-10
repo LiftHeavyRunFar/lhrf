@@ -50,10 +50,57 @@ test('the two-run 10K keeps race week to two outings and counts recovery between
 });
 
 test('preview calls return independent data and reject invalid programme input', () => {
-  assert.deepEqual(catalogue.listProgrammes().map(entry => entry.id), ['powerlifting-four-day', '10k-two-run']);
+  assert.equal(catalogue.listProgrammes().length, 12);
   const preview = catalogue.previewProgramme('10k-two-run');
   preview.weeks[0].sessions[0].steps[0].distanceMetres = 1;
   assert.equal(catalogue.previewProgramme('10k-two-run').weeks[0].sessions[0].steps[0].distanceMetres, 1500);
   assert.throws(() => catalogue.previewProgramme('missing'), RangeError);
   assert.throws(() => catalogue.previewProgramme('powerlifting-four-day', { loadIncrementKg: 0 }), RangeError);
+});
+
+test('the original catalogue, both marathon formats and continuations resolve every session', () => {
+  const ids = new Set();
+  for (const entry of catalogue.listProgrammes()) {
+    assert.equal(ids.has(entry.id), false);
+    ids.add(entry.id);
+    const plan = catalogue.previewProgramme(entry.id);
+    assert.equal(plan.weeks.length, entry.durationWeeks);
+    for (const week of plan.weeks) {
+      const keys = week.sessions.map(session => session.id);
+      assert.equal(new Set(keys).size, keys.length, entry.id + ' week ' + week.week);
+      assert.ok(week.sessions.every(session => session.day >= 0 && session.day <= 6));
+      for (const session of week.sessions.filter(session => session.kind === 'run')) {
+        for (const step of session.steps) {
+          assert.ok(step.distanceMetres > 0 || step.durationSeconds > 0);
+        }
+      }
+    }
+  }
+  const bridge = catalogue.previewProgramme('lifting-foundation', { continuation: true }).weeks.slice(6);
+  assert.deepEqual(bridge.map(week => week.sessions.flatMap(s => s.groups).reduce((n, g) => n + g.sets, 0)),
+    [28, 30, 32]);
+  const base = catalogue.previewProgramme('running-base', { continuation: true }).weeks;
+  assert.equal(base.length, 14);
+  assert.equal(base[8].sessions[0].steps.filter(step => step.effort === 'threshold').length, 2);
+  assert.equal(base[13].sessions[2].durationSeconds, 95 * 60);
+});
+
+test('three-day and four-day powerlifting retain every identical prescribed main set group', () => {
+  const signatures = id => catalogue.previewProgramme(id).weeks.map(week =>
+    week.sessions.flatMap(s => s.groups ?? []).filter(g => g.kind === 'lift')
+      .map(g => [g.exerciseId, g.sets, g.reps, g.referencePercent, g.rpe].join('/')).sort());
+  assert.deepEqual(signatures('powerlifting-three-day'), signatures('powerlifting-four-day'));
+});
+
+test('distance plans reconcile against the reviewed weekly totals', () => {
+  const totals = id => catalogue.previewProgramme(id).weeks.map(week =>
+    week.sessions.reduce((total, session) => total + session.distanceMetres, 0));
+  const km = values => values.map(n => Math.round(n * 1000));
+  assert.deepEqual(totals('10k-three-run'), km([22, 24, 27, 21, 29, 21]));
+  assert.deepEqual(totals('half-marathon'), km([28, 30, 32, 28, 34, 36, 38, 32, 40, 43, 32, 36.6]));
+  assert.deepEqual(totals('marathon-distance'),
+    km([30, 32, 34, 30, 36, 38, 40, 34, 42, 44, 46, 38, 48, 50, 52, 43, 54, 56, 58, 47, 60, 47, 36, 56.195]));
+  const timed = catalogue.previewProgramme('marathon-timed').weeks;
+  assert.equal(timed[20].sessions[3].durationSeconds, 200 * 60);
+  assert.equal(timed[23].sessions[3].distanceMetres, 42195);
 });
