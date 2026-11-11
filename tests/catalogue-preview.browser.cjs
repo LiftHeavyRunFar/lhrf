@@ -11,7 +11,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
   const server = createServer(async (request, response) => {
     try {
       const path = new URL(request.url, 'http://localhost').pathname;
-      const file = resolve(root, '.' + (path.endsWith('/') ? path + 'index.html' : path));
+      const file = resolve(root, '.' + (path === '/' ? '/index.html' : path));
       if (!file.startsWith(root + sep)) throw new Error('Invalid file');
       const bytes = await readFile(file);
       response.setHeader('content-type', mime[extname(file)] ?? 'application/octet-stream');
@@ -148,6 +148,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
       }
     }, existingLog);
     await existingApp.goto(appUrl);
+    await existingApp.waitForFunction(() => navigator.serviceWorker.controller !== null);
     await existingApp.locator('nav [data-screen="plan"]').click();
     await existingApp.getByRole('link', { name: 'Programme catalogue' }).click();
     await existingApp.waitForURL(catalogueUrl);
