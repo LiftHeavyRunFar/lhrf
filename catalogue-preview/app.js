@@ -43,6 +43,7 @@
   const kmText = metres => (metres / 1000).toLocaleString('en-GB', { maximumFractionDigits: 3 }) + ' km';
   const displayPace = value => Math.floor(value / 60) + ':' + String(value % 60).padStart(2, '0') + '/km';
   const statusLabel = status => ({ planned: 'Planned', logged: 'Logged', skipped: 'Skipped' })[status];
+  const disciplineNames = { running: 'Running', strength: 'Strength training' };
 
   function showMessage(text, error = false) {
     const box = $('message');
@@ -105,6 +106,25 @@
     return programmes.find(programme => programme.id === $('programme').value);
   }
 
+  function showSetup(discipline) {
+    showMessage('');
+    $('choose-discipline').hidden = Boolean(discipline);
+    $('plan-form').hidden = !discipline;
+    $('catalogue-title').textContent = discipline ? disciplineNames[discipline] : 'Welcome to Lift Heavy. Run Far.';
+    $('catalogue-title').focus();
+    window.scrollTo(0, 0);
+  }
+
+  function chooseDiscipline(discipline) {
+    $('plan-form').reset();
+    $('programme').replaceChildren(...programmes.filter(item => item.discipline === discipline)
+      .map(item => node('option', { value: item.id }, item.title)));
+    const today = localDay();
+    $('monday').value = training.addDays(today, (8 - training.parseDate(today).getUTCDay()) % 7);
+    makeSettings();
+    showSetup(discipline);
+  }
+
   function makeSettings() {
     const programme = activeProgramme();
     $('entry').textContent = programme.entry;
@@ -165,11 +185,11 @@
         recentHalfSeconds: programme.id === 'half-marathon' ? raceSeconds : null,
         recentMarathonSeconds: programme.id.startsWith('marathon') ? raceSeconds : null,
       });
-      training.makeOccurrences(snapshot, start, 'preview');
-      preview = { snapshot, start, placements: {} };
+      preview = training.enrol(state, snapshot, start, 'preview');
       renderPreview();
       showMessage('');
-      $('preview').scrollIntoView({ block: 'start' });
+      $('catalogue-title').focus();
+      window.scrollTo(0, 0);
     });
   }
 
@@ -210,11 +230,40 @@
     const conflicts = training.conflicts(candidate, filter).filter(pair =>
       !weekFilter || pair.some(item => item.date >= weekFilter[0] && item.date <= weekFilter[1]));
     if (!conflicts.length) return node('div');
-    return node('details', { class: 'panel', open: true },
+    return node('details', { class: 'panel', open: Boolean(weekFilter) },
       node('summary', {}, conflicts.length + ' lower-body and run pairing' + (conflicts.length === 1 ? '' : 's') + ' to review'),
       node('p', { class: 'hint' }, 'These sessions are on the same or adjacent days. Decide whether their placement suits you.'),
       node('ul', { class: 'warnings' }, conflicts.map(([first, next]) => node('li', {},
         dateText(first.date) + ' · ' + first.session.title + ' / ' + dateText(next.date) + ' · ' + next.session.title))));
+  }
+
+  function rangeText(values, format = String) {
+    const low = Math.min(...values);
+    const high = Math.max(...values);
+    return low === high ? format(low) : format(low) + '–' + format(high);
+  }
+
+  function blockSummary(weeks, openingVariations) {
+    const first = weeks[0].week;
+    const last = weeks.at(-1).week;
+    const workouts = weeks.map(week => week.sessions.filter(session => session.kind !== 'event'));
+    const sessions = workouts.flat();
+    const counts = workouts.map(week => week.length);
+    const weeklyDistance = sessions.length && sessions.every(session => session.distanceMetres)
+      ? rangeText(workouts.map(week => week.reduce((sum, session) => sum + session.distanceMetres, 0)), kmText) + ' per week'
+      : null;
+    const mainSets = sessions.flatMap(session => session.groups?.slice(0, 1) ?? [])
+      .filter(group => group.doseUnit !== 'seconds' && group.kind === 'lift');
+    const reps = mainSets.length ? rangeText(mainSets.map(group => group.reps)) + ' reps per main set' : null;
+    const events = weeks.flatMap(week => week.sessions.filter(session => session.kind === 'event')
+      .map(session => 'Week ' + week.week + ' · ' + session.title));
+    return node('article', { class: 'panel block-summary' },
+      heading(first === last ? 'Week ' + first : 'Weeks ' + first + '–' + last, 'h3'),
+      node('p', { class: 'meta' }, [rangeText(counts) + ' workouts per week', weeklyDistance ?? reps].filter(Boolean).join(' · ')),
+      events.length ? node('p', { class: 'hint' }, events.join(' · ')) : null,
+      first === 1 && openingVariations ? node('p', { class: 'hint' },
+        'Opening variations · ' + openingVariations.map(item => humanise(item.exerciseId)).join(', ')) : null,
+      first === 5 && openingVariations ? node('p', { class: 'hint' }, 'Return to the standard variations.') : null);
   }
 
   function renderPreview() {
@@ -224,44 +273,30 @@
       region.replaceChildren();
       return;
     }
-    const { snapshot, start, placements } = preview;
-    const candidate = training.enrol(training.empty(), snapshot, start, 'preview', placements);
-    const combined = { ...state, plans: [...state.plans, ...candidate.plans], occurrences: [...state.occurrences, ...candidate.occurrences] };
-    const approved = node('input', { type: 'checkbox', name: 'approve' });
-    const add = button('Approve and add to calendar', () => tryAction(() => {
-      if (!approved.checked) throw new Error('Confirm that the programme and dates suit you.');
-      commit(training.enrol(state, snapshot, start, globalThis.crypto.randomUUID(), placements));
+    const { snapshot, start } = preview.plans.at(-1);
+    $('plan-form').hidden = true;
+    $('catalogue-title').textContent = snapshot.title;
+    const add = button('Get my programme', () => tryAction(() => {
+      commit(training.enrol(state, snapshot, start, globalThis.crypto.randomUUID()));
       preview = null;
       renderPreview();
+      showSetup();
+      calendarWeek = start;
       navigate('calendar');
+      $('calendar-title').focus();
       showMessage('Programme added. Your workouts are ready to review.');
     }), 'primary');
-    add.disabled = true;
-    approved.addEventListener('change', () => { add.disabled = !approved.checked; });
-    const weeks = snapshot.weeks.map(({ week, sessions }) => node('details', { class: 'week', open: week === 1 },
-      node('summary', {}, 'Week ' + week + ' · ' + sessions.length + ' sessions'),
-      sessions.map(session => {
-        const occurrence = candidate.occurrences.find(item => item.week === week && item.sessionId === session.id);
-        const day = node('input', { type: 'date', value: occurrence.date, 'aria-label': 'Week ' + week + ' ' + session.title + ' date' });
-        day.addEventListener('change', () => tryAction(() => {
-          training.parseDate(day.value);
-          preview.placements[week + '/' + session.id] = day.value;
-          renderPreview();
-          const open = region.querySelectorAll('.week')[week - 1];
-          open.open = true;
-        }));
-        return node('article', { class: 'session' }, heading(session.title, 'h3'), dosePanel(session),
-          node('label', {}, 'Planned date', day));
-      })));
-    const opening = snapshot.openingVariations ? node('div', { class: 'panel' }, heading('Your first four weeks'),
-      node('p', { class: 'hint' }, 'Use these drills in the secondary slots. The competition lifts stay in the week. Week 5 returns to the written defaults.'),
-      node('ul', { class: 'dose' }, snapshot.openingVariations.map(item => node('li', {},
-        node('strong', {}, humanise(item.lift) + ' · ' + humanise(item.exerciseId)),
-        node('small', {}, item.reason + (item.missingKit ? ' Uses an alternative because your setup does not include ' + item.missingKit.toLowerCase() + '.' : '')))))) : null;
-    region.replaceChildren(node('div', { class: 'panel' }, heading(snapshot.title),
-      node('p', { class: 'hint' }, snapshot.durationWeeks + ' weeks · first week ' + dateText(start)),
-      node('label', {}, approved, 'I’ve reviewed the sessions and the dates.'), add),
-    ...(opening ? [opening] : []), conflictPanel(combined, 'preview'), ...weeks);
+    const edit = button('Edit setup', () => {
+      preview = null;
+      renderPreview();
+      showSetup(snapshot.discipline);
+    });
+    const blocks = [];
+    for (let offset = 0; offset < snapshot.weeks.length; offset += 4) {
+      blocks.push(blockSummary(snapshot.weeks.slice(offset, offset + 4), snapshot.openingVariations));
+    }
+    region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · starts ' + dateText(start)),
+      conflictPanel(preview, 'preview'), node('div', { class: 'actions preview-actions' }, add, edit), ...blocks);
   }
 
   let calendarWeek = null;
@@ -289,7 +324,16 @@
         heading(item.session.title, 'h3'),
         node('p', { class: 'meta' }, item.plan.snapshot.title + ' · W' + item.week + ' · ' + statusLabel(item.status)),
         button(item.status === 'logged' ? 'View workout' : 'Open workout', () => showWorkout(item.id))));
-    region.replaceChildren(node('label', {}, 'Week of', picker),
+    const disciplines = new Set(state.plans.map(plan => plan.snapshot.discipline));
+    const other = Object.keys(disciplineNames).find(discipline => !disciplines.has(discipline));
+    const addDiscipline = other ? node('div', { class: 'panel' },
+      button('Add ' + disciplineNames[other].toLowerCase(), () => {
+        navigate('catalogue');
+        preview = null;
+        renderPreview();
+        chooseDiscipline(other);
+      })) : null;
+    region.replaceChildren(...(addDiscipline ? [addDiscipline] : []), node('label', {}, 'Week of', picker),
       conflictPanel(state, null, [calendarWeek, last]), ...list);
   }
 
@@ -483,19 +527,12 @@
 
   try {
     state = readState();
-    $('programme').append(...['strength', 'running'].map(discipline =>
-      node('optgroup', { label: humanise(discipline) }, programmes.filter(item => item.discipline === discipline)
-        .map(item => node('option', { value: item.id }, item.title)))));
-    const today = localDay();
-    $('monday').value = training.addDays(today, (8 - training.parseDate(today).getUTCDay()) % 7);
     $('plan-form').addEventListener('submit', makePreview);
-    $('plan-form').addEventListener('input', () => {
-      if (!preview) return;
-      preview = null;
-      renderPreview();
-    });
+    for (const item of document.querySelectorAll('[data-discipline]')) {
+      item.addEventListener('click', () => chooseDiscipline(item.dataset.discipline));
+    }
+    $('change-discipline').addEventListener('click', () => showSetup());
     $('programme').addEventListener('change', makeSettings);
-    makeSettings();
     for (const item of document.querySelectorAll('[data-page]')) item.addEventListener('click', () => navigate(item.dataset.page));
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', () => { $('offline').textContent = 'Offline ready'; });
@@ -506,6 +543,6 @@
     }
   } catch (error) {
     showMessage(error.message, true);
-    $('plan-form').querySelector('button').disabled = true;
+    for (const item of document.querySelectorAll('[data-discipline]')) item.disabled = true;
   }
 })();
