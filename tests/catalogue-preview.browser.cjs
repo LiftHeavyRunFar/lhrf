@@ -21,7 +21,8 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     }
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const url = 'http://127.0.0.1:' + server.address().port + '/catalogue-preview/';
+  const appUrl = 'http://localhost:' + server.address().port + '/';
+  const catalogueUrl = appUrl + 'catalogue-preview/';
   let browser;
   try {
     browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: ['--no-sandbox'] });
@@ -49,7 +50,13 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
       await card.getByRole('button', { name: /workout/ }).click();
       await dialog.waitFor();
     };
-    await page.goto(url);
+    await page.goto(appUrl);
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    await page.getByRole('link', { name: 'Browse the programme catalogue' }).waitFor();
+    await context.setOffline(true);
+    await page.getByRole('link', { name: 'Browse the programme catalogue' }).click();
+    await page.waitForURL(catalogueUrl);
+    await context.setOffline(false);
     await page.waitForFunction(() => document.querySelector('#offline')?.textContent === 'Offline ready');
     assert.equal(await page.locator('#programme option').count(), 12);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
@@ -128,6 +135,24 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await page.reload({ waitUntil: 'load' });
     await page.getByRole('button', { name: 'History', exact: true }).click();
     assert.equal(await page.locator('#history-body article').count(), 2);
+    await page.getByRole('link', { name: 'Back to LHRF' }).click();
+    await page.waitForURL(appUrl);
+    await context.setOffline(false);
+    const installed = await browser.newContext({ ...devices['Pixel 7'] });
+    const existingApp = await installed.newPage();
+    const existingLog = [{ exercise: 'Bench press', weight: 100, reps: 5, date: '2026-11-08T12:00:00Z' }];
+    await existingApp.addInitScript(sets => {
+      const key = 'lhrf_beta_v1118_clean';
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, JSON.stringify({ onboardingComplete: true, customRoadmap: { weeks: 1 }, sets }));
+      }
+    }, existingLog);
+    await existingApp.goto(appUrl);
+    await existingApp.locator('nav [data-screen="plan"]').click();
+    await existingApp.getByRole('link', { name: 'Programme catalogue' }).click();
+    await existingApp.waitForURL(catalogueUrl);
+    assert.deepEqual(await existingApp.evaluate(() => JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean')).sets), existingLog);
+    await installed.close();
     assert.deepEqual(errors, []);
     console.log('PASS: Pixel-size browser, 12 prescriptions, exercise swap, paired calendar, move/skip/repeat, FIT export, TCX import, offline reload, draft and history persistence.');
   } finally {

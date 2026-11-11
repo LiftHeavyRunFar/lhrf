@@ -499,10 +499,10 @@
     for (const item of document.querySelectorAll('[data-page]')) item.addEventListener('click', () => navigate(item.dataset.page));
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', () => { $('offline').textContent = 'Offline ready'; });
-      navigator.serviceWorker.register('./sw.js').then(async () => {
-        await navigator.serviceWorker.ready;
-        if (navigator.serviceWorker.controller) $('offline').textContent = 'Offline ready';
-      }).catch(() => { $('offline').textContent = 'Offline setup unavailable'; });
+      if (navigator.serviceWorker.controller) $('offline').textContent = 'Offline ready';
+      else navigator.serviceWorker.register('../sw.js').catch(() => {
+        if (!navigator.serviceWorker.controller) $('offline').textContent = 'Offline setup unavailable';
+      });
     }
   } catch (error) {
     showMessage(error.message, true);

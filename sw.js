@@ -1,12 +1,20 @@
-const CACHE = 'lhrf-shell-v1.39.4';
+const CACHE = 'lhrf-shell-v1.40.0';
 const RELEASE = CACHE.slice('lhrf-shell-v'.length);
 const SHELL = ['./src/training-flow.js','./src/training-mode.js','./src/training-mode.css','./assets/fonts/Goldman-Bold.ttf','./src/performance-history.js','./src/android-polish.js','./src/gym-equipment.js','./src/run-presentation.js','./src/mobile-ux.js','./src/mobile-ux.css','./','./index.html','./manifest.webmanifest','./icon-lhrf.svg','./icon-lhrf-192-v2.png','./icon-lhrf-512-v2.png','./icon-lhrf-maskable-v2.png','./src/training-review.js','./src/garmin-import.js','./src/local-activity-import.js','./src/local-activity-import-ui.js','./src/intervals-sync.js','./src/garmin-workout.js','./src/workout-tools.js','./src/workout-tools.css','./src/running-workouts.js','./src/coach-constraints.js','./src/coaching-evidence.js','./src/running-preparation.js','./src/exercise-registry.js','./src/coach-engine.js','./src/coach-adapters.js','./src/coach-intake.js','./src/programme-install.js','./src/programme-replacement.js','./src/programme-replacement-ui.js','./src/training-backup.js','./programmes/november-2026.json'];
+SHELL.push(
+  './catalogue-preview/',
+  './catalogue-preview/index.html',
+  './catalogue-preview/app.js',
+  './catalogue-preview/app.css',
+  './src/programme-catalogue.js',
+  './src/catalogue-training.js',
+);
 const SHELL_PATHS = new Set(SHELL.map(asset => new URL(asset, self.registration.scope).pathname));
 self.addEventListener('install', event => event.waitUntil((async () => {
   const cache = await caches.open(CACHE);
   try {
     await cache.addAll(SHELL.map(asset => new Request(new URL(asset, self.registration.scope), {cache:'reload'})));
-    for (const path of ['./', './index.html']) {
+    for (const path of ['./', './index.html', './catalogue-preview/', './catalogue-preview/index.html']) {
       const page = await cache.match(new URL(path, self.registration.scope));
       if (!page || !(await page.text()).includes('<meta name="lhrf-release" content="' + RELEASE + '">')) {
         throw new Error('The app page and offline update are from different releases.');
