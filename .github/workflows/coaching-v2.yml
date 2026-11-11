@@ -112,6 +112,8 @@ jobs:
           else
             npx playwright install --with-deps chromium
           fi
+      - name: Test fixed catalogue on a mobile browser and offline
+        run: node tests/catalogue-preview.browser.cjs
       - name: Test cross-programme performance references and production PWA update
         if: ${{ !cancelled() }}
         env:

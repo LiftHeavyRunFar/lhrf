@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080e18">
+  <meta name="lhrf-release" content="1.40.0">
+  <title>Lift Heavy. Run Far. · Catalogue</title>
+  <link rel="icon" href="../icon-lhrf-192-v2.png">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="stylesheet" href="./app.css">
+  <script defer src="../src/programme-catalogue.js"></script>
+  <script defer src="../src/catalogue-training.js"></script>
+  <script defer src="../src/garmin-workout.js"></script>
+  <script defer src="../src/local-activity-import.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="wordmark" href="./" aria-label="Lift Heavy. Run Far.">LH<span>∕</span>RF</a>
+    <div><p class="eyebrow">LIFT HEAVY. RUN FAR.</p><a class="subbrand" href="../">Back to LHRF</a></div>
+    <span id="offline" class="offline" aria-live="polite"></span>
+  </header>
+  <main>
+    <p id="message" role="status" hidden></p>
+    <section id="catalogue" aria-labelledby="catalogue-title">
+      <div class="hero"><p class="eyebrow">THE PROGRAMME CATALOGUE</p><h1 id="catalogue-title">Choose your training.</h1><p>Review every session before you commit. Strength and running can share a calendar.</p></div>
+      <form id="plan-form" class="panel">
+        <label for="programme">Programme</label>
+        <select id="programme" name="programme" required></select>
+        <p id="entry" class="hint"></p>
+        <div id="settings"></div>
+        <label for="monday">Week one starts on</label>
+        <input id="monday" name="monday" type="date" required>
+        <p class="hint">Choose the Monday of your first training week. Each workout date can be moved.</p>
+        <button class="primary" type="submit">Preview programme</button>
+      </form>
+      <section id="preview" aria-label="Programme preview" hidden></section>
+    </section>
+    <section id="calendar" aria-labelledby="calendar-title" hidden>
+      <div class="hero"><p class="eyebrow">YOUR TRAINING</p><h1 id="calendar-title">Calendar</h1><p>Plan, move and log your sessions.</p></div>
+      <div id="calendar-body"></div>
+    </section>
+    <section id="history" aria-labelledby="history-title" hidden>
+      <div class="hero"><p class="eyebrow">YOUR TRAINING</p><h1 id="history-title">History</h1><p>Your actual work, saved on this device.</p></div>
+      <div id="history-body"></div>
+    </section>
+  </main>
+  <nav class="nav" aria-label="Main navigation">
+    <button type="button" data-page="catalogue" aria-current="page">Catalogue</button>
+    <button type="button" data-page="calendar">Calendar</button>
+    <button type="button" data-page="history">History</button>
+  </nav>
+  <dialog id="workout" aria-labelledby="workout-title"></dialog>
+</body>
+</html>
