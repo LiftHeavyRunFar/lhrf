@@ -33,7 +33,6 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     const status = () => page.locator('#message');
     const dialog = page.getByRole('dialog');
     const enrol = async (id, date, fill) => {
-      await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
       await page.locator('#programme').selectOption(id);
       await page.locator('#monday').fill(date);
       if (fill) await fill();
@@ -41,8 +40,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
       await page.locator('#preview').waitFor({ state: 'visible' });
     };
     const approve = async () => {
-      await page.getByLabel('I’ve reviewed the sessions and the dates.').check();
-      await page.getByRole('button', { name: 'Approve and add to calendar' }).click();
+      await page.getByRole('button', { name: 'Get my programme' }).click();
       assert.match(await status().innerText(), /Programme added/);
     };
     const open = async name => {
@@ -58,7 +56,16 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await page.waitForURL(catalogueUrl);
     await context.setOffline(false);
     await page.waitForFunction(() => document.querySelector('#offline')?.textContent === 'Offline ready');
-    assert.equal(await page.locator('#programme option').count(), 12);
+    await page.getByRole('heading', { name: 'Welcome to Lift Heavy. Run Far.' }).waitFor();
+    assert.match(await page.locator('#choose-discipline').innerText(), /set up the other discipline after you get your first programme/);
+    assert.equal(await page.locator('#plan-form').isVisible(), false);
+    await page.getByRole('button', { name: 'Running', exact: true }).click();
+    assert.equal(await page.locator('#programme option').count(), 6);
+    assert.equal(await page.locator('#programme option[value="powerlifting-four-day"]').count(), 0);
+    await page.getByRole('button', { name: 'Change discipline' }).click();
+    await page.getByRole('button', { name: 'Strength training', exact: true }).click();
+    assert.equal(await page.locator('#programme option').count(), 6);
+    assert.equal(await page.locator('#programme option[value="10k-two-run"]').count(), 0);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
     await enrol('powerlifting-four-day', '2026-11-16', async () => {
       await page.getByLabel('Squat (kg)', { exact: true }).fill('140');
@@ -71,28 +78,43 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
       await page.getByLabel('Deadlift · where do you struggle?').selectOption('start');
       await page.getByLabel('Safety squat bar', { exact: true }).check();
     });
-    assert.equal(await page.locator('#preview .week').count(), 12);
-    const strength = await page.locator('#preview .week').first().innerText();
-    assert.match(strength, /Competition squat · 4 × 5 · start 100 kg/);
-    assert.match(strength, /Spoto press · 3 × 5/);
-    assert.match(strength, /Safety squat bar squat · 3 × 5/);
-    assert.match(strength, /Paused deadlift · 2 × 4/);
-    assert.match(await page.locator('#preview').innerText(), /does not include stable low deficit platform/);
-    assert.match(strength, /Cable pressdown/);
-    await page.locator('#preview .week').nth(4).locator('summary').click();
-    assert.match(await page.locator('#preview .week').nth(4).innerText(), /Long-pause bench/);
+    assert.deepEqual(await page.locator('#preview article h3').allTextContents(), ['Weeks 1–4', 'Weeks 5–8', 'Weeks 9–12']);
+    assert.match(await page.locator('#preview article').first().innerText(), /Spoto press/);
+    assert.equal(await page.locator('#preview details').count(), 0);
+    await page.getByRole('button', { name: 'Edit setup' }).click();
+    assert.equal(await page.getByLabel('Bench (kg)', { exact: true }).inputValue(), '95');
+    await page.getByRole('button', { name: 'Preview programme' }).click();
     await approve();
+    assert.equal(await page.getByLabel('Calendar week').inputValue(), '2026-11-16');
+    await open('Deadlift and support');
+    assert.match(await dialog.innerText(), /Spoto press · 3 × 5/);
+    assert.match(await dialog.innerText(), /Safety squat bar squat · 3 × 5/);
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await open('Bench volume');
+    assert.match(await dialog.innerText(), /Cable pressdown/);
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await page.getByLabel('Calendar week').selectOption('2026-12-14');
+    await open('Deadlift and support');
+    assert.match(await dialog.innerText(), /Long-pause bench/);
+    await dialog.getByRole('button', { name: 'Close' }).click();
 
+    await page.getByRole('button', { name: 'Add running' }).click();
+    await page.getByRole('heading', { name: 'Running', exact: true }).waitFor();
+    assert.equal(await page.locator('#programme option').count(), 6);
     await enrol('10k-two-run', '2026-11-16', async () => {
       await page.getByLabel('Recent 10K time in minutes · optional').fill('55');
     });
-    assert.equal(await page.locator('#preview .week').count(), 6);
-    assert.match(await page.locator('#preview').innerText(), /lower-body and run pairings to review/);
-    assert.match(await page.locator('#preview .week').first().innerText(), /7 km total/);
+    assert.deepEqual(await page.locator('#preview article h3').allTextContents(), ['Weeks 1–4', 'Weeks 5–6']);
+    const warning = page.locator('#preview details');
+    assert.match(await warning.locator('summary').innerText(), /lower-body and run pairings to review/);
+    await warning.locator('summary').click();
+    assert.match(await warning.locator('li').first().innerText(), /run/i);
     await approve();
     assert.match(await page.locator('#calendar-body').innerText(), /Deadlift and support/);
     assert.match(await page.locator('#calendar-body').innerText(), /Easy long run/);
     await open('Squat and support');
+    assert.match(await dialog.innerText(), /Competition squat · 4 × 5 · start 100 kg/);
+    assert.match(await dialog.innerText(), /Paused deadlift · 2 × 4/);
     await dialog.locator('[name="g0-0-weightKg"]').fill('100');
     await dialog.locator('[name="g0-0-dose"]').fill('5');
     await dialog.locator('[name="g0-0-rpe"]').fill('7');
@@ -105,6 +127,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await dialog.getByRole('button', { name: 'Save workout' }).click();
     await dialog.waitFor({ state: 'hidden' });
     await open('Quality run');
+    assert.match(await dialog.innerText(), /7 km total/);
     const download = page.waitForEvent('download');
     await dialog.getByRole('button', { name: 'Download Garmin FIT' }).click();
     assert.match((await download).suggestedFilename(), /quality\.fit$/);
@@ -153,9 +176,15 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await existingApp.getByRole('link', { name: 'Programme catalogue' }).click();
     await existingApp.waitForURL(catalogueUrl);
     assert.deepEqual(await existingApp.evaluate(() => JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean')).sets), existingLog);
+    await existingApp.getByRole('button', { name: 'Running', exact: true }).click();
+    await existingApp.locator('#monday').fill('2026-11-16');
+    await existingApp.getByRole('button', { name: 'Preview programme' }).click();
+    await existingApp.getByRole('button', { name: 'Get my programme' }).click();
+    await existingApp.getByRole('button', { name: 'Add strength training' }).click();
+    await existingApp.getByRole('heading', { name: 'Strength training', exact: true }).waitFor();
     await installed.close();
     assert.deepEqual(errors, []);
-    console.log('PASS: Pixel-size browser, 12 prescriptions, exercise swap, paired calendar, move/skip/repeat, FIT export, TCX import, offline reload, draft and history persistence.');
+    console.log('PASS: Pixel-size onboarding, block previews, paired calendar, exercise swaps, move/skip/repeat, Garmin, offline reload and log persistence.');
   } finally {
     await browser?.close();
     await new Promise(resolve => server.close(resolve));

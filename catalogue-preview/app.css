@@ -12,7 +12,7 @@ main,.masthead{width:min(100% - 28px,760px);margin:auto}
 .offline{margin-left:auto;font-size:.73rem;color:var(--muted);text-align:right}
 .hero{padding:24px 1px 14px}.hero p:last-child{margin:.35rem 0;color:var(--muted)}
 h1,h2,h3{line-height:1.15}h1{font-size:clamp(1.85rem,7vw,2.7rem);letter-spacing:-.045em;margin:.22rem 0}h2{font-size:1.28rem;margin:0 0 .6rem}h3{font-size:1rem;margin:0}
-.panel,.week,.session{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:15px;margin:0 0 11px}
+.panel,.session{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:15px;margin:0 0 11px}
 label{display:block;font-size:.86rem;font-weight:680;margin:.7rem 0 .25rem}
 label:first-child{margin-top:0}
 input,select,textarea,button{font:inherit}
@@ -28,9 +28,10 @@ legend{font-size:.85rem;color:var(--muted);padding:0 .3rem}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .grid label{margin:0}
 .hint,.meta{margin:.35rem 0 .65rem}.hint:empty{display:none}
-section#preview{padding-top:11px}
-.week>summary{cursor:pointer;font-weight:820;color:#dceaff}
-.week .session{margin:11px 0 0;background:#0c1624}
+#choose-discipline .hint{margin-top:.7rem}
+.preview-actions{margin-bottom:12px}
+.block-summary p:last-child{margin-bottom:0}
+.panel>summary{cursor:pointer;font-weight:820;color:#dceaff}
 .session button{margin-top:.55rem}
 .dose,.warnings{padding-left:1.15rem;margin:.6rem 0}.dose li,.warnings li{margin:.25rem 0}
 .dose small{display:block;color:var(--muted)}.warnings{color:var(--warn)}
@@ -49,4 +50,4 @@ section#preview{padding-top:11px}
 .set-grid input{padding:.45rem;font-size:.9rem}
 .badge{display:inline-block;margin-left:.4rem;color:var(--blue);font-size:.72rem;letter-spacing:.07em;text-transform:uppercase}
 #workout-error{color:#ffb7af}
-@media(max-width:380px){main,.masthead{width:calc(100% - 18px)}.panel,.session,.week{padding:12px}.grid{gap:7px}.masthead{gap:9px}}
+@media(max-width:380px){main,.masthead{width:calc(100% - 18px)}.panel,.session{padding:12px}.grid{gap:7px}.masthead{gap:9px}}
