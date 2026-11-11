@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.40.2"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.40.3"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script>
 /* Explicit one-time fresh start, invoked only via ?fresh=1 on this device.
    Clear the beta and trial records before any app code reads storage. */
 (function(){
@@ -300,7 +300,11 @@ nav.nav button[data-screen] b{color:inherit!important}
 #catalogueSetupDialog .hint:empty{display:none}
 #catalogueSetupDialog label{display:block;margin:10px 0 5px}
 #catalogueSetupDialog fieldset{padding:12px;border:1px solid #294861;border-radius:12px;margin:12px 0}
-#catalogueSetupDialog input[type=checkbox]{width:auto}
+#catalogueSetupDialog input[type=checkbox]{width:auto;margin-right:8px}
+#catalogueSetupDialog .training-day-picker .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#catalogueSetupDialog .training-day-picker label{display:flex;align-items:center;min-height:36px}
+#catalogueSetupDialog .training-day-picker label:has(select){display:block}
+#today > [data-add-catalogue-discipline]{margin:0 16px 12px}
 #catalogueSetupDialog input:not([type=checkbox]),#catalogueSetupDialog select{width:100%;min-width:0}
 #catalogueSetupDialog .error{color:#ffb7af}
 #catalogueSetupDialog .setup-footer{margin-top:16px}
@@ -311,7 +315,7 @@ nav.nav button[data-screen] b{color:inherit!important}
 <section class="screen active" id="today">
 <div class="card hero"><span class="tag">YOUR TRAINING · CURRENT BLOCK</span><h2 style="margin-top:10px">Bench first. Run strong.</h2><p>Preparing for your bench competition on 28 November and 10K PB attempt on 29 November.</p><button id="featuredSessionButton" onclick="openFeaturedSession()">Open Thursday session →</button></div>
 <div class="grid"><div class="stat"><b>160 kg</b><span>Bench baseline (approx.)</span></div><div class="stat"><b>1:05</b><span>10K PB</span></div></div>
-<div id="thisWeekCarousel"></div><button type="button" class="secondary" data-add-catalogue-discipline hidden></button></section>
+<button type="button" class="secondary" data-add-catalogue-discipline hidden></button><div id="thisWeekCarousel"></div></section>
 <section class="screen" id="plan">
 <div class="card"><button id="startCatalogueSetup" type="button">Start a programme</button> <button data-add-catalogue-discipline class="secondary" type="button" hidden></button></div>
 <div class="card" id="planDashboard" style="padding:18px">
@@ -1627,7 +1631,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  <div class="fr-mark"><span class="fr-brand">LHRF</span><span>LIFT HEAVY. RUN FAR.</span></div>
  <p role="status"></p>
  <div class="catalogue-setup-content"></div>
- <div class="actions setup-footer"><button type="button" class="secondary" data-custom>Custom programme setup</button><button type="button" class="secondary" data-close>Close setup</button></div>
+ <div class="actions setup-footer"><button type="button" class="secondary" data-close>Close setup</button></div>
 </dialog>
 <script src="./src/programme-catalogue.js"></script><script src="./src/catalogue-training.js"></script><script src="./catalogue-preview/app.js"></script><script src="./src/native-catalogue.js"></script>
 <div id="firstRun" hidden role="dialog" aria-modal="true" aria-label="Set up your hybrid training">
@@ -2383,7 +2387,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  try{return generatedSessions(data.customRoadmap,week)}catch{return null}
 },commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/programme-replacement-ui.js"></script><script>
 (function(){
- const apply=next=>{data=next;schedule=next.activeSchedule;populate();refresh();planDashSelection=next.activeCustomWeek;renderPlanDashboard();window.LHRFLive?.render?.()};
+ const apply=next=>{data=next;schedule=next.activeSchedule;populate();refresh();planDashSelection=next.activeCustomWeek;renderPlanDashboard();window.LHRFLive?.render?.();window.LHRFCatalogueAfterReplacement?.()};
  window.LHRFSelectReviewedWeek=w=>{if(!data.reviewedProgramme||w<1||w>data.customRoadmap.weeks)return;if(window.LHRFLive?.get?.()||localStorage.getItem('lhrf_fresh_beta_live_v1114_pendingRun')){alert('Finish the active workout first.');return}if(!confirm('Show reviewed week '+w+'? Frozen prescriptions and all training records are retained.'))return;const next=JSON.parse(JSON.stringify(data));next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);const previous=data;data=next;if(!save()){data=previous;return}apply(next)};
 
  window.LHRFSyncReviewedCalendar=()=>{if(!data.reviewedProgramme||window.LHRFLive?.get?.()||localStorage.getItem('lhrf_fresh_beta_live_v1114_pendingRun'))return;const date=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'}),w=Math.min(data.customRoadmap.weeks,Math.max(1,LHRFProgrammeReplacement.weekAt(data.customRoadmap,date)));if(w===Number(data.activeCustomWeek))return;const next=JSON.parse(JSON.stringify(data)),previous=data;next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);data=next;if(!save()){data=previous;return}apply(next)};
@@ -2448,6 +2452,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  });
  const query=new URLSearchParams(location.search);
  if(!data.onboardingComplete&&query.get('setup')!=='custom'&&!query.has('programme')&&!localStorage.getItem('lhrf_pending_programme'))ui.open();
+ window.LHRFCatalogueAfterReplacement=ui.afterReplacement;
  window.addEventListener('focus',ui.refresh);
 })();
 </script></body></html>

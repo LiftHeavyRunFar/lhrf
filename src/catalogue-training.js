@@ -164,7 +164,38 @@
     return result;
   }
 
-  const api = { empty, parseDate, addDays, makeOccurrences, enrol, move, skip, repeat, saveDraft, saveWorkout, calendar, conflicts };
+  const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const isEvent = session => session.kind === 'event' || session.id === 'race';
+
+  function scheduleOptions(snapshot) {
+    const mainWeek = snapshot.weeks.reduce((longest, week) => {
+      const days = week.sessions.filter(session => !isEvent(session)).map(session => session.day);
+      return days.length > longest.length ? days : longest;
+    }, []);
+    const event = snapshot.weeks.flatMap(week => week.sessions).find(isEvent);
+    return { days: mainWeek, eventDay: event?.day };
+  }
+
+  function scheduleSnapshot(snapshot, days, eventDay) {
+    const options = scheduleOptions(snapshot);
+    const sorted = [...new Set(days)].sort((a, b) => a - b);
+    if (sorted.length !== options.days.length || sorted.some(day => !Number.isInteger(day) || day < 0 || day > 6)) {
+      throw new Error('Choose exactly ' + options.days.length + ' training days.');
+    }
+    const weeks = snapshot.weeks.map(week => {
+      let index = 0;
+      const sessions = [...week.sessions].sort((a, b) => a.day - b.day).map(session =>
+        ({ ...session, day: isEvent(session) ? eventDay : sorted[index++] }));
+      if (sessions.some(isEvent) && (!Number.isInteger(eventDay) || eventDay < 0 || eventDay > 6 ||
+          sessions.some(session => !isEvent(session) && session.day >= eventDay))) {
+        throw new Error('Choose an event day after the last training session in the final week.');
+      }
+      return { ...week, sessions };
+    });
+    return { ...snapshot, weeks };
+  }
+
+  const api = { empty, parseDate, addDays, makeOccurrences, enrol, move, skip, repeat, saveDraft, saveWorkout, calendar, conflicts, weekdays, scheduleOptions, scheduleSnapshot };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.LHRFCatalogueTraining = api;
 })(globalThis);
