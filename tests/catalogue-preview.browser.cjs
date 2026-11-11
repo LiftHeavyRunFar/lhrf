@@ -180,6 +180,11 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.deepEqual(await existingApp.evaluate(() => JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean')).sets), existingLog);
     await existingApp.getByRole('button', { name: 'Close setup' }).click();
     await existingApp.locator('nav [data-screen="settings"]').click();
+    await existingApp.locator('#settingsProgramme > summary').click();
+    await existingApp.getByRole('button', { name: 'Start a new programme', exact: true }).click();
+    await existingApp.getByRole('heading', { name: 'Welcome to Lift Heavy. Run Far.' }).waitFor();
+    await existingApp.getByRole('button', { name: 'Close setup' }).click();
+    await existingApp.locator('nav [data-screen="settings"]').click();
     existingApp.once('dialog', confirmation => confirmation.accept());
     await existingApp.getByRole('button', { name: 'Start from scratch' }).click();
     await existingApp.getByRole('heading', { name: 'Welcome to Lift Heavy. Run Far.' }).waitFor();

@@ -93,7 +93,9 @@
 
   function mount({ state, publish, review, openPlan, openToday, custom, reset }) {
     const dialog = document.getElementById('catalogueSetupDialog');
-    const button = document.getElementById('startCatalogueSetup');
+    const startButtons = [document.getElementById('startCatalogueSetup'), document.getElementById('startNewProgramme')];
+    const resetButton = document.getElementById('startFreshOnDevice');
+    document.getElementById('settingsProgramme').append(resetButton);
     const otherButtons = document.querySelectorAll('[data-add-catalogue-discipline]');
     const host = dialog.querySelector('.catalogue-setup-content');
     const status = dialog.querySelector('[role="status"]');
@@ -159,19 +161,19 @@
     function refresh() {
       const enrolled = new Set((state().customRoadmap?.cataloguePlans || []).map(plan => plan.snapshot.discipline));
       const missing = Object.keys(disciplines).find(discipline => !enrolled.has(discipline));
-      button.hidden = enrolled.size > 0;
+      for (const button of startButtons) button.hidden = enrolled.size > 0;
       for (const other of otherButtons) {
         other.hidden = enrolled.size !== 1;
         if (missing) other.textContent = 'Add ' + disciplines[missing];
         other.onclick = () => open(missing);
       }
-      document.getElementById('startFreshOnDevice').hidden = !state().onboardingComplete;
+      resetButton.hidden = !state().onboardingComplete;
     }
-    button.addEventListener('click', () => open());
+    for (const button of startButtons) button.onclick = () => open();
     dialog.querySelector('[data-close]').addEventListener('click', () => { dialog.close(); openPlan(); });
     dialog.querySelector('[data-custom]').addEventListener('click', () => { dialog.close(); custom(); });
     dialog.addEventListener('cancel', event => { if (!state().onboardingComplete) event.preventDefault(); });
-    document.getElementById('startFreshOnDevice').addEventListener('click', reset);
+    resetButton.addEventListener('click', reset);
     for (const tab of document.querySelectorAll('nav [data-screen]')) tab.addEventListener('click', refresh);
     refresh();
     return { open, refresh };
