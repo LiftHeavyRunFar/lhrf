@@ -214,9 +214,9 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await existingApp.getByRole('heading', { name: 'Onboarding complete' }).waitFor();
     await existingApp.getByRole('button', { name: 'Add running programme' }).click();
     await existingApp.locator('#native-catalogue-programme').selectOption('10k');
-    await existingApp.getByLabel('Runs per week').selectOption('3');
+    await existingApp.getByRole('dialog', { name: 'Programme setup' }).getByLabel('Runs per week', { exact: true }).selectOption('3');
     assert.equal(await existingApp.getByRole('group', { name: 'Training days' }).getByRole('checkbox', { checked: true }).count(), 3);
-    await existingApp.getByLabel('Runs per week').selectOption('2');
+    await existingApp.getByRole('dialog', { name: 'Programme setup' }).getByLabel('Runs per week', { exact: true }).selectOption('2');
     assert.equal(await existingApp.getByRole('group', { name: 'Training days' }).getByRole('checkbox', { checked: true }).count(), 2);
     await existingApp.getByLabel('First calendar week').fill('2026-11-16');
     await existingApp.getByRole('button', { name: 'Preview programme' }).click();

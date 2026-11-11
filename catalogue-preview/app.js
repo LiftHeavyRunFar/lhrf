@@ -127,10 +127,10 @@
     frequency.hidden = !running;
     frequency.replaceChildren();
     if (running) {
-      const choices = node('select', { name: 'runCount' }, variants.map(programme =>
+      const choices = node('select', { id: 'catalogue-run-count', name: 'runCount' }, variants.map(programme =>
         node('option', { value: programme.sessionsPerWeek }, String(programme.sessionsPerWeek))));
       choices.addEventListener('change', makeSettings);
-      frequency.append(node('label', {}, 'Runs per week', choices));
+      frequency.append(node('label', { for: 'catalogue-run-count' }, 'Runs per week'), choices);
     }
     makeSettings();
   }
@@ -288,7 +288,7 @@
       const names = pair => pair.map(item => dateText(item.date) + ' · ' + item.session.title).join(' / ');
       return node('section', { class: 'panel', 'aria-label': 'Fatigue review' }, heading('Fatigue review', 'h3'),
         conflicts.length ? node('p', { class: 'hint' },
-          'A demanding run is on the same day as, or the day before or after, a harder lower-body session. You can change the running days in Edit setup.') :
+          'A demanding run is on the same day as, or the day before or after, a harder lower-body session. You can change your selected days in Edit setup.') :
           node('p', { class: 'hint' }, 'No demanding runs fall on the same or adjacent day as a harder lower-body session.'),
         conflicts.length ? node('ul', { class: 'warnings' }, conflicts.slice(0, 3).map(pair => node('li', {}, names(pair)))) : null,
         conflicts.length > 3 ? node('details', {}, node('summary', {}, 'See all ' + conflicts.length + ' pairings'),
