@@ -108,8 +108,31 @@
     window.scrollTo(0, 0);
   }
 
+  const programmeGroup = programme => programme.id.startsWith('10k-') ? '10k' : programme.id;
+
+  function programmeVariants() {
+    return programmes.filter(programme => programmeGroup(programme) === $('programme').value);
+  }
+
   function activeProgramme() {
-    return programmes.find(programme => programme.id === $('programme').value);
+    const variants = programmeVariants();
+    const count = $('run-frequency').querySelector('select')?.value;
+    return variants.find(programme => programme.sessionsPerWeek === Number(count)) ?? variants[0];
+  }
+
+  function chooseProgramme() {
+    const variants = programmeVariants();
+    const frequency = $('run-frequency');
+    const running = variants[0].discipline === 'running';
+    frequency.hidden = !running;
+    frequency.replaceChildren();
+    if (running) {
+      const choices = node('select', { name: 'runCount' }, variants.map(programme =>
+        node('option', { value: programme.sessionsPerWeek }, String(programme.sessionsPerWeek))));
+      choices.addEventListener('change', makeSettings);
+      frequency.append(node('label', {}, 'Runs per week', choices));
+    }
+    makeSettings();
   }
 
   function showSetup(discipline) {
@@ -123,11 +146,14 @@
 
   function chooseDiscipline(discipline) {
     $('plan-form').reset();
-    $('programme').replaceChildren(...programmes.filter(item => item.discipline === discipline)
-      .map(item => node('option', { value: item.id }, item.title)));
+    const choices = new Map(programmes.filter(item => item.discipline === discipline).map(item => {
+      const key = programmeGroup(item);
+      return [key, key === '10k' ? '10K' : item.title];
+    }));
+    $('programme').replaceChildren(...Array.from(choices, ([value, title]) => node('option', { value }, title)));
     const today = localDay();
     $('monday').value = training.addDays(today, (8 - training.parseDate(today).getUTCDay()) % 7);
-    makeSettings();
+    chooseProgramme();
     showSetup(discipline);
   }
 
@@ -151,7 +177,15 @@
     $('entry').textContent = programme.entry;
     const settings = $('settings');
     const days = $('training-days');
-    const continuation = () => catalogue.previewProgramme(programme.id, { continuation: settings.querySelector('[name="continuation"]')?.checked });
+    const extension = $('continuation-option');
+    extension.replaceChildren();
+    const continuation = node('input', { type: 'checkbox', name: 'continuation' });
+    if (programme.continuationWeeks) extension.append(node('label', {}, continuation,
+      'Include the optional ' + programme.continuationWeeks + '-week continuation'));
+    const renderDays = () => days.replaceChildren(weekdayFields(catalogue.previewProgramme(programme.id,
+      { continuation: continuation.checked })));
+    continuation.addEventListener('change', renderDays);
+    renderDays();
     settings.replaceChildren();
     if (programme.discipline === 'strength' && programme.id !== 'lifting-foundation') {
       const number = { type: 'number', step: 'any', min: '1', inputmode: 'decimal' };
@@ -167,10 +201,6 @@
         { type: 'number', inputmode: 'decimal', min: 1, step: 'any', placeholder: race === '10K' ? 'e.g. 55' : '' }),
       node('p', { class: 'hint' }, 'Use a recent comparable result to show race-pace targets. Effort remains available.'));
     }
-    if (programme.continuationWeeks) settings.append(node('label', {},
-      node('input', { type: 'checkbox', name: 'continuation' }), 'Include the optional ' + programme.continuationWeeks + '-week continuation'));
-    days.replaceChildren(weekdayFields(continuation()));
-    settings.querySelector('[name="continuation"]')?.addEventListener('change', () => days.replaceChildren(weekdayFields(continuation())));
     if (programme.id === 'powerlifting-four-day') {
       const setup = catalogue.powerliftingVariationSetup();
       const questions = setup.weaknesses.map(({ lift, choices }) => node('label', {},
@@ -254,6 +284,16 @@
   function conflictPanel(candidate, filter, weekFilter) {
     const conflicts = training.conflicts(candidate, filter).filter(pair =>
       !weekFilter || pair.some(item => item.date >= weekFilter[0] && item.date <= weekFilter[1]));
+    if (native && filter && candidate.plans.length > 1) {
+      const names = pair => pair.map(item => dateText(item.date) + ' · ' + item.session.title).join(' / ');
+      return node('section', { class: 'panel', 'aria-label': 'Fatigue review' }, heading('Fatigue review', 'h3'),
+        conflicts.length ? node('p', { class: 'hint' },
+          'A demanding run is on the same day as, or the day before or after, a harder lower-body session. You can change the running days in Edit setup.') :
+          node('p', { class: 'hint' }, 'No demanding runs fall on the same or adjacent day as a harder lower-body session.'),
+        conflicts.length ? node('ul', { class: 'warnings' }, conflicts.slice(0, 3).map(pair => node('li', {}, names(pair)))) : null,
+        conflicts.length > 3 ? node('details', {}, node('summary', {}, 'See all ' + conflicts.length + ' pairings'),
+          node('ul', { class: 'warnings' }, conflicts.map(pair => node('li', {}, names(pair))))) : null);
+    }
     if (!conflicts.length) return node('div');
     return node('details', { class: 'panel', open: Boolean(weekFilter) },
       node('summary', {}, conflicts.length + ' lower-body and run pairing' + (conflicts.length === 1 ? '' : 's') + ' to review'),
@@ -573,8 +613,9 @@
       item.addEventListener('click', () => chooseDiscipline(item.dataset.discipline));
     }
     $('change-discipline').addEventListener('click', () => showSetup());
-    $('programme').addEventListener('change', makeSettings);
-    if (native) return { weekdayFields, scheduleFromForm, open: discipline => {
+    $('programme').addEventListener('change', chooseProgramme);
+    if (native) return { weekdayFields, scheduleFromForm, open: (discipline, lockDiscipline) => {
+      $('change-discipline').hidden = Boolean(lockDiscipline);
       preview = null;
       renderPreview();
       if (discipline) chooseDiscipline(discipline);
