@@ -85,7 +85,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.equal(await page.getByLabel('Bench (kg)', { exact: true }).inputValue(), '95');
     await page.getByRole('button', { name: 'Preview programme' }).click();
     await approve();
-    assert.equal(await page.getByLabel('Calendar week').inputValue(), '2026-11-16');
+    assert.equal(await page.getByLabel('Calendar week', { exact: true }).inputValue(), '2026-11-16');
     await open('Deadlift and support');
     assert.match(await dialog.innerText(), /Spoto press · 3 × 5/);
     assert.match(await dialog.innerText(), /Safety squat bar squat · 3 × 5/);
@@ -93,7 +93,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await open('Bench volume');
     assert.match(await dialog.innerText(), /Cable pressdown/);
     await dialog.getByRole('button', { name: 'Close' }).click();
-    await page.getByLabel('Calendar week').selectOption('2026-12-14');
+    await page.getByLabel('Calendar week', { exact: true }).selectOption('2026-12-14');
     await open('Deadlift and support');
     assert.match(await dialog.innerText(), /Long-pause bench/);
     await dialog.getByRole('button', { name: 'Close' }).click();
