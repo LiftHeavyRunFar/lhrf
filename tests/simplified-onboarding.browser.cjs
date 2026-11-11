@@ -11,7 +11,7 @@ const {observeOnboardingProposal, onboardingProposal} = require('./onboarding-br
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.clock.install({time:new Date('2026-11-09T09:00:00Z')});
-    await page.goto(process.env.LHRF_BROWSER_URL || 'http://localhost:8765/');
+    await page.goto(new URL('?setup=custom', process.env.LHRF_BROWSER_URL || 'http://localhost:8765/').href);
     await observeOnboardingProposal(page);
     const field = id => page.locator('#'+id);
     const step = () => page.locator('.fr-step.on').getAttribute('data-step');

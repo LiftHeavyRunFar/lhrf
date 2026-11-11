@@ -1,12 +1,13 @@
 /* Fixed-catalogue review app. All training records are local to this origin. */
-(function () {
+(function (root) {
+  function mount(host, native) {
   'use strict';
 
   const catalogue = globalThis.LHRFProgrammeCatalogue;
   const training = globalThis.LHRFCatalogueTraining;
   const programmes = catalogue.listProgrammes();
   const key = 'lhrf-catalogue-preview-v1';
-  const $ = id => document.getElementById(id);
+  const $ = id => host.querySelector('#' + (native ? 'native-catalogue-' : '') + id);
   const dialog = $('workout');
   const dateFormat = new Intl.DateTimeFormat('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
@@ -185,7 +186,7 @@
         recentHalfSeconds: programme.id === 'half-marathon' ? raceSeconds : null,
         recentMarathonSeconds: programme.id.startsWith('marathon') ? raceSeconds : null,
       });
-      preview = training.enrol(state, snapshot, start, 'preview');
+      preview = training.enrol(native ? native.state() : state, snapshot, start, 'preview');
       renderPreview();
       showMessage('');
       $('catalogue-title').focus();
@@ -276,16 +277,30 @@
     const { snapshot, start } = preview.plans.at(-1);
     $('plan-form').hidden = true;
     $('catalogue-title').textContent = snapshot.title;
-    const add = button('Get my programme', () => tryAction(() => {
-      commit(training.enrol(state, snapshot, start, globalThis.crypto.randomUUID()));
-      preview = null;
-      renderPreview();
-      showSetup();
-      calendarWeek = start;
-      navigate('calendar');
-      $('calendar-title').focus();
-      showMessage('Programme added. Your workouts are ready to review.');
-    }), 'primary');
+    const add = button('Get my programme', async () => {
+      if (native) {
+        add.disabled = true;
+        try {
+          await native.approve(snapshot, start, new FormData($('plan-form')).getAll('equipment'));
+          preview = null;
+          renderPreview();
+        } catch (error) {
+          showMessage(error.message, true);
+          $('message').scrollIntoView({ block: 'nearest' });
+        } finally { add.disabled = false; }
+        return;
+      }
+      tryAction(() => {
+        commit(training.enrol(state, snapshot, start, globalThis.crypto.randomUUID()));
+        preview = null;
+        renderPreview();
+        showSetup();
+        calendarWeek = start;
+        navigate('calendar');
+        $('calendar-title').focus();
+        showMessage('Programme added. Your workouts are ready to review.');
+      });
+    }, 'primary');
     const edit = button('Edit setup', () => {
       preview = null;
       renderPreview();
@@ -526,14 +541,20 @@
   }
 
   try {
-    state = readState();
+    state = native ? native.state() : readState();
     $('plan-form').addEventListener('submit', makePreview);
-    for (const item of document.querySelectorAll('[data-discipline]')) {
+    for (const item of host.querySelectorAll('[data-discipline]')) {
       item.addEventListener('click', () => chooseDiscipline(item.dataset.discipline));
     }
     $('change-discipline').addEventListener('click', () => showSetup());
     $('programme').addEventListener('change', makeSettings);
-    for (const item of document.querySelectorAll('[data-page]')) item.addEventListener('click', () => navigate(item.dataset.page));
+    if (native) return discipline => {
+      preview = null;
+      renderPreview();
+      if (discipline) chooseDiscipline(discipline);
+      else showSetup();
+    };
+    for (const item of host.querySelectorAll('[data-page]')) item.addEventListener('click', () => navigate(item.dataset.page));
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', () => { $('offline').textContent = 'Offline ready'; });
       if (navigator.serviceWorker.controller) $('offline').textContent = 'Offline ready';
@@ -543,6 +564,9 @@
     }
   } catch (error) {
     showMessage(error.message, true);
-    for (const item of document.querySelectorAll('[data-discipline]')) item.disabled = true;
+    for (const item of host.querySelectorAll('[data-discipline]')) item.disabled = true;
   }
-})();
+  }
+  root.LHRFMountCatalogue = mount;
+  if (document.getElementById('calendar-body')) mount(document);
+})(globalThis);

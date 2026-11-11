@@ -85,7 +85,7 @@ async function fillMeet(page) {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.clock.install({time:new Date('2026-11-08T10:00:00Z')});
-    await page.goto(origin);
+    await page.goto(origin + '?setup=custom');
     await observeOnboardingProposal(page);
     await fillMeet(page);
     const next = loc(page,'frNext');
