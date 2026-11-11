@@ -1,0 +1,25 @@
+name: IMAP TLS connectivity
+on:
+  push:
+    branches: ["diagnostics/imap-tls-20261111"]
+permissions: {}
+jobs:
+  connectivity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify DNS, certificate, and IMAP greeting
+        run: |
+          python3 - <<'PY'
+          import socket
+          import ssl
+
+          host = "imap.mail.yahoo.com"
+          with socket.create_connection((host, 993), timeout=10) as tcp:
+              with ssl.create_default_context().wrap_socket(tcp, server_hostname=host) as tls:
+                  tls.settimeout(8)
+                  with tls.makefile("rb") as response:
+                      if not response.readline(1024).startswith(b"* OK"):
+                          raise RuntimeError("Yahoo did not send an IMAP OK greeting")
+                  print("Yahoo IMAP: DNS, certificate-validated TLS, and greeting verified")
+          PY
