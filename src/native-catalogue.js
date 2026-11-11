@@ -120,6 +120,7 @@
     const training = root.LHRFCatalogueTraining;
     let setup;
     let pendingReplacement = false;
+    let addingFromCompletion = false;
     const panel = document.createElement('section');
     host.after(panel);
     panel.hidden = true;
@@ -156,18 +157,21 @@
     function complete() {
       const plans = state().customRoadmap?.cataloguePlans;
       refresh();
-      openToday();
+      addingFromCompletion = false;
       if (plans?.length !== 1) {
         dialog.close();
+        openToday();
         return;
       }
       const missing = plans[0].snapshot.discipline === 'strength' ? 'running' : 'strength';
-      showPanel('Your programme is ready');
-      text('p', 'Want to add ' + disciplines[missing] + ' to your week?', panel);
+      showPanel('Onboarding complete');
       const actions = text('div', '', panel);
       actions.className = 'actions';
-      action('Set up ' + disciplines[missing], actions, () => open(missing));
-      action('Go to my programme', actions, () => dialog.close(), true);
+      action('Go to programme', actions, () => {
+        dialog.close();
+        openToday();
+      });
+      action('Add ' + disciplines[missing] + ' programme', actions, () => open(missing, true), true);
     }
 
     function persistProgramme(programme, data) {
@@ -261,15 +265,17 @@
       } catch (error) { status.textContent = error.message; }
     }
 
-    async function open(discipline) {
+    async function open(discipline, fromCompletion = false) {
+      addingFromCompletion = fromCompletion;
       if (!dialog.open) dialog.showModal();
       close.hidden = !state().onboardingComplete;
+      close.textContent = fromCompletion ? 'Back' : 'Close setup';
       host.hidden = false;
       panel.hidden = true;
       status.textContent = '';
       try {
         await loadSetup();
-        setup.open(discipline);
+        setup.open(discipline, Boolean(state().customRoadmap?.cataloguePlans?.length));
       } catch (error) { status.textContent = error.message; }
     }
 
@@ -290,8 +296,14 @@
       resetButton.hidden = !state().onboardingComplete;
     }
     for (const button of startButtons) button.onclick = () => open();
-    close.addEventListener('click', () => { dialog.close(); openPlan(); });
-    dialog.addEventListener('cancel', event => { if (!state().onboardingComplete) event.preventDefault(); });
+    close.addEventListener('click', () => {
+      if (addingFromCompletion) complete();
+      else { dialog.close(); openPlan(); }
+    });
+    dialog.addEventListener('cancel', event => {
+      if (addingFromCompletion) { event.preventDefault(); complete(); }
+      else if (!state().onboardingComplete) event.preventDefault();
+    });
     resetButton.addEventListener('click', reset);
     for (const tab of document.querySelectorAll('nav [data-screen]')) tab.addEventListener('click', refresh);
     refresh();
