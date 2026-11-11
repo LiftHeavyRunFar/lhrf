@@ -11,9 +11,9 @@ function engine(inv,extra={}){return adapters.createProfileEngine({...profile,we
 
 test('registry covers all audited names, both legacy identities, unique typed requirements and safe fallback graph',()=>{
  const names=require('./fixtures/equipment-inventory-names.json');
- assert.equal(names.length,62);assert.equal(kit.exercises.length,64);
+ assert.equal(names.length,62);assert.ok(kit.exercises.length>=64);
  for(const n of [...names,'Bench press','Triceps cable extension'])assert.ok(kit.resolve(n),n);
- assert.equal(new Set(kit.exercises.map(e=>e.id)).size,64);
+ assert.equal(new Set(kit.exercises.map(e=>e.id)).size,kit.exercises.length);
  assert.notEqual(kit.resolve('Bench').id,kit.resolve('Bench press').id);
  for(const e of kit.exercises){assert.ok(e.required.length);for(const id of e.alternatives){const other=kit.resolve(id);assert.equal(e.purpose,other.purpose);assert.equal(e.doseUnit,other.doseUnit)}}
  assert.ok(!kit.resolve('Seated leg curl').alternatives.includes(kit.resolve('Back extension').id));

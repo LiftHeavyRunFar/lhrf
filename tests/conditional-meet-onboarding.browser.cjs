@@ -32,7 +32,7 @@ async function fresh(browser, origin, start) {
   page.on('pageerror',error => errors.push(error.message));
   page.on('dialog',dialog => dialog.accept());
   await page.clock.install({time:new Date(start+'T10:00:00Z')});
-  await page.goto(origin);
+  await page.goto(origin + '?setup=custom');
   await observeOnboardingProposal(page);
   assert.equal(await loc(page,'firstRun').isVisible(),true,errors.join(' '));
   return {page,context,errors};

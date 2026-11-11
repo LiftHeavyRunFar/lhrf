@@ -46,7 +46,7 @@ async function fresh(browser, origin, viewport = pixel) {
   const page = await context.newPage(), errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.clock.install({time: new Date(date)});
-  await page.goto(origin);
+  await page.goto(origin + '?setup=custom');
   assert.equal(await loc(page, 'firstRun').isVisible(), true, errors.join('\n'));
   assert.equal(await fitsViewport(page), true);
   assert.equal(await step(page), '1');
