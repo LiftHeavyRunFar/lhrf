@@ -94,7 +94,7 @@
   function mount({ state, publish, review, openPlan, openToday, custom, reset }) {
     const dialog = document.getElementById('catalogueSetupDialog');
     const button = document.getElementById('startCatalogueSetup');
-    const other = document.getElementById('addCatalogueDiscipline');
+    const otherButtons = document.querySelectorAll('[data-add-catalogue-discipline]');
     const host = dialog.querySelector('.catalogue-setup-content');
     const status = dialog.querySelector('[role="status"]');
     const training = root.LHRFCatalogueTraining;
@@ -160,9 +160,11 @@
       const enrolled = new Set((state().customRoadmap?.cataloguePlans || []).map(plan => plan.snapshot.discipline));
       const missing = Object.keys(disciplines).find(discipline => !enrolled.has(discipline));
       button.hidden = enrolled.size > 0;
-      other.hidden = enrolled.size !== 1;
-      if (missing) other.textContent = 'Add ' + disciplines[missing];
-      other.onclick = () => open(missing);
+      for (const other of otherButtons) {
+        other.hidden = enrolled.size !== 1;
+        if (missing) other.textContent = 'Add ' + disciplines[missing];
+        other.onclick = () => open(missing);
+      }
       document.getElementById('startFreshOnDevice').hidden = !state().onboardingComplete;
     }
     button.addEventListener('click', () => open());
@@ -170,6 +172,7 @@
     dialog.querySelector('[data-custom]').addEventListener('click', () => { dialog.close(); custom(); });
     dialog.addEventListener('cancel', event => { if (!state().onboardingComplete) event.preventDefault(); });
     document.getElementById('startFreshOnDevice').addEventListener('click', reset);
+    for (const tab of document.querySelectorAll('nav [data-screen]')) tab.addEventListener('click', refresh);
     refresh();
     return { open, refresh };
   }

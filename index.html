@@ -311,9 +311,9 @@ nav.nav button[data-screen] b{color:inherit!important}
 <section class="screen active" id="today">
 <div class="card hero"><span class="tag">YOUR TRAINING · CURRENT BLOCK</span><h2 style="margin-top:10px">Bench first. Run strong.</h2><p>Preparing for your bench competition on 28 November and 10K PB attempt on 29 November.</p><button id="featuredSessionButton" onclick="openFeaturedSession()">Open Thursday session →</button></div>
 <div class="grid"><div class="stat"><b>160 kg</b><span>Bench baseline (approx.)</span></div><div class="stat"><b>1:05</b><span>10K PB</span></div></div>
-<div id="thisWeekCarousel"></div></section>
+<div id="thisWeekCarousel"></div><button type="button" class="secondary" data-add-catalogue-discipline hidden></button></section>
 <section class="screen" id="plan">
-<div class="card"><button id="startCatalogueSetup" type="button">Start a programme</button> <button id="addCatalogueDiscipline" class="secondary" type="button" hidden></button></div>
+<div class="card"><button id="startCatalogueSetup" type="button">Start a programme</button> <button data-add-catalogue-discipline class="secondary" type="button" hidden></button></div>
 <div class="card" id="planDashboard" style="padding:18px">
  <div class="tag">YOUR TRAINING CYCLE</div><h2 id="planDashTitle" style="margin:8px 0 4px">Your programme</h2><div id="planDashSubtitle" class="muted small"></div>
  <div id="planDashProgramme" class="entry" style="margin-top:12px"></div>

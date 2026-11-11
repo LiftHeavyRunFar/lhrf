@@ -85,6 +85,11 @@
     }
   }
 
+  function scrollToTop() {
+    if (native) host.closest('dialog').scrollTop = 0;
+    else window.scrollTo(0, 0);
+  }
+
   function localDay() {
     const now = new Date();
     return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
@@ -113,7 +118,7 @@
     $('plan-form').hidden = !discipline;
     $('catalogue-title').textContent = discipline ? disciplineNames[discipline] : 'Welcome to Lift Heavy. Run Far.';
     $('catalogue-title').focus();
-    window.scrollTo(0, 0);
+    scrollToTop();
   }
 
   function chooseDiscipline(discipline) {
@@ -190,7 +195,7 @@
       renderPreview();
       showMessage('');
       $('catalogue-title').focus();
-      window.scrollTo(0, 0);
+      scrollToTop();
     });
   }
 

@@ -166,8 +166,9 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     const existingLog = [{ exercise: 'Bench press', weight: 100, reps: 5, date: '2026-11-08T12:00:00Z' }];
     await existingApp.addInitScript(sets => {
       const key = 'lhrf_beta_v1118_clean';
-      if (!localStorage.getItem(key)) {
+      if (!sessionStorage.getItem('fixture-seeded')) {
         localStorage.setItem(key, JSON.stringify({ onboardingComplete: true, customRoadmap: { weeks: 1 }, sets }));
+        sessionStorage.setItem('fixture-seeded', 'yes');
       }
     }, existingLog);
     await existingApp.goto(appUrl);
@@ -194,7 +195,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     const running = await nativeState();
     assert.equal(running.onboardingComplete, true);
     assert.equal(running.reviewedProgramme.weeks[0].sessions[0].runs.length, 1);
-    await existingApp.getByRole('button', { name: 'Add strength training' }).click();
+    await existingApp.locator('#plan').getByRole('button', { name: 'Add strength training' }).click();
     await existingApp.getByLabel('Week one starts on').fill('2026-11-16');
     await existingApp.getByRole('button', { name: 'Preview programme' }).click();
     await existingApp.getByRole('button', { name: 'Get my programme' }).click();
