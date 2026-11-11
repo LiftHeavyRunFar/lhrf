@@ -131,10 +131,27 @@
     showSetup(discipline);
   }
 
+  function weekdayFields(snapshot) {
+    const { days, eventDay } = training.scheduleOptions(snapshot);
+    const event = node('select', { name: 'eventDay', 'aria-label': 'Final week event day' },
+      training.weekdays.map((day, i) => node('option', { value: i, selected: i === eventDay }, day)));
+    return node('fieldset', { class: 'training-day-picker' }, node('legend', {}, 'Training days'),
+      node('p', { class: 'hint' }, 'Choose ' + days.length + ' days. Workouts follow that order each week.'),
+      node('div', { class: 'grid' }, training.weekdays.map((day, i) =>
+        node('label', {}, node('input', { type: 'checkbox', name: 'trainingDay', value: i, checked: days.includes(i) }), day))),
+      eventDay !== undefined ? node('label', {}, 'Final week event day', event) : null);
+  }
+
+  function scheduleFromForm(snapshot, form) {
+    return training.scheduleSnapshot(snapshot, form.getAll('trainingDay').map(Number), Number(form.get('eventDay')));
+  }
+
   function makeSettings() {
     const programme = activeProgramme();
     $('entry').textContent = programme.entry;
     const settings = $('settings');
+    const days = $('training-days');
+    const continuation = () => catalogue.previewProgramme(programme.id, { continuation: settings.querySelector('[name="continuation"]')?.checked });
     settings.replaceChildren();
     if (programme.discipline === 'strength' && programme.id !== 'lifting-foundation') {
       const number = { type: 'number', step: 'any', min: '1', inputmode: 'decimal' };
@@ -152,6 +169,8 @@
     }
     if (programme.continuationWeeks) settings.append(node('label', {},
       node('input', { type: 'checkbox', name: 'continuation' }), 'Include the optional ' + programme.continuationWeeks + '-week continuation'));
+    days.replaceChildren(weekdayFields(continuation()));
+    settings.querySelector('[name="continuation"]')?.addEventListener('change', () => days.replaceChildren(weekdayFields(continuation())));
     if (programme.id === 'powerlifting-four-day') {
       const setup = catalogue.powerliftingVariationSetup();
       const questions = setup.weaknesses.map(({ lift, choices }) => node('label', {},
@@ -191,7 +210,7 @@
         recentHalfSeconds: programme.id === 'half-marathon' ? raceSeconds : null,
         recentMarathonSeconds: programme.id.startsWith('marathon') ? raceSeconds : null,
       });
-      preview = training.enrol(native ? native.state() : state, snapshot, start, 'preview');
+      preview = training.enrol(native ? native.state() : state, scheduleFromForm(snapshot, form), start, 'preview');
       renderPreview();
       showMessage('');
       $('catalogue-title').focus();
@@ -315,7 +334,9 @@
     for (let offset = 0; offset < snapshot.weeks.length; offset += 4) {
       blocks.push(blockSummary(snapshot.weeks.slice(offset, offset + 4), snapshot.openingVariations));
     }
-    region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · starts ' + dateText(start)),
+    const days = training.scheduleOptions(snapshot).days.map(day => training.weekdays[day]).join(', ');
+    region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
+      node('p', { class: 'meta' }, days),
       conflictPanel(preview, 'preview'), node('div', { class: 'actions preview-actions' }, add, edit), ...blocks);
   }
 
@@ -553,12 +574,12 @@
     }
     $('change-discipline').addEventListener('click', () => showSetup());
     $('programme').addEventListener('change', makeSettings);
-    if (native) return discipline => {
+    if (native) return { weekdayFields, scheduleFromForm, open: discipline => {
       preview = null;
       renderPreview();
       if (discipline) chooseDiscipline(discipline);
       else showSetup();
-    };
+    } };
     for (const item of host.querySelectorAll('[data-page]')) item.addEventListener('click', () => navigate(item.dataset.page));
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('controllerchange', () => { $('offline').textContent = 'Offline ready'; });

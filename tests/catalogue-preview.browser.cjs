@@ -85,7 +85,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.equal(await page.getByLabel('Bench (kg)', { exact: true }).inputValue(), '95');
     await page.getByRole('button', { name: 'Preview programme' }).click();
     await approve();
-    assert.equal(await page.getByLabel('Calendar week').inputValue(), '2026-11-16');
+    assert.equal(await page.getByLabel('Calendar week', { exact: true }).inputValue(), '2026-11-16');
     await open('Deadlift and support');
     assert.match(await dialog.innerText(), /Spoto press · 3 × 5/);
     assert.match(await dialog.innerText(), /Safety squat bar squat · 3 × 5/);
@@ -93,7 +93,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await open('Bench volume');
     assert.match(await dialog.innerText(), /Cable pressdown/);
     await dialog.getByRole('button', { name: 'Close' }).click();
-    await page.getByLabel('Calendar week').selectOption('2026-12-14');
+    await page.getByLabel('Calendar week', { exact: true }).selectOption('2026-12-14');
     await open('Deadlift and support');
     assert.match(await dialog.innerText(), /Long-pause bench/);
     await dialog.getByRole('button', { name: 'Close' }).click();
@@ -191,17 +191,23 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.equal(await existingApp.evaluate(() => JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean'))?.sets?.length || 0), 0);
     await installed.setOffline(true);
     await existingApp.getByRole('button', { name: 'Running', exact: true }).click();
-    await existingApp.getByLabel('Week one starts on').fill('2026-11-16');
+    await existingApp.getByLabel('First calendar week').fill('2026-11-16');
     await existingApp.getByRole('button', { name: 'Preview programme' }).click();
     await existingApp.getByRole('button', { name: 'Get my programme' }).click();
-    await existingApp.locator('#catalogueSetupDialog').waitFor({ state: 'hidden' });
-    await existingApp.locator('nav [data-screen="plan"]').click();
+    await existingApp.getByRole('heading', { name: 'Your programme is ready' }).waitFor();
+    assert.equal(await existingApp.getByRole('dialog').getByRole('button', { name: 'Custom programme setup' }).count(), 0);
     const nativeState = () => existingApp.evaluate(() => JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean')));
     const running = await nativeState();
     assert.equal(running.onboardingComplete, true);
     assert.equal(running.reviewedProgramme.weeks[0].sessions[0].runs.length, 1);
-    await existingApp.locator('#plan').getByRole('button', { name: 'Add strength training' }).click();
-    await existingApp.getByLabel('Week one starts on').fill('2026-11-16');
+    await existingApp.getByRole('button', { name: 'Set up strength training' }).click();
+    await existingApp.locator('#native-catalogue-programme').selectOption('powerlifting-four-day');
+    for (const lift of ['Squat', 'Bench', 'Deadlift']) {
+      await existingApp.getByLabel(lift + ' · where do you struggle?').selectOption('unsure');
+    }
+    await existingApp.getByRole('checkbox', { name: 'Monday', exact: true }).uncheck();
+    await existingApp.getByRole('checkbox', { name: 'Tuesday', exact: true }).check();
+    await existingApp.getByLabel('First calendar week').fill('2026-11-16');
     await existingApp.getByRole('button', { name: 'Preview programme' }).click();
     await existingApp.getByRole('button', { name: 'Get my programme' }).click();
     await existingApp.locator('#catalogueSetupDialog').waitFor({ state: 'hidden' });
@@ -210,6 +216,18 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.ok(hybrid.reviewedProgramme.weeks[0].sessions.some(s => s.ex.length > 0));
     assert.deepEqual(hybrid.reviewedProgramme.weeks[0].sessions.find(s => s.id === running.reviewedProgramme.weeks[0].sessions[0].id),
       running.reviewedProgramme.weeks[0].sessions[0]);
+    const strengthSessions = hybrid.reviewedProgramme.weeks[0].sessions.filter(s => s.ex.length);
+    assert.deepEqual(strengthSessions.map(s => s.day), ['Tue', 'Wed', 'Fri', 'Sun']);
+    await existingApp.locator('nav [data-screen="plan"]').click();
+    await existingApp.getByRole('button', { name: 'Change strength training days' }).click();
+    await existingApp.getByRole('checkbox', { name: 'Wednesday', exact: true }).uncheck();
+    await existingApp.getByRole('checkbox', { name: 'Thursday', exact: true }).check();
+    await existingApp.getByRole('button', { name: 'Save training days' }).click();
+    await existingApp.locator('#catalogueSetupDialog').waitFor({ state: 'hidden' });
+    const moved = await nativeState();
+    const movedStrength = moved.reviewedProgramme.weeks[0].sessions.filter(s => s.ex.length);
+    assert.deepEqual(movedStrength.map(s => s.day), ['Tue', 'Thu', 'Fri', 'Sun']);
+    assert.deepEqual(movedStrength.map(s => [s.id, s.ex]), strengthSessions.map(s => [s.id, s.ex]));
     assert.equal(existingApp.url(), appUrl);
     await installed.close();
     assert.deepEqual(errors, []);

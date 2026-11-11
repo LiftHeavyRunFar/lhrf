@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#080e18">
-  <meta name="lhrf-release" content="1.40.2">
+  <meta name="lhrf-release" content="1.40.3">
   <title>Lift Heavy. Run Far. · Catalogue</title>
   <link rel="icon" href="../icon-lhrf-192-v2.png">
   <link rel="manifest" href="../manifest.webmanifest">
@@ -41,9 +41,10 @@
         <select id="programme" name="programme" required></select>
         <p id="entry" class="hint"></p>
         <div id="settings"></div>
-        <label for="monday">Week one starts on</label>
+        <div id="training-days"></div>
+        <label for="monday">First calendar week</label>
         <input id="monday" name="monday" type="date" required>
-        <p class="hint">Choose the Monday of your first training week. Each workout date can be moved.</p>
+        <p class="hint">Choose the Monday of your first calendar week. Workouts use the training days you selected.</p>
         <button class="primary" type="submit">Preview programme</button>
       </form>
       <section id="preview" aria-label="Programme preview" hidden></section>

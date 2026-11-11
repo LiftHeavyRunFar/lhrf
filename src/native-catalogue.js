@@ -11,7 +11,7 @@
   const stepLabels = { 'warm-up': 'Warm-up', recovery: 'Recovery', work: 'Work', 'cool-down': 'Cool-down', race: 'Race' };
   const pace = seconds => Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') + '/km';
 
-  function buildProgramme(plans, current, { training, registry, gym, inventory, now, equipment }) {
+  function buildProgramme(plans, current, { training, registry, gym, inventory, now, equipment, rescheduleId, protectedWeek }) {
     const first = plans[0].start;
     if (plans.some(plan => plan.start < first)) throw Error('Choose a start date on or after ' + first + '.');
     const id = current?.config?.cataloguePlans ? current.config.programmeId : 'catalogue-' + plans[0].id;
@@ -29,7 +29,8 @@
       priority: strength?.snapshot.id === 'deadlift-specialisation' ? 'Deadlift' : strength ? 'Bench' : 'running',
       bench: strength ? 1 : 0, squat: strength ? 1 : 0, deadlift: strength ? 1 : 0,
       runs: running?.snapshot.sessionsPerWeek || 0, runGoal: 'fitness', event: 'none',
-      availableDays: weekdays.map(day => day.toLowerCase()), manualSplit: null, doubleDays: [],
+      availableDays: [...new Set(plans.flatMap(plan => training.scheduleOptions(plan.snapshot).days))]
+        .sort((a, b) => a - b).map(day => weekdays[day].toLowerCase()), manualSplit: null, doubleDays: [],
       ...(confirmed ? { equipmentInventory: confirmed } : {}),
       approvedAt: old.approvedAt || now, reviewedSnapshotVersion: 1,
     };
@@ -47,7 +48,11 @@
         const date = training.addDays(first, (target.week - 1) * 7 + source.day);
         const key = plan.id + '-w' + week.week + '-' + source.id;
         const saved = previous.get(key);
-        if (saved) { target.sessions.push(saved); continue; }
+        if (saved) {
+          const change = plan.id === rescheduleId && !protectedWeek(target.week) && source.kind !== 'event' && source.id !== 'race';
+          target.sessions.push(change ? { ...saved, scheduledDate: date, day: weekdays[source.day] } : saved);
+          continue;
+        }
         const name = source.title;
         const session = { id: id + '-' + key, catalogueOccurrenceId: key, day: weekdays[source.day],
           name, desc: source.note || '', scheduledDate: date, week: target.week, phase: target.phase,
@@ -87,6 +92,10 @@
         target.sessions.push(session);
       }
     }
+    for (const week of current?.weeks || []) {
+      weeks[week.week - 1]?.sessions.push(...week.sessions.filter(session =>
+        !session.catalogueOccurrenceId && session.preservedFromProgrammeId));
+    }
     for (const week of weeks) week.sessions.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
     return { schema: 'lhrf-shared-programme-v1', config, weeks };
   }
@@ -95,12 +104,92 @@
     const dialog = document.getElementById('catalogueSetupDialog');
     const startButtons = [document.getElementById('startCatalogueSetup'), document.getElementById('startNewProgramme')];
     const resetButton = document.getElementById('startFreshOnDevice');
-    document.getElementById('settingsProgramme').append(resetButton);
+    const management = document.getElementById('settingsProgramme');
+    const customButton = document.createElement('button');
+    customButton.type = 'button';
+    customButton.className = 'secondary';
+    customButton.textContent = 'Custom programme setup';
+    customButton.onclick = custom;
+    management.append(customButton, resetButton);
+    const scheduleButtons = document.createElement('div');
+    scheduleButtons.className = 'actions';
+    startButtons[0].parentElement.append(scheduleButtons);
     const otherButtons = document.querySelectorAll('[data-add-catalogue-discipline]');
     const host = dialog.querySelector('.catalogue-setup-content');
     const status = dialog.querySelector('[role="status"]');
     const training = root.LHRFCatalogueTraining;
     let setup;
+    let pendingReplacement = false;
+    const panel = document.createElement('section');
+    host.after(panel);
+    panel.hidden = true;
+    const close = dialog.querySelector('[data-close]');
+
+    function text(tag, value, parent) {
+      const element = document.createElement(tag);
+      element.textContent = value;
+      parent.append(element);
+      return element;
+    }
+
+    function action(label, parent, handler, secondary = false) {
+      const button = text('button', label, parent);
+      button.type = 'button';
+      if (secondary) button.className = 'secondary';
+      button.onclick = handler;
+      return button;
+    }
+
+    function showPanel(title) {
+      if (!dialog.open) dialog.showModal();
+      status.textContent = '';
+      host.hidden = true;
+      close.hidden = true;
+      panel.hidden = false;
+      panel.replaceChildren();
+      const heading = text('h1', title, panel);
+      heading.tabIndex = -1;
+      heading.focus();
+      dialog.scrollTop = 0;
+    }
+
+    function complete() {
+      const plans = state().customRoadmap?.cataloguePlans;
+      refresh();
+      openToday();
+      if (plans?.length !== 1) {
+        dialog.close();
+        return;
+      }
+      const missing = plans[0].snapshot.discipline === 'strength' ? 'running' : 'strength';
+      showPanel('Your programme is ready');
+      text('p', 'Want to add ' + disciplines[missing] + ' to your week?', panel);
+      const actions = text('div', '', panel);
+      actions.className = 'actions';
+      action('Set up ' + disciplines[missing], actions, () => open(missing));
+      action('Go to my programme', actions, () => dialog.close(), true);
+    }
+
+    function persistProgramme(programme, data) {
+      root.LHRFProgrammeReplacement.validateProgramme(programme);
+      const week = Math.min(programme.config.weeks, Math.max(1,
+        root.LHRFProgrammeReplacement.weekAt(programme.config, londonDay())));
+      const next = { ...data, customRoadmap: programme.config, activeCustomWeek: week,
+        activeSchedule: programme.weeks[week - 1].sessions, onboardingComplete: true,
+        reviewedProgramme: { ...data.reviewedProgramme, id: programme.config.programmeId,
+          config: programme.config, weeks: programme.weeks },
+      };
+      if (programme.config.equipmentInventory) next.equipmentInventory = programme.config.equipmentInventory;
+      publish(next);
+    }
+
+    const londonDay = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' });
+    function build(plans, data, options = {}) {
+      return buildProgramme(plans, data.reviewedProgramme, {
+        training, registry: root.LHRFExercises, gym: root.LHRFGymEquipment, now: new Date().toISOString(),
+        inventory: data.equipmentInventory ?? data.customRoadmap?.equipmentInventory, equipment: [], ...options,
+      });
+    }
 
     function catalogueState() {
       return (state().customRoadmap?.cataloguePlans || []).reduce((result, plan) =>
@@ -110,56 +199,87 @@
     async function approve(snapshot, start, equipment) {
       const data = state();
       const plans = training.enrol(catalogueState(), snapshot, start, root.crypto.randomUUID()).plans;
-      const now = new Date().toISOString();
-      const programme = buildProgramme(plans, data.reviewedProgramme, {
-        training, registry: root.LHRFExercises, gym: root.LHRFGymEquipment, now,
-        inventory: data.equipmentInventory ?? data.customRoadmap?.equipmentInventory, equipment,
-      });
+      const programme = build(plans, data, { equipment });
       root.LHRFProgrammeReplacement.validateProgramme(programme);
       if (data.customRoadmap && !data.customRoadmap.cataloguePlans) {
         await review(programme);
+        pendingReplacement = true;
         dialog.close();
         return;
       }
-      const week = Math.min(programme.config.weeks, Math.max(1, root.LHRFProgrammeReplacement.weekAt(
-        programme.config, new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/London' }))));
-      const next = { ...data, customRoadmap: programme.config, activeCustomWeek: week,
-        activeSchedule: programme.weeks[week - 1].sessions, onboardingComplete: true,
-        reviewedProgramme: { id: programme.config.programmeId, config: programme.config, weeks: programme.weeks },
-      };
-      if (programme.config.equipmentInventory) next.equipmentInventory = programme.config.equipmentInventory;
-      publish(next);
-      dialog.close();
-      openToday();
-      refresh();
+      persistProgramme(programme, data);
+      complete();
+    }
+
+    async function loadSetup() {
+      if (setup) return;
+      const response = await fetch('./catalogue-preview/index.html');
+      if (!response.ok) throw Error('Programme setup could not load. Try again.');
+      const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+      const section = page.querySelector('#catalogue');
+      section.prepend(page.querySelector('#message'));
+      for (const element of [section, ...section.querySelectorAll('[id], [for], [aria-labelledby]')]) {
+        for (const attr of ['id', 'for', 'aria-labelledby']) {
+          if (element.hasAttribute(attr)) element.setAttribute(attr, 'native-catalogue-' + element.getAttribute(attr));
+        }
+      }
+      host.replaceChildren(section);
+      setup = root.LHRFMountCatalogue(host, { state: catalogueState, approve });
+    }
+
+    async function editDays(plan) {
+      showPanel('Change ' + disciplines[plan.snapshot.discipline] + ' days');
+      text('p', 'Changes apply to future weeks with no recorded training. Event dates stay as scheduled.', panel);
+      try {
+        await loadSetup();
+        const form = text('form', '', panel);
+        const fields = setup.weekdayFields(plan.snapshot);
+        fields.querySelector('[name="eventDay"]')?.closest('label').setAttribute('hidden', '');
+        form.append(fields);
+        const save = text('button', 'Save training days', form);
+        save.type = 'submit';
+        action('Cancel', form, () => dialog.close(), true);
+        form.onsubmit = event => {
+          event.preventDefault();
+          try {
+            const data = state();
+            const plans = data.customRoadmap.cataloguePlans.map(item => item.id === plan.id
+              ? { ...item, snapshot: setup.scheduleFromForm(item.snapshot, new FormData(form)) } : item);
+            const today = londonDay();
+            const firstDate = data.customRoadmap.startDate;
+            const savedDates = data.reviewedProgramme.weeks;
+            const logs = [...(data.sets || []), ...(data.runs || []), ...(data.completedWorkouts || [])];
+            const protectedWeek = week => training.addDays(firstDate, (week - 1) * 7) <= today ||
+              savedDates[week - 1].sessions.some(session => logs.some(log => {
+                const id = String(log.sessionId || log.id || log.parentId || '').replace(/::(run|strength)$/, '');
+                return id === session.id || (!id && String(log.date || '').slice(0, 10) === session.scheduledDate);
+              }));
+            persistProgramme(build(plans, data, { rescheduleId: plan.id, protectedWeek }), data);
+            dialog.close();
+          } catch (error) { status.textContent = error.message; dialog.scrollTop = 0; }
+        };
+      } catch (error) { status.textContent = error.message; }
     }
 
     async function open(discipline) {
       if (!dialog.open) dialog.showModal();
-      dialog.querySelector('[data-close]').hidden = !state().onboardingComplete;
+      close.hidden = !state().onboardingComplete;
+      host.hidden = false;
+      panel.hidden = true;
       status.textContent = '';
       try {
-        if (!setup) {
-          const response = await fetch('./catalogue-preview/index.html');
-          if (!response.ok) throw Error('Programme setup could not load. Try again.');
-          const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-          const section = page.querySelector('#catalogue');
-          section.prepend(page.querySelector('#message'));
-          for (const element of [section, ...section.querySelectorAll('[id], [for], [aria-labelledby]')]) {
-            for (const attr of ['id', 'for', 'aria-labelledby']) {
-              if (element.hasAttribute(attr)) element.setAttribute(attr, 'native-catalogue-' + element.getAttribute(attr));
-            }
-          }
-          host.replaceChildren(section);
-          setup = root.LHRFMountCatalogue(host, { state: catalogueState, approve });
-        }
-        setup(discipline);
+        await loadSetup();
+        setup.open(discipline);
       } catch (error) { status.textContent = error.message; }
     }
 
     const disciplines = { strength: 'strength training', running: 'running' };
     function refresh() {
-      const enrolled = new Set((state().customRoadmap?.cataloguePlans || []).map(plan => plan.snapshot.discipline));
+      const plans = state().customRoadmap?.cataloguePlans || [];
+      const enrolled = new Set(plans.map(plan => plan.snapshot.discipline));
+      scheduleButtons.replaceChildren();
+      for (const plan of plans) action('Change ' + disciplines[plan.snapshot.discipline] + ' days',
+        scheduleButtons, () => editDays(plan), true);
       const missing = Object.keys(disciplines).find(discipline => !enrolled.has(discipline));
       for (const button of startButtons) button.hidden = enrolled.size > 0;
       for (const other of otherButtons) {
@@ -170,13 +290,15 @@
       resetButton.hidden = !state().onboardingComplete;
     }
     for (const button of startButtons) button.onclick = () => open();
-    dialog.querySelector('[data-close]').addEventListener('click', () => { dialog.close(); openPlan(); });
-    dialog.querySelector('[data-custom]').addEventListener('click', () => { dialog.close(); custom(); });
+    close.addEventListener('click', () => { dialog.close(); openPlan(); });
     dialog.addEventListener('cancel', event => { if (!state().onboardingComplete) event.preventDefault(); });
     resetButton.addEventListener('click', reset);
     for (const tab of document.querySelectorAll('nav [data-screen]')) tab.addEventListener('click', refresh);
     refresh();
-    return { open, refresh };
+    return { open, refresh, afterReplacement: () => {
+      if (pendingReplacement && state().customRoadmap?.cataloguePlans?.length === 1) complete();
+      pendingReplacement = false;
+    } };
   }
 
   const api = { buildProgramme, mount };
