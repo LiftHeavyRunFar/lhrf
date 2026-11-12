@@ -211,7 +211,7 @@ button{border-radius:12px!important}button:not(.ghost):not(.secondary){backgroun
 .lhrf-run-prescription>p{color:#b4d4e9;font-size:13px}
 
 #programmeReplacement{overflow-wrap:anywhere}#programmeReplacement section{min-width:0}#programmeReplacement input[type="checkbox"]{width:auto;margin-right:8px}#programmeReplacement label{display:block;margin:12px 0}
-</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/training-flow.js"></script><script src="./src/android-polish.js"></script><script src="./src/run-presentation.js"></script><script src="./src/training-review.js"></script><script src="./src/programme-replacement.js"></script><script src="./src/training-backup.js"></script><script src="./src/running-workouts.js"></script><script src="./src/coaching-evidence.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/gym-equipment.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script><script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script><script src="./src/garmin-workout.js"></script><script src="./src/intervals-sync.js"></script><style>
+</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/training-flow.js"></script><script src="./src/android-polish.js"></script><script src="./src/run-presentation.js"></script><script src="./src/training-review.js"></script><script src="./src/fatigue-evidence.js"></script><script src="./src/programme-replacement.js"></script><script src="./src/training-backup.js"></script><script src="./src/running-workouts.js"></script><script src="./src/coaching-evidence.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/gym-equipment.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script><script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script><script src="./src/garmin-workout.js"></script><script src="./src/intervals-sync.js"></script><style>
 /* A single, unboxed masthead; the original logo blends into the page surface. */
 body{background:#03070e!important}
 header#appHeader{position:sticky!important;top:0;z-index:20;max-width:none;min-height:0;margin:0!important;padding:calc(4px + env(safe-area-inset-top)) 16px 4px!important;background:#03070e;border:0;border-radius:0;box-shadow:none;text-align:center}
@@ -1533,7 +1533,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],...(e[5]?.exerciseId?{exerciseId:e[5].exerciseId,variantId:e[5].variantId,loadType:e[5].loadType,doseUnit:e[5].doseUnit}:{}),set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
   if(live.runLogged&&live.runEntry){data.runs=data.runs||[];data.runs.push({date:stamp,km:live.runEntry.km,min:live.runEntry.min,rpe:live.runEntry.rpe,type:live.runs?.[0]?.role||'run',sessionId:live.id,session:live.name,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,notes:note})}
   data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,parentId:live.parentId||null,component:live.component||null,name:live.name,day:live.day,date:stamp,week:live.sourceProgrammeWeek||data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged,notes:note,prescription:JSON.parse(JSON.stringify({ex:live.ex,runs:live.runs||[]})),...(live.timeAdaptation?{timeAdaptation:live.timeAdaptation,originalPrescription:live.timeAdaptation.originalPrescription}:{})});
-  const finishedSession={id:live.id,name:live.name,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,completedRun:!!live.runLogged};
+  const finishedSession={id:live.id,name:live.name,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,completedRun:!!live.runLogged,completedSets:done.length,plannedSets:total()};
   if(!save()){data=beforeFinish;document.getElementById('liveError').textContent='Could not save. Your workout remains open; retry when storage is available.';return}live=null;persist();clearRunningToolsSelection();status();populate();refresh();go('train');showLiveFeedback(finishedSession);
 
  };
@@ -1544,12 +1544,27 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   overlay.innerHTML=`<div role="dialog" aria-modal="true" aria-labelledby="liveFeedbackTitle" style="background:var(--card,#171b24);color:var(--text,#fff);border:1px solid var(--border,#39404d);border-radius:18px;padding:20px;width:min(100%,420px);max-height:90vh;overflow-y:auto"><div class="tag">WORKOUT SAVED</div><h2 id="liveFeedbackTitle">Quick session feedback</h2><p class="muted small">Optional. Helps your coach identify fatigue trends.</p><div class="field"><label for="liveFeedbackDifficulty">Difficulty compared with expectation</label><select id="liveFeedbackDifficulty"><option value="">Not answered</option><option value="easier">Easier</option><option value="expected">As expected</option><option value="harder">Harder</option></select></div><div class="field"><label for="liveFeedbackEnergy">Energy during training</label><select id="liveFeedbackEnergy"><option value="">Not answered</option><option value="good">Good</option><option value="okay">Okay</option><option value="low">Low</option></select></div><div class="field"><label for="liveFeedbackDiscomfort">Unusual discomfort?</label><select id="liveFeedbackDiscomfort"><option value="">Not answered</option><option value="no">No</option><option value="yes">Yes</option></select></div><div class="actions" style="margin-top:18px"><button id="liveFeedbackSave">Save feedback</button><button id="liveFeedbackSkip" class="secondary">Skip</button></div><p id="liveFeedbackError" class="muted small" aria-live="polite"></p></div>`;
   if(session.completedRun)overlay.querySelector('.actions').before(
    LHRFTrainingReview.runInterruptionField('','liveFeedbackInterruption'));
+  // Experimental capture is opt-in and separate from the saved programme and coach.
+  const evidenceEnabled=data.featureFlags?.fatigueEvidenceCapture===true &&
+   Array.isArray(data.customRoadmap?.cataloguePlans) && !!window.LHRFFatigueEvidence;
+  if(evidenceEnabled){
+   const fields=document.createElement('div');fields.id='fatigueEvidenceFields';
+   const choices='<option value="">Not answered</option><option value="yes">Yes</option><option value="no">No</option>';
+   fields.innerHTML='<div class="field"><label for="fatigueUnusual">Unusually fatigued during this workout?</label><select id="fatigueUnusual">'+choices+'</select></div>'+
+    (session.completedRun?'<div class="field"><label for="fatigueRunEffort">Overall running effort, 1–10 (optional)</label><input id="fatigueRunEffort" type="number" min="1" max="10" step="0.5"></div><div class="field"><label for="fatigueConditions">Were conditions similar to your comparable runs?</label><select id="fatigueConditions">'+choices+'</select></div><div class="field"><label for="fatigueMeasurement">Were the distance and time measurements reliable?</label><select id="fatigueMeasurement">'+choices+'</select></div>':'');
+   if(!session.completedRun&&session.completedSets<session.plannedSets){
+    const reason=LHRFTrainingReview.runInterruptionField('','liveFeedbackInterruption');
+    reason.firstChild.textContent='If you cut the workout short, why?';fields.append(reason);
+   }
+   overlay.querySelector('.actions').before(fields);
+  }
   document.body.appendChild(overlay);
   overlay.querySelector('#liveFeedbackSkip').onclick=()=>overlay.remove();
   overlay.querySelector('#liveFeedbackSave').onclick=()=>{
    const difficulty=overlay.querySelector('#liveFeedbackDifficulty').value,energy=overlay.querySelector('#liveFeedbackEnergy').value,discomfort=overlay.querySelector('#liveFeedbackDiscomfort').value;
    const interruptionReason=overlay.querySelector('#liveFeedbackInterruption')?.value;
-   if(!difficulty&&!energy&&!discomfort&&!interruptionReason){overlay.querySelector('#liveFeedbackError').textContent='Choose at least one answer, or tap Skip.';return}
+   const unusualFatigue=overlay.querySelector('#fatigueUnusual')?.value||'',comparableConditions=overlay.querySelector('#fatigueConditions')?.value||'',reliableMeasurement=overlay.querySelector('#fatigueMeasurement')?.value||'',runEffort=overlay.querySelector('#fatigueRunEffort')?.value||'';
+   if(!difficulty&&!energy&&!discomfort&&!interruptionReason&&!unusualFatigue&&!comparableConditions&&!reliableMeasurement&&!runEffort){overlay.querySelector('#liveFeedbackError').textContent='Choose at least one answer, or tap Skip.';return}
    if(session.trialRecordAt){
     try{
      const key='lhrf-v2-genuine-training-log',logs=JSON.parse(LHRFStorage.local.getItem(key)||'[]');
@@ -1563,7 +1578,11 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
     return;
    }
    const feedback={date:new Date().toISOString(),week:session.week,sessionId:session.id,session:session.name,difficulty,energy,discomfort,...(interruptionReason?{interruptionReason}:{})};
-   const next={...data,sessionFeedback:[...(data.sessionFeedback||[]),feedback]};
+   let next={...data,sessionFeedback:[...(data.sessionFeedback||[]),feedback]};
+   if(evidenceEnabled&&(unusualFatigue||comparableConditions||reliableMeasurement||runEffort||interruptionReason)){
+    try{next=LHRFFatigueEvidence.append(next,{discipline:session.completedRun?'running':'strength',sessionId:session.id,recordedAt:feedback.date,unusualFatigue,comparableConditions,reliableMeasurement,runEffort:runEffort===''?null:Number(runEffort),interruptionReason});}
+    catch(err){overlay.querySelector('#liveFeedbackError').textContent='Check your answers and try again. Your workout is still safely logged.';return}
+   }
    if(!save(next,{notify:false})){
     overlay.querySelector('#liveFeedbackError').textContent='Feedback could not be saved. Your workout is still safely logged.';
     return;
