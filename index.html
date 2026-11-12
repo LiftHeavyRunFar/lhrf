@@ -1344,10 +1344,10 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   if(!persist()){live=null;alert('Could not save the workout. Check device storage and try again.');return}
   expanded=0;go('train');status();
  }
- function chooseWorkoutPart(session){
+ function chooseWorkoutPart(session,planned){
   const overlay=document.createElement('div');overlay.id='livePreview';overlay.className='card';overlay.style.cssText='position:fixed;z-index:40;left:12px;right:12px;bottom:100px;max-width:540px;margin:auto;box-shadow:0 0 0 200vmax #000b';overlay.innerHTML='<h2>Choose your workout</h2><p class="muted small">Choose strength or running.</p>';
   const estimate=LHRFCoachConstraints.estimateSession(session),timing=document.createElement('p');timing.className='muted small';timing.textContent=estimate.baselineRangeMinutes?'Estimated total: '+estimate.baselineRangeMinutes.min+'–'+estimate.baselineRangeMinutes.max+' min':'Full mixed-visit duration needs a representative running prescription.';overlay.appendChild(timing);
-  workoutParts(session).forEach(part=>{const b=document.createElement('button');b.style.cssText='display:block;width:100%;margin-top:12px';b.textContent=(sessionCompleted(part)?'✓ Completed · ':'')+part.name;b.onclick=()=>{overlay.remove();session.timeAdaptation?previewSession(part.id,{session:part,date:scheduledDate(part),week:Number(data.activeCustomWeek)||1,timeAdjusted:true}):previewSession(part.id)};overlay.appendChild(b)});const close=document.createElement('button');close.className='secondary';close.textContent='Close';close.onclick=()=>overlay.remove();overlay.appendChild(close);document.body.appendChild(overlay);LHRFMobileUX.modal(overlay);
+  workoutParts(session).forEach(part=>{const b=document.createElement('button');b.style.cssText='display:block;width:100%;margin-top:12px';b.textContent=(sessionCompleted(part)?'✓ Completed · ':'')+part.name;b.onclick=()=>{overlay.remove();planned?.adHoc?previewSession(part.id,{...planned,session:part}):session.timeAdaptation?previewSession(part.id,{session:part,date:scheduledDate(part),week:Number(data.activeCustomWeek)||1,timeAdjusted:true}):previewSession(part.id)};overlay.appendChild(b)});const close=document.createElement('button');close.className='secondary';close.textContent='Close';close.onclick=()=>overlay.remove();overlay.appendChild(close);document.body.appendChild(overlay);LHRFMobileUX.modal(overlay);
  }
  function beginReadiness(session,reopen){
   const current=session.timeAdaptation?session:(effectiveSession(session.id)||session);
@@ -1419,8 +1419,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  }
 
  function previewSession(id,planned){const raw=planned?.session||effectiveSession(id);let session=raw&&data.customRoadmap?ensureKnownLiftLoads([raw],data.customRoadmap)[0]:raw;if(!session){alert('Select an active workout from Today.');return}
-  if(!planned&&workoutParts(session).length>1){chooseWorkoutPart(session);return}
-  if(!planned&&sessionCompleted(session)){window.LHRFOpenWorkoutHistory(session,Number(session.sourceProgrammeWeek||data.activeCustomWeek||1));return}
+  if((!planned||planned.adHoc)&&workoutParts(session).length>1){chooseWorkoutPart(session,planned);return}
+  if((!planned||planned.adHoc)&&sessionCompleted(session)){window.LHRFOpenWorkoutHistory(session,Number(session.sourceProgrammeWeek||data.activeCustomWeek||1));return}
   preview=session;if(session.runs?.length){selectedCanonicalRunId=(session.parentId||session.id)+':0';buildRunPlan()}
   const old=document.getElementById('livePreview');if(old)old.remove();
   const dialog=document.createElement('div');dialog.id='livePreview';dialog.className='card';dialog.style.cssText='position:fixed;z-index:30;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));max-width:540px;margin:auto;box-shadow:0 0 0 200vmax #0009;max-height:75vh;overflow:auto';
@@ -1470,12 +1470,12 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    };renderTime();const history=LHRFCoachConstraints.reviewTimeHistory((data.completedWorkouts||[]).filter(w=>w.timeAdaptation).map(w=>({reason:w.timeAdaptation.reason,date:String(w.date).slice(0,10)})));if(history.requiresAthleteApproval){const note=document.createElement('p');note.textContent=history.recommendation+' No programme changes have been applied.';panel.appendChild(note)}dialog.insertBefore(panel,dialog.querySelector('.live-actions'));
   }
   const startButton=dialog.querySelector('#previewStart');
-  if((planned&&!planned.timeAdjusted)||sessionCompleted(session)||(!(session.ex||[]).length&&!(session.runs||[]).length))startButton.remove();
+  if((planned&&!planned.timeAdjusted&&!planned.adHoc)||sessionCompleted(session)||(!(session.ex||[]).length&&!(session.runs||[]).length))startButton.remove();
   else if(live&&live.id===id)startButton.textContent='Resume workout';
   dialog.querySelector('#previewClose').onclick=()=>dialog.remove();
   if(startButton.isConnected)startButton.onclick=()=>{
    const parts=workoutParts(session);
-   if(parts.length>1){dialog.remove();chooseWorkoutPart(session);return}
+   if(parts.length>1){dialog.remove();chooseWorkoutPart(session,planned);return}
    if(live&&live.id===id){dialog.remove();go('train');return}
    if(live){alert('Finish or discard your active workout first. Your sets are safely kept.');return}
    dialog.remove();beginReadiness(session,()=>previewSession(id,planned));
@@ -1496,6 +1496,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  if(new URLSearchParams(location.search).get('trialTrain')==='1')requestAnimationFrame(openV2LiveHandoff);
  window.openWorkout=previewSession;
  window.previewPlannedWorkout=(session,date,week)=>previewSession(session.id,{session,date,week});
+ window.LHRFPreviewCompetitionSession=(session,week)=>{if(LHRFStorage.competition)previewSession(session.id,{session,date:scheduledDate(session),week,adHoc:true})};
  window.finishLiveWorkout=async function(){if(!live||document.getElementById('finishSessionDialog'))return;const done=Object.values(live.entries).filter(v=>v.done);if(live.runs?.length&&!live.runLogged){live.runStage=true;persist();status();document.getElementById('liveRunSection')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('liveRunError').textContent='Log your completed run above before finishing.';return}if(!done.length&&!live.runLogged){document.getElementById('liveError').textContent='Log at least one set or a completed run before finishing.';return}const finishing=live;if(!await LHRFAndroidPolish.finishDialog(done.length,live.runLogged)||live!==finishing)return;
   const stamp=new Date().toISOString();const note=live.notes||'';
   if(live.v2Trial){
@@ -2406,7 +2407,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 },commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/programme-replacement-ui.js"></script><script>
 (function(){
  const apply=next=>{data=next;schedule=next.activeSchedule;populate();refresh();planDashSelection=next.activeCustomWeek;renderPlanDashboard();window.LHRFLive?.render?.();window.LHRFCatalogueAfterReplacement?.()};
- window.LHRFSelectReviewedWeek=(w,confirmSwitch=true)=>{if(!data.reviewedProgramme||w<1||w>data.customRoadmap.weeks)return;if(window.LHRFLive?.get?.()||LHRFStorage.local.getItem('lhrf_fresh_beta_live_v1114_pendingRun')){alert('Finish the active workout first.');return}if(confirmSwitch&&!confirm('Show reviewed week '+w+'? Frozen prescriptions and all training records are retained.'))return;const next=JSON.parse(JSON.stringify(data));next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);const previous=data;data=next;if(!save()){data=previous;return}apply(next);return true};
+ window.LHRFSelectReviewedWeek=w=>{if(!data.reviewedProgramme||w<1||w>data.customRoadmap.weeks)return;if(window.LHRFLive?.get?.()||LHRFStorage.local.getItem('lhrf_fresh_beta_live_v1114_pendingRun')){alert('Finish the active workout first.');return}if(!confirm('Show reviewed week '+w+'? Frozen prescriptions and all training records are retained.'))return;const next=JSON.parse(JSON.stringify(data));next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);const previous=data;data=next;if(!save()){data=previous;return}apply(next)};
 
  window.LHRFSyncReviewedCalendar=()=>{if(!data.reviewedProgramme||window.LHRFLive?.get?.()||LHRFStorage.local.getItem('lhrf_fresh_beta_live_v1114_pendingRun'))return;const date=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'}),w=Math.min(data.customRoadmap.weeks,Math.max(1,LHRFProgrammeReplacement.weekAt(data.customRoadmap,date)));if(w===Number(data.activeCustomWeek))return;const next=JSON.parse(JSON.stringify(data)),previous=data;next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);data=next;if(!save()){data=previous;return}apply(next)};
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)window.LHRFSyncReviewedCalendar()});window.LHRFSyncReviewedCalendar();
@@ -2459,10 +2460,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
     data=next;schedule=next.activeSchedule;planDashSelection=next.activeCustomWeek;
     populate();refresh();go('plan');
    },
-   openSession:(session,week)=>{
-    if(week===Number(data.activeCustomWeek)||LHRFSelectReviewedWeek(week,false))window.openWorkout(session.id);
-    else window.previewPlannedWorkout(session,new Date(session.scheduledDate+'T12:00:00'),week);
-   },
+   openSession:(session,week)=>window.LHRFPreviewCompetitionSession(session,week),
    leave:()=>location.assign(new URL('./',location.href))
   });
   document.querySelector('nav [data-screen="plan"]').addEventListener('click',render);

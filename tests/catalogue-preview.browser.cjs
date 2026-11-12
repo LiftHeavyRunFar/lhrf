@@ -163,6 +163,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await context.setOffline(false);
     const installed = await browser.newContext({ ...devices['Pixel 7'] });
     const existingApp = await installed.newPage();
+    existingApp.on('pageerror', error => console.error(error.stack));
     const existingLog = [{ exercise: 'Bench press', weight: 100, reps: 5, date: '2026-11-08T12:00:00Z' }];
     await existingApp.addInitScript(sets => {
       const key = 'lhrf_beta_v1118_clean';
@@ -268,7 +269,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await importStatus.filter({ hasText: /.+/ }).waitFor({ timeout: 5000 });
     assert.equal(await importStatus.innerText(), 'Competition programme saved on this device.');
     await existingApp.getByRole('button', { name: /Competition practice 2/ }).click();
-    await existingApp.locator('#previewStart').click();
+    await existingApp.locator('#previewStart').click({ timeout: 6000 });
     await existingApp.locator('#readinessContinue').click();
     await existingApp.locator('.live-set [data-field="rpe"]').first().fill('6');
     await existingApp.locator('.live-set .set-check').first().click();
