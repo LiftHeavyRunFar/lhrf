@@ -166,7 +166,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await context.setOffline(false);
     const installed = await browser.newContext({ ...devices['Pixel 7'] });
     const existingApp = await installed.newPage();
-    existingApp.on('pageerror', error => errors.push(error.message));
+    existingApp.on('pageerror', error => errors.push(error.stack || error.message));
     await existingApp.clock.setFixedTime(new Date('2026-11-12T12:00:00Z'));
     const existingLog = [{ exercise: 'Bench press', weight: 100, reps: 5, date: '2026-11-08T12:00:00Z' }];
     await existingApp.addInitScript(sets => {
@@ -268,6 +268,9 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.deepEqual(movedStrength.map(s => s.day), ['Tue', 'Thu', 'Fri', 'Sun']);
     assert.deepEqual(movedStrength.map(s => [s.id, s.ex]), strengthSessions.map(s => [s.id, s.ex]));
     assert.equal(existingApp.url(), appUrl);
+    await existingApp.reload();
+    assert.deepEqual(await nativeState(), moved);
+    await existingApp.locator('nav [data-screen="plan"]').click();
     const api = require('../src/programme-replacement');
     const compProgramme = {
       schema: 'lhrf-shared-programme-v1',
