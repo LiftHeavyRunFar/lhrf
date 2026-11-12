@@ -8,6 +8,7 @@ test('legacy records remain intact and missing answers are unknown', () => {
  const snapshot=structuredClone(old), next=evidence.append(old,input), item=next.fatigueEvidence[0];
  assert.deepEqual(old,snapshot); assert.deepEqual(next.sets,snapshot.sets); assert.deepEqual(next.runs,snapshot.runs);
  assert.equal(item.interruptionReason,null); assert.equal(item.unusualFatigue,'unknown');
+ assert.equal(item.painOrDiscomfort,'unknown'); assert.equal(item.illness,'unknown');
  assert.equal(item.comparableConditions,'unknown'); assert.equal(item.reliableMeasurement,'unknown'); assert.equal(item.runEffort,null);
  assert.deepEqual(evidence.signals(item),{fatigueSupporting:false,safetyConcern:false,explicitRunningContext:false});
 });
@@ -41,4 +42,16 @@ test('observations round-trip without rewriting existing completed work', () => 
  const after=JSON.parse(JSON.stringify(evidence.append(before,{...input,interruptionReason:'fatigue'})));
  assert.deepEqual(after.completedWorkouts,before.completedWorkouts); assert.deepEqual(after.fatigueEvidence[0],{legacy:'kept'});
  assert.equal(after.fatigueEvidence[1].interruptionReason,'fatigue');
+});
+
+test('explicit pain or illness remains independent of fatigue, including co-occurrence', () => {
+ for (const key of ['painOrDiscomfort','illness']) {
+  const pain=evidence.create({...input,[key]:'yes'});
+  assert.equal(evidence.signals(pain).safetyConcern,true);
+  assert.equal(evidence.signals(pain).fatigueSupporting,false);
+  const both=evidence.create({...input,[key]:'yes',unusualFatigue:'yes'});
+  assert.equal(evidence.signals(both).safetyConcern,true);
+  assert.equal(evidence.signals(both).fatigueSupporting,true);
+  assert.equal(evidence.signals(evidence.create({...input,[key]:'no'})).safetyConcern,false);
+ }
 });
