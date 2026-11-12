@@ -86,8 +86,12 @@ async function runOne(browser,p){
   const session=installed.activeSchedule.find(s=>s.ex?.length||s.runs?.length);
   assert.ok(session,'No executable first workout');
   record.firstWorkout={id:session.id,day:session.day,exercises:session.ex?.length||0,runs:session.runs?.length||0};
-  await page.evaluate(id=>openWorkout(id),session.runs?.length&&!session.ex?.length?session.id+'::run':session.id);
-  assert.ok(await page.locator('#livePreview').count(),'Workout preview absent');
+  record.availableWorkoutIds=await page.locator('[data-session-id]').evaluateAll(els=>els.map(e=>e.getAttribute('data-session-id')).slice(0,20));
+  for(const id of [session.id+(session.runs?.length&&!session.ex?.length?'::run':''),session.id,session.id+'::run',session.id+'::strength']){
+    try{await page.evaluate(key=>openWorkout(key),id)}catch(error){record.previewErrors=(record.previewErrors||[]).concat(id+': '+error.message)}
+    if(await page.locator('#livePreview').count()){record.openedId=id;break}
+  }
+  assert.ok(await page.locator('#livePreview').count(),'Workout preview absent; available ids '+record.availableWorkoutIds.join(','));
   steps.push('first workout previewed');
   await page.locator('#previewStart').click();
   if(await page.locator('#readinessModal[open]').count())await page.locator('#readinessContinue').click();
@@ -103,6 +107,7 @@ async function runOne(browser,p){
     await page.locator('.set-check').first().click();
   }
   await page.locator('#liveFinish').click();
+  record.finishDebug={liveError:await page.locator('#liveError').allTextContents(),finishDialogCount:await page.locator('#finishSessionDialog').count(),buttons:await page.locator('button:visible').allTextContents().then(x=>x.slice(-15)),errors:errors.slice()};
   await page.locator('#finishAndSave').click();
   if(await page.locator('#liveFeedbackSkip').count())await page.locator('#liveFeedbackSkip').click();
   const saved=await state();
@@ -129,6 +134,6 @@ async function runOne(browser,p){
  let results;
  try{results=[];for(const p of people)results.push(await runOne(browser,p));}
  finally{await browser.close();}
- console.log('LHRF_FIVE_ATHLETE_RESULTS='+JSON.stringify(results.map(r=>({profile:r.profile,passed:r.passed,steps:r.steps,failure:r.failure?.slice(0,400)}))));
+ console.log('LHRF_FIVE_ATHLETE_RESULTS='+JSON.stringify(results.map(r=>({profile:r.profile,passed:r.passed,steps:r.steps,failure:r.failure?.slice(0,400),finishDebug:r.finishDebug,availableWorkoutIds:r.availableWorkoutIds,errors:r.errors}))));
  if(results.some(r=>!r.passed))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1});
