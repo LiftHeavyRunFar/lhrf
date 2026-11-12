@@ -2406,7 +2406,6 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
 },commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/programme-replacement-ui.js"></script><script>
 (function(){
  const apply=next=>{data=next;schedule=next.activeSchedule;populate();refresh();planDashSelection=next.activeCustomWeek;renderPlanDashboard();window.LHRFLive?.render?.();window.LHRFCatalogueAfterReplacement?.()};
- window.LHRFApplyReviewedProgramme=apply;
  window.LHRFSelectReviewedWeek=(w,confirmSwitch=true)=>{if(!data.reviewedProgramme||w<1||w>data.customRoadmap.weeks)return;if(window.LHRFLive?.get?.()||LHRFStorage.local.getItem('lhrf_fresh_beta_live_v1114_pendingRun')){alert('Finish the active workout first.');return}if(confirmSwitch&&!confirm('Show reviewed week '+w+'? Frozen prescriptions and all training records are retained.'))return;const next=JSON.parse(JSON.stringify(data));next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);const previous=data;data=next;if(!save()){data=previous;return}apply(next);return true};
 
  window.LHRFSyncReviewedCalendar=()=>{if(!data.reviewedProgramme||window.LHRFLive?.get?.()||LHRFStorage.local.getItem('lhrf_fresh_beta_live_v1114_pendingRun'))return;const date=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'}),w=Math.min(data.customRoadmap.weeks,Math.max(1,LHRFProgrammeReplacement.weekAt(data.customRoadmap,date)));if(w===Number(data.activeCustomWeek))return;const next=JSON.parse(JSON.stringify(data)),previous=data;next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);data=next;if(!save()){data=previous;return}apply(next)};
@@ -2457,7 +2456,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
    save:next=>{
     if(active())throw Error('Finish the active competition workout first.');
     if(!save(next,{notify:false}))throw Error(lhrfSaveError);
-    LHRFApplyReviewedProgramme(next);
+    data=next;schedule=next.activeSchedule;planDashSelection=next.activeCustomWeek;
+    populate();refresh();go('plan');
    },
    openSession:(session,week)=>{
     if(week===Number(data.activeCustomWeek)||LHRFSelectReviewedWeek(week,false))window.openWorkout(session.id);

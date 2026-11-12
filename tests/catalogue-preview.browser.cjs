@@ -264,6 +264,9 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     });
     await existingApp.getByLabel('Programme fingerprint', { exact: true }).fill(packet.reviewFingerprint);
     await existingApp.getByRole('button', { name: 'Save competition programme', exact: true }).click();
+    const importStatus = existingApp.locator('#competitionProgramme [role="status"]');
+    await importStatus.filter({ hasText: /.+/ }).waitFor({ timeout: 5000 });
+    assert.equal(await importStatus.innerText(), 'Competition programme saved on this device.');
     await existingApp.getByRole('button', { name: /Competition practice 2/ }).click();
     await existingApp.locator('#previewStart').click();
     await existingApp.locator('#readinessContinue').click();
@@ -271,7 +274,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await existingApp.locator('.live-set .set-check').first().click();
     await existingApp.locator('#liveFinish').click();
     await existingApp.locator('#finishAndSave').click();
-    await existingApp.locator("#liveFeedbackDifficulty").selectOption("expected");
+    await existingApp.locator('#liveFeedbackDifficulty').selectOption('expected');
     await existingApp.locator('#liveFeedbackSave').click();
     assert.equal((await competitionState()).sets.length, 1);
     assert.deepEqual(await nativeState(), moved);
