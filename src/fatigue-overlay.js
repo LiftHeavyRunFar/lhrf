@@ -3,22 +3,42 @@
  const training=typeof module==='object'&&module.exports?require('./catalogue-training.js'):root.LHRFCatalogueTraining;
  const protection=typeof module==='object'&&module.exports?require('./catalogue-protection.js'):root.LHRFCatalogueProtection;
  const assessment=typeof module==='object'&&module.exports?require('./fatigue-assessment.js'):root.LHRFFatigueAssessment;
+ const registry=typeof module==='object'&&module.exports?require('./exercise-registry.js'):root.LHRFExercises;
  const copy=x=>JSON.parse(JSON.stringify(x));
  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
  const day=x=>{training.parseDate(x);return x};
+ function canonicalMatches(state,native,session,key){
+  try{
+   const matches=[];for(const plan of state.plans)for(const week of plan.snapshot.weeks)for(const source of week.sessions)if(plan.id+'-w'+week.week+'-'+source.id===key)matches.push(source);
+   if(matches.length!==1)return false;
+   const source=matches[0];
+   // Compare a single session directly against its immutable catalogue source.
+   // Running projection remains unverified and therefore fails closed.
+   if(source.kind!=='strength'||!Array.isArray(source.groups)||session.name!==source.title||session.desc!==(source.note||'')||session.run!==false||!same(session.runs,[]))return false;
+   const ex=source.groups.map(group=>{
+    const exercise=registry.resolve(group.exerciseId==='below-knee-paused-deadlift'?'Deadlift paused below the knee':group.exerciseId);
+    if(!exercise)throw Error('Unknown exercise');
+    const notes=[group.technique,group.purpose,group.perSide?'Complete the listed reps on each side.':'',group.rpeMode==='cap'?'Cap effort at RPE '+group.rpe+'.':'',group.rpeMin?'Target RPE '+group.rpeMin+'–'+group.rpe+'.':''];
+    return [exercise.label,group.sets,group.reps,group.suggestedWeightKg||0,group.rpe,{exerciseId:exercise.id,loadType:exercise.loadType,doseUnit:group.doseUnit||exercise.doseUnit,perSide:group.perSide===true,role:'straight',category:group.kind==='lift'?'primary':'accessory',priority:group.kind==='lift'?'essential':'supporting',effortGovernsLoad:true,competition:group.exerciseId.startsWith('competition-'),cue:notes.filter(Boolean).join(' ')}];
+   });
+   return same(session.ex,ex);
+  }catch{return false}
+ }
  function bound(state,native,proposal){
   const plans=native?.customRoadmap?.cataloguePlans, weeks=native?.reviewedProgramme?.weeks;
   if(!Array.isArray(state?.plans)||!Array.isArray(plans)||!Array.isArray(weeks)||!same(state.plans,plans))return false;
   const observations=[...(proposal?.baseline||[]),...(proposal?.regression||[])];
   if(observations.length!==5||new Set(observations.map(o=>o.sessionId)).size!==5)return false;
   const sessions=weeks.flatMap(w=>Array.isArray(w.sessions)?w.sessions:[]);
-  return observations.every(observation=>sessions.some(session=>{
-   if(!session?.catalogueOccurrenceId||!(observation.sessionId===session.id||observation.sessionId===session.id+'::strength'||observation.sessionId===session.id+'::run'))return false;
+  return observations.every(observation=>{
+   const matched=sessions.filter(session=>session?.catalogueOccurrenceId&&(observation.sessionId===session.id||observation.sessionId===session.id+'::strength'||observation.sessionId===session.id+'::run'));
+   if(matched.length!==1)return false;
+   const session=matched[0];
    const matches=plans.filter(p=>(p.snapshot?.weeks||[]).some(w=>(w.sessions||[]).some(s=>p.id+'-w'+w.week+'-'+s.id===session.catalogueOccurrenceId)));
    const logs=(native.completedWorkouts||[]).filter(w=>w.id===observation.sessionId&&String(w.date).slice(0,10)===observation.date);
-   return matches.length===1&&matches[0].snapshot.discipline===proposal.discipline&&session.scheduledDate===observation.date&&logs.length===1&&
+   return matches.length===1&&matches[0].snapshot.discipline===proposal.discipline&&session.scheduledDate===observation.date&&logs.length===1&&canonicalMatches(state,native,session,session.catalogueOccurrenceId)&&
     same(logs[0].prescription,{ex:session.ex||[],runs:session.runs||[]});
-  }));
+  });
  }
  function eligible(state,item,discipline,eventContext,native,draftContext){
   if(item.status!=='planned'||state.logs?.[item.id]||state.drafts?.[item.id])return false;
@@ -26,6 +46,7 @@
   const key=item.planId+'-w'+item.week+'-'+item.sessionId;
   const nativeMatches=(native?.reviewedProgramme?.weeks||[]).flatMap(w=>w.sessions||[]).filter(s=>s.catalogueOccurrenceId===key);
   if(nativeMatches.length!==1||nativeMatches[0].scheduledDate!==item.date)return false;
+  if(!canonicalMatches(state,native,nativeMatches[0],key))return false;
   if(draftContext?.known!==true||!Array.isArray(draftContext.activeSessionIds))return false;
   const id=nativeMatches[0].id,belongs=x=>typeof x==='string'&&(x===id||x===id+'::strength'||x===id+'::run');
   if(draftContext.activeSessionIds.some(belongs)||!Array.isArray(native.completedWorkouts)||!Array.isArray(native.sets)||!Array.isArray(native.runs))return false;
