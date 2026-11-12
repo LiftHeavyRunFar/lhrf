@@ -118,6 +118,8 @@ jobs:
         run: node tests/fatigue-evidence-native.browser.cjs
       - name: Test evidence capture on a generated catalogue workout
         run: node tests/fatigue-evidence-catalogue.browser.cjs
+      - name: Test evidence capture on a generated catalogue run
+        run: node tests/fatigue-evidence-catalogue-running.browser.cjs
       - name: Test cross-programme performance references and production PWA update
         if: ${{ !cancelled() }}
         env:
