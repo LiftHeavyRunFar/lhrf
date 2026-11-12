@@ -74,7 +74,15 @@ async function runOne(browser,p){
   await page.locator('#frNext').click();
   assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'5',await page.locator('#frError').innerText());
   const proposal=await onboardingProposal(page);
-  record.coaching={weeks:proposal.weeks?.length,firstWeek:proposal.weeks?.[0],lastWeek:proposal.weeks?.at(-1),feasible:proposal.weeks?.every(w=>w.feasible)};
+  record.coaching={weeks:proposal.weeks?.length,firstWeek:proposal.weeks?.[0],lastWeek:proposal.weeks?.at(-1),feasible:proposal.weeks?.every(w=>w.feasible),
+ weekly:proposal.weeks.map(w=>({week:w.week,phase:w.phase,feasible:w.feasible,
+  strengthDays:w.sessions.filter(s=>s.ex?.length).map(s=>s.day),
+  runDays:w.sessions.filter(s=>s.runs?.length).map(s=>s.day),
+  runKm:+w.sessions.flatMap(s=>s.runs||[]).reduce((n,r)=>n+(+r.distanceKm||0),0).toFixed(1),
+  runs:w.sessions.flatMap(s=>s.runs||[]).map(r=>({role:r.role,km:r.distanceKm,min:r.minutes,pace:r.pace})),
+  mainLifts:w.sessions.flatMap(s=>s.ex||[]).filter(e=>e[5]?.category==='primary').map(e=>({name:e[0],sets:e[1],reps:e[2],kg:e[3],rpe:e[4],role:e[5]?.role})),
+  warnings:w.warnings||[],unscheduled:w.unscheduled||[]
+ }))};
   assert.ok(proposal.weeks?.length,'Programme has no weeks');
   assert.ok(proposal.weeks[0].sessions?.length,'First week has no sessions');
   steps.push('full programme preview available');
@@ -136,6 +144,7 @@ async function runOne(browser,p){
  let results;
  try{results=[];for(const p of people)results.push(await runOne(browser,p));}
  finally{await browser.close();}
+ console.log('LHRF_FIVE_ATHLETE_COACHING='+JSON.stringify(results.map(r=>({profile:r.profile,coaching:r.coaching?.weekly}))));
  console.log('LHRF_FIVE_ATHLETE_RESULTS='+JSON.stringify(results.map(r=>({profile:r.profile,passed:r.passed,steps:r.steps,failure:r.failure?.slice(0,400),finishDebug:r.finishDebug,availableWorkoutIds:r.availableWorkoutIds,errors:r.errors}))));
  if(results.some(r=>!r.passed))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1});
