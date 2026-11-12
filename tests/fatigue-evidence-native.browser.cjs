@@ -22,8 +22,8 @@ const base=JSON.parse(JSON.stringify(vm.runInNewContext(source+';fixture',{requi
   await page.locator('.set-check').first().click(); await page.locator('#liveFinish').click(); await page.locator('#finishAndSave').click();
   assert.equal(await page.locator('#fatigueEvidenceFields').count(),enabled?1:0);
   if(enabled){
-   assert.equal(await page.locator('#fatigueUnusual').inputValue(),'');assert.equal(await page.locator('#liveFeedbackInterruption').inputValue(),'');
-   await page.locator('#fatigueUnusual').selectOption('yes');await page.locator('#liveFeedbackInterruption').selectOption('fatigue');
+   assert.equal(await page.locator('#fatigueUnusual').inputValue(),'');assert.equal(await page.locator('#fatigueIllness').inputValue(),'');assert.equal(await page.locator('#liveFeedbackDiscomfort').inputValue(),'');assert.equal(await page.locator('#liveFeedbackInterruption').inputValue(),'');
+   await page.locator('#fatigueUnusual').selectOption('yes');await page.locator('#liveFeedbackDiscomfort').selectOption('yes');await page.locator('#fatigueIllness').selectOption('yes');await page.locator('#liveFeedbackInterruption').selectOption('fatigue');
    const completed=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);
    await page.evaluate(()=>{window.__originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new Error('simulated storage full')}});
    await page.locator('#liveFeedbackSave').click();
@@ -36,7 +36,7 @@ const base=JSON.parse(JSON.stringify(vm.runInNewContext(source+';fixture',{requi
   const saved=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);
   assert.deepEqual(saved.customRoadmap,before.customRoadmap);assert.deepEqual(saved.activeSchedule,before.activeSchedule);
   assert.deepEqual(saved.completedWorkouts.slice(0,before.completedWorkouts.length),before.completedWorkouts);
-  if(enabled){assert.equal(saved.fatigueEvidence.length,1);assert.equal(saved.fatigueEvidence[0].interruptionReason,'fatigue');assert.equal(saved.fatigueEvidence[0].unusualFatigue,'yes');assert.equal(saved.fatigueEvidence[0].comparableConditions,'unknown');}
+  if(enabled){assert.equal(saved.fatigueEvidence.length,1);assert.equal(saved.fatigueEvidence[0].interruptionReason,'fatigue');assert.equal(saved.fatigueEvidence[0].unusualFatigue,'yes');assert.equal(saved.fatigueEvidence[0].painOrDiscomfort,'yes');assert.equal(saved.fatigueEvidence[0].illness,'yes');assert.equal(saved.fatigueEvidence[0].comparableConditions,'unknown');}
   else assert.equal(saved.fatigueEvidence,undefined);
   await page.reload();assert.deepEqual(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key),saved);
   assert.deepEqual(errors,[]);await context.close();
