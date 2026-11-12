@@ -1550,7 +1550,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   if(evidenceEnabled){
    const fields=document.createElement('div');fields.id='fatigueEvidenceFields';
    const choices='<option value="">Not answered</option><option value="yes">Yes</option><option value="no">No</option>';
-   fields.innerHTML='<div class="field"><label for="fatigueUnusual">Unusually fatigued during this workout?</label><select id="fatigueUnusual">'+choices+'</select></div>'+
+   fields.innerHTML='<div class="field"><label for="fatigueUnusual">Unusually fatigued during this workout?</label><select id="fatigueUnusual">'+choices+'</select></div><div class="field"><label for="fatigueIllness">Were you feeling ill?</label><select id="fatigueIllness">'+choices+'</select></div>'+
     (session.completedRun?'<div class="field"><label for="fatigueRunEffort">Overall running effort, 1–10 (optional)</label><input id="fatigueRunEffort" type="number" min="1" max="10" step="0.5"></div><div class="field"><label for="fatigueConditions">Were conditions similar to your comparable runs?</label><select id="fatigueConditions">'+choices+'</select></div><div class="field"><label for="fatigueMeasurement">Were the distance and time measurements reliable?</label><select id="fatigueMeasurement">'+choices+'</select></div>':'');
    if(!session.completedRun&&session.completedSets<session.plannedSets){
     const reason=LHRFTrainingReview.runInterruptionField('','liveFeedbackInterruption');
@@ -1563,8 +1563,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   overlay.querySelector('#liveFeedbackSave').onclick=()=>{
    const difficulty=overlay.querySelector('#liveFeedbackDifficulty').value,energy=overlay.querySelector('#liveFeedbackEnergy').value,discomfort=overlay.querySelector('#liveFeedbackDiscomfort').value;
    const interruptionReason=overlay.querySelector('#liveFeedbackInterruption')?.value;
-   const unusualFatigue=overlay.querySelector('#fatigueUnusual')?.value||'',comparableConditions=overlay.querySelector('#fatigueConditions')?.value||'',reliableMeasurement=overlay.querySelector('#fatigueMeasurement')?.value||'',runEffort=overlay.querySelector('#fatigueRunEffort')?.value||'';
-   if(!difficulty&&!energy&&!discomfort&&!interruptionReason&&!unusualFatigue&&!comparableConditions&&!reliableMeasurement&&!runEffort){overlay.querySelector('#liveFeedbackError').textContent='Choose at least one answer, or tap Skip.';return}
+   const unusualFatigue=overlay.querySelector('#fatigueUnusual')?.value||'',illness=overlay.querySelector('#fatigueIllness')?.value||'',comparableConditions=overlay.querySelector('#fatigueConditions')?.value||'',reliableMeasurement=overlay.querySelector('#fatigueMeasurement')?.value||'',runEffort=overlay.querySelector('#fatigueRunEffort')?.value||'';
+   if(!difficulty&&!energy&&!discomfort&&!interruptionReason&&!unusualFatigue&&!illness&&!comparableConditions&&!reliableMeasurement&&!runEffort){overlay.querySelector('#liveFeedbackError').textContent='Choose at least one answer, or tap Skip.';return}
    if(session.trialRecordAt){
     try{
      const key='lhrf-v2-genuine-training-log',logs=JSON.parse(LHRFStorage.local.getItem(key)||'[]');
@@ -1579,8 +1579,8 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    }
    const feedback={date:new Date().toISOString(),week:session.week,sessionId:session.id,session:session.name,difficulty,energy,discomfort,...(interruptionReason?{interruptionReason}:{})};
    let next={...data,sessionFeedback:[...(data.sessionFeedback||[]),feedback]};
-   if(evidenceEnabled&&(unusualFatigue||comparableConditions||reliableMeasurement||runEffort||interruptionReason)){
-    try{next=LHRFFatigueEvidence.append(next,{discipline:session.completedRun?'running':'strength',sessionId:session.id,recordedAt:feedback.date,unusualFatigue,comparableConditions,reliableMeasurement,runEffort:runEffort===''?null:Number(runEffort),interruptionReason});}
+   if(evidenceEnabled&&(unusualFatigue||illness||discomfort||comparableConditions||reliableMeasurement||runEffort||interruptionReason)){
+    try{next=LHRFFatigueEvidence.append(next,{discipline:session.completedRun?'running':'strength',sessionId:session.id,recordedAt:feedback.date,unusualFatigue,painOrDiscomfort:discomfort,illness,comparableConditions,reliableMeasurement,runEffort:runEffort===''?null:Number(runEffort),interruptionReason});}
     catch(err){overlay.querySelector('#liveFeedbackError').textContent='Check your answers and try again. Your workout is still safely logged.';return}
    }
    if(!save(next,{notify:false})){
