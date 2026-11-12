@@ -20,12 +20,13 @@
     <a href="./">Open LHRF</a>
     <p id="status" role="status"></p>
   </main>
+  <script src="./src/training-storage.js"></script>
   <script>
     const button=document.getElementById('update');
     const status=document.getElementById('status');
-    const liveKey='lhrf_fresh_beta_live_v1114';
+    if(LHRFStorage.competition)document.querySelector('main a').href='./?mode=competition';
     function checkWorkout(){
-      if(localStorage.getItem(liveKey)||localStorage.getItem(liveKey+'_pendingRun')){
+      if(LHRFStorage.hasActiveWorkout()){
         throw new Error('Finish your workout or pending run in LHRF, then return here to update.');
       }
     }

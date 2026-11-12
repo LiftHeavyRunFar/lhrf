@@ -1,4 +1,4 @@
-const CACHE = 'lhrf-shell-v1.40.4';
+const CACHE = 'lhrf-shell-v1.40.5';
 const RELEASE = CACHE.slice('lhrf-shell-v'.length);
 const SHELL = ['./src/training-flow.js','./src/training-mode.js','./src/training-mode.css','./assets/fonts/Goldman-Bold.ttf','./src/performance-history.js','./src/android-polish.js','./src/gym-equipment.js','./src/run-presentation.js','./src/mobile-ux.js','./src/mobile-ux.css','./','./index.html','./manifest.webmanifest','./icon-lhrf.svg','./icon-lhrf-192-v2.png','./icon-lhrf-512-v2.png','./icon-lhrf-maskable-v2.png','./src/training-review.js','./src/garmin-import.js','./src/local-activity-import.js','./src/local-activity-import-ui.js','./src/intervals-sync.js','./src/garmin-workout.js','./src/workout-tools.js','./src/workout-tools.css','./src/running-workouts.js','./src/coach-constraints.js','./src/coaching-evidence.js','./src/running-preparation.js','./src/exercise-registry.js','./src/coach-engine.js','./src/coach-adapters.js','./src/coach-intake.js','./src/programme-install.js','./src/programme-replacement.js','./src/programme-replacement-ui.js','./src/training-backup.js','./programmes/november-2026.json'];
 SHELL.push(
@@ -8,6 +8,8 @@ SHELL.push(
   './src/programme-catalogue.js',
   './src/catalogue-training.js',
   './src/native-catalogue.js',
+  './src/training-storage.js',
+  './src/competition-programme.js',
 );
 const SHELL_PATHS = new Set(SHELL.map(asset => new URL(asset, self.registration.scope).pathname));
 const CATALOGUE_DIRECTORY = new URL('./catalogue-preview/', self.registration.scope).pathname;
@@ -28,7 +30,7 @@ self.addEventListener('install', event => event.waitUntil((async () => {
   }
 })()));
 self.addEventListener('message', event => {
-  if (event.data === 'LHRF_ACTIVATE_UPDATE' && event.source?.url === new URL('refresh.html', self.registration.scope).href) {
+  if (event.data === 'LHRF_ACTIVATE_UPDATE' && event.source?.url && new URL(event.source.url).pathname === new URL('refresh.html', self.registration.scope).pathname) {
     event.waitUntil(self.skipWaiting());
   }
 });

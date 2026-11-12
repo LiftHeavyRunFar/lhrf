@@ -307,7 +307,18 @@
     resetButton.addEventListener('click', reset);
     for (const tab of document.querySelectorAll('nav [data-screen]')) tab.addEventListener('click', refresh);
     refresh();
-    return { open, refresh, afterReplacement: () => {
+    return { open, refresh,
+      snapshot: () => {
+        if (!dialog.open) return null;
+        if (!host.hidden && setup) return { ...setup.snapshot(), addingFromCompletion };
+        return panel.querySelector('h1')?.textContent === 'Onboarding complete' ? { completion: true } : null;
+      },
+      restore: async draft => {
+        if (draft.completion) { complete(); return; }
+        await open(draft.discipline, draft.addingFromCompletion);
+        setup?.restore(draft);
+      },
+      afterReplacement: () => {
       if (pendingReplacement && state().customRoadmap?.cataloguePlans?.length === 1) complete();
       pendingReplacement = false;
     } };

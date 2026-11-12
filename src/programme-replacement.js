@@ -28,10 +28,13 @@ function validateProgramme(p){
 function identity(state){const out={};for(const key of ['athleteId','userId'])if(state[key]!=null)out[key]=state[key];for(const key of ['athlete','profile','athleteProfile'])if(state[key]?.id!=null)out[key]=state[key].id;return out}
 async function anchors(state){const out={};for(const key of ['sets','runs'])out[key]=await Promise.all((state[key]||[]).map(r=>digest(r)));return out}
 async function createPackage(programme,sourceState,{reviewedCommit,approvalContext=[]}={}){validateProgramme(programme);const packet={schema:'lhrf-reviewed-replacement-v1',reviewedCommit,programmeDigest:await digest(programme),sourceProgrammeDigest:await digest(sourceState.customRoadmap),sourceIdentityDigest:await digest(identity(sourceState)),sourceTrainingAnchors:await anchors(sourceState),...(sourceState.reviewedProgramme?.weeks?{sourceCalendarDigest:await digest(sourceState.reviewedProgramme.weeks)}:{}),approvalContext:clone(approvalContext),programme:clone(programme)};packet.reviewFingerprint=await digest(packet);return packet}
-async function verifyPackage(packet,expectedDigest,state){
+async function verifyProgrammePayload(packet,expectedDigest){
  const payload=clone(packet||{});delete payload.reviewFingerprint;
  if(packet?.schema!=='lhrf-reviewed-replacement-v1'||!/^([a-f0-9]{64})$/.test(expectedDigest||'')||packet.reviewFingerprint!==expectedDigest||await digest(payload)!==expectedDigest||await digest(packet.programme)!==packet.programmeDigest)throw Error('Reviewed fingerprint mismatch. Use the exact package and fingerprint supplied with the review.');
- validateProgramme(packet.programme);
+ return validateProgramme(packet.programme);
+}
+async function verifyPackage(packet,expectedDigest,state){
+ await verifyProgrammePayload(packet,expectedDigest);
  if(await digest(identity(state))!==packet.sourceIdentityDigest)throw Error('This package belongs to a different athlete identity.');
  const current=await anchors(state);for(const key of ['sets','runs'])if(!Array.isArray(packet.sourceTrainingAnchors?.[key])||packet.sourceTrainingAnchors[key].some(h=>!current[key].includes(h)))throw Error('Reviewed training evidence is missing or changed. Obtain a fresh comparison.');
  const alreadyApplied=state.programmeReplacementHistory?.some(x=>x.id==='reviewed-'+packet.programmeDigest.slice(0,24));
@@ -132,6 +135,6 @@ function recovery(storage){
  return {status:applied?'committed':j.phase==='prepared'?'not-applied':'review',id:j.id,message:applied?'The programme transaction completed. All subsequently recorded training is retained.':'No automatic restoration was attempted. Recheck the current programme and create a fresh preview.'};
 }
 function clearInterruptedLock(storage){const r=recovery(storage);if(['committed','not-applied','review-lock'].includes(r.status))storage.removeItem(LOCK_KEY);else if(storage.getItem(LOCK_KEY))throw Error('Review the transaction before clearing its lock.');return r}
-const api={DATA_KEY,JOURNAL_KEY,LOCK_KEY,LIVE_KEY,canonical,digest,createPackage,verifyPackage,validateProgramme,dateOf,weekAt,sessions,calendar,createReplacement,createRollback,verifyPreservation,backupFor,verifyBackupFile,commit,recovery,clearInterruptedLock};
+const api={DATA_KEY,JOURNAL_KEY,LOCK_KEY,LIVE_KEY,canonical,digest,createPackage,verifyPackage,verifyProgrammePayload,validateProgramme,dateOf,weekAt,sessions,calendar,createReplacement,createRollback,verifyPreservation,backupFor,verifyBackupFile,commit,recovery,clearInterruptedLock};
 if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFProgrammeReplacement=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
