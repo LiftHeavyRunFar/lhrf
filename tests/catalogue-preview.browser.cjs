@@ -80,9 +80,9 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
       await page.getByLabel('Safety squat bar', { exact: true }).check();
     });
     assert.deepEqual(await page.locator('#preview article h3').allTextContents(), ['Weeks 1–4', 'Weeks 5–8', 'Weeks 9–12']);
-    assert.match(await page.locator('#preview article').first().innerText(), /Spoto press/);
     await page.getByText('Programme by block', { exact: true }).click();
     await page.getByRole('heading', { name: 'Weeks 1–4', exact: true }).waitFor();
+    assert.match(await page.locator('#preview article').first().innerText(), /Spoto press/);
     await page.getByRole('button', { name: 'Edit setup' }).click();
     assert.equal(await page.getByLabel('Bench (kg)', { exact: true }).inputValue(), '95');
     await page.getByRole('button', { name: 'Preview programme' }).click();
