@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#080e18">
-  <meta name="lhrf-release" content="1.40.5">
+  <meta name="lhrf-release" content="1.40.6">
   <title>Lift Heavy. Run Far. · Catalogue</title>
   <link rel="icon" href="../icon-lhrf-192-v2.png">
   <link rel="manifest" href="../manifest.webmanifest">
@@ -27,26 +27,27 @@
       <div class="hero">
         <h1 id="catalogue-title" tabindex="-1">Welcome to Lift Heavy. Run Far.</h1>
         <div id="choose-discipline">
-          <p>Pick a discipline to set up your programme.</p>
+          <p>What would you like to train for?</p>
           <div class="actions">
             <button type="button" class="primary" data-discipline="running">Running</button>
             <button type="button" class="primary" data-discipline="strength">Strength training</button>
           </div>
-          <p class="hint">You can set up the other discipline after you get your first programme. LHRF will flag any scheduling conflicts.</p>
+          <p class="hint">You can add the other discipline after setup. We’ll check how the two schedules fit.</p>
         </div>
       </div>
       <form id="plan-form" class="panel" hidden>
         <button id="change-discipline" type="button">Change discipline</button>
         <label for="programme">Programme</label>
         <select id="programme" name="programme" required></select>
-        <div id="run-frequency" hidden></div>
-        <div id="continuation-option"></div>
-        <div id="training-days"></div>
         <p id="entry" class="hint"></p>
-        <div id="settings"></div>
+        <div id="run-frequency" hidden></div>
+        <div id="training-days"></div>
+
         <label for="monday">First calendar week</label>
         <input id="monday" name="monday" type="date" required>
-        <p class="hint">Choose the Monday of your first calendar week. Workouts use the training days you selected.</p>
+        <p class="hint">Pick a Monday. Your first workout follows the days you selected.</p>
+        <div id="settings"></div>
+        <div id="continuation-option"></div>
         <button class="primary" type="submit">Preview programme</button>
       </form>
       <section id="preview" aria-label="Programme preview" hidden></section>

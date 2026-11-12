@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.40.5"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script src="./src/training-storage.js"></script><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.40.6"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script src="./src/training-storage.js"></script><script>
 /* Explicit one-time fresh start, invoked only via ?fresh=1 on this device.
    Clear the beta and trial records before any app code reads storage. */
 (function(){
@@ -294,6 +294,8 @@ nav.nav button[data-screen] b{color:inherit!important}
 #catalogueSetupDialog{width:min(calc(100% - 24px),620px);max-height:calc(100dvh - 28px);border:1px solid #294861;border-radius:18px;background:var(--card,#0b1524);color:var(--text,#eaf4ff);padding:18px}
 #catalogueSetupDialog::backdrop{background:#03070eda}
 #catalogueSetupDialog [hidden]{display:none!important}
+#planDashboard [hidden],#cataloguePlanActions:empty{display:none!important}
+.day-slide.is-current .day-open{display:block;min-height:44px}
 #catalogueSetupDialog .actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
 #catalogueSetupDialog .panel{padding:12px;margin:12px 0;border:1px solid #294861;border-radius:12px}
 #catalogueSetupDialog .hint,#catalogueSetupDialog .meta{color:#afbdd1;font-size:.875rem}
@@ -302,7 +304,19 @@ nav.nav button[data-screen] b{color:inherit!important}
 #catalogueSetupDialog fieldset{padding:12px;border:1px solid #294861;border-radius:12px;margin:12px 0}
 #catalogueSetupDialog input[type=checkbox]{width:auto;margin-right:8px}
 #catalogueSetupDialog .training-day-picker .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-#catalogueSetupDialog .training-day-picker label{display:flex;align-items:center;min-height:36px}
+#catalogueSetupDialog .training-day-picker label{display:flex;align-items:center;min-height:44px;margin:0}
+#catalogueSetupDialog .training-day-picker .grid{gap:0 12px}
+#catalogueSetupDialog .setup-optional{margin:12px 0}
+#catalogueSetupDialog .setup-optional summary{display:list-item;cursor:pointer;padding:12px 0;min-height:44px}
+#catalogueSetupDialog .preview-week dl{margin:0}
+#catalogueSetupDialog .preview-day{display:grid;grid-template-columns:7ch 1fr;gap:10px;padding:9px 0;border-top:1px solid #294861}
+#catalogueSetupDialog .preview-day dt{font-size:.875rem;color:#afbdd1}
+#catalogueSetupDialog .preview-day dd{margin:0;min-width:0}
+#catalogueSetupDialog .preview-day dd div+div{margin-top:6px}
+#catalogueSetupDialog .preview-actions .primary{flex:1}
+#catalogueSetupDialog .setup-footer{justify-content:space-between}
+#catalogueSetupDialog .setup-footer .catalogue-link{font-size:.875rem;background:transparent!important;border:0!important;box-shadow:none!important;padding:6px 0;text-decoration:underline}
+#catalogueSetupDialog :is(button,summary,input,select):focus-visible{outline:2px solid #9edaff;outline-offset:3px}
 #catalogueSetupDialog .training-day-picker label:has(select){display:block}
 #today > [data-add-catalogue-discipline]{margin:0 16px 12px}
 .competition-banner{max-width:720px;margin:8px auto;display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -335,19 +349,17 @@ body[data-training-mode=active] #competitionBanner{display:none!important}
  <div class="competition-sessions" data-sessions></div>
 </div>
 <button type="button" class="secondary" data-open-competition>Competition programme</button>
-<div class="card"><button id="startCatalogueSetup" type="button">Start a programme</button> <button data-add-catalogue-discipline class="secondary" type="button" hidden></button></div>
 <div class="card" id="planDashboard" style="padding:18px">
  <div class="tag">YOUR TRAINING CYCLE</div><h2 id="planDashTitle" style="margin:8px 0 4px">Your programme</h2><div id="planDashSubtitle" class="muted small"></div>
+ <div id="cataloguePlanActions" class="actions"><button id="startCatalogueSetup" type="button">Start a programme</button><button data-add-catalogue-discipline class="secondary" type="button" hidden></button></div>
  <div id="planDashProgramme" class="entry" style="margin-top:12px"></div>
  <div class="entry" style="margin-top:14px"><div class="row" style="justify-content:space-between;align-items:center"><b id="planDashWeek">Week 1</b><span class="muted small" id="planDashRemaining"></span></div><div style="height:7px;background:var(--border,#334155);border-radius:12px;overflow:hidden;margin:12px 0"><div id="planDashProgress" style="height:100%;width:0%;background:#2abda7;border-radius:12px"></div></div><div id="planDashPhase" class="muted small"></div></div>
- <h3 style="margin:20px 0 4px">Planned training demand</h3><p class="muted small" style="margin-top:0">Prescribed strength repetitions and target effort across your training cycle.</p>
- <div id="planDashChart" style="overflow:hidden;min-height:145px"><div class="muted small" style="padding:45px 0;text-align:center">Preparing your training chart…</div></div>
- <div class="muted small" style="margin-top:4px">Volume counts planned sets × reps; it does not measure tonnage. Intensity is repetition-weighted %1RM where an exercise-specific baseline is known.</div>
- <div style="display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 18px;font-size:12px"><span><span style="color:#2abda7">●</span> Volume (reps)</span><span><span style="color:#ef9a70">●</span> Relative intensity</span></div>
- <h3 style="margin-bottom:6px">Training phases</h3><div id="planDashPhases" style="display:flex;gap:3px;min-height:38px;margin-top:12px"></div>
- <div id="planDashLegend" class="muted small" style="display:flex;flex-wrap:wrap;gap:9px;margin:12px 0"></div>
- <div class="field" style="margin-top:14px"><label>Select a week</label><select id="planDashSelect" onchange="selectPlanDashWeek(Number(this.value))"></select></div>
+ <div class="field" style="margin-top:14px"><label for="planDashSelect">Workout week</label><select id="planDashSelect" onchange="selectPlanDashWeek(Number(this.value))"></select></div>
  <div id="planDashWeekDetails" class="entry" style="margin-top:8px"></div>
+ <h3 id="planDashLoadHeading" style="margin:20px 0 4px">Planned strength load</h3>
+ <div id="planDashChart" style="overflow:hidden;min-height:145px"><div class="muted small" style="padding:45px 0;text-align:center">Preparing your training chart…</div></div>
+ <h3 id="planDashPhaseHeading" style="margin-bottom:6px">Training phases</h3><div id="planDashPhases" style="display:flex;gap:3px;min-height:38px;margin-top:12px"></div>
+ <div id="planDashLegend" class="muted small" style="display:flex;flex-wrap:wrap;gap:9px;margin:12px 0"></div>
  <details id="planAdvancedDetails" class="entry"><summary>Advanced details</summary><h3>Weekly running volume</h3><div id="planRunningVolume"></div><h3>Coach’s notes for the selected week</h3><div id="planSelectedNotes"></div></details>
  <div id="planDashEmpty" class="muted small" style="display:none"></div>
 </div>
@@ -449,14 +461,17 @@ function renderPlanDashboard(){
  const root=$('planDashboard');if(!root)return;
  const c=data.customRoadmap || (typeof customConfig==='function'?customConfig():null);
  if(!c){$('planDashChart').textContent='No programme available yet.';return;}
- const n=Math.min(52,Math.max(1,Number(c.weeks)||20));
+ const savedCatalogue=Array.isArray(c.cataloguePlans)&&c.programmeId===data.reviewedProgramme?.config?.programmeId
+  ?data.reviewedProgramme.weeks:null;
+ const n=Math.min(savedCatalogue?104:52,Math.max(1,Number(c.weeks)||20));
+ const phaseFor=week=>savedCatalogue?'Programme catalogue':customPhase(week,n,c);
  const active=Math.min(n,Math.max(1,Number(data.activeCustomWeek||c.previewWeek||1)));
  const select=$('planDashSelect');
  const prev=planDashSelection==null?active:Math.min(n,planDashSelection);
- if(select.options.length!==n){select.innerHTML=Array.from({length:n},(_,i)=>'<option value="'+(i+1)+'">Week '+(i+1)+' · '+customPhase(i+1,n,c)+'</option>').join('');}
+ select.replaceChildren(...Array.from({length:n},(_,i)=>new Option('Week '+(i+1)+(savedCatalogue?'':' · '+phaseFor(i+1)),i+1)));
  select.value=prev;planDashSelection=prev;
  const names={powerlifting:'Powerlifting meet prep',squat:'Squat strength',bench:'Bench strength',deadlift:'Deadlift strength',running:'Running event',general:'Hybrid fitness'};
- $('planDashTitle').textContent=names[c.event]||'Your training programme';
+ $('planDashTitle').textContent=savedCatalogue?c.cataloguePlans.map(plan=>plan.snapshot.title).join(' + '):names[c.event]||'Your training programme';
  const lastEvent=[c.strengthTargetDate,c.runningTargetDate].filter(Boolean).sort().at(-1);
  const elapsedWeeks=c.competitionConditionalVersion===1&&lastEvent?Math.ceil((Date.parse(lastEvent+'T12:00:00Z')-Date.parse(c.startDate+'T12:00:00Z')+86400000)/604800000):n;
  const cycle=elapsedWeeks>0&&elapsedWeeks<n?elapsedWeeks+'-week programme · '+n+' calendar weeks':n+'-week training cycle';
@@ -464,7 +479,7 @@ function renderPlanDashboard(){
  $('planDashWeek').textContent='Week '+active+' of '+n;
  $('planDashRemaining').textContent=(n-active)+' weeks remaining';
  $('planDashProgress').style.width=(active/n*100)+'%';
- $('planDashPhase').textContent='Current phase: '+coachEngine().describeWeek(c,active).phase;
+ $('planDashPhase').textContent=savedCatalogue?'':'Current phase: '+coachEngine().describeWeek(c,active).phase;
  const activeSessions=Array.isArray(data.activeSchedule)?data.activeSchedule:[];
  const sessionsThisWeek=activeSessions.length?activeSessions:generatedSessions(c,active);
  const strengthCount=sessionsThisWeek.filter(s=>(s.ex||[]).length).length;
@@ -480,7 +495,7 @@ function renderPlanDashboard(){
   if(w===n)finalSessions=sessions;
   let sets=0,reps=0,weightedPct=0,pctReps=0,topPct=0;
   sessions.forEach(s=>(s.ex||[]).forEach(e=>{const meta=e[5]||{};if(!['primary','secondary'].includes(meta.category))return;const count=Number(e[1])||0,repCount=Number(e[2])||0,n=count*repCount;sets+=count;reps+=n;const baseline=Number(meta.baseline)||0;if(baseline>0&&e[3]>0){const pct=100*e[3]/baseline;weightedPct+=n*pct;pctReps+=n;if(meta.role==='top'&&/bench/i.test(e[0]))topPct=Math.max(topPct,pct)}}));
-  metrics.push({week:w,sets,reps,rpe:pctReps?weightedPct/pctReps:0,topPct,phase:sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||customPhase(w,n,c),deload:variationBlock(w,n).deload,runningVolume:plannedRunningVolume(sessions)});
+  metrics.push({week:w,sets,reps,rpe:pctReps?weightedPct/pctReps:0,topPct,phase:savedCatalogue?phaseFor(w):sessions.find(s=>s.phase&&s.phase!=='Competition')?.phase||phaseFor(w),deload:!savedCatalogue&&variationBlock(w,n).deload,runningVolume:plannedRunningVolume(sessions)});
  }
  const finish=strengthBlockFinishText(c,finalSessions);
  if(finish){const note=document.createElement('p');note.className='muted small';note.textContent=finish;$('planDashProgramme').append(note);}
@@ -491,10 +506,15 @@ function renderPlanDashboard(){
  const path=(fn)=>metrics.map((m,i)=>(i?'L':'M')+x(i).toFixed(1)+','+fn(m).toFixed(1)).join(' ');
  const peakPath=metrics.map((m,i)=>m.topPct>0?((i&&metrics[i-1].topPct>0?'L':'M')+x(i).toFixed(1)+','+yPeak(m).toFixed(1)):'').join(' ');
  const currentX=x(active-1),chosenX=x(prev-1);
- $('planDashChart').innerHTML='<svg viewBox="0 0 340 146" width="100%" role="img" aria-label="Strength prescribed repetitions and repetition-weighted relative intensity (%1RM) across '+n+' weeks">'+[18,49,80,112].map(y=>'<line x1="20" x2="320" y1="'+y+'" y2="'+y+'" stroke="currentColor" opacity=".12" stroke-dasharray="3 4"/>').join('')+'<path d="'+path(ySets)+'" fill="none" stroke="#2abda7" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/><path d="'+path(yRpe)+'" fill="none" stroke="#ef9a70" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/><path d="'+peakPath+'" fill="none" stroke="#36adff" stroke-width="2" stroke-dasharray="4 3"/><line x1="'+currentX+'" x2="'+currentX+'" y1="12" y2="117" stroke="currentColor" opacity=".48" stroke-dasharray="4 4"/><circle cx="'+chosenX+'" cy="'+ySets(metrics[prev-1])+'" r="4" fill="#2abda7"/><circle cx="'+chosenX+'" cy="'+yRpe(metrics[prev-1])+'" r="4" fill="#ef9a70"/>'+[1,Math.ceil(n/2),n].map(w=>'<text x="'+x(w-1)+'" y="138" text-anchor="middle" font-size="10" fill="currentColor" opacity=".65">'+w+'</text>').join('')+'</svg>';
- $('planDashChart').insertAdjacentHTML('beforeend','<p class="muted small">Planned strength reps and load ÷ exercise baseline. Blue dashed: heaviest bench top set, including the final single. Intensity scale 0–110%; reps use a separate scale. Lower average intensity can accompany a heavy single during taper.</p><details><summary>Weekly graph values</summary>'+metrics.map(m=>'<p>Week '+m.week+' · '+m.reps+' reps · average '+m.rpe.toFixed(1)+'% · peak bench '+(m.topPct?m.topPct.toFixed(1)+'%':'not prescribed')+'</p>').join('')+'</details>');
+ const hasStrength=metrics.some(m=>m.sets>0);
+ const hasRelativeLoad=metrics.some(m=>m.rpe>0);
+ $('planDashLoadHeading').hidden=$('planDashChart').hidden=!hasStrength;
+ $('planDashChart').innerHTML='<svg viewBox="0 0 340 146" width="100%" role="img" aria-label="Strength repetitions'+(hasRelativeLoad?' and relative intensity':'')+' across '+n+' weeks">'+[18,49,80,112].map(y=>'<line x1="20" x2="320" y1="'+y+'" y2="'+y+'" stroke="currentColor" opacity=".12" stroke-dasharray="3 4"/>').join('')+'<path d="'+path(ySets)+'" fill="none" stroke="#2abda7" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/><path d="'+(hasRelativeLoad?path(yRpe):'')+'" fill="none" stroke="#ef9a70" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/><path d="'+peakPath+'" fill="none" stroke="#36adff" stroke-width="2" stroke-dasharray="4 3"/><line x1="'+currentX+'" x2="'+currentX+'" y1="12" y2="117" stroke="currentColor" opacity=".48" stroke-dasharray="4 4"/><circle cx="'+chosenX+'" cy="'+ySets(metrics[prev-1])+'" r="4" fill="#2abda7"/><circle cx="'+chosenX+'" cy="'+yRpe(metrics[prev-1])+'" r="'+(hasRelativeLoad?4:0)+'" fill="#ef9a70"/>'+[1,Math.ceil(n/2),n].map(w=>'<text x="'+x(w-1)+'" y="138" text-anchor="middle" font-size="10" fill="currentColor" opacity=".65">'+w+'</text>').join('')+'</svg>';
+ $('planDashChart').insertAdjacentHTML('beforeend','<p class="muted small">Planned primary and secondary lift reps.'+(hasRelativeLoad?' Relative load is shown as a percentage of the exercise baseline.':'')+'</p><details><summary>Weekly graph values</summary>'+metrics.map(m=>'<p>Week '+m.week+' · '+m.reps+' reps'+(m.rpe?' · average '+m.rpe.toFixed(1)+'%':'')+(m.topPct?' · peak bench '+m.topPct.toFixed(1)+'%':'')+'</p>').join('')+'</details>');
  $('planDashPhases').innerHTML=metrics.map(m=>'<button type="button" aria-label="Week '+m.week+': '+(m.deload?'Deload, ': '')+m.phase+'" title="Week '+m.week+': '+(m.deload?'Deload · ':'')+m.phase+'" onclick="selectPlanDashWeek('+m.week+')" style="flex:1;min-width:0;padding:0;border-radius:3px;height:32px;background:'+(m.deload?'#8994a8':planPhaseColour(m.phase))+' !important;border:'+(m.week===prev?'2px solid white':'2px solid transparent')+';outline:'+(m.week===active?'1px solid currentColor':'none')+';cursor:pointer"></button>').join('');
- $('planDashLegend').innerHTML=[['Strength reps (primary + secondary)','#2abda7'],['Rep-weighted average (%1RM)','#ef9a70'],['Peak bench top set (%1RM)','#36adff'],['Foundation','#2abda7'],['Development','#5799df'],['Specificity','#ef9a70'],['Taper / event','#ae91eb'],['Deload','#8994a8']].map(([label,color])=>'<span><span style="color:'+color+'">■</span> '+label+'</span>').join('');
+ $('planDashLegend').hidden=!hasStrength;
+ $('planDashPhases').hidden=$('planDashPhaseHeading').hidden=Boolean(savedCatalogue);
+ $('planDashLegend').innerHTML=[['Strength reps (primary + secondary)','#2abda7'],['Rep-weighted average (%1RM)','#ef9a70'],['Peak bench top set (%1RM)','#36adff'],['Foundation','#2abda7'],['Development','#5799df'],['Specificity','#ef9a70'],['Taper / event','#ae91eb'],['Deload','#8994a8']].slice(0,savedCatalogue?3:undefined).filter((_,i)=>i!==1||hasRelativeLoad).filter((_,i)=>i!==2||metrics.some(m=>m.topPct)).map(([label,color])=>'<span><span style="color:'+color+'">■</span> '+label+'</span>').join('');
  let sessions=[];try{sessions=generatedSessions(c,prev)}catch(e){}
  const escPlan=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
  $('planRunningVolume').innerHTML=metrics.map(m=>'<p>Week '+m.week+' · '+escPlan(m.runningVolume)+'</p>').join('');
@@ -726,7 +746,7 @@ function saveCustom(){let c;try{c=customConfig();if(Number(c.coachingRulesVersio
 function carryForwardApprovedProgression(...args){return coachEngine().carryForwardApprovedProgression(...args)}
 function applyApprovedHybridRunning(...args){const sessions=coachEngine().applyApprovedHybridRunning(...args),issues=sessions.flatMap(s=>(s.runs||[]).filter(r=>r.hybridAdjustment?.status==='not-applied').map(r=>r.hybridAdjustment.reason));if(issues.length){const message='Programme not activated: an approved running adjustment needs review. '+[...new Set(issues)].join(' ');if($('customMsg'))$('customMsg').textContent=message;alert(message);throw Error(message)}return sessions}
 function activateCustomWeek(){if(data.reviewedProgramme){window.LHRFSelectReviewedWeek?.(+$('customWeek').value||1);return}const c=data.customRoadmap;if(!c)return;const w=+$('customWeek').value||1;if(Number(c.coachingRulesVersion)>=2){try{const review=LHRFCoachAdapters.buildProgramme(c).weeks.find(x=>x.week===w);if(!review||review.feasible===false){$('customMsg').textContent='This week needs review before activation: '+(review?(review.blockingIssues?.length?review.blockingIssues:review.warnings).join(' '):'Week not found.');return}}catch(error){$('customMsg').textContent='Could not review this week: '+error.message;return}}if([3,4].includes(c.runningGuidanceVersion)){const assessment=coachEngine().runningAssessment(c,w);if(!assessment.feasible){$('customMsg').textContent=assessment.blocking.join(' ');return}}const next=applyApprovedHybridRunning(carryForwardApprovedProgression(ensureKnownLiftLoads(generatedSessions(c,w),c),w),w);if(!confirm('Activate week '+w+'? Existing training logs stay saved; session-specific adjustments will reset; approved progression carries forward.'))return;data.activeCustomWeek=w;data.overrides={};schedule=next;data.activeSchedule=next;save();populate();refresh();planDashSelection=w;renderPlanDashboard();$('customMsg').textContent='Week '+w+' is now active in Today and Strength.'}
-function loadCustom(){const c=data.customRoadmap;if(!c){$('customMsg').textContent='No approved custom roadmap saved yet.';return}for(const k of customFields){const id='custom'+k,value=k==='RunGoal'?(c.runGoal??c.rungoal):c[k.toLowerCase()];if(value!=null)$(id).value=value}$('customNoDate').checked=!!c.noDate;
+function loadCustom(){const c=data.customRoadmap;if(!c){$('customMsg').textContent='No approved custom roadmap saved yet.';return}if(c.cataloguePlans||c.event==='none'){renderCustom();$('customMsg').textContent='Use the training-day controls in Plan to edit your saved schedule.';return}for(const k of customFields){const id='custom'+k,value=k==='RunGoal'?(c.runGoal??c.rungoal):c[k.toLowerCase()];if(value!=null)$(id).value=value}$('customNoDate').checked=!!c.noDate;
  if(c.liftProfiles)for(const k of ['Squat','Bench','Deadlift']){const p=c.liftProfiles[k];if(p){$('baseline'+k).value=p.kg;$('reps'+k).value=p.reps;$('recency'+k).value=p.recency}}
  if(c.variations)for(const k of ['Squat','Bench','Deadlift']){if(c.variations[k]){$('variation'+k).value=c.variations[k].choice||'auto';$('lock'+k).checked=!!c.variations[k].lock}}
  if($('customExperience'))$('customExperience').value=c.trainingAge||'';
@@ -1014,12 +1034,13 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    trainingDays.sort((a,b)=>a.i-b.i);
   }
   const localDateKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
-  if(selectedOnDate!==localDateKey){selectedDay=null;selectedOnDate=localDateKey;}
+  const selectionKey=localDateKey+'|'+startString+'|'+activeWeek+'|'+(data.customRoadmap?.programmeId||'');
+  if(selectedOnDate!==selectionKey){selectedDay=null;selectedOnDate=selectionKey;}
   if(selectedDay===null||!trainingDays.some(d=>d.i===selectedDay)){
    selectedDay=trainingDays.find(d=>d.date.getTime()===today.getTime())?.i??trainingDays.find(d=>d.date>=today)?.i??trainingDays[trainingDays.length-1]?.i??null;
    detailLevel=0;
   }
-  root.innerHTML='<div class="day-heading"><h2>'+ (currentWeekIncludesToday?'This week':'Active week') +'</h2><span>Today: '+today.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+' · Swipe between workouts ↔</span></div><div class="day-carousel" id="dayCarousel" tabindex="0" aria-label="Training days. Swipe or use left and right arrow keys."></div><div class="day-controls"><div class="day-position" id="dayPosition" aria-live="polite" aria-atomic="true"></div></div><div class="day-dots" id="dayDots" aria-label="Choose a training day"></div>';
+  root.innerHTML='<div class="day-heading"><h2>'+ (currentWeekIncludesToday?'This week':'Week '+activeWeek) +'</h2><span>'+formatDate(dateFor(0))+' – '+formatDate(dateFor(6))+'</span></div><div class="day-carousel" id="dayCarousel" tabindex="0" aria-label="Training days. Swipe or use left and right arrow keys."></div><div class="day-controls"><div class="day-position" id="dayPosition" aria-live="polite" aria-atomic="true"></div></div><div class="day-dots" id="dayDots" aria-label="Choose a training day"></div>';
   const rail=document.getElementById('dayCarousel');
   if(data.sets?.length||data.runs?.length){
    const lastWorkout=document.createElement('button');
@@ -1027,13 +1048,12 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    lastWorkout.onclick=()=>window.LHRFOpenWorkoutHistory();
    root.querySelector('.day-heading').appendChild(lastWorkout);
   }
-  const range=document.createElement('p');range.className='muted small';range.style.margin='0 16px 12px';range.textContent='Active week '+activeWeek+' · '+formatDate(dateFor(0))+' – '+formatDate(dateFor(6));root.prepend(range);
   const todayTraining=trainingDays.some(d=>d.date.getTime()===today.getTime()&&d.sessions.length>0);
   const nextTraining=trainingDays.find(d=>d.date>=today&&d.sessions.length>0);
   if(!todayTraining){
    const notice=document.createElement('div');notice.className='card';notice.style.margin='0 16px 12px';
    const beforeStart=startDate&&today<startDate;
-   notice.classList.add('programme-start-notice');notice.innerHTML='<strong>'+(beforeStart?'Programme starts '+formatDate(startDate):'Today · Rest day')+'</strong><p class="muted small">'+(beforeStart?'Days before your start date are not missed workouts.':nextTraining?'Next workout: '+nextTraining.day+' '+formatDate(nextTraining.date):'No more workouts scheduled in this programme week.')+'</p>';
+   notice.classList.add('programme-start-notice');notice.innerHTML='<strong>'+(beforeStart?'Programme starts '+formatDate(startDate):'Today · Rest day')+'</strong><p class="muted small">'+(beforeStart&&nextTraining?'First workout: '+nextTraining.day+' '+formatDate(nextTraining.date):nextTraining?'Next workout: '+nextTraining.day+' '+formatDate(nextTraining.date):'No more workouts scheduled in this programme week.')+'</p>';
    root.insertBefore(notice,rail);
   }
   if(source==='saved-preview'){
@@ -1042,7 +1062,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   }
   // Look ahead beyond the displayed week, without duplicating its calendar cards.
   const upcoming=document.createElement('section');upcoming.id='upcomingWeeks';upcoming.style.cssText='margin:24px 16px';
-  upcoming.innerHTML='<h2>Upcoming</h2><p class="muted small">Swipe to see upcoming workouts.</p><div id="upcomingSessions" tabindex="0" aria-label="Upcoming workouts" style="display:flex;gap:10px"></div><div id="upcomingDots" class="day-dots" aria-label="Upcoming workout pages"></div>';
+  upcoming.innerHTML='<h2>Upcoming</h2><div id="upcomingSessions" tabindex="0" aria-label="Upcoming workouts" style="display:flex;gap:10px"></div><div id="upcomingDots" class="day-dots" aria-label="Upcoming workout pages"></div>';
   root.appendChild(upcoming);
   const future=[];
   if(startDate&&hasRoadmap){
@@ -1109,19 +1129,19 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
      w.appendChild(overview);
     }
     const btn=document.createElement('button');btn.type='button';btn.className='day-open';btn.textContent=source==='saved-preview'?'Activate week to train':done?'View workout log →':'Preview workout →';btn.disabled=source==='saved-preview';if(source!=='saved-preview')btn.onclick=e=>{e.stopPropagation();openWorkout(s.id)};
-    w.tabIndex=0;w.setAttribute('role','button');w.setAttribute('aria-label',done?'View workout log for '+s.name:'Preview '+s.name);w.onclick=e=>{if(e.target.closest('button'))return;e.stopPropagation();if(source!=='saved-preview')openWorkout(s.id)};w.onkeydown=e=>{if(e.target!==w)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();if(source!=='saved-preview')openWorkout(s.id)}};
+    btn.setAttribute('aria-label',done?'View workout log for '+s.name:'Preview workout '+s.name);
+    w.onclick=e=>{if(e.target.closest('button'))return;e.stopPropagation();if(source!=='saved-preview')openWorkout(s.id)};
     w.appendChild(btn);slide.appendChild(w);
    }
    const hint=document.createElement('div');hint.className='day-hint';slide.appendChild(hint);
    const openCard=()=>{if(source==='saved-preview'||!sessions.length)return;openWorkout(sessions.length===1?sessions[0].id:(sessions[0].parentId||sessions[0].id))};
    slide.addEventListener('click',e=>{if(e.target.closest('button,[data-session-id]'))return;openCard()});
-   if(sessions.length===1&&source!=='saved-preview'){slide.tabIndex=0;slide.setAttribute('role','button');slide.setAttribute('aria-label',allCompleted?'View workout log for '+sessions[0].name:'Preview '+sessions[0].name);slide.onkeydown=e=>{if(e.target===slide&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openCard()}};}
    rail.appendChild(slide);slides.push(slide);
   }
   const dots=document.getElementById('dayDots');trainingDays.forEach(()=>{const d=document.createElement('button');d.type='button';d.className='day-dot';d.setAttribute('aria-label',trainingDays[dots.children.length].day+' '+formatDate(trainingDays[dots.children.length].date));d.onclick=()=>selectDay(trainingDays[[...dots.children].indexOf(d)].i);dots.appendChild(d)});
   function update(){
    const position=trainingDays.findIndex(d=>d.i===selectedDay);
-   slides.forEach((slide,j)=>{const on=j===position;slide.classList.toggle('is-current',on);slide.classList.toggle('is-expanded',on&&detailLevel>=1);slide.classList.toggle('is-detailed',on&&detailLevel>=2);slide.setAttribute('aria-expanded',String(on&&detailLevel>=1));const hint=slide.querySelector('.day-hint');const sessions=trainingDays[j].sessions;hint.textContent=sessions.length===1&&sessionCompleted(sessions[0])?'Tap to view workout log →':!on?'Tap to preview workout →':'Tap anywhere to preview workout →'});
+   slides.forEach((slide,j)=>{const on=j===position;slide.classList.toggle('is-current',on);slide.classList.toggle('is-expanded',on&&detailLevel>=1);slide.classList.toggle('is-detailed',on&&detailLevel>=2);const hint=slide.querySelector('.day-hint');const sessions=trainingDays[j].sessions;hint.textContent=sessions.length===1&&sessionCompleted(sessions[0])?'Tap to view workout log →':!on?'Tap to preview workout →':'Tap anywhere to preview workout →'});
    [...dots.children].forEach((d,j)=>{d.classList.toggle('active',j===position);d.setAttribute('aria-current',j===position?'true':'false')});
    document.getElementById('dayPosition').textContent=trainingDays[position].day+' '+formatDate(trainingDays[position].date)+' · '+(position+1)+' / '+trainingDays.length;
    document.querySelector('.day-controls').style.display=trainingDays.length>1?'flex':'none';dots.style.display=trainingDays.length>1?'flex':'none';
@@ -1647,10 +1667,10 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
 })();
 </script>
 <dialog id="catalogueSetupDialog" aria-label="Programme setup">
- <div class="fr-mark"><span class="fr-brand">LHRF</span><span>LIFT HEAVY. RUN FAR.</span></div>
+ <div class="fr-mark"><span class="fr-brand">LHRF</span></div>
  <p role="status"></p>
  <div class="catalogue-setup-content"></div>
- <div class="actions setup-footer"><button type="button" class="secondary" data-open-competition>Competition programme</button><button type="button" class="secondary" data-close>Close setup</button></div>
+ <div class="actions setup-footer"><button type="button" class="catalogue-link" data-open-competition>Competition programme</button><button type="button" class="secondary" data-close>Close setup</button></div>
 </dialog>
 <script src="./src/programme-catalogue.js"></script><script src="./src/catalogue-training.js"></script><script src="./catalogue-preview/app.js"></script><script src="./src/native-catalogue.js"></script>
 <div id="firstRun" hidden role="dialog" aria-modal="true" aria-label="Set up your hybrid training">
