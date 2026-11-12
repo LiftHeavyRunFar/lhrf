@@ -204,6 +204,14 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await existingApp.getByRole('checkbox', { name: 'Tuesday', exact: true }).check();
     await existingApp.getByLabel('First calendar week').fill('2026-11-16');
     await existingApp.getByRole('button', { name: 'Preview programme' }).click();
+    const firstWeek = existingApp.getByRole('region', { name: 'First week' });
+    assert.match(await firstWeek.innerText(), /Tue 17 Nov/);
+    assert.doesNotMatch(await firstWeek.innerText(), /Mon 16 Nov/);
+    assert.equal(await existingApp.getByText('Programme by block', { exact: true }).locator('..').getAttribute('open'), null);
+    await existingApp.getByRole('button', { name: 'Edit setup' }).click();
+    assert.equal(await existingApp.getByRole('checkbox', { name: 'Tuesday', exact: true }).isChecked(), true);
+    assert.equal(await existingApp.getByRole('checkbox', { name: 'Monday', exact: true }).isChecked(), false);
+    await existingApp.getByRole('button', { name: 'Preview programme' }).click();
     await existingApp.getByRole('button', { name: 'Get my programme' }).click();
     await existingApp.getByRole('heading', { name: 'Onboarding complete' }).waitFor();
     assert.equal(await existingApp.getByRole('dialog').getByRole('button', { name: 'Custom programme setup' }).count(), 0);
@@ -224,6 +232,8 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     const fatigue = existingApp.getByRole('region', { name: 'Fatigue review' });
     assert.match(await fatigue.innerText(), /Demanding run|demanding run/);
     assert.ok(await fatigue.locator('li').count() > 0);
+    assert.match(await firstWeek.innerText(), /Your first week together/);
+    assert.equal(await firstWeek.locator('dd > div').count(), 6);
     await existingApp.getByRole('button', { name: 'Get my programme' }).click();
     await existingApp.locator('#catalogueSetupDialog').waitFor({ state: 'hidden' });
     const hybrid = await nativeState();
@@ -233,6 +243,12 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.deepEqual(strengthSessions, nativeStrength.reviewedProgramme.weeks[0].sessions);
     assert.deepEqual(strengthSessions.map(s => s.day), ['Tue', 'Wed', 'Fri', 'Sun']);
     await existingApp.locator('nav [data-screen="plan"]').click();
+    await existingApp.getByRole('heading', { name: /Powerlifting.*10K/ }).waitFor();
+    await existingApp.getByRole('region', { name: 'Week 1 workouts' }).waitFor();
+    assert.equal(await existingApp.locator('#planDashWeekDetails article').count(), 6);
+    assert.equal(await existingApp.locator('#planDashChart svg').count(), 1);
+    await existingApp.getByLabel('Workout week').selectOption('2');
+    await existingApp.getByRole('region', { name: 'Week 2 workouts' }).waitFor();
     await existingApp.getByRole('button', { name: 'Change strength training days' }).click();
     await existingApp.getByRole('checkbox', { name: 'Wednesday', exact: true }).uncheck();
     await existingApp.getByRole('checkbox', { name: 'Thursday', exact: true }).check();

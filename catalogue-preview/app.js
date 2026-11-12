@@ -39,6 +39,9 @@
   const button = (label, handler, style) => node('button', { type: 'button', class: style || '', onclick: handler }, label);
   const label = (text, name, options) => node('label', {}, text, node('input', { name, ...options }));
   const dateText = date => dateFormat.format(training.parseDate(date));
+  const shortDate = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC',
+  });
   const heading = (text, level = 'h2') => node(level, {}, text);
   const humanise = id => lifts[id] ?? id.replaceAll('-', ' ').replace(/^./, first => first.toUpperCase());
   const kmText = metres => (metres / 1000).toLocaleString('en-GB', { maximumFractionDigits: 3 }) + ' km';
@@ -48,6 +51,7 @@
 
   function showMessage(text, error = false) {
     const box = $('message');
+    box.tabIndex = -1;
     box.hidden = !text;
     box.textContent = text || '';
     box.classList.toggle('error', error);
@@ -80,7 +84,10 @@
       return true;
     } catch (error) {
       if (output) output.textContent = error.message;
-      else showMessage(error.message, true);
+      else {
+        showMessage(error.message, true);
+        if (native) $('message').focus();
+      }
       return false;
     }
   }
@@ -124,13 +131,13 @@
     const variants = programmeVariants();
     const frequency = $('run-frequency');
     const running = variants[0].discipline === 'running';
-    frequency.hidden = !running;
+    frequency.hidden = !running || variants.length === 1;
     frequency.replaceChildren();
-    if (running) {
-      const choices = node('select', { id: 'catalogue-run-count', name: 'runCount' }, variants.map(programme =>
+    if (!frequency.hidden) {
+      const choices = node('select', { id: native ? 'native-catalogue-run-count' : 'catalogue-run-count', name: 'runCount' }, variants.map(programme =>
         node('option', { value: programme.sessionsPerWeek }, String(programme.sessionsPerWeek))));
       choices.addEventListener('change', makeSettings);
-      frequency.append(node('label', { for: 'catalogue-run-count' }, 'Runs per week'), choices);
+      frequency.append(node('label', { for: choices.id }, 'Runs per week'), choices);
     }
     makeSettings();
   }
@@ -161,11 +168,18 @@
     const { days, eventDay } = training.scheduleOptions(snapshot);
     const event = node('select', { name: 'eventDay', 'aria-label': 'Final week event day' },
       training.weekdays.map((day, i) => node('option', { value: i, selected: i === eventDay }, day)));
-    return node('fieldset', { class: 'training-day-picker' }, node('legend', {}, 'Training days'),
-      node('p', { class: 'hint' }, 'Choose ' + days.length + ' days. Workouts follow that order each week.'),
+    const count = node('p', { class: 'hint', role: 'status' });
+    const updateCount = () => {
+      count.textContent = picker.querySelectorAll('[name="trainingDay"]:checked').length +
+        ' of ' + days.length + ' days selected';
+    };
+    const picker = node('fieldset', { class: 'training-day-picker', onchange: updateCount },
+      node('legend', {}, 'Training days'), count,
       node('div', { class: 'grid' }, training.weekdays.map((day, i) =>
         node('label', {}, node('input', { type: 'checkbox', name: 'trainingDay', value: i, checked: days.includes(i) }), day))),
       eventDay !== undefined ? node('label', {}, 'Final week event day', event) : null);
+    updateCount();
+    return picker;
   }
 
   function scheduleFromForm(snapshot, form) {
@@ -184,22 +198,23 @@
       'Include the optional ' + programme.continuationWeeks + '-week continuation'));
     const renderDays = () => days.replaceChildren(weekdayFields(catalogue.previewProgramme(programme.id,
       { continuation: continuation.checked })));
-    continuation.addEventListener('change', renderDays);
     renderDays();
     settings.replaceChildren();
+    const optional = node('details', { class: 'setup-optional' }, node('summary', {},
+      programme.discipline === 'strength' ? 'Add reference maxes (optional)' : 'Add a recent race time (optional)'));
     if (programme.discipline === 'strength' && programme.id !== 'lifting-foundation') {
       const number = { type: 'number', step: 'any', min: '1', inputmode: 'decimal' };
-      settings.append(node('fieldset', {}, node('legend', {}, 'Recent reference maxes · optional'),
+      optional.append(node('fieldset', {}, node('legend', {}, 'Reference maxes'),
         node('div', { class: 'grid' }, label('Squat (kg)', 'squat', number), label('Bench (kg)', 'bench', number),
           label('Deadlift (kg)', 'deadlift', number),
           label('Plate increment (kg)', 'increment', { ...number, min: '0.1', value: 2.5 })),
-        node('p', { class: 'hint' }, 'A current, technique-matched max gives suggested kilograms. Otherwise use the written effort.')));
+        node('p', { class: 'hint' }, 'Add a recent max for suggested weights.')));
     }
     if (programme.discipline === 'running' && programme.id !== 'running-base') {
       const race = programme.id.startsWith('10k') ? '10K' : programme.id === 'half-marathon' ? 'half marathon' : 'marathon';
-      settings.append(label('Recent ' + race + ' time in minutes · optional', 'raceMinutes',
+      optional.append(label('Recent ' + race + ' time (minutes)', 'raceMinutes',
         { type: 'number', inputmode: 'decimal', min: 1, step: 'any', placeholder: race === '10K' ? 'e.g. 55' : '' }),
-      node('p', { class: 'hint' }, 'Use a recent comparable result to show race-pace targets. Effort remains available.'));
+      node('p', { class: 'hint' }, 'Add a recent result for pace targets.'));
     }
     if (programme.id === 'powerlifting-four-day') {
       const setup = catalogue.powerliftingVariationSetup();
@@ -209,15 +224,16 @@
           node('option', { value: '', disabled: true, selected: true }, 'Choose what you notice'),
           choices.map(({ id, label }) => node('option', { value: id }, label)))));
       settings.append(node('fieldset', {}, node('legend', {}, 'Where the lifts break down'),
-        node('p', { class: 'hint' }, 'Choose the issue you see consistently. If you’re unsure, the plan will prescribe a technique drill.'),
+        node('p', { class: 'hint' }, 'Your choices set the variations for the first four weeks.'),
         questions));
       settings.append(node('fieldset', {}, node('legend', {}, 'Specialist equipment'),
-        node('p', { class: 'hint' }, 'Tick what you can use regularly during the first four weeks. Leave boxes clear if you train with a standard setup.'),
+        node('p', { class: 'hint' }, 'Select any equipment you have available.'),
         setup.equipment.map(({ id, label }) => node('label', {},
           node('input', { type: 'checkbox', name: 'equipment', value: id }), label)),
         node('label', {}, node('input', { type: 'checkbox', name: 'comfortable-front-rack' }),
           'I can comfortably front squat with a barbell')));
     }
+    if (optional.children.length > 1) settings.append(optional);
   }
 
   function makePreview(event) {
@@ -288,8 +304,8 @@
       const names = pair => pair.map(item => dateText(item.date) + ' · ' + item.session.title).join(' / ');
       return node('section', { class: 'panel', 'aria-label': 'Fatigue review' }, heading('Fatigue review', 'h3'),
         conflicts.length ? node('p', { class: 'hint' },
-          'A demanding run is on the same day as, or the day before or after, a harder lower-body session. You can change your selected days in Edit setup.') :
-          node('p', { class: 'hint' }, 'No demanding runs fall on the same or adjacent day as a harder lower-body session.'),
+          'A demanding run falls within a day of a harder lower-body session. Change your days in Edit setup if you need more recovery.') :
+          node('p', { class: 'hint' }, 'Your hard runs and harder lower-body sessions are on separate, non-consecutive days.'),
         conflicts.length ? node('ul', { class: 'warnings' }, conflicts.slice(0, 3).map(pair => node('li', {}, names(pair)))) : null,
         conflicts.length > 3 ? node('details', {}, node('summary', {}, 'See all ' + conflicts.length + ' pairings'),
           node('ul', { class: 'warnings' }, conflicts.map(pair => node('li', {}, names(pair))))) : null);
@@ -369,15 +385,24 @@
       preview = null;
       renderPreview();
       showSetup(snapshot.discipline);
-    });
+    }, 'secondary');
     const blocks = [];
     for (let offset = 0; offset < snapshot.weeks.length; offset += 4) {
       blocks.push(blockSummary(snapshot.weeks.slice(offset, offset + 4), snapshot.openingVariations));
     }
-    const days = training.scheduleOptions(snapshot).days.map(day => training.weekdays[day]).join(', ');
+    const firstWeek = training.calendar(preview)
+      .filter(item => item.date >= start && item.date <= training.addDays(start, 6));
+    const dates = [...new Set(firstWeek.map(item => item.date))];
+    const week = node('section', { class: 'panel preview-week', 'aria-label': 'First week' },
+      heading(preview.plans.length > 1 ? 'Your first week together' : 'Your first week', 'h3'),
+      node('dl', {}, dates.map(date => node('div', { class: 'preview-day' },
+        node('dt', {}, shortDate.format(training.parseDate(date))),
+        node('dd', {}, firstWeek.filter(item => item.date === date)
+          .map(item => node('div', {}, item.session.title)))))));
     region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
-      node('p', { class: 'meta' }, days),
-      conflictPanel(preview, 'preview'), node('div', { class: 'actions preview-actions' }, add, edit), ...blocks);
+      week, conflictPanel(preview, 'preview'),
+      node('div', { class: 'actions preview-actions' }, add, edit),
+      node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks));
   }
 
   let calendarWeek = null;
@@ -640,6 +665,7 @@
           if (input.type === 'checkbox') input.checked = fields.getAll(input.name).includes(input.value);
           else if (fields.has(input.name)) input.value = fields.get(input.name);
         }
+        form.querySelector('.training-day-picker')?.dispatchEvent(new Event('change'));
         if (draft.preview) form.requestSubmit();
       },
       open: (discipline, lockDiscipline) => {
