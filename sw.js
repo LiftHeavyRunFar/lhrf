@@ -8,6 +8,7 @@ SHELL.push(
   './src/programme-catalogue.js',
   './src/catalogue-training.js',
   './src/native-catalogue.js',
+  './src/fatigue-evidence.js',
   './src/training-storage.js',
   './src/competition-programme.js',
 );
