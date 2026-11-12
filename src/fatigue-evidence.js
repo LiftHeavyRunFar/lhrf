@@ -27,6 +27,8 @@
       recordedAt: input.recordedAt,
       interruptionReason: reason,
       unusualFatigue: triValue(input.unusualFatigue, 'fatigue response'),
+      painOrDiscomfort: triValue(input.painOrDiscomfort, 'pain response'),
+      illness: triValue(input.illness, 'illness response'),
       comparableConditions: triValue(input.comparableConditions, 'conditions response'),
       reliableMeasurement: triValue(input.reliableMeasurement, 'measurement response'),
       runEffort: effort,
@@ -42,7 +44,7 @@
     // Absence and negative answers remain distinct; a reason is corroboration, not performance evidence.
     return {
       fatigueSupporting: observation?.interruptionReason === 'fatigue' || observation?.unusualFatigue === 'yes',
-      safetyConcern: observation?.interruptionReason === 'pain' || observation?.interruptionReason === 'illness',
+      safetyConcern: observation?.painOrDiscomfort === 'yes' || observation?.illness === 'yes' || observation?.interruptionReason === 'pain' || observation?.interruptionReason === 'illness',
       explicitRunningContext: observation?.discipline === 'running' && observation?.comparableConditions === 'yes' && observation?.reliableMeasurement === 'yes' && typeof observation?.runEffort === 'number',
     };
   }
