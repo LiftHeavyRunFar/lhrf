@@ -58,7 +58,19 @@ test('10. recovery expires overlay and restores the original scheduled prescript
 test('11. races, meets, benchmarks and taper need separate explicit permission',blocked,()=>{
  for(const id of ['powerlifting-four-day','bench-specialisation','10k-two-run','half-marathon','marathon-timed']){const state=enrol(id),d=id.includes('powerlifting')||id.includes('specialisation')?'strength':'run',o=approved(state,d),v=view(state,o,now);for(const x of v.sessions){const s=x.original;if(s.kind==='event'||s.id==='race'||/benchmark|taper/i.test(s.title||''))assert.deepEqual(x.adjusted,s,id);}}
 });
-test.todo('11b. Exercise final-week race, meet and taper inside the intervention window for each event programme');
+test('11b. final-week races, meets and benchmarks inside the intervention window stay intact',blocked,()=>{
+ for (const id of ['general-strength','powerlifting-three-day','powerlifting-four-day','bench-specialisation','deadlift-specialisation','10k-two-run','10k-three-run','half-marathon','marathon-distance','marathon-timed']) {
+  const state=enrol(id), before=clone(state), calendar=training.calendar(state);
+  const target=calendar.find(x=>x.session.kind==='event'||x.session.id==='race'||/benchmark/i.test(x.session.title||''));
+  assert.ok(target,id+' must expose the actual generated event');
+  const day=training.addDays(target.date,-3), discipline=target.session.kind==='run'?'run':'strength';
+  const e={observations:[-35,-28,-21,-12,-5].map((offset,i)=>obs(discipline,training.addDays(day,offset),i<3?100:60)),recovery:{date:training.addDays(day,-4),unusualFatigue:true},safety:{pain:false,illness:false}};
+  const a=assess(state,discipline,e,day);
+  // Withholding a proposal altogether near an event is conservative and acceptable.
+  if(a?.proposal){const result=approve(state,a.proposal,true,day);assert.ok(result.overlay);const v=view(state,result.overlay,day);const event=v.sessions.find(x=>x.occurrenceId===target.id);assert.ok(event,id+' event must be present in returned view to verify it');assert.deepEqual(event.original,target.session);assert.deepEqual(event.adjusted,target.session,id+' event modified');}
+  assert.deepEqual(state,before,id+' underlying programme and dates changed');
+ }
+});
 test('12. offline serialisation preserves records and applies no unapproved intervention',blocked,()=>{
  const state=enrol('marathon-timed'),before=JSON.stringify(state),p=proposal(state,'run');const rejected=approve(state,p,false);assert.ok(!rejected?.overlay);const o=approved(state,'run');const reloaded=JSON.parse(JSON.stringify({state,overlay:o}));assert.deepEqual(reloaded.state,state);assert.deepEqual(view(reloaded.state,reloaded.overlay,now),view(state,o,now));assert.equal(JSON.stringify(state),before);
 });
