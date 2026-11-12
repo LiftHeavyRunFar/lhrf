@@ -45,8 +45,9 @@ async function runOne(browser,p){
   await set(page,'frStrengthMode','progression');
   await set(page,'frStartDate','2026-11-16');
   await set(page,'frWeeks',p.weeks);
+  if(p.id==='beginner')await set(page,'frStrengthFinish','benchmark');
   if(p.strengthDate)await set(page,'frStrengthDate',p.strengthDate);
-  if(p.runGoal)await set(page,'frRunGoal',p.runGoal);
+  if(p.runGoal){if(await page.locator('#frAddRunningGoal').isVisible())await page.locator('#frAddRunningGoal').check();await set(page,'frRunGoal',p.runGoal);await set(page,'frRunningTarget','54:00');}
   await page.locator('#frNext').click();
   assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'3',await page.locator('#frError').innerText());
   steps.push('goal and experience entered');
@@ -62,6 +63,7 @@ async function runOne(browser,p){
    for(const [name,kg] of [['Squat',p.experience==='advanced'?170:90],['Bench',p.experience==='advanced'?125:65],['Deadlift',p.experience==='advanced'?195:110]]){
     await set(page,'frMax'+name,kg);
     await set(page,'frMax'+name+'Reps',1);
+    const estimate=page.locator('#frMax'+name+'Estimate');if(await estimate.isVisible())await estimate.check();
    }
   }
   if(p.scope!=='strength'){
@@ -69,11 +71,18 @@ async function runOne(browser,p){
    if(await panel.count()&&!await page.locator('#frRunningResult').evaluate(x=>x.open))await panel.click();
    await set(page,'frRunTime',p.id==='runner-10k'?'55:00':'30:00');
    await set(page,'frRunDistance',p.id==='runner-10k'?'10K':'5K');
-   await set(page,'frRunKm',p.id==='runner-10k'?15:12);
+   await set(page,'frRunKm',p.id==='runner-10k'?18:14);
+   const history=page.getByText('Recent running history',{exact:true});
+   if(await history.count())await history.click();
+   await set(page,'frRunHistory',p.id==='runner-10k'?'14,15,16,18,17,18':'10,12,13,12,14,14');
+   await set(page,'frLongKm',p.id==='runner-10k'?8:6);
+   await set(page,'frLongMinutes',p.id==='runner-10k'?52:40);
+   await set(page,'frLongRecovery',24);
   }
   await page.locator('#frNext').click();
   assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'5',await page.locator('#frError').innerText());
   const proposal=await onboardingProposal(page);
+  record.normalizedIntake={scope:proposal.config?.scope,trainingAge:proposal.config?.trainingAge,runGoal:proposal.config?.runGoal,runProfile:proposal.config?.runProfile,baseline:proposal.config?.liftProfiles,runningHistory:proposal.config?.runningHistory};
   record.coaching={weeks:proposal.weeks?.length,firstWeek:proposal.weeks?.[0],lastWeek:proposal.weeks?.at(-1),feasible:proposal.weeks?.every(w=>w.feasible),
  weekly:proposal.weeks.map(w=>({week:w.week,phase:w.phase,feasible:w.feasible,
   strengthDays:w.sessions.filter(s=>s.ex?.length).map(s=>s.day),
@@ -144,7 +153,7 @@ async function runOne(browser,p){
  let results;
  try{results=[];for(const p of people)results.push(await runOne(browser,p));}
  finally{await browser.close();}
- console.log('LHRF_FIVE_ATHLETE_COACHING='+JSON.stringify(results.map(r=>({profile:r.profile,coaching:r.coaching?.weekly}))));
+ console.log('LHRF_FIVE_ATHLETE_COACHING='+JSON.stringify(results.map(r=>({profile:r.profile,coaching:r.coaching?.weekly,intake:r.normalizedIntake}))));
  console.log('LHRF_FIVE_ATHLETE_RESULTS='+JSON.stringify(results.map(r=>({profile:r.profile,passed:r.passed,steps:r.steps,failure:r.failure?.slice(0,400),finishDebug:r.finishDebug,availableWorkoutIds:r.availableWorkoutIds,errors:r.errors}))));
  if(results.some(r=>!r.passed))process.exitCode=1;
 })().catch(e=>{console.error(e);process.exitCode=1});
