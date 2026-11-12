@@ -116,6 +116,8 @@ jobs:
         run: node tests/catalogue-preview.browser.cjs
       - name: Test optional native fatigue evidence and storage failures
         run: node tests/fatigue-evidence-native.browser.cjs
+      - name: Test evidence capture on a generated catalogue workout
+        run: node tests/fatigue-evidence-catalogue.browser.cjs
       - name: Test cross-programme performance references and production PWA update
         if: ${{ !cancelled() }}
         env:
