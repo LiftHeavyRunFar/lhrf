@@ -12,6 +12,7 @@ const people=[
  {id:'hybrid',scope:'hybrid',focus:'balanced',goal:'general',experience:'intermediate',days:['Mon','Tue','Thu','Sat'],visits:2,squat:1,bench:2,deadlift:1,runs:2,weeks:8},
  {id:'returning',scope:'strength',focus:'strength',goal:'general',experience:'returning',days:['Tue','Thu'],visits:2,squat:1,bench:2,deadlift:1,runs:0,weeks:8}
 ];
+people.push({...people.find(p=>p.id==='hybrid'),id:'hybrid-desktop',desktop:true});
 const safe=(x)=>JSON.parse(JSON.stringify(x));
 async function set(page,id,value){
  const el=page.locator('#'+id);if(!await el.count()||!await el.isVisible())return;
@@ -19,7 +20,7 @@ async function set(page,id,value){
  if(tag==='SELECT')await el.selectOption(String(value));else await el.fill(String(value));
 }
 async function runOne(browser,p){
- const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,timezoneId:'Europe/London',serviceWorkers:'block'});
+ const context=await browser.newContext({viewport:p.desktop?{width:1280,height:800}:{width:393,height:852},isMobile:!p.desktop,hasTouch:!p.desktop,timezoneId:'Europe/London',serviceWorkers:'block'});
  const page=await context.newPage(),errors=[],steps=[],record={profile:p.id,inputs:p,steps,errors};
  page.on('pageerror',e=>errors.push(e.message));
  page.on('dialog',d=>d.accept());
@@ -110,6 +111,7 @@ async function runOne(browser,p){
   }
   assert.ok(await page.locator('#livePreview').count(),'Workout preview absent; available ids '+record.availableWorkoutIds.join(','));
   steps.push('first workout previewed');
+  await page.screenshot({path:path.join(OUT,p.id+'-preview.png'),fullPage:false});
   await page.locator('#previewStart').click();
   if(await page.locator('#readinessModal[open]').count())await page.locator('#readinessContinue').click();
   if(session.runs?.length){
@@ -137,6 +139,11 @@ async function runOne(browser,p){
   await page.reload();
   assert.deepEqual(await state(),saved,'Reload changed athlete state');
   steps.push('persistence after reload');
+  await page.locator('nav [data-screen=plan]').click();
+  assert.equal(await page.locator('.screen.active').getAttribute('id'),'plan');
+  await page.locator('nav [data-screen=today]').click();
+  assert.equal(await page.locator('.screen.active').getAttribute('id'),'today');
+  steps.push('Today / Plan navigation after reload');
   assert.equal(errors.length,0,errors.join('\n'));
   record.passed=true;
  }catch(e){
