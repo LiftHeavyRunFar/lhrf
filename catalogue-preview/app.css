@@ -30,6 +30,13 @@ legend{font-size:.85rem;color:var(--muted);padding:0 .3rem}
 .hint,.meta{margin:.35rem 0 .65rem}.hint:empty{display:none}
 #choose-discipline .hint{margin-top:.7rem}
 .preview-actions{margin-bottom:12px}
+.preview-week dl{margin:10px 0 0}
+.preview-day{display:grid;grid-template-columns:7ch 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.preview-day dt{color:var(--muted);font-size:.85rem}
+.preview-day dd{margin:0}
+.setup-optional summary{cursor:pointer;padding:12px 0;min-height:44px}
+.training-day-picker label{display:flex;align-items:center;min-height:44px}
+.training-day-picker label:has(select){display:block}
 .block-summary p:last-child{margin-bottom:0}
 .panel>summary{cursor:pointer;font-weight:820;color:#dceaff}
 .session button{margin-top:.55rem}
