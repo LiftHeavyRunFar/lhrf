@@ -4,7 +4,7 @@ function mount({getData}){
  const $=id=>document.getElementById(id),getLive=()=>root.LHRFLive?.get?.(),VIEW='lhrf_training_view_v1';
  let currentKey=null,selected=null;
  const key=live=>live.id+'|'+live.started;
- const remember=(live,index)=>{selected=index;try{sessionStorage.setItem(VIEW,JSON.stringify({key:key(live),index,revision:root.LHRFTrainingFlow.revision(live)}))}catch{}};
+ const remember=(live,index)=>{selected=index;try{(root.LHRFStorage?.session ?? root.sessionStorage).setItem(VIEW,JSON.stringify({key:key(live),index,revision:root.LHRFTrainingFlow.revision(live)}))}catch{}};
  const resume=document.createElement('aside');resume.id='trainingResume';resume.hidden=true;
  const label=document.createElement('span');label.textContent='Workout in progress';const button=document.createElement('button');button.type='button';button.textContent='Resume training';button.onclick=()=>root.go('train');resume.append(label,button);$('appHeader').after(resume);
  function sync(){
@@ -70,7 +70,7 @@ function mount({getData}){
   const cards=[...host.querySelectorAll('#liveExercises > .live-ex')];
   const fresh=currentKey!==key(live);
   if(fresh){
-   currentKey=key(live);let saved=null;try{saved=JSON.parse(sessionStorage.getItem(VIEW)||'null')}catch{}selected=root.LHRFTrainingFlow.resumeIndex(live,saved);root.LHRFLive?.selectExercise?.(selected??-1);
+   currentKey=key(live);let saved=null;try{saved=JSON.parse((root.LHRFStorage?.session ?? root.sessionStorage).getItem(VIEW)||'null')}catch{}selected=root.LHRFTrainingFlow.resumeIndex(live,saved);root.LHRFLive?.selectExercise?.(selected??-1);
   }
   const header=host.firstElementChild;header.id='trainingSessionHeader';
   if(!header.querySelector('.training-leave')){

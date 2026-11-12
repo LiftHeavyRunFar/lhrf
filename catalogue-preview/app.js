@@ -614,7 +614,35 @@
     }
     $('change-discipline').addEventListener('click', () => showSetup());
     $('programme').addEventListener('change', chooseProgramme);
-    if (native) return { weekdayFields, scheduleFromForm, open: (discipline, lockDiscipline) => {
+    if (native) return {
+      weekdayFields, scheduleFromForm,
+      snapshot: () => ({
+        discipline: $('choose-discipline').hidden ? activeProgramme()?.discipline : null,
+        fields: Array.from(new FormData($('plan-form')).entries()),
+        preview: Boolean(preview),
+      }),
+      restore: draft => {
+        if (!draft.discipline) return;
+        const fields = new URLSearchParams(draft.fields);
+        const form = $('plan-form');
+        const restoreControl = name => {
+          const input = form.elements.namedItem(name);
+          if (!input || !fields.has(name)) return;
+          if (input.type === 'checkbox') input.checked = true;
+          else input.value = fields.get(name);
+          input.dispatchEvent(new Event('change'));
+        };
+        restoreControl('programme');
+        restoreControl('runCount');
+        restoreControl('continuation');
+        for (const input of Array.from(form.elements)) {
+          if (!input.name || ['programme', 'runCount', 'continuation'].includes(input.name)) continue;
+          if (input.type === 'checkbox') input.checked = fields.getAll(input.name).includes(input.value);
+          else if (fields.has(input.name)) input.value = fields.get(input.name);
+        }
+        if (draft.preview) form.requestSubmit();
+      },
+      open: (discipline, lockDiscipline) => {
       $('change-discipline').hidden = Boolean(lockDiscipline);
       preview = null;
       renderPreview();

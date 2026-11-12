@@ -30,10 +30,10 @@ function createWakeLockController({request,visible=()=>true,onState=()=>{}}={}){
 const api={paceSpeeds,defaultSpeed,stages,create,advance,changeSpeed,createWakeLockController,restGuidance};
 if(typeof module==='object'&&module.exports){module.exports=api;return;}root.LHRFWorkoutTools=api;
 const LIVE='lhrf_fresh_beta_live_v1114',STORE='lhrf_treadmill_v1',REST='lhrf_rest_v1';
-let current=null,rest=null;const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
+let current=null,rest=null;const read=k=>{try{return JSON.parse((root.LHRFStorage?.local ?? root.localStorage).getItem(k)||'null')}catch{return null}};
 current=read(STORE);if(current){current.running=false;current.last=Date.now();}
 rest=read(REST)||{elapsed:0,start:null};
-const save=()=>{try{localStorage.setItem(STORE,JSON.stringify(current))}catch{}};
+const save=()=>{try{(root.LHRFStorage?.local ?? root.localStorage).setItem(STORE,JSON.stringify(current))}catch{}};
 const esc=t=>String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let wakeState='off';
 const wake=createWakeLockController({request:root.navigator?.wakeLock?.request?.bind(root.navigator.wakeLock),visible:()=>document.visibilityState==='visible',onState:state=>{wakeState=state;const el=document.getElementById('tmWakeState');if(el){const value=state==='active'?'Screen stays on':state==='unsupported'||state==='unavailable'?'Screen wake lock unavailable':'';if(el.textContent!==value)el.textContent=value;}}});
@@ -61,7 +61,7 @@ function restContext(l,now){
  const index=keepCountdown?rest.exerciseIndex:active,guide=restGuidance(l.ex[index]);
  return {card,active,index,guide,remaining:keepCountdown?remaining:null};
 }
-function restSave(){try{localStorage.setItem(REST,JSON.stringify(rest))}catch{}}
+function restSave(){try{(root.LHRFStorage?.local ?? root.localStorage).setItem(REST,JSON.stringify(rest))}catch{}}
 function beginRest(l,index,guide,now){
  rest={key:identity(l),mode:'countdown',exerciseIndex:index,remaining:guide.min*1000,endAt:now+guide.min*1000};
 }

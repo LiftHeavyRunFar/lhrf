@@ -163,6 +163,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await context.setOffline(false);
     const installed = await browser.newContext({ ...devices['Pixel 7'] });
     const existingApp = await installed.newPage();
+    existingApp.on('pageerror', error => console.error(error.stack));
     const existingLog = [{ exercise: 'Bench press', weight: 100, reps: 5, date: '2026-11-08T12:00:00Z' }];
     await existingApp.addInitScript(sets => {
       const key = 'lhrf_beta_v1118_clean';
@@ -242,6 +243,61 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.deepEqual(movedStrength.map(s => s.day), ['Tue', 'Thu', 'Fri', 'Sun']);
     assert.deepEqual(movedStrength.map(s => [s.id, s.ex]), strengthSessions.map(s => [s.id, s.ex]));
     assert.equal(existingApp.url(), appUrl);
+    const api = require('../src/programme-replacement');
+    const compProgramme = {
+      schema: 'lhrf-shared-programme-v1',
+      config: { ...moved.customRoadmap, startDate: '2026-11-09', weeks: 2 },
+      weeks: [1, 2].map(week => ({ week, feasible: true, sessions: [{
+        id: 'fixture-' + week, day: 'Thu', name: 'Competition practice ' + week,
+        scheduledDate: week === 1 ? '2026-11-12' : '2026-11-19',
+        ex: [['Bench', 1, 3, 60, 6]], runs: [],
+      }] })),
+    };
+    delete compProgramme.config.cataloguePlans;
+    const packet = await api.createPackage(compProgramme, { customRoadmap: {}, sets: [], runs: [] },
+      { reviewedCommit: 'synthetic-competition-slot' });
+    const competitionState = () => existingApp.evaluate(() => JSON.parse(localStorage.getItem('competition:lhrf_beta_v1118_clean')));
+    await existingApp.getByRole('button', { name: 'Competition programme', exact: true }).click();
+    await existingApp.waitForURL(appUrl + '?mode=competition');
+    assert.equal(await existingApp.locator('#catalogueSetupDialog').isVisible(), false);
+    await existingApp.getByLabel('Reviewed programme file').setInputFiles({
+      name: 'competition-fixture.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(packet)),
+    });
+    await existingApp.getByLabel('Programme fingerprint', { exact: true }).fill(packet.reviewFingerprint);
+    await existingApp.getByRole('button', { name: 'Save competition programme', exact: true }).click();
+    const importStatus = existingApp.locator('#competitionProgramme [role="status"]');
+    await importStatus.filter({ hasText: /.+/ }).waitFor({ timeout: 5000 });
+    assert.equal(await importStatus.innerText(), 'Competition programme saved on this device.');
+    await existingApp.getByRole('button', { name: /Competition practice 2/ }).click();
+    await existingApp.locator('#previewStart').click({ timeout: 6000 });
+    await existingApp.locator('#readinessContinue').click();
+    await existingApp.locator('.live-set [data-field="rpe"]').first().fill('6');
+    await existingApp.locator('.live-set .set-check').first().click();
+    await existingApp.locator('#liveFinish').click();
+    await existingApp.locator('#finishAndSave').click();
+    await existingApp.locator('#liveFeedbackDifficulty').selectOption('expected');
+    await existingApp.locator('#liveFeedbackSave').click();
+    assert.equal((await competitionState()).sets.length, 1);
+    assert.deepEqual(await nativeState(), moved);
+    await existingApp.getByRole('button', { name: 'Back to app testing' }).click();
+    await existingApp.waitForURL(appUrl);
+    await existingApp.locator('nav [data-screen="settings"]').click();
+    await existingApp.locator('#settingsProgramme > summary').click();
+    existingApp.once('dialog', confirmation => confirmation.accept());
+    await existingApp.getByRole('button', { name: 'Reset test setup' }).click();
+    await existingApp.getByRole('heading', { name: 'Welcome to Lift Heavy. Run Far.' }).waitFor();
+    await existingApp.getByRole('button', { name: 'Strength training', exact: true }).click();
+    await existingApp.locator('#native-catalogue-programme').selectOption('powerlifting-four-day');
+    await existingApp.getByRole('checkbox', { name: 'Monday', exact: true }).uncheck();
+    await existingApp.getByRole('dialog', { name: 'Programme setup' }).getByRole('button', { name: 'Competition programme', exact: true }).click();
+    await existingApp.waitForURL(appUrl + '?mode=competition');
+    await existingApp.getByRole('button', { name: /Competition practice 2 · Completed/ }).waitFor();
+    assert.equal((await competitionState()).sets.length, 1);
+    assert.equal(await nativeState(), null);
+    await existingApp.getByRole('button', { name: 'Back to app testing' }).click();
+    await existingApp.locator('#native-catalogue-programme').waitFor();
+    assert.equal(await existingApp.locator('#native-catalogue-programme').inputValue(), 'powerlifting-four-day');
+    assert.equal(await existingApp.getByRole('checkbox', { name: 'Monday', exact: true }).isChecked(), false);
     await installed.close();
     assert.deepEqual(errors, []);
     console.log('PASS: Pixel-size onboarding, block previews, paired calendar, exercise swaps, move/skip/repeat, Garmin, offline reload and log persistence.');
