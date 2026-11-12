@@ -2,9 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const catalogue=require('../src/programme-catalogue'),training=require('../src/catalogue-training');
 const native=require('../src/native-catalogue'),registry=require('../src/exercise-registry'),gym=require('../src/gym-equipment');
-const fs=require('fs'),vm=require('vm');
-const source=fs.readFileSync(require('path').join(__dirname,'today-flow.browser.cjs'),'utf8').split('(async()=>')[0];
-const base=JSON.parse(JSON.stringify(vm.runInNewContext(source+';fixture',{require:require('module').createRequire(__filename),process,__dirname})));
+const base={equipmentInventory:require('./equipment-fixtures.cjs').fullInventory()};
 const assess=require('../src/fatigue-assessment').assess;
 const policy={minDeclineFraction:.1,recentDays:14},now='2026-12-10';
 function fixture(){
