@@ -50,7 +50,7 @@ async function runOne(browser,p){
   await page.locator('#frNext').click();
   assert.equal(await page.locator('.fr-step.on').getAttribute('data-step'),'3',await page.locator('#frError').innerText());
   steps.push('goal and experience entered');
-  await page.locator('#frModeCoach').click();
+  if(await page.locator('#frModeCoach').isVisible())await page.locator('#frModeCoach').click();
   for(const day of ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])await page.locator('.fr-day[value='+day+']').setChecked(p.days.includes(day));
   await page.locator('#frWeeklyDetails > summary').click();
   if(p.visits)await set(page,'frStrengthVisits',p.visits);
@@ -91,11 +91,12 @@ async function runOne(browser,p){
   steps.push('first workout previewed');
   await page.locator('#previewStart').click();
   if(await page.locator('#readinessModal[open]').count())await page.locator('#readinessContinue').click();
-  if(session.runs?.length&&!session.ex?.length){
+  if(session.runs?.length){
     await page.locator('#liveRunKm').fill(String(session.runs[0].distanceKm||3));
     await page.locator('#liveRunMinutes').fill(String(session.runs[0].minutes||25));
     await page.locator('#liveLogRun').click();
-  }else{
+  }
+  if(session.ex?.length){
     const first=page.locator('.live-set [data-field=weight]').first();
     assert.ok(await first.count(),'No strength logging input');
     await first.fill(String(session.ex[0]?.[3]||40));
