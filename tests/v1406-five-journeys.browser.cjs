@@ -104,7 +104,9 @@ async function runOne(browser,p){
     const first=page.locator('.live-set [data-field=weight]').first();
     assert.ok(await first.count(),'No strength logging input');
     await first.fill(String(session.ex[0]?.[3]||40));
+    await page.locator('.live-set [data-field=rpe]').first().fill('7');
     await page.locator('.set-check').first().click();
+    assert.ok(await page.locator('.set-check.checked').count(),'Completed set not registered');
   }
   await page.locator('#liveFinish').click();
   record.finishDebug={liveError:await page.locator('#liveError').allTextContents(),finishDialogCount:await page.locator('#finishSessionDialog').count(),buttons:await page.locator('button:visible').allTextContents().then(x=>x.slice(-15)),errors:errors.slice()};
