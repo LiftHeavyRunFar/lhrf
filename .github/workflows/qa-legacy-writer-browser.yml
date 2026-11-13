@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'tests/legacy-tab-interleaving.browser.cjs'
+      - 'tests/legacy-lock-interleaving.diagnostic.cjs'
       - '.github/workflows/qa-legacy-writer-browser.yml'
 jobs:
   diagnostic:
@@ -28,3 +29,4 @@ jobs:
             npx playwright install --with-deps chromium
           fi
       - run: node tests/legacy-tab-interleaving.browser.cjs
+      - run: node --test tests/legacy-lock-interleaving.diagnostic.cjs
