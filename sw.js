@@ -12,6 +12,8 @@ SHELL.push(
   './src/fatigue-assessment.js',
   './src/fatigue-overlay.js',
   './src/fatigue-native-adapter.js',
+  './src/fatigue-overlay-storage.js',
+  './src/fatigue-overlay-idb.js',
   './src/fatigue-evidence.js',
   './src/training-storage.js',
   './src/competition-programme.js',
