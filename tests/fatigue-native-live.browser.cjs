@@ -98,6 +98,7 @@ function build(enabled){
    await page.reload();await page.locator('nav [data-screen="train"]').click();
    const resumed=await page.evaluate(()=>window.LHRFLive?.get?.()||null);assert.ok(resumed?.fatigueIntervention,scenario+' must retain audit');
    assert.equal(JSON.stringify({ex:resumed.ex,audit:resumed.fatigueIntervention}),before,scenario+' must not rewrite active workout');
+   if(await page.locator('#liveFatigueDraftNotice').count()!==1){const x=await page.evaluate(()=>({screen:document.querySelector('.screen.active')?.id,rootText:document.querySelector('#liveTrainRoot')?.textContent?.slice(0,400),pending:!!window.LHRFLive?.get?.()?.fatigueVerificationPending,notice:!!document.querySelector('#liveFatigueDraftNotice')}));console.log('NATIVE_DRAFT_DIAGNOSTIC='+JSON.stringify({scenario,...x}))}
    assert.equal(await page.locator('#liveFatigueDraftNotice').count(),1,scenario+' must show saved adjustment and end date');
    await ctx.close();continue;
   }
