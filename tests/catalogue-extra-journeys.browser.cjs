@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
 const {chromium}=require('playwright');
 const file=path.join(__dirname,'structured-five-athletes.browser.cjs');
 const source=fs.readFileSync(file,'utf8').split('(async()=>{const browser')[0];
-const {one}=vm.runInNewContext(source+';({one})',{require:require('node:module').createRequire(file),process,__dirname,console,URL});
+const {one}=new Function('require','process','__dirname',source+';return {one}')(require('node:module').createRequire(file),process,__dirname);
 const profiles=[
  {id:'bench-specialist',programme:'bench-specialisation',discipline:'strength',days:['Monday','Wednesday','Friday']},
  {id:'deadlift-specialist',programme:'deadlift-specialisation',discipline:'strength',days:['Monday','Wednesday','Friday']},
