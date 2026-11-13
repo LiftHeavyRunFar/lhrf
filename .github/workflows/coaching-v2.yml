@@ -123,9 +123,6 @@ jobs:
       - name: Test transactional overlay storage across browser tabs
         if: ${{ !cancelled() }}
         run: node tests/fatigue-overlay-idb.browser.cjs
-      - name: Test approved overlay in native workout flow
-        if: ${{ !cancelled() }}
-        run: node tests/fatigue-native-live.browser.cjs
       - name: Test cross-programme performance references and production PWA update
         if: ${{ !cancelled() }}
         env:
@@ -332,3 +329,25 @@ jobs:
             docs/ux-115/combined-release.md
             docs/ux-115/android-corrections.md
             docs/ux-115/combined-integrity.json
+
+  fatigue-native-browser:
+    name: Fatigue native workout acceptance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test dependency
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Select browser
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROMIUM_EXECUTABLE=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Test approved overlay in native workout flow
+        run: node tests/fatigue-native-live.browser.cjs
