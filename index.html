@@ -422,19 +422,20 @@ let data={sets:[],runs:[],plannedRuns:[],checkins:[],goals:{strength:'Bench',run
 // Stable beta storage key. Import existing v1.9+ records on first launch, never delete legacy data.
 const LHRF_DATA_KEY='lhrf_beta_v1118_clean';
 const LHRF_LEGACY_KEY='lhrf_onboarding_test_v1974';
-let lhrfSaveError='',lhrfExternalStorageChanged=false;
+let lhrfSaveError='',lhrfExternalStorageChanged=false,lhrfObservedMainRaw=null;
 window.LHRFExternalStorageChanged=()=>lhrfExternalStorageChanged;
 window.addEventListener('storage',event=>{if(event.key===LHRFStorage.key(LHRF_DATA_KEY)&&event.newValue!==JSON.stringify(data)){lhrfExternalStorageChanged=true;if(!document.getElementById('externalStorageNotice')){const notice=document.createElement('aside');notice.id='externalStorageNotice';notice.className='warn';notice.textContent='Another LHRF tab changed training data. Reload before saving; keep or export any open draft first.';document.querySelector('main')?.prepend(notice)}}});
 try{
  // Explicit fresh beta: intentionally do not import old test programme or logs.
- const raw=LHRFStorage.local.getItem(LHRF_DATA_KEY);
+ const raw=LHRFStorage.local.getItem(LHRF_DATA_KEY);lhrfObservedMainRaw=raw;
  if(raw){const parsed=JSON.parse(raw);if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))data={...data,...parsed};}
  data.overrides=data.overrides||{};data.decisions=data.decisions||[];if(LHRFStorage.competition&&!data.onboardingComplete)schedule=[];
 }catch(e){lhrfSaveError='Could not load saved training data: '+e.message;}
 
 let current=null,completed={},proposal=null;
 let workoutReturn={screen:"today",scroll:0};
-function save(candidate=data,{notify=true}={}){try{if(lhrfExternalStorageChanged)throw Error('Another tab changed training data. Reload before saving.');if(window.LHRFProgrammeReplacement&&LHRFStorage.local.getItem(LHRFProgrammeReplacement.LOCK_KEY))throw Error('A programme transaction is in progress; reload to inspect it.');LHRFStorage.local.setItem(LHRF_DATA_KEY,JSON.stringify(candidate));lhrfSaveError='';return true}catch(e){lhrfSaveError='Storage failed: '+e.message+'. Export a backup and free device storage.';if(notify)alert(lhrfSaveError);return false}}
+function fatigueMainUnchanged(){try{return LHRFStorage.local.getItem(LHRF_DATA_KEY)===lhrfObservedMainRaw}catch{return false}}
+function save(candidate=data,{notify=true}={}){try{if(lhrfExternalStorageChanged)throw Error('Another tab changed training data. Reload before saving.');if((data.featureFlags?.fatigueIntervention===true||candidate?.featureFlags?.fatigueIntervention===true)&&!fatigueMainUnchanged())throw Error('Training data changed. Reload before saving.');if(window.LHRFProgrammeReplacement&&LHRFStorage.local.getItem(LHRFProgrammeReplacement.LOCK_KEY))throw Error('A programme transaction is in progress; reload to inspect it.');const raw=JSON.stringify(candidate);LHRFStorage.local.setItem(LHRF_DATA_KEY,raw);lhrfObservedMainRaw=raw;lhrfSaveError='';return true}catch(e){lhrfSaveError='Storage failed: '+e.message+'. Export a backup and free device storage.';if(notify)alert(lhrfSaveError);return false}}
 function go(id){if(id==='plan'){const details=document.getElementById('planAdvanced');if(details)details.open=false;}document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('active',x.dataset.screen===id));const labels={today:['Train for both.','Strength and running, without losing control.'],plan:['Your training cycle.','Your programme at a glance.'],strength:['Lift with intent.','Track sets, loads and effort.'],running:['Run with purpose.','Use pace, RPE and recovery together.'],progress:['Your progress.','Coaching suggestions are yours to approve.'],settings:['Settings.','Your preferences and programme controls.'],workout:['Your workout.','Log each set as you complete it.'],train:['Your workout.','Focused logging, set by set.']};$('title').textContent=labels[id][0];$('subtitle').textContent='';if(id==='progress'||id==='strength'||id==='running')refresh();if(id==='plan'){try{renderPlanDashboard()}catch(err){console.error('Plan dashboard',err);const el=$('planDashChart');if(el)el.innerHTML='<div class="warn">The programme chart could not load. Open Edit programme & settings to check your saved programme.</div>';}}window.scrollTo(0,0)}
 
 // Visual programme overview: derived from the actual generated weekly prescriptions.
@@ -1356,12 +1357,14 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
   return equipmentStartAllowed(session);
  }
  function launchSession(current,change,expectedFatigueAudit=null){
+  if(data.featureFlags?.fatigueIntervention===true&&!fatigueMainUnchanged()){alert('Training data changed. Reload before starting this workout.');return}
   if(data.featureFlags?.fatigueIntervention!==true){
    if(expectedFatigueAudit){alert('The recovery adjustment changed. Review the workout again before starting.');return}
    return launchResolved(current,change,null);
   }
   if(!window.LHRFFatigueOverlayIDB){alert('Could not verify your recovery adjustment. Review the workout again.');return}
   return LHRFFatigueOverlayIDB.withActive({indexedDB:window.indexedDB,overlayKey:'lhrf_fatigue_overlay_v1',now:dayKey()},record=>{
+   if(!fatigueMainUnchanged())return 'changed';
    const verified=fatigueRecordView(current,record);
    if(!sameFatigueAudit(verified.audit,expectedFatigueAudit)||change&&expectedFatigueAudit)return 'changed';
    return launchResolved(verified.session,change,verified.audit||null);
@@ -1406,6 +1409,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  }
  function beginReadiness(session,reopen,expectedFatigueAudit=null){
   const current=session.timeAdaptation?session:(effectiveSession(session.id)||session);
+  if(data.featureFlags?.fatigueIntervention===true&&!fatigueMainUnchanged()){alert('Training data changed. Reload before starting this workout.');return}
   if(current.raceDecisionDeferred||!liveStartAllowed(current))return;
   if(data.reviewedProgramme&&session.eventDate&&session.eventType==='running'){
    if(session.eventDate!==dayKey()){alert('This reviewed race is scheduled for '+session.eventDate+'. Do not start it on a different date without a coaching review.');return}
@@ -2483,7 +2487,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  try{return generatedSessions(data.customRoadmap,week)}catch{return null}
 },commit:next=>{const previous=data;data=next;if(!save()){data=previous;return false}refresh();return true}});</script><script src="./src/programme-replacement-ui.js"></script><script>
 (function(){
- const apply=next=>{data=next;schedule=next.activeSchedule;populate();refresh();planDashSelection=next.activeCustomWeek;renderPlanDashboard();window.LHRFLive?.render?.();window.LHRFCatalogueAfterReplacement?.()};
+ const apply=next=>{data=next;schedule=next.activeSchedule;try{const raw=LHRFStorage.local.getItem(LHRF_DATA_KEY);if(raw===JSON.stringify(next))lhrfObservedMainRaw=raw}catch{}populate();refresh();planDashSelection=next.activeCustomWeek;renderPlanDashboard();window.LHRFLive?.render?.();window.LHRFCatalogueAfterReplacement?.()};
  window.LHRFSelectReviewedWeek=w=>{if(!data.reviewedProgramme||w<1||w>data.customRoadmap.weeks)return;if(window.LHRFLive?.get?.()||LHRFStorage.local.getItem('lhrf_fresh_beta_live_v1114_pendingRun')){alert('Finish the active workout first.');return}if(!confirm('Show reviewed week '+w+'? Frozen prescriptions and all training records are retained.'))return;const next=JSON.parse(JSON.stringify(data));next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);const previous=data;data=next;if(!save()){data=previous;return}apply(next)};
 
  window.LHRFSyncReviewedCalendar=()=>{if(!data.reviewedProgramme||window.LHRFLive?.get?.()||LHRFStorage.local.getItem('lhrf_fresh_beta_live_v1114_pendingRun'))return;const date=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'}),w=Math.min(data.customRoadmap.weeks,Math.max(1,LHRFProgrammeReplacement.weekAt(data.customRoadmap,date)));if(w===Number(data.activeCustomWeek))return;const next=JSON.parse(JSON.stringify(data)),previous=data;next.activeCustomWeek=w;next.activeSchedule=LHRFProgrammeReplacement.sessions(next,w);data=next;if(!save()){data=previous;return}apply(next)};
