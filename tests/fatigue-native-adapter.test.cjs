@@ -17,12 +17,14 @@ function fixture(){
  const approvedOverlay=overlay.approve({state,assessmentState:n,proposal,enabled:true,approved:true,eventContext,draftContext,now}).overlay;assert.ok(approvedOverlay);
  const change=approvedOverlay.changes[0],occ=state.occurrences.find(o=>o.id===change.occurrenceId),key=occ.planId+'-w'+occ.week+'-'+occ.sessionId;
  const session=p.weeks.flatMap(w=>w.sessions).find(s=>s.catalogueOccurrenceId===key);assert.ok(session);
- return {native:n,session,approvedOverlay,now,eventContext,draftContext};
+ const f={native:n,session,approvedOverlay,now,eventContext,draftContext,mainKey:'main',overlayKey:'overlay'};
+ f.storage={getItem(key){if(key==='main')return JSON.stringify(f.native);if(key==='overlay')return JSON.stringify(f.approvedOverlay);if(!f.draftContext.known)throw Error('unavailable');if(key==='lhrf_fresh_beta_live_v1114'&&f.draftContext.activeSessionIds.length)return JSON.stringify({id:f.draftContext.activeSessionIds[0]});return null}};
+ return f;
 }
 test('applies scoped native strength set adjustment at read time with auditable original and unchanged programme',()=>{
- const f=fixture(),before=structuredClone(f),out=adapter.resolve(f);assert.equal(out.adjusted,true);
+ const f=fixture(),before=structuredClone(f.native),out=adapter.resolve(f);assert.equal(out.adjusted,true);
  assert.deepEqual(out.audit.original.ex,f.session.ex);assert.deepEqual(out.audit.adjusted.ex,out.session.ex);
- assert.ok(out.session.ex.some((x,i)=>x[1]<f.session.ex[i][1]));assert.deepEqual(f,before);
+ assert.ok(out.session.ex.some((x,i)=>x[1]<f.session.ex[i][1]));assert.deepEqual(f.native,before);
 });
 test('disabled, changed, completed, expired or unknown context always returns original',()=>{
  for(const mutate of [f=>f.native.featureFlags={},f=>f.session.ex[0][1]++,f=>f.draftContext={known:false,activeSessionIds:[]},f=>f.draftContext.activeSessionIds.push(f.session.id),f=>f.native.completedWorkouts.push({id:f.session.id,date:f.now+'T10:00:00Z'}),f=>f.eventContext.eventInformationUnchanged=false,f=>{f.now='2027-01-12';f.eventContext.asOfDate=f.now}]){
@@ -36,4 +38,10 @@ test('draft read fails closed on unavailable or corrupt storage and preserves va
 });
 test('missing workout fails closed without an exception',()=>{
  assert.deepEqual(adapter.resolve({session:null}),{session:null,adjusted:false});
+});
+test('revoked overlay and stale main data are never applied from cached state',()=>{
+ const f=fixture(),read=f.storage.getItem;
+ f.storage.getItem=key=>key==='overlay'?JSON.stringify({schema:1,kind:'fatigue-overlay-revocation'}):read(key);
+ assert.equal(adapter.resolve(f).adjusted,false);
+ f.storage.getItem=key=>key==='main'?'{}':read(key);assert.equal(adapter.resolve(f).adjusted,false);
 });
