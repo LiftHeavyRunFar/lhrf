@@ -51,6 +51,13 @@ test('changed event information or a separate competition store fails closed',()
  const another=fixture(),read=another.storage.getItem;another.storage.getItem=key=>key==='competition:lhrf_beta_v1118_clean'?'{}':read(key);
  assert.equal(adapter.resolve(another).adjusted,false);
 });
+test('normal Garmin import metadata does not invalidate strength adjustment, unknown event fields do',()=>{
+ const f=fixture();f.native.garminSync={savedAt:'2027-01-05T09:00:00.000Z',start:'2026-12-01',end:'2027-01-05',truncated:false};
+ assert.equal(adapter.resolve(f).adjusted,true,'known Garmin import bookkeeping remains neutral');
+ f.native.garminSync.taperDate='2027-01-10';assert.equal(adapter.resolve(f).adjusted,false,'unknown Garmin metadata remains bound');
+ delete f.native.garminSync.taperDate;f.native.garminSync.truncated='invalid';assert.equal(adapter.resolve(f).adjusted,false,'malformed metadata remains bound');
+ f.native.garminSync.truncated=false;f.native.garminSync.start='2027-02-30';assert.equal(adapter.resolve(f).adjusted,false,'invalid metadata date remains bound');
+});
 test('equivalent object key order is accepted, but changed persisted fields are not',()=>{
  const f=fixture(),read=f.storage.getItem;
  f.storage.getItem=key=>key==='main'?JSON.stringify(Object.fromEntries(Object.entries(f.native).reverse())):read(key);
