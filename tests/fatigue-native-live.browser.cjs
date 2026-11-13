@@ -17,6 +17,7 @@ function build(enabled){
 }
 (async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{
  for(const scenario of ['off','no-record','active','revoked','expired','main-conflict','idb-unavailable','draft-revoked','draft-expired','idb-abort-start']){
+  console.log('NATIVE_SCENARIO='+scenario);
   const data=build(true),ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,timezoneId:'Europe/London',serviceWorkers:'block'}),page=await ctx.newPage(),errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date('2027-01-05T09:00:00Z')});
   await page.route('https://fatigue-native.test/**',r=>{const p=new URL(r.request().url()).pathname;if(p==='/seed')return r.fulfill({body:'<!doctype html><title>Seed</title>',contentType:'text/html'});return r.fulfill({body:fs.readFileSync(path.join(root,p==='/'?'index.html':p)),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':'text/html'})});
@@ -74,7 +75,7 @@ function build(enabled){
   await page.locator('#readinessContinue').click();
   if(!['active','draft-revoked','draft-expired'].includes(scenario)){
    // Fail closed: a changed or stale approval must never start an adjusted live session.
-   await staleAlert;
+   try{await staleAlert}catch(e){const state=await page.evaluate(()=>({live:!!window.LHRFLive?.get?.(),pending:!!window.LHRFLive?.get?.()?.fatigueVerificationPending,notice:!!document.querySelector('#fatigueOverlayNotice'),readinessOpen:!!document.querySelector('#readinessModal[open]')}));console.log('NATIVE_STALE_DIAGNOSTIC='+JSON.stringify({scenario,...state}));throw e}
    const live=await page.evaluate(()=>window.LHRFLive?.get?.()||null);assert.ok(!live||!live.fatigueIntervention,scenario+' started with stale adjustment');if(live)assert.deepEqual(live.ex.map(x=>x[1]),data.session.ex.map(x=>x[1]),scenario+' started altered set counts');await ctx.close();continue;
   }
   await page.waitForFunction(()=>{const live=window.LHRFLive?.get?.();return !!live?.fatigueIntervention&&live.fatigueVerificationPending!==true},null,{timeout:10000});
