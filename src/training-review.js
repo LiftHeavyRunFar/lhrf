@@ -43,11 +43,20 @@ function strengthGroups(row){
  for(const set of row.sets||[])get(set.exercise,set.variantId).actual.push(set);
  return [...groups.values()];
 }
+// A labelled race or a uniquely associated saved race prescription is not an easy-run comparison.
+// Unknown/legacy records remain under the athlete's explicit control; do not rewrite history.
+function knownRace(state,run){
+ if([run.type,run.role].some(value=>String(value||'').trim().toLowerCase()==='race'))return true;
+ if(!run.sessionId||!day(run.date))return false;
+ const matches=(state.completedWorkouts||[]).filter(w=>w.id===run.sessionId&&day(w.date)===day(run.date));
+ if(matches.length!==1)return false;
+ return (matches[0].prescription?.runs||[]).some(r=>r.role==='race'||(r.steps||[]).some(step=>step.role==='race'));
+}
 function assess(state,now=new Date()){
  const planFirst=state.customRoadmap?.planFirstVersion===1;
  const since=+now-14*86400000,recent=(state.runs||[]).filter(r=>Date.parse(r.date)>=since&&Date.parse(r.date)<=+now),messages=[],proposals=[];
  const reviews=(state.weeklyCheckins||[]).filter(c=>Date.parse(c.date)>=+now-7*86400000).sort((a,b)=>Date.parse(b.date)-Date.parse(a.date)),check=reviews[0];
- const comparable=recent.filter(r=>r.comparableEasy===true&&Number.isFinite(r.avgHr)&&r.avgHr>=40&&r.avgHr<=230&&r.km>0&&r.min>0).sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
+ const comparable=recent.filter(r=>r.comparableEasy===true&&!knownRace(state,r)&&Number.isFinite(r.avgHr)&&r.avgHr>=40&&r.avgHr<=230&&r.km>0&&r.min>0).sort((a,b)=>Date.parse(a.date)-Date.parse(b.date));
  if(comparable.length>=4){const a=comparable.slice(-4,-2),b=comparable.slice(-2),avg=(xs,fn)=>xs.reduce((n,r)=>n+fn(r),0)/xs.length;
  const slower=avg(b,r=>r.min/r.km)/avg(a,r=>r.min/r.km)>=1.05,hr=Math.abs(avg(b,r=>r.avgHr)-avg(a,r=>r.avgHr))<=5;
  if(slower&&hr){messages.push('The latest two confirmed comparable easy runs were at least 5% slower than the previous two, at average heart rate within 5 bpm. Check conditions, sensor quality and recovery.');if(!planFirst)proposals.push('Review running stress before progressing; retain priority bench work and consider trimming optional accessories first.')}}
@@ -184,8 +193,8 @@ function mount({getData,commit,getSessions,parts,openProgress}){
  format.renderSplits(actual,r);
  const provenance=make('details',null,actual);make('summary','Source & recorded timing',provenance);make('p','Source: '+(r.source||'athlete log')+(r.sourceActivityId?' · activity '+r.sourceActivityId:'')+(r.totalsSource?' · '+r.totalsSource:''),provenance);make('p','Recorded: '+r.date+(r.durationBasis?' · pace uses '+r.durationBasis+' time':''),provenance);
  if(r.source==='garmin-local')make('p','Timer: '+format.duration(r.timerMinutes)+' · elapsed: '+format.duration(r.elapsedMinutes)+' · moving: '+format.duration(r.movingMinutes),provenance);for(const warning of r.warnings||[])make('p',warning,provenance);
- const label=make('label',null,actual),check=make('input',null,label);check.type='checkbox';check.checked=r.comparableEasy===true;label.append(document.createTextNode(' Use for comparable easy-run trends'));const help=make('p','Select only for an easy run with similar route, terrain, weather and a reliable heart-rate reading. Your coach needs four confirmed comparable runs to review pace at similar heart rate. This does not change the run or its prescription.',actual);help.id='comparableHelp'+list.querySelectorAll('input[type="checkbox"]').length;help.className='muted small';check.setAttribute('aria-describedby',help.id);
- check.onchange=()=>{const next=JSON.parse(JSON.stringify(getData())),index=getData().runs.indexOf(r);if(index<0)return;next.runs[index].comparableEasy=check.checked;if(!commit(next))check.checked=!check.checked};}
+ const label=make('label',null,actual),check=make('input',null,label);check.type='checkbox';check.checked=r.comparableEasy===true;const race=knownRace(getData(),r);check.disabled=race&&!check.checked;label.append(document.createTextNode(' Use for comparable easy-run trends'));const help=make('p','Select only for an easy run with similar route, terrain, weather and a reliable heart-rate reading. Your coach needs four confirmed comparable runs to review pace at similar heart rate. This does not change the run or its prescription.',actual);help.id='comparableHelp'+list.querySelectorAll('input[type="checkbox"]').length;help.className='muted small';check.setAttribute('aria-describedby',help.id);if(race)help.textContent='Race sessions are excluded from easy-run comparisons. An existing selection can be cleared without changing the workout.';
+ check.onchange=()=>{const next=JSON.parse(JSON.stringify(getData())),index=getData().runs.indexOf(r);if(index<0)return;next.runs[index].comparableEasy=check.checked;if(!commit(next))check.checked=!check.checked;else if(race&&!check.checked)check.disabled=true};}
  for(const note of new Set([row.notes,...row.sets.map(s=>s.notes),...row.runs.map(r=>r.notes||r.note)].filter(Boolean)))make('p','Notes: '+note,detail);for(const f of row.feedback)make('p','Feedback: '+[f.difficulty,f.energy,f.discomfort==='yes'?'unusual discomfort':null].filter(Boolean).join(' · '),detail);
  }more.hidden=items.length<=limit;}
  for(const el of [from,to,type])el.onchange=()=>{limit=10;renderHistory()};more.onclick=()=>{limit+=20;renderHistory()};
