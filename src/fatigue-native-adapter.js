@@ -4,6 +4,13 @@
  const overlay=typeof module==='object'&&module.exports?require('./fatigue-overlay'):root.LHRFFatigueOverlay;
  const clone=x=>JSON.parse(JSON.stringify(x));
  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+ // Bind all native state except actual workout/recovery records that legitimately
+ // grow during an intervention. This cannot detect events outside this app.
+ function eventFingerprint(native){
+  const ignored=new Set(['sets','runs','completedWorkouts','fatigueEvidence','checkins','readinessDay','sessionFeedback']);
+  if(!native||typeof native!=='object'||Array.isArray(native))throw Error('Invalid native state');
+  return JSON.stringify(Object.fromEntries(Object.entries(native).filter(([key])=>!ignored.has(key))));
+ }
  function catalogueState(native){
   const plans=native?.customRoadmap?.cataloguePlans;if(!Array.isArray(plans)||!plans.length)throw Error('No catalogue plans');
   return plans.reduce((s,p)=>training.enrol(s,p.snapshot,p.start,p.id),training.empty());
@@ -19,7 +26,7 @@
   }catch{return {known:false,activeSessionIds:[]};}
  }
  // The original native session remains authoritative on every error or ambiguity.
- function resolve({native,session,storage,mainKey,overlayKey,now,eventContext}){
+ function resolve({native,session,storage,mainKey,overlayKey,now}){
   if(!session||typeof session!=='object'||Array.isArray(session))return {session:null,adjusted:false};
   const original=clone(session);const unchanged=()=>({session:clone(original),adjusted:false});
   try{
@@ -27,6 +34,10 @@
    const originalRaw=storage.getItem(mainKey),overlayRaw=storage.getItem(overlayKey),context=draftContext(storage);
    if(typeof originalRaw!=='string'||originalRaw!==JSON.stringify(native)||typeof overlayRaw!=='string'||!context.known||context.activeSessionIds.length)return unchanged();
    const approvedOverlay=JSON.parse(overlayRaw);
+   if(typeof approvedOverlay.eventFingerprint!=='string'||approvedOverlay.eventFingerprint!==eventFingerprint(native)||storage.getItem('competition:lhrf_beta_v1118_clean')!==null)return unchanged();
+   // This attests only that local state still matches. Events outside this app
+   // remain subject to the athlete's explicit event-free confirmation.
+   const eventContext={asOfDate:now,eventInformationUnchanged:true,eventFreeAttestation:approvedOverlay.eventFreeAttestation};
    const state=catalogueState(native),key=session.catalogueOccurrenceId;
    const all=(native.reviewedProgramme?.weeks||[]).flatMap(w=>w.sessions||[]),source=all.filter(s=>s.catalogueOccurrenceId===key);
    if(source.length!==1||!same(source[0],session))return unchanged();
@@ -44,9 +55,9 @@
     changed.ex[i][1]=a.groups[i].sets;
    }
    const latest=draftContext(storage);
-   if(storage.getItem(mainKey)!==originalRaw||storage.getItem(overlayKey)!==overlayRaw||!latest.known||latest.activeSessionIds.length)return unchanged();
+   if(storage.getItem(mainKey)!==originalRaw||storage.getItem(overlayKey)!==overlayRaw||storage.getItem('competition:lhrf_beta_v1118_clean')!==null||!latest.known||latest.activeSessionIds.length)return unchanged();
    return {session:changed,adjusted:true,audit:{overlayStart:approvedOverlay.start,overlayEnd:approvedOverlay.end,occurrenceId:occurrence[0].id,original:{ex:clone(session.ex),runs:clone(session.runs||[])},adjusted:{ex:clone(changed.ex),runs:clone(changed.runs||[])}}};
   }catch{return unchanged();}
  }
- const api={catalogueState,draftContext,resolve};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFFatigueNativeAdapter=api;
+ const api={catalogueState,draftContext,eventFingerprint,resolve};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFFatigueNativeAdapter=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
