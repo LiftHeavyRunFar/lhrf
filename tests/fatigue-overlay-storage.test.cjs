@@ -25,7 +25,7 @@ test('approval writes only separate key, preserves generated programme and rejec
  assert.equal((await store.approve(a)).status,'conflict');
  const saved=JSON.parse(s.getItem('overlay')),change=saved.changes[0],occ=f.c.occurrences.find(o=>o.id===change.occurrenceId),key=occ.planId+'-w'+occ.week+'-'+occ.sessionId;
  const session=f.n.reviewedProgramme.weeks.flatMap(w=>w.sessions).find(x=>x.catalogueOccurrenceId===key);
- const view=adapter.resolve({native:JSON.parse(s.getItem('main')),session,approvedOverlay:saved,now:f.now,eventContext:f.eventContext,draftContext:adapter.draftContext(s)});
+ const view=adapter.resolve({native:JSON.parse(s.getItem('main')),session,storage:s,mainKey:'main',overlayKey:'overlay',now:f.now,eventContext:f.eventContext});
  assert.equal(view.adjusted,true);assert.deepEqual(view.audit.original.ex,session.ex);
 });
 test('unavailable locks, stale main state and active drafts fail closed without writes',async()=>{
