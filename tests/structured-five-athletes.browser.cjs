@@ -7,8 +7,8 @@ fs.mkdirSync(out,{recursive:true});
 const profiles=[
  {id:'beginner',programme:'lifting-foundation',discipline:'strength',availability:['Monday','Wednesday','Friday'],days:['Monday','Friday']},
  {id:'powerlifter',programme:'powerlifting-three-day',discipline:'strength',availability:['Monday','Wednesday','Friday'],days:['Monday','Wednesday','Friday'],maxes:{Squat:180,Bench:130,Deadlift:200}},
- {id:'runner',programme:'10k',discipline:'running',availability:['Tuesday','Saturday'],days:['Tuesday','Saturday'],raceMinutes:55},
- {id:'hybrid',programme:'lifting-foundation',discipline:'strength',availability:['Tuesday','Thursday','Friday','Sunday'],days:['Tuesday','Friday'],second:{programme:'10k',discipline:'running',days:['Thursday','Sunday'],raceMinutes:65}},
+ {id:'runner',programme:'10k',discipline:'running',availability:['Tuesday','Saturday'],days:['Tuesday','Saturday'],raceMinutes:55,syntheticRunningHistory:{weeklyKm:18,recentLongKm:9}},
+ {id:'hybrid',programme:'lifting-foundation',discipline:'strength',availability:['Tuesday','Thursday','Friday','Sunday'],days:['Tuesday','Friday'],second:{programme:'10k',discipline:'running',days:['Thursday','Sunday'],raceMinutes:65,syntheticRunningHistory:{weeklyKm:18,recentLongKm:9}}},
  {id:'returning',programme:'lifting-foundation',discipline:'strength',availability:['Tuesday','Saturday'],days:['Tuesday','Saturday']},
 ];
 async function selectDays(page,days){
@@ -22,14 +22,15 @@ async function setup(page,p,first){
  await page.locator('#native-catalogue-programme').selectOption(p.programme);
  if(p.programme==='10k')await page.getByRole('dialog',{name:'Programme setup'}).getByLabel('Runs per week',{exact:true}).selectOption('2');
  await selectDays(page,p.days);
+ const entry=await page.locator('#native-catalogue-entry').innerText();
  if(p.maxes){await page.getByText('Add reference maxes (optional)',{exact:true}).click();for(const [lift,weight] of Object.entries(p.maxes))await page.getByLabel(lift+' (kg)',{exact:true}).fill(String(weight));}
  if(p.raceMinutes){await page.getByText('Add a recent race time (optional)',{exact:true}).click();await page.getByLabel('Recent 10K time (minutes)').fill(String(p.raceMinutes));}
  await page.getByLabel('First calendar week').fill('2026-11-16');
  await page.getByRole('button',{name:'Preview programme',exact:true}).click();
  await page.getByRole('region',{name:'First week'}).waitFor();
- const summary=await page.getByRole('region',{name:'First week'}).innerText();
+ const summary=await page.getByRole('region',{name:'First week'}).innerText();const fatigue=page.getByRole('region',{name:'Fatigue review'});const warnings=await fatigue.count()?await fatigue.innerText():null;
  await page.getByRole('button',{name:'Get my programme',exact:true}).click();
- return summary;
+ return {entry,summary,warnings};
 }
 async function one(browser,p){
  const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[],record={profile:p.id,requested:p,steps:[],errors};
@@ -44,6 +45,7 @@ async function one(browser,p){
   else await page.getByRole('button',{name:'Go to programme'}).click();
   const state=()=>page.evaluate(k=>JSON.parse(localStorage.getItem(k)),key);
   const installed=await state();assert.ok(installed?.onboardingComplete);assert.equal(installed.customRoadmap.cataloguePlans.length,p.second?2:1);
+  const weekdays=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];for(let i=0;i<installed.customRoadmap.cataloguePlans.length;i++){const expected=(i===0?p.days:p.second.days).slice().sort();const actual=[...new Set(installed.customRoadmap.cataloguePlans[i].snapshot.weeks[0].sessions.filter(s=>s.kind!=='event').map(s=>weekdays[s.day]))].sort();assert.deepEqual(actual,expected,'saved training days differ from athlete selection');}
   record.plans=installed.customRoadmap.cataloguePlans.map(x=>({id:x.snapshot.id,weeks:x.snapshot.weeks.length,firstWeek:x.snapshot.weeks[0],allWeeks:x.snapshot.weeks}));record.steps.push('saved structured programme');
   const firstSession=installed.activeSchedule.filter(s=>s.scheduledDate).sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];assert.ok(firstSession,'no scheduled workout');await page.clock.setFixedTime(new Date(firstSession.scheduledDate+'T09:00:00Z'));
   const dots=page.locator('#dayDots button');let selected=false;for(let i=0;i<await dots.count();i++){const d=dots.nth(i),label=await d.getAttribute('aria-label');if(label?.toLowerCase().startsWith(firstSession.day.toLowerCase())){await d.click();selected=true;break;}}assert.ok(selected,'scheduled day not in Today carousel');
