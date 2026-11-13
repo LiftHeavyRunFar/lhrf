@@ -63,7 +63,15 @@ function build(enabled){
   const staleScenario=['revoked','expired','main-conflict','idb-unavailable'].includes(scenario);
   const staleAlert=staleScenario?page.waitForEvent('dialog',{timeout:10000}):null;
   await page.locator('#previewStart').click();
-  await page.locator('#readinessModal[open]').waitFor({state:'visible',timeout:10000});
+  if(staleScenario){
+   const gate=await Promise.race([staleAlert.then(d=>({kind:'alert',message:d.message()})),page.locator('#readinessModal[open]').waitFor({state:'visible',timeout:10000}).then(()=>({kind:'readiness'}))]);
+   if(gate.kind==='alert'){
+    assert.match(gate.message,/changed|verif|review|reload/i,'early stop must explain stale or unverifiable data');
+    assert.equal(await page.evaluate(()=>!!window.LHRFLive?.get?.()),false,'early stop must not create a live workout');
+    if(scenario==='main-conflict')assert.equal(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)||'null')?.otherTabSentinel,mainKey),'newer','newer main-state write must survive early stop');
+    await ctx.close();continue;
+   }
+  }else await page.locator('#readinessModal[open]').waitFor({state:'visible',timeout:10000});
   if(scenario==='idb-abort-start'){
    assert.equal(await page.locator('#readinessModal[open]').count(),1,'fault injection must happen during readiness');
    await page.evaluate(()=>{const original=IDBObjectStore.prototype.get;IDBObjectStore.prototype.get=function(...args){const req=original.apply(this,args);req.addEventListener('success',()=>queueMicrotask(()=>{try{req.transaction.abort()}catch{}}));return req}});
@@ -75,7 +83,8 @@ function build(enabled){
   await page.locator('#readinessContinue').click();
   if(!['active','draft-revoked','draft-expired'].includes(scenario)){
    // Fail closed: a changed or stale approval must never start an adjusted live session.
-   try{await staleAlert}catch(e){const state=await page.evaluate(()=>({live:!!window.LHRFLive?.get?.(),pending:!!window.LHRFLive?.get?.()?.fatigueVerificationPending,notice:!!document.querySelector('#fatigueOverlayNotice'),readinessOpen:!!document.querySelector('#readinessModal[open]')}));console.log('NATIVE_STALE_DIAGNOSTIC='+JSON.stringify({scenario,...state}));throw e}
+   try{await staleAlert}catch(e){const state=await page.evaluate(mainKey=>{const live=window.LHRFLive?.get?.(),stored=JSON.parse(localStorage.getItem(mainKey)||'null');return {live:!!live,pending:!!live?.fatigueVerificationPending,adjustedAudit:!!live?.fatigueIntervention,newerMainSentinelPreserved:stored?.otherTabSentinel==='newer',notice:!!document.querySelector('#fatigueOverlayNotice'),readinessOpen:!!document.querySelector('#readinessModal[open]')}},mainKey);console.log('NATIVE_STALE_DIAGNOSTIC='+JSON.stringify({scenario,...state}));throw e}
+   if(scenario==='main-conflict')assert.equal(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)||'null')?.otherTabSentinel,mainKey),'newer','newer main-state write must survive readiness and blocked start');
    const live=await page.evaluate(()=>window.LHRFLive?.get?.()||null);assert.ok(!live||!live.fatigueIntervention,scenario+' started with stale adjustment');if(live)assert.deepEqual(live.ex.map(x=>x[1]),data.session.ex.map(x=>x[1]),scenario+' started altered set counts');await ctx.close();continue;
   }
   await page.waitForFunction(()=>{const live=window.LHRFLive?.get?.();return !!live?.fatigueIntervention&&live.fatigueVerificationPending!==true},null,{timeout:10000});
