@@ -122,6 +122,8 @@ jobs:
         run: node tests/fatigue-evidence-catalogue-running.browser.cjs
       - name: Test separate overlay storage across offline browser tabs
         run: node tests/fatigue-overlay-storage.browser.cjs
+      - name: Test approved overlay in native workout flow
+        run: node tests/fatigue-native-live.browser.cjs
       - name: Test cross-programme performance references and production PWA update
         if: ${{ !cancelled() }}
         env:
