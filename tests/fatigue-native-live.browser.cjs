@@ -59,6 +59,7 @@ function build(enabled){
   if(scenario==='revoked')assert.equal((await page.evaluate(({overlayKey,expectedRaw})=>LHRFFatigueOverlayIDB.revoke({indexedDB,overlayKey,expectedRaw,confirmed:true,now:'2027-01-05'}),{overlayKey,expectedRaw:seededRaw})).status,'revoked');
   if(scenario==='expired')await page.clock.setFixedTime(new Date('2027-01-12T09:00:00Z'));
   if(scenario==='main-conflict')await page.evaluate(mainKey=>{const x=JSON.parse(localStorage.getItem(mainKey));x.otherTabSentinel='newer';localStorage.setItem(mainKey,JSON.stringify(x))},mainKey);
+  const concurrentRaw=scenario==='main-conflict'?await page.evaluate(k=>localStorage.getItem(k),mainKey):null;
   if(scenario==='idb-unavailable')await page.evaluate(()=>Object.defineProperty(window,'indexedDB',{value:null,configurable:true}));
   const staleScenario=['revoked','expired','main-conflict','idb-unavailable'].includes(scenario);
   const staleAlert=staleScenario?page.waitForEvent('dialog',{timeout:10000}):null;
@@ -68,7 +69,7 @@ function build(enabled){
    if(gate.kind==='alert'){
     assert.match(gate.message,/changed|verif|review|reload/i,'early stop must explain stale or unverifiable data');
     assert.equal(await page.evaluate(()=>!!window.LHRFLive?.get?.()),false,'early stop must not create a live workout');
-    if(scenario==='main-conflict')assert.equal(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)||'null')?.otherTabSentinel,mainKey),'newer','newer main-state write must survive early stop');
+    if(scenario==='main-conflict')assert.equal(await page.evaluate(k=>localStorage.getItem(k),mainKey),concurrentRaw,'entire newer main-state write must survive early stop byte for byte');
     await ctx.close();continue;
    }
   }else await page.locator('#readinessModal[open]').waitFor({state:'visible',timeout:10000});
@@ -84,7 +85,7 @@ function build(enabled){
   if(!['active','draft-revoked','draft-expired'].includes(scenario)){
    // Fail closed: a changed or stale approval must never start an adjusted live session.
    try{await staleAlert}catch(e){const state=await page.evaluate(mainKey=>{const live=window.LHRFLive?.get?.(),stored=JSON.parse(localStorage.getItem(mainKey)||'null');return {live:!!live,pending:!!live?.fatigueVerificationPending,adjustedAudit:!!live?.fatigueIntervention,newerMainSentinelPreserved:stored?.otherTabSentinel==='newer',notice:!!document.querySelector('#fatigueOverlayNotice'),readinessOpen:!!document.querySelector('#readinessModal[open]')}},mainKey);console.log('NATIVE_STALE_DIAGNOSTIC='+JSON.stringify({scenario,...state}));throw e}
-   if(scenario==='main-conflict')assert.equal(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)||'null')?.otherTabSentinel,mainKey),'newer','newer main-state write must survive readiness and blocked start');
+   if(scenario==='main-conflict')assert.equal(await page.evaluate(k=>localStorage.getItem(k),mainKey),concurrentRaw,'entire newer main-state write must survive readiness and blocked start byte for byte');
    const live=await page.evaluate(()=>window.LHRFLive?.get?.()||null);assert.ok(!live||!live.fatigueIntervention,scenario+' started with stale adjustment');if(live)assert.deepEqual(live.ex.map(x=>x[1]),data.session.ex.map(x=>x[1]),scenario+' started altered set counts');await ctx.close();continue;
   }
   await page.waitForFunction(()=>{const live=window.LHRFLive?.get?.();return !!live?.fatigueIntervention&&live.fatigueVerificationPending!==true},null,{timeout:10000});
