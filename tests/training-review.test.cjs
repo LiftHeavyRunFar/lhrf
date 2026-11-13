@@ -13,3 +13,13 @@ test('plan-first weekly statistics retain observed signals without issuing a sec
  assert.deepEqual(result.proposals,[]);
  assert.ok(result.messages.some(note=>note.includes('5% slower')));
 });
+test('confirmed race records cannot distort comparable easy trends or mutate history',()=>{
+ const now=new Date('2026-10-28'),mk=(i,min)=>({date:`2026-10-${20+i}`,km:5,min,avgHr:150,comparableEasy:true}),runs=[30,30,33,33].map((m,i)=>mk(i,m));
+ for(const oldLabel of [false,true])for(const planFirst of [false,true]){
+  const race={...runs[3],sessionId:'race-1',type:oldLabel?'easy-run':'race'};
+  const state={customRoadmap:planFirst?{planFirstVersion:1}:{},runs:[...runs.slice(0,3),race],completedWorkouts:[{id:'race-1',date:race.date,prescription:{runs:[{role:oldLabel?'easy-run':'race',steps:[{role:'race'}]}]}}]};
+  const before=JSON.stringify(state),result=assess(state,now);
+  assert.equal(result.messages.some(m=>m.includes('5% slower')),false);assert.deepEqual(result.proposals,[]);assert.deepEqual(result.appliedChanges,[]);assert.equal(JSON.stringify(state),before);
+ }
+ const unknown={runs};assert.equal(assess(unknown,now).proposals.length,1,'athlete-confirmed unknown runs remain eligible');
+});
