@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
 const file=path.join(__dirname,'structured-five-athletes.browser.cjs');
-const source=fs.readFileSync(file,'utf8').split('(async()=>{const browser')[0];
+const source=fs.readFileSync(file,'utf8').split('(async()=>{const browser')[0].replace('await selectDays(page,p.days);',\"if(p.programme==='powerlifting-four-day'){for(const lift of ['squat','bench','deadlift'])await page.locator('select[name=weakness-'+lift+']').selectOption({index:1});} await selectDays(page,p.days);\");
 const {one}=new Function('require','process','__dirname',source+';return {one}')(require('node:module').createRequire(file),process,__dirname);
 const profiles=[
  {id:'bench-specialist',programme:'bench-specialisation',discipline:'strength',days:['Monday','Wednesday','Friday']},
