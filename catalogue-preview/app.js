@@ -399,8 +399,20 @@
         node('dt', {}, shortDate.format(training.parseDate(date))),
         node('dd', {}, firstWeek.filter(item => item.date === date)
           .map(item => node('div', {}, item.session.title)))))));
+    // Show the date implied by this written programme before the athlete saves it.
+    // This is informational: it neither knows the athlete's real event date nor
+    // changes the schedule or prescription to match one.
+    const events = training.calendar(preview).filter(item => item.planId === 'preview' &&
+      (item.session.kind === 'event' || item.session.id === 'race' ||
+       snapshot.id === 'general-strength' && item.session.title === 'Strength benchmark'));
+    const eventReview = events.length ? node('section', { class: 'panel', 'aria-label': 'Scheduled event or test' },
+      heading('Scheduled event or test', 'h3'),
+      ...events.map(item => node('p', {}, item.session.title + ' · ' + dateText(item.date))),
+      node('p', { class: 'hint' }, snapshot.id === 'general-strength'
+        ? 'Review the benchmark date. To change it, edit your training days or first calendar week before saving.'
+        : 'Check this date against your event. If it does not match, edit the first calendar week or event day before saving.')) : null;
     region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
-      week, conflictPanel(preview, 'preview'),
+      week, eventReview, conflictPanel(preview, 'preview'),
       node('div', { class: 'actions preview-actions' }, add, edit),
       node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks));
   }
