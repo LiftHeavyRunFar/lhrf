@@ -1,0 +1,35 @@
+// Synthetic app browser acceptance: active strength overlay plus generated running-base plan.
+// Bridge responses are intercepted. No real athlete, network Garmin account, or device is used.
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict'),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const root=path.join(__dirname,'..'),mainKey='lhrf_beta_v1118_clean',overlayKey='lhrf_fatigue_overlay_v1';
+const catalogue=require('../src/programme-catalogue'),training=require('../src/catalogue-training'),native=require('../src/native-catalogue'),registry=require('../src/exercise-registry'),gym=require('../src/gym-equipment'),assessment=require('../src/fatigue-assessment');
+const {fixture}=require('./fatigue-overlay-fixture.cjs');
+const baseSource=fs.readFileSync(path.join(__dirname,'today-flow.browser.cjs'),'utf8').split('(async()=>')[0];
+const base=JSON.parse(JSON.stringify(vm.runInNewContext(baseSource+';fixture',{require:require('module').createRequire(__filename),process,__dirname})));
+function build(){
+ const f=fixture();let state=training.enrol(f.c,catalogue.previewProgramme('running-base',{continuation:true}),'2026-11-09','running');
+ const p=native.buildProgramme(state.plans,null,{training,registry,gym,inventory:{items:{}},now:'2026-11-09T09:00:00Z',equipment:[],protectedWeek:()=>false});
+ const n={...structuredClone(base),...structuredClone(f.n),customRoadmap:p.config,reviewedProgramme:{id:p.config.programmeId,config:p.config,weeks:p.weeks},activeCustomWeek:9,activeSchedule:p.weeks[8].sessions,onboardingComplete:true,featureFlags:{fatigueIntervention:true},readinessDay:'2027-01-04'};
+ const proposal=assessment.assess({state:n,discipline:'strength',now:f.now,policy:{minDeclineFraction:.1,recentDays:14}}).candidate;assert.ok(proposal);
+ const eventContext={asOfDate:f.now,eventInformationUnchanged:true,eventFreeAttestation:{source:'athlete-confirmed',confirmedOn:f.now,noOtherEventOrTaper:true,boundPlans:JSON.stringify(state.plans)}};
+ const strength=p.weeks[8].sessions.find(s=>s.catalogueOccurrenceId==='r-w9-B'),run=p.weeks[8].sessions.find(s=>s.catalogueOccurrenceId.startsWith('running-')&&s.runs.length);assert.ok(strength&&run);
+ return {n,proposal,eventContext,strength,run};
+}
+(async()=>{const f=build(),browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{
+ const ctx=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,timezoneId:'Europe/London',serviceWorkers:'block'}),page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date('2027-01-05T09:00:00Z')});
+ await ctx.route('https://liftheavyrunfar.github.io/lhrf/**',r=>{const p=new URL(r.request().url()).pathname.replace('/lhrf/','');if(p==='seed')return r.fulfill({body:'<!doctype html><title>Seed</title>',contentType:'text/html'});return r.fulfill({body:fs.readFileSync(path.join(root,p||'index.html')),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':'text/html'})});
+ const run={source:'garmin-personal',sourceActivityId:'42',date:'2027-01-04T06:00:00Z',name:'Synthetic run',km:6,min:30,avgHr:150,maxHr:178,splits:[{km:1,min:5,avgHr:148,maxHr:170}]};
+ await ctx.route('https://lhrf-garmin-import.equalmelon128.chatgpt.site/**',r=>r.fulfill({contentType:'text/html',body:'<script>window.opener.postMessage({type:"lhrf-garmin-import",state:new URL(location.href).searchParams.get("state"),payload:'+JSON.stringify({version:1,runs:[run]})+'},"https://liftheavyrunfar.github.io");</script>'}));
+ await page.goto('https://liftheavyrunfar.github.io/lhrf/seed');for(const name of ['gym-equipment.js','exercise-registry.js','catalogue-training.js','catalogue-protection.js','fatigue-assessment.js','fatigue-overlay.js','fatigue-native-adapter.js','fatigue-overlay-idb.js'])await page.addScriptTag({content:fs.readFileSync(path.join(root,'src',name),'utf8')});
+ const seeded=await page.evaluate(async({mainKey,overlayKey,...f})=>{const raw=JSON.stringify(f.n);localStorage.setItem(mainKey,raw);return LHRFFatigueOverlayIDB.approve({indexedDB,storage:localStorage,mainKey,overlayKey,expectedRaw:raw,proposal:f.proposal,approved:true,now:'2027-01-05',eventContext:f.eventContext})},{mainKey,overlayKey,n:f.n,proposal:f.proposal,eventContext:f.eventContext});assert.equal(seeded.status,'saved','fixture requires approved strength overlay');
+ await page.goto('https://liftheavyrunfar.github.io/lhrf/');const before=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),mainKey);
+ await page.evaluate(id=>openWorkout(id),f.strength.id);assert.equal(await page.locator('#fatigueOverlayNotice').count(),1,'strength overlay genuinely active');await page.locator('#previewClose').click();
+ await page.evaluate(id=>openWorkout(id),f.run.id);assert.equal(await page.locator('#fatigueOverlayNotice').count(),0,'unaffected running plan must stay original');assert.equal(await page.locator('#livePreview [data-garmin-preview]').count(),1);
+ await page.locator('#livePreview [data-garmin-preview]').click();assert.equal(await page.locator('#sendIntervalsWorkout').isDisabled(),true,'time-only Garmin export must retain its existing protection');assert.match(await page.locator('#intervalsSendStatus').innerText(),/no distance or pace has been invented/i);await page.locator('#runToolsClose').click();
+ assert.deepEqual(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),mainKey),before,'preview/export must not mutate stored data');
+ await page.evaluate(id=>openWorkout(id),f.run.id);await page.locator('#previewSyncGarmin').click();await page.locator('#garminIncomingSave').waitFor({state:'visible'});await page.locator('#garminIncomingSave').click();await page.locator('#livePreview').waitFor({state:'visible'});
+ const after=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),mainKey);assert.equal(after.runs.length,before.runs.length+1);assert.equal(after.runs.at(-1).sourceActivityId,'42');for(const k of Object.keys(before).filter(k=>!['runs','garminSync'].includes(k)))assert.deepEqual(after[k],before[k],k+' changed by import');
+ await page.locator('#previewClose').click();await page.evaluate(id=>openWorkout(id),f.strength.id);assert.equal(await page.locator('#fatigueOverlayNotice').count(),1,'Garmin import must not silently invalidate active strength overlay');
+ const idb=await page.evaluate(({overlayKey})=>LHRFFatigueOverlayIDB.read({indexedDB,overlayKey,now:'2027-01-05'}),{overlayKey});assert.equal(idb.status,'active');assert.deepEqual(errors,[]);
+ console.log('PASS native Garmin preview/time-export protection and synthetic import with active strength overlay');await ctx.close();
+ }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
