@@ -3,9 +3,17 @@
 (function(root){'use strict';
  const adapter=typeof module==='object'&&module.exports?require('./fatigue-native-adapter'):root.LHRFFatigueNativeAdapter;
  const engine=typeof module==='object'&&module.exports?require('./fatigue-overlay'):root.LHRFFatigueOverlay;
- const records=typeof module==='object'&&module.exports?require('./fatigue-overlay-storage'):root.LHRFFatigueOverlayStorage;
  const training=typeof module==='object'&&module.exports?require('./catalogue-training'):root.LHRFCatalogueTraining;
  const fail=(status,reason)=>({status,reason});
+ function inspect(value,now){
+  try{
+   training.parseDate(now);if(value===undefined)return {status:'none'};
+   if(value?.schema===1&&value.kind==='fatigue-overlay-revocation')return {status:'revoked'};
+   if(value?.schema!==1||value.kind!=='fatigue-overlay'||value.approved!==true||training.addDays(value.start,6)!==value.end||!Array.isArray(value.changes)||!value.changes.length)return {status:'invalid'};
+   if(now<value.start)return {status:'not-started'};if(now>value.end)return {status:'expired'};
+   return {status:'active',overlay:value};
+  }catch{return {status:'invalid'}}
+ }
  function open(factory){
   return new Promise((resolve,reject)=>{
    if(!factory||typeof factory.open!=='function')return reject(Error('IndexedDB unavailable'));
@@ -33,7 +41,7 @@
   if(typeof overlayKey!=='string'||!overlayKey)return fail('invalid','overlay key');
   try{training.parseDate(now)}catch{return fail('invalid','date')}
   return transact(indexedDB,'readonly',(store,done)=>{
-   const request=store.get(overlayKey);request.onsuccess=()=>{const value=request.result;done(records.inspect(value===undefined?null:JSON.stringify(value),now))};
+   const request=store.get(overlayKey);request.onsuccess=()=>done(inspect(request.result,now));
   });
  }
  // The callback must be synchronous. It runs while a readwrite transaction holds
@@ -45,7 +53,7 @@
   try{training.parseDate(now)}catch{return fail('invalid','date')}
   return transact(indexedDB,'readwrite',(store,done)=>{
    const request=store.get(overlayKey);request.onsuccess=()=>{
-    const view=records.inspect(request.result===undefined?null:JSON.stringify(request.result),now);
+    const view=inspect(request.result,now);
     try{const value=callback(view.status==='active'?view.overlay:null);if(value&&typeof value.then==='function')return done(fail('invalid','callback must be synchronous'));done({status:'read',value})}catch{return done(fail('failed','overlay application failed'))}
    };
   });
