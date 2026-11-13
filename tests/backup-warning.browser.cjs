@@ -13,6 +13,17 @@ assert.ok(backup._backup.deviceState[LIVE]);
  await page.addInitScript(({key,data})=>localStorage.setItem(key,JSON.stringify(data)),{key:DATA,data:fixture});await page.goto('http://backup-warning.test/');
  await page.locator('nav [data-screen="settings"]').click();await page.locator('#settingsData > summary').click();
  const warning=await page.locator('#exportTrainingData').locator('..').innerText();assert.match(warning,/lost|cleared/i);assert.match(warning,/somewhere other than this device/i);
+ // Both entry points must report a partial backup, without exposing storage keys.
+ // Downloads remain available, and a healthy backup must not create a warning.
+ let exportAlerts=[];const onExportDialog=d=>{exportAlerts.push(d.message());return d.accept()};page.on('dialog',onExportDialog);
+ for(const method of ['settings','progress']){
+  await page.evaluate(()=>{window.__originalStorageGet=Storage.prototype.getItem;Storage.prototype.getItem=function(k){if(k==='lhrf_fresh_beta_live_v1114')throw Error('simulated unreadable draft');return window.__originalStorageGet.call(this,k)}});
+  const pending=page.waitForEvent('download');if(method==='settings')await page.locator('#exportTrainingData').click();else await page.evaluate(()=>exportLog());
+  const download=await pending;const file=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.ok(file._backup.warnings.length);assert.deepEqual(file.sets,fixture.sets);assert.match(exportAlerts.at(-1),/supplementary device data.*could not be included/i);assert.doesNotMatch(exportAlerts.at(-1),/lhrf_fresh_beta/);
+  await page.evaluate(()=>{Storage.prototype.getItem=window.__originalStorageGet});
+ }
+ assert.equal(exportAlerts.length,2,'each export entry reports its incomplete backup');
+ const healthy=page.waitForEvent('download');await page.locator('#exportTrainingData').click();await healthy;assert.equal(exportAlerts.length,2,'healthy export needs no extra warning');page.off('dialog',onExportDialog);
  const getState=()=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)),DATA),before=await getState();let prompt='';
  const restore=()=>page.evaluate(async backup=>importBackup({target:{files:[new File([JSON.stringify(backup)],'backup.json',{type:'application/json'})],value:'selected'}}),backup);
  page.once('dialog',d=>{prompt=d.message();return d.dismiss()});await restore();assert.match(prompt,/replaces this device’s current local records/i);assert.match(prompt,/in-progress workout.*not automatically resume/i);assert.deepEqual(await getState(),before,'cancel must preserve destination');
