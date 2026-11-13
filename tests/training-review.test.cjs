@@ -22,4 +22,6 @@ test('confirmed race records cannot distort comparable easy trends or mutate his
   assert.equal(result.messages.some(m=>m.includes('5% slower')),false);assert.deepEqual(result.proposals,[]);assert.deepEqual(result.appliedChanges,[]);assert.equal(JSON.stringify(state),before);
  }
  const unknown={runs};assert.equal(assess(unknown,now).proposals.length,1,'athlete-confirmed unknown runs remain eligible');
+ const ambiguous={runs:[...runs.slice(0,3),{...runs[3],type:'easy-run',sessionId:'mixed'}],completedWorkouts:[{id:'mixed',date:runs[3].date,prescription:{runs:[{role:'easy-run'},{role:'race'}]}}]};
+ assert.equal(assess(ambiguous,now).proposals.length,1,'do not infer which run in a mixed prescription was completed');
 });
