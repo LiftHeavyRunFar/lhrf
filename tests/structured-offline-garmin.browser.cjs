@@ -1,8 +1,8 @@
 // Synthetic structured-catalogue athlete: tab interruption, re-entry and completed-workout persistence.
-// Runs separately against checkout and deployed app; never accesses a real athlete account.
+// Runs checked-out v1.40.6 files on an isolated local origin; no real athlete account.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const http=require('node:http');const {chromium}=require('playwright');
-const root=path.join(__dirname,'..'),live=process.env.LHRF_LIVE==='1',key='lhrf_beta_v1118_clean';
+const root=path.join(__dirname,'..'),key='lhrf_beta_v1118_clean';
 const file=path.join(__dirname,'structured-five-athletes.browser.cjs');
 const prelude=fs.readFileSync(file,'utf8').split('async function one(')[0];
 const {setup,profiles}=vm.runInNewContext(prelude+';({setup,profiles})',{require:require('node:module').createRequire(file),process,__dirname,console});
