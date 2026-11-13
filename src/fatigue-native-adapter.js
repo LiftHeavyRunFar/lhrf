@@ -19,11 +19,14 @@
   }catch{return {known:false,activeSessionIds:[]};}
  }
  // The original native session remains authoritative on every error or ambiguity.
- function resolve({native,session,approvedOverlay,now,eventContext,draftContext:context}){
+ function resolve({native,session,storage,mainKey,overlayKey,now,eventContext}){
   if(!session||typeof session!=='object'||Array.isArray(session))return {session:null,adjusted:false};
   const original=clone(session);const unchanged=()=>({session:clone(original),adjusted:false});
   try{
-   if(native?.featureFlags?.fatigueIntervention!==true||!approvedOverlay||!session?.catalogueOccurrenceId||session.runs?.length||!Array.isArray(session.ex))return unchanged();
+   if(native?.featureFlags?.fatigueIntervention!==true||!storage||typeof storage.getItem!=='function'||!mainKey||!overlayKey||mainKey===overlayKey||!session?.catalogueOccurrenceId||session.runs?.length||!Array.isArray(session.ex))return unchanged();
+   const originalRaw=storage.getItem(mainKey),overlayRaw=storage.getItem(overlayKey),context=draftContext(storage);
+   if(typeof originalRaw!=='string'||originalRaw!==JSON.stringify(native)||typeof overlayRaw!=='string'||!context.known||context.activeSessionIds.length)return unchanged();
+   const approvedOverlay=JSON.parse(overlayRaw);
    const state=catalogueState(native),key=session.catalogueOccurrenceId;
    const all=(native.reviewedProgramme?.weeks||[]).flatMap(w=>w.sessions||[]),source=all.filter(s=>s.catalogueOccurrenceId===key);
    if(source.length!==1||!same(source[0],session))return unchanged();
@@ -40,6 +43,8 @@
     const aGroup={...a.groups[i],sets:b.groups[i].sets};if(!same(aGroup,b.groups[i]))return unchanged();
     changed.ex[i][1]=a.groups[i].sets;
    }
+   const latest=draftContext(storage);
+   if(storage.getItem(mainKey)!==originalRaw||storage.getItem(overlayKey)!==overlayRaw||!latest.known||latest.activeSessionIds.length)return unchanged();
    return {session:changed,adjusted:true,audit:{overlayStart:approvedOverlay.start,overlayEnd:approvedOverlay.end,occurrenceId:occurrence[0].id,original:{ex:clone(session.ex),runs:clone(session.runs||[])},adjusted:{ex:clone(changed.ex),runs:clone(changed.runs||[])}}};
   }catch{return unchanged();}
  }
