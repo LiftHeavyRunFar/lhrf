@@ -39,12 +39,13 @@
     if(storage.getItem(mainKey)!==expectedRaw)return fail('conflict','training data changed');
     if(storage.getItem(overlayKey)!==null)return fail('conflict','an overlay record already exists');
     native=JSON.parse(expectedRaw);if(native?.featureFlags?.fatigueIntervention!==true||approved!==true)return fail('not-approved','not enabled or approved');
+    if(storage.getItem('competition:lhrf_beta_v1118_clean')!==null)return fail('conflict','separate competition programme requires review');
     drafts=adapter.draftContext(storage);if(!drafts.known||drafts.activeSessionIds.length)return fail('conflict','active or unreadable workout draft');
     state=adapter.catalogueState(native);
    }catch{return fail('failed','unable to read current data');}
    let result;try{result=engine.approve({state,assessmentState:native,proposal,enabled:true,approved:true,now,eventContext,draftContext:drafts});}catch{return fail('invalid','approval inputs');}
    if(!result?.overlay)return fail('not-approved','no eligible adjustment');
-   let raw;try{raw=JSON.stringify(result.overlay);if(storage.getItem(mainKey)!==expectedRaw||storage.getItem(overlayKey)!==null)return fail('conflict','data changed during review');
+   let raw;try{raw=JSON.stringify({...result.overlay,eventFingerprint:adapter.eventFingerprint(native)});if(storage.getItem(mainKey)!==expectedRaw||storage.getItem(overlayKey)!==null||storage.getItem('competition:lhrf_beta_v1118_clean')!==null)return fail('conflict','data changed during review');
     const latest=adapter.draftContext(storage);if(!latest.known||latest.activeSessionIds.length)return fail('conflict','workout draft changed');
     storage.setItem(overlayKey,raw);
    }catch{
@@ -53,7 +54,7 @@
    }
    try{
     if(storage.getItem(overlayKey)!==raw)return fail('unknown','overlay storage needs review');
-    if(storage.getItem(mainKey)!==expectedRaw||!adapter.draftContext(storage).known||adapter.draftContext(storage).activeSessionIds.length){
+    if(storage.getItem(mainKey)!==expectedRaw||storage.getItem('competition:lhrf_beta_v1118_clean')!==null||!adapter.draftContext(storage).known||adapter.draftContext(storage).activeSessionIds.length){
      if(storage.getItem(overlayKey)===raw)storage.removeItem(overlayKey);
      return fail('conflict','training changed during approval');
     }
