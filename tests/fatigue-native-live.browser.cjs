@@ -6,7 +6,7 @@ const overlay=require('../src/fatigue-overlay'),adapter=require('../src/fatigue-
 const root=path.join(__dirname,'..'),mainKey='lhrf_beta_v1118_clean',overlayKey='lhrf_fatigue_overlay_v1';
 function readFixture(file,split){const source=fs.readFileSync(file,'utf8').split(split)[0];return vm.runInNewContext(source+';fixture',{require:require('module').createRequire(file),process,__dirname:path.dirname(file),structuredClone,console});}
 const base=readFixture(path.join(__dirname,'today-flow.browser.cjs'),'(async()=>');
-const generated=readFixture(path.join(__dirname,'fatigue-overlay-storage.test.cjs'),"test('approval writes")();
+const generated=require('./fatigue-overlay-fixture.cjs').fixture();
 function build(enabled){
  const f=generated,n={...structuredClone(base),...structuredClone(f.n)};n.featureFlags={fatigueIntervention:enabled};n.onboardingComplete=true;n.activeCustomWeek=9;
  n.reviewedProgramme={...n.reviewedProgramme,id:n.customRoadmap.programmeId,config:n.customRoadmap};n.activeSchedule=n.reviewedProgramme.weeks[8].sessions;n.readinessDay='2027-01-04';
@@ -21,7 +21,7 @@ function build(enabled){
   page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date('2027-01-05T09:00:00Z')});
   await page.route('https://fatigue-native.test/**',r=>{const p=new URL(r.request().url()).pathname;if(p==='/seed')return r.fulfill({body:'<!doctype html><title>Seed</title>',contentType:'text/html'});return r.fulfill({body:fs.readFileSync(path.join(root,p==='/'?'index.html':p)),contentType:p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':'text/html'})});
   await page.goto('https://fatigue-native.test/seed');
-  for(const name of ['gym-equipment.js','exercise-registry.js','catalogue-training.js','catalogue-protection.js','fatigue-assessment.js','fatigue-overlay.js','fatigue-native-adapter.js','fatigue-overlay-storage.js','fatigue-overlay-idb.js'])await page.addScriptTag({content:fs.readFileSync(path.join(root,'src',name),'utf8')});
+  for(const name of ['gym-equipment.js','exercise-registry.js','catalogue-training.js','catalogue-protection.js','fatigue-assessment.js','fatigue-overlay.js','fatigue-native-adapter.js','fatigue-overlay-idb.js'])await page.addScriptTag({content:fs.readFileSync(path.join(root,'src',name),'utf8')});
   const seeded=await page.evaluate(async({mainKey,overlayKey,n,proposal,eventContext,scenario})=>{const raw=JSON.stringify(n);localStorage.setItem(mainKey,raw);if(scenario==='no-record')return null;return LHRFFatigueOverlayIDB.approve({indexedDB,storage:localStorage,mainKey,overlayKey,expectedRaw:raw,proposal,approved:true,now:'2027-01-05',eventContext})},{mainKey,overlayKey,n:data.n,proposal:generated.proposal,eventContext:generated.eventContext,scenario});
   if(scenario!=='no-record')assert.equal(seeded.status,'saved','fixture must create an actually approved IndexedDB overlay');
   const seededRaw=seeded?JSON.stringify(seeded.overlay):null;
