@@ -351,3 +351,6 @@ jobs:
           fi
       - name: Test approved overlay in native workout flow
         run: node tests/fatigue-native-live.browser.cjs
+      - name: Test Garmin paths during active strength overlay
+        if: ${{ !cancelled() }}
+        run: node tests/fatigue-garmin-native.browser.cjs
