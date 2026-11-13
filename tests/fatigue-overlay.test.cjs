@@ -56,3 +56,32 @@ test('confirmed event-free generated strength plan adjusts only eligible future 
  for(const item of overlay.view({state,assessmentState:nativeState,overlay:result.overlay,enabled:true,eventContext:{...eventContext,eventInformationUnchanged:false},draftContext,now}).sessions)assert.deepEqual(item.adjusted,item.original);
  assert.deepEqual(state,before);assert.deepEqual(nativeState,saved);
 });
+test('a persisted catalogue weekday reschedule preserves unique scheduled workout evidence',()=>{
+ const original=training.enrol(training.empty(),catalogue.previewProgramme('lifting-foundation',{continuation:true}),'2026-11-09','r');
+ const options={training,registry,gym,inventory:{items:{}},now:'2026-11-09T09:00:00Z',equipment:[],protectedWeek:()=>false};
+ const old=native.buildProgramme(original.plans,null,options),moved=structuredClone(original.plans[0].snapshot);
+ for(const week of moved.weeks)week.sessions.find(s=>s.id==='A').day=1;
+ const state=training.enrol(training.empty(),moved,'2026-11-09','r');
+ const programme=native.buildProgramme(state.plans,old,{...options,rescheduleId:'r'});
+ const nativeState={customRoadmap:programme.config,reviewedProgramme:{weeks:programme.weeks},completedWorkouts:[],sets:[],runs:[],fatigueEvidence:[]};
+ for(const [i,week] of [4,6,7,8,9].entries()){
+  const session=programme.weeks[week-1].sessions.find(s=>s.catalogueOccurrenceId.endsWith('-A'));
+  const originalSession=old.weeks[week-1].sessions.find(s=>s.catalogueOccurrenceId===session.catalogueOccurrenceId);
+  assert.equal(session.id,originalSession.id);assert.equal(session.scheduledDate,training.addDays(originalSession.scheduledDate,1));
+  const stamp=session.scheduledDate+'T09:00:00.000Z',total=session.ex.reduce((sum,x)=>sum+x[1],0);
+  nativeState.completedWorkouts.push({id:session.id,date:stamp,completedSets:total,plannedSets:total,prescription:{ex:structuredClone(session.ex),runs:[]}});
+  session.ex.forEach((x,k)=>{for(let set=1;set<=x[1];set++)nativeState.sets.push({sessionId:session.id,date:stamp,exerciseId:x[5].exerciseId,set,reps:x[2],weight:k===0?(i<3?100:80):50,rpe:7})});
+  nativeState.fatigueEvidence.push({sessionId:session.id,discipline:'strength',recordedAt:stamp,painOrDiscomfort:'no',illness:'no',unusualFatigue:i===4?'yes':'no'});
+ }
+ const now='2027-01-06',policy={minDeclineFraction:.1,recentDays:14};
+ const proposal=assessment.assess({state:nativeState,discipline:'strength',now,policy}).candidate;assert.ok(proposal);
+ const eventContext={asOfDate:now,eventInformationUnchanged:true,eventFreeAttestation:{source:'athlete-confirmed',confirmedOn:now,noOtherEventOrTaper:true,boundPlans:JSON.stringify(state.plans)}};
+ const before=structuredClone({state,nativeState});
+ assert.ok(overlay.approve({state,assessmentState:nativeState,proposal,enabled:true,approved:true,eventContext,draftContext:{known:true,activeSessionIds:[]},now}).overlay);
+ assert.deepEqual({state,nativeState},before);
+ const first=nativeState.completedWorkouts[0],other=training.addDays(first.date.slice(0,10),-1)+'T09:00:00.000Z';first.date=other;
+ for(const row of nativeState.sets.filter(x=>x.sessionId===first.id))row.date=other;
+ nativeState.fatigueEvidence.find(x=>x.sessionId===first.id).recordedAt=other;
+ const changed=assessment.assess({state:nativeState,discipline:'strength',now,policy}).candidate;assert.ok(changed);
+ assert.equal(overlay.approve({state,assessmentState:nativeState,proposal:changed,enabled:true,approved:true,eventContext,draftContext:{known:true,activeSessionIds:[]},now}).overlay,null,'undocumented early execution remains unverified');
+});
