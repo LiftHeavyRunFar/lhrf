@@ -1,7 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
-const fs=require('fs'),vm=require('vm'),path=require('path');
-const file=path.join(__dirname,'fatigue-overlay-storage.test.cjs'),prelude=fs.readFileSync(file,'utf8').split("test('approval writes")[0];
-const {fixture,memory,args}=vm.runInNewContext(prelude+';({fixture,memory,args})',{require:require('module').createRequire(file),structuredClone,console});
+const {fixture,memory,args}=require('./fatigue-overlay-fixture.cjs');
 const idb=require('../src/fatigue-overlay-idb'),overlay=require('../src/fatigue-overlay');
 test('missing or unavailable IndexedDB fails closed and never writes main storage',async()=>{
  const f=fixture(),s=memory(JSON.stringify(f.n)),a=args(f,s,null),before=s.getItem('main');
