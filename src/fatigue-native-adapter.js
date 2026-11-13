@@ -11,7 +11,18 @@
  function eventFingerprint(native){
   const ignored=new Set(['sets','runs','completedWorkouts','fatigueEvidence','checkins','readinessDay','sessionFeedback']);
   if(!native||typeof native!=='object'||Array.isArray(native))throw Error('Invalid native state');
-  return structural(Object.fromEntries(Object.entries(native).filter(([key])=>!ignored.has(key))));
+  const relevant=Object.fromEntries(Object.entries(native).filter(([key])=>!ignored.has(key)));
+  // Garmin import bookkeeping does not describe events: preserve unknown or
+  // malformed fields so future event metadata cannot be ignored accidentally.
+  const sync=relevant.garminSync;
+  if(sync&&typeof sync==='object'&&!Array.isArray(sync)){
+   const remaining={...sync};
+   if(typeof sync.savedAt==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(sync.savedAt)&&Number.isFinite(Date.parse(sync.savedAt))&&new Date(sync.savedAt).toISOString()===sync.savedAt)delete remaining.savedAt;
+   for(const key of ['start','end']){if(sync[key]===null)delete remaining[key];else if(typeof sync[key]==='string')try{training.parseDate(sync[key]);delete remaining[key]}catch{}}
+   if(typeof sync.truncated==='boolean')delete remaining.truncated;
+   if(Object.keys(remaining).length)relevant.garminSync=remaining;else delete relevant.garminSync;
+  }
+  return structural(relevant);
  }
  function catalogueState(native){
   const plans=native?.customRoadmap?.cataloguePlans;if(!Array.isArray(plans)||!plans.length)throw Error('No catalogue plans');
