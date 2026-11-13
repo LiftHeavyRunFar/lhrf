@@ -31,6 +31,9 @@ jobs:
         env:
           LHRF_LIVE: '1'
         run: node tests/structured-five-athletes.browser.cjs
+      - name: Observe event dates in native setup
+        if: ${{ !cancelled() }}
+        run: node tests/structured-event-alignment.browser.cjs
       - name: Retain individual results and screenshots
         if: always()
         uses: actions/upload-artifact@v4
