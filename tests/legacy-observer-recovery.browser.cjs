@@ -18,10 +18,11 @@ fixture.completedWorkouts=fixture.completedWorkouts||[];fixture.garminSync={sent
  const variants=observed.map(s=>({completedWorkouts:s.completedWorkouts,garminSync:s.garminSync}));assert.notDeepEqual(variants[0],variants[1],'conflicting snapshots must remain distinct, not silently merged');
  // QA-only recovery view: retain distinct originals and list candidate workout IDs;
  // conflicting Garmin snapshots require manual review and are never overwritten.
- const recovery={snapshots:structuredClone(observed),workoutIds:[...new Set(observed.flatMap(s=>(s.completedWorkouts||[]).map(w=>w.id)))],garminVariants:[...new Set(observed.map(s=>JSON.stringify(s.garminSync)))],status:'manual-review'};
+ const recoveryView=rows=>({snapshots:structuredClone(rows),workoutIds:[...new Set(rows.flatMap(s=>(s.completedWorkouts||[]).map(w=>w.id)))],garminVariants:[...new Set(rows.map(s=>JSON.stringify(s.garminSync)))],status:'manual-review'});const recovery=recoveryView(observed);
  assert.ok(recovery.workoutIds.includes('observed-old-A'));assert.ok(recovery.workoutIds.includes('observed-old-B'));assert.equal(recovery.garminVariants.length,2);assert.equal(recovery.status,'manual-review');assert.deepEqual(recovery.snapshots,observed);
  // Offline with observer present: notifications still arrive without a network.
  await context.setOffline(true);assert.equal(await a.evaluate(()=>navigator.onLine),false);assert.equal(await write(a,'offline-observed'),true);await observer.waitForFunction(key=>JSON.parse(localStorage.getItem(key)||'[]').length===3,JOURNAL);
+ const offlineSnapshots=await observer.evaluate(key=>JSON.parse(localStorage.getItem(key)).map(e=>JSON.parse(e.after)),JOURNAL);const offlineRecovery=recoveryView(offlineSnapshots);assert.ok(offlineRecovery.workoutIds.includes('offline-observed'));assert.ok(offlineRecovery.workoutIds.includes('observed-old-A'));assert.ok(offlineRecovery.workoutIds.includes('observed-old-B'));assert.equal(offlineRecovery.status,'manual-review');assert.deepEqual(offlineRecovery.snapshots,offlineSnapshots);
  const journalBefore=await observer.evaluate(key=>localStorage.getItem(key),JOURNAL);await observer.close();
  // During observer interruption there is no recipient. Two old writers can overwrite
  // each other; reopening the observer does not replay missed storage notifications.
