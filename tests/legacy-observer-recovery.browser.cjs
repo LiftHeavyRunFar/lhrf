@@ -1,0 +1,34 @@
+// Synthetic diagnostic. A running observer records storage notifications; it is not a durable fence.
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict');
+const {chromium}=require('playwright');
+const root=path.resolve(__dirname,'..'),oldRoot=path.join(root,'production-v1406'),DATA='lhrf_beta_v1118_clean',JOURNAL='qa-observer-journal';
+const fixtureSource=fs.readFileSync(path.join(root,'tests/today-flow.browser.cjs'),'utf8').split('(async()=>')[0];
+const fixture=JSON.parse(JSON.stringify(vm.runInNewContext(fixtureSource+';fixture',{require:require('module').createRequire(path.join(root,'tests/today-flow.browser.cjs')),process,__dirname:path.join(root,'tests')})));
+fixture.completedWorkouts=fixture.completedWorkouts||[];fixture.garminSync={sentinel:'initial'};
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,serviceWorkers:'block'});try{
+ await context.route('https://observer-lhrf.test/**',route=>{const pathname=new URL(route.request().url()).pathname;if(pathname==='/observer.html')return route.fulfill({contentType:'text/html',body:'<!doctype html><title>QA observer</title>'});const relative=pathname.replace(/^\/old\//,''),file=path.resolve(oldRoot,relative||'index.html');if(!file.startsWith(oldRoot+path.sep)||!fs.existsSync(file))return route.fulfill({status:404});return route.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':'text/html'})});
+ await context.addInitScript(({DATA,fixture})=>{if(!localStorage.getItem(DATA))localStorage.setItem(DATA,JSON.stringify(fixture));if(location.pathname.startsWith('/old/')){const add=window.addEventListener;window.__heldStorage=[];window.addEventListener=function(type,listener,options){if(type==='storage')return add.call(this,type,event=>window.__heldStorage.push(()=>listener.call(window,event)),options);return add.call(this,type,listener,options)}}},{DATA,fixture});
+ const a=await context.newPage(),b=await context.newPage();for(const p of [a,b])p.on('dialog',d=>d.accept());await a.goto('https://observer-lhrf.test/old/index.html');await b.goto('https://observer-lhrf.test/old/index.html');await a.reload();await b.reload();await a.waitForFunction(()=>typeof save==='function');await b.waitForFunction(()=>typeof save==='function');
+ let observer=await context.newPage();await observer.goto('https://observer-lhrf.test/observer.html');await observer.evaluate(({DATA,JOURNAL})=>{localStorage.removeItem(JOURNAL);window.addEventListener('storage',event=>{if(event.key!==DATA||!event.newValue)return;const rows=JSON.parse(localStorage.getItem(JOURNAL)||'[]');rows.push({before:event.oldValue,after:event.newValue});localStorage.setItem(JOURNAL,JSON.stringify(rows))})},{DATA,JOURNAL});
+ const write=async(page,id)=>page.evaluate(id=>{const next=JSON.parse(JSON.stringify(data));next.completedWorkouts=[...(next.completedWorkouts||[]),{id,date:'2026-11-13T12:00:00Z',component:'run'}];next.garminSync={sentinel:id};return save(next,{notify:false})},id);
+ // Online writes: wait for each notification and verify both conflicting snapshots retained.
+ assert.equal(await write(a,'observed-old-A'),true);await observer.waitForFunction(key=>JSON.parse(localStorage.getItem(key)||'[]').length===1,JOURNAL);
+ assert.equal(await write(b,'observed-old-B'),true);await observer.waitForFunction(key=>JSON.parse(localStorage.getItem(key)||'[]').length===2,JOURNAL);
+ const observed=await observer.evaluate(key=>JSON.parse(localStorage.getItem(key)).map(e=>JSON.parse(e.after)),JOURNAL);assert.ok(observed[0].completedWorkouts.some(w=>w.id==='observed-old-A'));assert.ok(observed[1].completedWorkouts.some(w=>w.id==='observed-old-B'));assert.equal(observed[0].garminSync.sentinel,'observed-old-A');assert.equal(observed[1].garminSync.sentinel,'observed-old-B');
+ const variants=observed.map(s=>({completedWorkouts:s.completedWorkouts,garminSync:s.garminSync}));assert.notDeepEqual(variants[0],variants[1],'conflicting snapshots must remain distinct, not silently merged');
+ // QA-only recovery view: retain distinct originals and list candidate workout IDs;
+ // conflicting Garmin snapshots require manual review and are never overwritten.
+ const recovery={snapshots:structuredClone(observed),workoutIds:[...new Set(observed.flatMap(s=>(s.completedWorkouts||[]).map(w=>w.id)))],garminVariants:[...new Set(observed.map(s=>JSON.stringify(s.garminSync)))],status:'manual-review'};
+ assert.ok(recovery.workoutIds.includes('observed-old-A'));assert.ok(recovery.workoutIds.includes('observed-old-B'));assert.equal(recovery.garminVariants.length,2);assert.equal(recovery.status,'manual-review');assert.deepEqual(recovery.snapshots,observed);
+ // Offline with observer present: notifications still arrive without a network.
+ await context.setOffline(true);assert.equal(await a.evaluate(()=>navigator.onLine),false);assert.equal(await write(a,'offline-observed'),true);await observer.waitForFunction(key=>JSON.parse(localStorage.getItem(key)||'[]').length===3,JOURNAL);
+ const journalBefore=await observer.evaluate(key=>localStorage.getItem(key),JOURNAL);await observer.close();
+ // During observer interruption there is no recipient. Two old writers can overwrite
+ // each other; reopening the observer does not replay missed storage notifications.
+ assert.equal(await write(a,'offline-unobserved-A'),true);assert.equal(await write(b,'offline-unobserved-B'),true);
+ const final=await b.evaluate(key=>JSON.parse(localStorage.getItem(key)),DATA);assert.ok(final.completedWorkouts.some(w=>w.id==='offline-unobserved-B'));assert.ok(!final.completedWorkouts.some(w=>w.id==='offline-unobserved-A'));
+ await context.setOffline(false);observer=await context.newPage();await observer.goto('https://observer-lhrf.test/observer.html');const restored=await observer.evaluate(key=>localStorage.getItem(key),JOURNAL);assert.equal(restored,journalBefore);assert.ok(!restored.includes('offline-unobserved-A'));assert.ok(!restored.includes('offline-unobserved-B'));
+ console.log('PASS diagnostic: active observer captured both conflicting old-client snapshots and an offline write; separately retained raw states, no automatic merge.');
+ console.log('REPRODUCED limitation: after observer closure, two old writes while offline left first overwritten and neither notification in journal; reopen after reconnect did not replay them.');
+ console.log('LIMITS: storage callbacks intentionally held on old pages; synthetic observer and origin; no service-worker re-entry, crash, physical Android, real Garmin or athlete data.');
+ }finally{await context.close();await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
