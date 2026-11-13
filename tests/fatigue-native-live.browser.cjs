@@ -30,7 +30,7 @@ function build(enabled){
   if(scenario==='off'||scenario==='no-record'){
    assert.equal(await page.locator('#fatigueOverlayNotice').count(),0);
    if(scenario==='no-record'){
-    await page.locator('#previewStart').click();if(await page.locator('#readinessModal[open]').count())await page.locator('#readinessContinue').click();
+    await page.locator('#previewStart').click();await page.locator('#readinessModal[open]').waitFor({state:'visible',timeout:10000});await page.locator('#readinessContinue').click();
     await page.waitForFunction(()=>!!window.LHRFLive?.get?.());const baseline=await page.evaluate(()=>window.LHRFLive.get());
     assert.ok(!baseline.fatigueIntervention);assert.deepEqual(baseline.ex.map(x=>x[1]),data.session.ex.map(x=>x[1]));
    }
@@ -62,6 +62,7 @@ function build(enabled){
   const staleScenario=['revoked','expired','main-conflict','idb-unavailable'].includes(scenario);
   const staleAlert=staleScenario?page.waitForEvent('dialog',{timeout:10000}):null;
   await page.locator('#previewStart').click();
+  await page.locator('#readinessModal[open]').waitFor({state:'visible',timeout:10000});
   if(scenario==='idb-abort-start'){
    assert.equal(await page.locator('#readinessModal[open]').count(),1,'fault injection must happen during readiness');
    await page.evaluate(()=>{const original=IDBObjectStore.prototype.get;IDBObjectStore.prototype.get=function(...args){const req=original.apply(this,args);req.addEventListener('success',()=>queueMicrotask(()=>{try{req.transaction.abort()}catch{}}));return req}});
@@ -70,13 +71,13 @@ function build(enabled){
    const pending=await page.evaluate(()=>window.LHRFLive.get()),before=JSON.stringify({ex:pending.ex,audit:pending.fatigueIntervention});await page.reload();await page.locator('nav [data-screen="train"]').click();
    const restored=await page.evaluate(()=>window.LHRFLive.get());assert.equal(restored.fatigueVerificationPending,true);assert.equal(JSON.stringify({ex:restored.ex,audit:restored.fatigueIntervention}),before);assert.equal(await page.locator('.live-set').count(),0);await ctx.close();continue;
   }
-  if(await page.locator('#readinessModal[open]').count())await page.locator('#readinessContinue').click();
+  await page.locator('#readinessContinue').click();
   if(!['active','draft-revoked','draft-expired'].includes(scenario)){
    // Fail closed: a changed or stale approval must never start an adjusted live session.
    await staleAlert;
    const live=await page.evaluate(()=>window.LHRFLive?.get?.()||null);assert.ok(!live||!live.fatigueIntervention,scenario+' started with stale adjustment');if(live)assert.deepEqual(live.ex.map(x=>x[1]),data.session.ex.map(x=>x[1]),scenario+' started altered set counts');await ctx.close();continue;
   }
-  await page.waitForFunction(()=>!!window.LHRFLive?.get?.()?.fatigueIntervention,null,{timeout:10000});
+  await page.waitForFunction(()=>{const live=window.LHRFLive?.get?.();return !!live?.fatigueIntervention&&live.fatigueVerificationPending!==true},null,{timeout:10000});
   const live=await page.evaluate(()=>window.LHRFLive?.get?.()||null);assert.ok(live?.fatigueIntervention,'active live session carries audit');
   assert.ok(live.ex.some((x,i)=>x[1]<data.session.ex[i][1]),'actual live set count reduced');
   if(scenario==='draft-revoked'||scenario==='draft-expired'){
