@@ -354,3 +354,6 @@ jobs:
       - name: Test Garmin paths during active strength overlay
         if: ${{ !cancelled() }}
         run: node tests/fatigue-garmin-native.browser.cjs
+      - name: Test active overlay and interrupted draft after offline PWA reload
+        if: ${{ !cancelled() }}
+        run: node tests/fatigue-overlay-offline.browser.cjs
