@@ -4,12 +4,14 @@
  const overlay=typeof module==='object'&&module.exports?require('./fatigue-overlay'):root.LHRFFatigueOverlay;
  const clone=x=>JSON.parse(JSON.stringify(x));
  const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+ const ordered=x=>Array.isArray(x)?x.map(ordered):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,ordered(x[k])])):x;
+ const structural=x=>JSON.stringify(ordered(clone(x)));
  // Bind all native state except actual workout/recovery records that legitimately
  // grow during an intervention. This cannot detect events outside this app.
  function eventFingerprint(native){
   const ignored=new Set(['sets','runs','completedWorkouts','fatigueEvidence','checkins','readinessDay','sessionFeedback']);
   if(!native||typeof native!=='object'||Array.isArray(native))throw Error('Invalid native state');
-  return JSON.stringify(Object.fromEntries(Object.entries(native).filter(([key])=>!ignored.has(key))));
+  return structural(Object.fromEntries(Object.entries(native).filter(([key])=>!ignored.has(key))));
  }
  function catalogueState(native){
   const plans=native?.customRoadmap?.cataloguePlans;if(!Array.isArray(plans)||!plans.length)throw Error('No catalogue plans');
@@ -32,7 +34,7 @@
   try{
    if(native?.featureFlags?.fatigueIntervention!==true||!storage||typeof storage.getItem!=='function'||!mainKey||!overlayKey||mainKey===overlayKey||!session?.catalogueOccurrenceId||session.runs?.length||!Array.isArray(session.ex))return unchanged();
    const originalRaw=storage.getItem(mainKey),overlayRaw=storage.getItem(overlayKey),context=draftContext(storage);
-   if(typeof originalRaw!=='string'||originalRaw!==JSON.stringify(native)||typeof overlayRaw!=='string'||!context.known||context.activeSessionIds.length)return unchanged();
+   if(typeof originalRaw!=='string'||structural(JSON.parse(originalRaw))!==structural(native)||typeof overlayRaw!=='string'||!context.known||context.activeSessionIds.length)return unchanged();
    const approvedOverlay=JSON.parse(overlayRaw);
    if(typeof approvedOverlay.eventFingerprint!=='string'||approvedOverlay.eventFingerprint!==eventFingerprint(native)||storage.getItem('competition:lhrf_beta_v1118_clean')!==null)return unchanged();
    // This attests only that local state still matches. Events outside this app
