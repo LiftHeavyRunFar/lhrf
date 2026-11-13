@@ -1333,15 +1333,10 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  function updateHeader(){const n=total(),done=count();const t=document.querySelector('#train .live-status');if(t)t.textContent=done+' of '+n+' sets completed';window.LHRFTrainingMode?.refresh()}
  function dayKey(){return new Date().toLocaleDateString('en-CA',{timeZone:'Europe/London'})}
  // Feature is deliberately off by default. Only a separately saved, previously
- // approved strength overlay may be read; this path never writes to Garmin or plans.
+ // approved strength overlay may be read; until transactional reads are wired,
+ // never apply a cached or potentially stale localStorage record.
  function fatigueView(session){
-  const fallback={session,adjusted:false};
-  if(data.featureFlags?.fatigueIntervention!==true||LHRFStorage.competition||lhrfExternalStorageChanged||!window.LHRFFatigueNativeAdapter||!navigator.locks?.request)return fallback;
-  try{
-   const overlayKey='lhrf_fatigue_overlay_v1',saved=JSON.parse(LHRFStorage.local.getItem(overlayKey)||'null');
-   if(!saved?.eventFreeAttestation)return fallback;
-   return LHRFFatigueNativeAdapter.resolve({native:data,session,storage:LHRFStorage.local,mainKey:LHRF_DATA_KEY,overlayKey,now:dayKey()});
-  }catch{return fallback}
+  return {session,adjusted:false};
  }
  const sameFatigueAudit=(a,b)=>JSON.stringify(a||null)===JSON.stringify(b||null);
  function liveStartAllowed(session){
