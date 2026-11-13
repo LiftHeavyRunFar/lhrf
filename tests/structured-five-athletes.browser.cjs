@@ -2,7 +2,7 @@
 // Runs checked-out files on a private test origin; does not access an athlete account.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require('playwright');
-const root=path.join(__dirname,'..'),out=process.env.LHRF_QA_OUT||'/tmp/lhrf-structured-five',key='lhrf_beta_v1118_clean';
+const root=path.join(__dirname,'..'),live=process.env.LHRF_LIVE==='1',out=process.env.LHRF_QA_OUT||('/tmp/lhrf-structured-five/'+(live?'live':'checkout')),key='lhrf_beta_v1118_clean';
 fs.mkdirSync(out,{recursive:true});
 const profiles=[
  {id:'beginner',programme:'lifting-foundation',discipline:'strength',availability:['Monday','Wednesday','Friday'],days:['Monday','Friday']},
@@ -34,8 +34,8 @@ async function one(browser,p){
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());page.setDefaultTimeout(12000);
  try{
   await page.clock.install({time:new Date('2026-11-16T09:00:00Z')});
-  await page.route('https://qa-structured-lhrf.test/**',r=>{const pathname=new URL(r.request().url()).pathname;const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return r.fulfill({status:404,body:'missing'});const mime={'.js':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.webmanifest':'application/manifest+json'};return r.fulfill({body:fs.readFileSync(file),contentType:mime[path.extname(file)]||'text/html'})});
-  await page.goto('https://qa-structured-lhrf.test/');await page.getByRole('heading',{name:'Welcome to Lift Heavy. Run Far.'}).waitFor();record.steps.push('clean native catalogue setup');
+  if(!live)await page.route('https://qa-structured-lhrf.test/**',r=>{const pathname=new URL(r.request().url()).pathname;const file=path.resolve(root,'.'+(pathname==='/'?'/index.html':pathname));if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return r.fulfill({status:404,body:'missing'});const mime={'.js':'application/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.webmanifest':'application/manifest+json'};return r.fulfill({body:fs.readFileSync(file),contentType:mime[path.extname(file)]||'text/html'})});
+  await page.goto(live?'https://liftheavyrunfar.github.io/lhrf/':'https://qa-structured-lhrf.test/');record.environment=live?'live deployment, isolated browser context':'checked-out files, isolated browser context';record.release=await page.locator('meta[name="lhrf-release"]').getAttribute('content');assert.equal(record.release,'1.40.6','deployed release changed');await page.getByRole('heading',{name:'Welcome to Lift Heavy. Run Far.'}).waitFor();record.steps.push('clean native catalogue setup');
   record.firstWeek=await setup(page,p,true);record.steps.push('programme selected, days selected, first week reviewed');
   await page.getByRole('heading',{name:'Onboarding complete'}).waitFor();
   if(p.second){await page.getByRole('button',{name:'Add running programme'}).click();record.secondWeek=await setup(page,p.second,false);await page.locator('#catalogueSetupDialog').waitFor({state:'hidden'});record.steps.push('second discipline selected and reviewed');}
@@ -43,7 +43,9 @@ async function one(browser,p){
   const state=()=>page.evaluate(k=>JSON.parse(localStorage.getItem(k)),key);
   const installed=await state();assert.ok(installed?.onboardingComplete);assert.equal(installed.customRoadmap.cataloguePlans.length,p.second?2:1);
   record.plans=installed.customRoadmap.cataloguePlans.map(x=>({id:x.snapshot.id,weeks:x.snapshot.weeks.length,firstWeek:x.snapshot.weeks[0]}));record.steps.push('saved structured programme');
-  const preview=page.getByRole('button',{name:/^Preview workout /}).first();await preview.waitFor();record.previewButton=await preview.getAttribute('aria-label');await preview.click();await page.locator('#livePreview').waitFor();record.preview=await page.locator('#livePreview').innerText();record.steps.push('first workout previewed');
+  const firstSession=installed.activeSchedule.filter(s=>s.scheduledDate).sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];assert.ok(firstSession,'no scheduled workout');
+  const dots=page.locator('#dayDots button');let selected=false;for(let i=0;i<await dots.count();i++){const d=dots.nth(i),label=await d.getAttribute('aria-label');if(label?.toLowerCase().startsWith(firstSession.day.toLowerCase())){await d.click();selected=true;break;}}assert.ok(selected,'scheduled day not in Today carousel');
+  const preview=page.locator('.day-slide.is-current').getByRole('button',{name:/^Preview workout /}).first();await preview.waitFor();record.previewButton=await preview.getAttribute('aria-label');await preview.click();await page.locator('#livePreview').waitFor();record.preview=await page.locator('#livePreview').innerText();record.steps.push('first workout previewed');
   await page.locator('#previewStart').click();if(await page.locator('#readinessModal[open]').count())await page.locator('#readinessContinue').click();
   if(await page.locator('#liveRunKm').count()){
    await page.locator('#liveRunKm').fill('3');await page.locator('#liveRunMinutes').fill('21');await page.locator('#liveLogRun').click();
@@ -62,4 +64,4 @@ async function one(browser,p){
  finally{fs.writeFileSync(path.join(out,p.id+'.json'),JSON.stringify(record,null,2));await context.close()}
  return record;
 }
-(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});let results=[];try{for(const p of profiles)results.push(await one(browser,p));}finally{await browser.close()}console.log('STRUCTURED_ATHLETE_RESULTS='+JSON.stringify(results.map(r=>({profile:r.profile,passed:r.passed,steps:r.steps,failure:r.failure?.slice(0,500),plans:r.plans?.map(p=>({id:p.id,weeks:p.weeks,firstWeek:p.firstWeek})),saved:r.saved,errors:r.errors}))));if(results.some(r=>!r.passed))process.exitCode=1})().catch(e=>{console.error(e);process.exitCode=1});
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});let results=[];try{for(const p of profiles)results.push(await one(browser,p));}finally{await browser.close()}console.log('STRUCTURED_ATHLETE_RESULTS='+JSON.stringify(results.map(r=>({profile:r.profile,environment:r.environment,release:r.release,passed:r.passed,steps:r.steps,failure:r.failure?.slice(0,500),plans:r.plans?.map(p=>({id:p.id,weeks:p.weeks,firstWeek:p.firstWeek})),saved:r.saved,errors:r.errors}))));if(results.some(r=>!r.passed))process.exitCode=1})().catch(e=>{console.error(e);process.exitCode=1});
