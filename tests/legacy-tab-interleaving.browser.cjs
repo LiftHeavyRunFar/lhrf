@@ -1,0 +1,27 @@
+// Delayed notification diagnostic only: isolated synthetic origin and data.
+// PASS means stale overwrite reproduced, not that the application is safe.
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict');
+const {chromium}=require('playwright');
+const root=path.resolve(__dirname,'..'), oldRoot=path.resolve(root,'production-v1406'), DATA='lhrf_beta_v1118_clean';
+const source=fs.readFileSync(path.join(root,'tests/today-flow.browser.cjs'),'utf8').split('(async()=>')[0];
+const fixture=JSON.parse(JSON.stringify(vm.runInNewContext(source+';fixture',{require:require('module').createRequire(path.join(root,'tests/today-flow.browser.cjs')),process,__dirname:path.join(root,'tests')})));
+fixture.garminSync={savedAt:'2026-11-01T12:00:00Z',sentinel:'original-synthetic-garmin'};
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,serviceWorkers:'block'});try{
+ await context.route('https://stale-lhrf.test/**',route=>{const pathname=new URL(route.request().url()).pathname;const isOld=pathname.startsWith('/old/'),base=isOld?oldRoot:root,relative=pathname.replace(/^\/(?:old|new)\//,'');const file=path.resolve(base,relative||'index.html');if(!file.startsWith(base+path.sep)||!fs.existsSync(file))return route.fulfill({status:404});return route.fulfill({body:fs.readFileSync(file),contentType:file.endsWith('.js')?'application/javascript':file.endsWith('.css')?'text/css':file.endsWith('.json')?'application/json':'text/html'});});
+ await context.addInitScript(({DATA,fixture})=>{if(!localStorage.getItem(DATA))localStorage.setItem(DATA,JSON.stringify(fixture));if(location.pathname.startsWith('/old/')){const add=window.addEventListener;window.__heldStorage=[];window.addEventListener=function(type,listener,options){if(type==='storage'){return add.call(this,type,event=>window.__heldStorage.push(()=>listener.call(window,event)),options)}return add.call(this,type,listener,options)};window.__releaseStorage=()=>{for(const deliver of window.__heldStorage.splice(0))deliver()};}},{DATA,fixture});
+ const old=await context.newPage(),fresh=await context.newPage();for(const p of [old,fresh])p.on('dialog',d=>d.accept());
+ await old.goto('https://stale-lhrf.test/old/index.html');await fresh.goto('https://stale-lhrf.test/new/index.html');await old.reload();await fresh.reload();
+ await old.waitForFunction(()=>typeof save==='function'&&typeof LHRFExternalStorageChanged==='function');await fresh.waitForFunction(()=>typeof save==='function');
+ // Force the exact race: the app's real old storage listener is held, never replaced;
+ // all other app code and both writers are the checked-out client implementations.
+ await old.evaluate(()=>{window.__heldStorage=[]});
+ assert.equal(await old.evaluate(()=>LHRFExternalStorageChanged()),false,'old client unexpectedly saw another writer');
+ const before=await old.evaluate(()=>JSON.stringify(data));
+ const saved=await fresh.evaluate(()=>{const next=JSON.parse(JSON.stringify(data));next.completedWorkouts=[...(next.completedWorkouts||[]),{id:'new-tab-completed',date:'2026-11-13T12:00:00Z',component:'run',completedRun:true,prescription:{runs:[{role:'easy-run',distanceKm:5}]}}];next.runs=[...(next.runs||[]),{sessionId:'new-tab-completed',date:'2026-11-13T12:00:00Z',km:5,min:30,type:'easy-run'}];next.garminSync={...(next.garminSync||{}),sentinel:'new-synthetic-garmin'};return save(next,{notify:false})});assert.equal(saved,true,'new client failed synthetic save');
+ const storedNew=await fresh.evaluate(key=>JSON.parse(localStorage.getItem(key)),DATA);assert.ok(storedNew.completedWorkouts.some(w=>w.id==='new-tab-completed'));assert.equal(storedNew.garminSync.sentinel,'new-synthetic-garmin');
+ await old.waitForFunction(()=>window.__heldStorage.length>0);assert.equal(await old.evaluate(()=>LHRFExternalStorageChanged()),false,'delayed listener did not hold');assert.equal(await old.evaluate(()=>JSON.stringify(data)),before,'old page state was not stale');
+ const oldSaved=await old.evaluate(()=>{const stale=JSON.parse(JSON.stringify(data));stale.diagnosticOldSave='synthetic';return save(stale,{notify:false})});assert.equal(oldSaved,true);
+ const after=await fresh.evaluate(key=>JSON.parse(localStorage.getItem(key)),DATA);assert.equal(after.diagnosticOldSave,'synthetic');assert.ok(!after.completedWorkouts.some(w=>w.id==='new-tab-completed'),'diagnostic expects overwritten synthetic completed workout');assert.ok(!after.runs.some(r=>r.sessionId==='new-tab-completed'));assert.equal(after.garminSync.sentinel,'original-synthetic-garmin');
+ await old.evaluate(()=>window.__releaseStorage());assert.equal(await old.evaluate(()=>LHRFExternalStorageChanged()),true);
+ console.log('REPRODUCED: old v1.40.6 save overwrote newer synthetic completed workout, run and Garmin state before delayed storage callback.');console.log('LIMITATION: storage-event delivery was intentionally held; this is controlled scheduling, not proof of naturally occurring timing or device incidence.');
+ }finally{await context.close();await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
