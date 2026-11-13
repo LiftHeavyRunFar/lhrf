@@ -1,0 +1,33 @@
+name: Structured workout interruption
+on:
+  pull_request:
+    paths:
+      - 'tests/structured-interruption.browser.cjs'
+      - '.github/workflows/qa-structured-interruption.yml'
+  workflow_dispatch:
+jobs:
+  interruption:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser dependency
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Select browser
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROMIUM_EXECUTABLE=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Test checkout interruption and re-entry
+        run: node tests/structured-interruption.browser.cjs
+      - name: Test live app interruption and re-entry
+        if: ${{ !cancelled() }}
+        env:
+          LHRF_LIVE: '1'
+        run: node tests/structured-interruption.browser.cjs
