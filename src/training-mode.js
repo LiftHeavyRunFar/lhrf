@@ -66,7 +66,7 @@ function mount({getData}){
   document.body.append(dialog);dialog.showModal();
  }
  function render(){
-  sync();const live=getLive(),host=$('liveTrainRoot');if(!live||!host?.firstElementChild)return;
+  sync();const live=getLive(),host=$('liveTrainRoot');if(!live||live.fatigueVerificationPending||!host?.firstElementChild)return;
   const cards=[...host.querySelectorAll('#liveExercises > .live-ex')];
   const fresh=currentKey!==key(live);
   if(fresh){

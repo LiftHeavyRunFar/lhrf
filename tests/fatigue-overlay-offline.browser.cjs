@@ -1,0 +1,28 @@
+// PWA acceptance on a real local HTTP server and real service worker cache.
+// Synthetic fixture only; emulated network disconnection, no real athlete or device.
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict'),http=require('node:http'),{chromium}=require('playwright');
+const root=path.join(__dirname,'..'),mainKey='lhrf_beta_v1118_clean',overlayKey='lhrf_fatigue_overlay_v1';
+const file=path.join(__dirname,'fatigue-native-live.browser.cjs'),contents=fs.readFileSync(file,'utf8'),preamble=contents.slice(0,contents.lastIndexOf('(async()=>'));
+const {build,generated}=vm.runInNewContext(preamble+';({build,generated})',{require:require('module').createRequire(file),__filename:file,__dirname,process,structuredClone,console});
+const mime={'.js':'application/javascript','.css':'text/css','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml','.ttf':'font/ttf'};
+(async()=>{const server=http.createServer((req,res)=>{try{const name=new URL(req.url,'http://localhost').pathname;if(name==='/seed'){res.setHeader('content-type','text/html');res.end('<!doctype html><title>Seed</title>');return}const file=path.resolve(root,'.'+(name==='/'?'/index.html':name));if(!file.startsWith(root+path.sep))throw Error('Invalid path');res.setHeader('content-type',mime[path.extname(file)]||'text/html');fs.createReadStream(file).on('error',()=>{res.statusCode=404;res.end()}).pipe(res)}catch{res.statusCode=404;res.end()}});await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const appUrl='http://localhost:'+server.address().port+'/',data=build(true),browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{
+  const ctx=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,timezoneId:'Europe/London'}),page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.clock.install({time:new Date('2027-01-05T09:00:00Z')});
+  await page.goto(appUrl+'seed');for(const name of ['gym-equipment.js','exercise-registry.js','catalogue-training.js','catalogue-protection.js','fatigue-assessment.js','fatigue-overlay.js','fatigue-native-adapter.js','fatigue-overlay-idb.js'])await page.addScriptTag({content:fs.readFileSync(path.join(root,'src',name),'utf8')});
+  const approved=await page.evaluate(({mainKey,overlayKey,n,proposal,eventContext})=>{const raw=JSON.stringify(n);localStorage.setItem(mainKey,raw);return LHRFFatigueOverlayIDB.approve({indexedDB,storage:localStorage,mainKey,overlayKey,expectedRaw:raw,proposal,approved:true,now:'2027-01-05',eventContext})},{mainKey,overlayKey,n:data.n,proposal:generated.proposal,eventContext:generated.eventContext});assert.equal(approved.status,'saved');
+  await page.goto(appUrl);await page.waitForFunction(()=>navigator.serviceWorker.controller!==null,null,{timeout:30000});const before=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),mainKey);
+  // Browser offline is enforced, all application assets must come from the real PWA cache.
+  await ctx.setOffline(true);await page.reload({waitUntil:'load'});assert.equal(await page.evaluate(()=>navigator.onLine),false);assert.ok(await page.evaluate(()=>!!navigator.serviceWorker.controller));
+  const stored=await page.evaluate(({overlayKey})=>LHRFFatigueOverlayIDB.read({indexedDB,overlayKey,now:'2027-01-05'}),{overlayKey});assert.equal(stored.status,'active');
+  await page.evaluate(id=>openWorkout(id),data.session.id);assert.equal(await page.locator('#fatigueOverlayNotice').count(),1,'offline reloaded app must display adjusted preview');
+  await page.locator('#previewStart').click();await page.locator('#readinessModal[open]').waitFor({state:'visible'});
+  // Abort a real IDB transaction after successful read, while starting the active session.
+  await page.evaluate(()=>{const original=IDBObjectStore.prototype.get;IDBObjectStore.prototype.get=function(...args){const req=original.apply(this,args);req.addEventListener('success',()=>queueMicrotask(()=>{try{req.transaction.abort()}catch{}}));return req}});
+  await page.locator('#readinessContinue').click();await page.waitForFunction(()=>window.LHRFLive?.get?.()?.fatigueVerificationPending===true,null,{timeout:10000});
+  await page.locator('nav [data-screen="train"]').click();assert.match(await page.locator('#liveTrainRoot').innerText(),/verification interrupted/i);assert.equal(await page.locator('.live-set').count(),0);
+  const pending=await page.evaluate(()=>window.LHRFLive.get()),saved=JSON.stringify({ex:pending.ex,audit:pending.fatigueIntervention});
+  const after=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),mainKey);for(const k of ['customRoadmap','reviewedProgramme','activeSchedule','sets','runs','completedWorkouts'])assert.deepEqual(after[k],before[k],k+' changed during interrupted start');
+  await page.reload({waitUntil:'load'});await page.locator('nav [data-screen="train"]').click();const restored=await page.evaluate(()=>window.LHRFLive.get());assert.equal(restored.fatigueVerificationPending,true);assert.equal(JSON.stringify({ex:restored.ex,audit:restored.fatigueIntervention}),saved);assert.match(await page.locator('#liveTrainRoot').innerText(),/verification interrupted/i);assert.equal(await page.locator('.live-set').count(),0);assert.deepEqual(errors,[]);
+  console.log('PASS actual service-worker offline reload with active overlay and preserved blocked IDB-interrupted draft');await ctx.close();
+ }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
+})().catch(e=>{console.error(e);process.exitCode=1});
