@@ -36,6 +36,20 @@
    const request=store.get(overlayKey);request.onsuccess=()=>{const value=request.result;done(records.inspect(value===undefined?null:JSON.stringify(value),now))};
   });
  }
+ // The callback must be synchronous. It runs while a readwrite transaction holds
+ // the overlay record lock, so a cooperating revocation cannot commit between
+ // the read and the caller's synchronous live-draft save. Legacy writers of the
+ // independent main-state key are not serialized by this transaction.
+ async function withActive({indexedDB,overlayKey,now}={},callback){
+  if(typeof overlayKey!=='string'||!overlayKey||typeof callback!=='function')return fail('invalid','overlay context');
+  try{training.parseDate(now)}catch{return fail('invalid','date')}
+  return transact(indexedDB,'readwrite',(store,done)=>{
+   const request=store.get(overlayKey);request.onsuccess=()=>{
+    const view=records.inspect(request.result===undefined?null:JSON.stringify(request.result),now);
+    try{const value=callback(view.status==='active'?view.overlay:null);if(value&&typeof value.then==='function')return done(fail('invalid','callback must be synchronous'));done({status:'read',value})}catch{return done(fail('failed','overlay application failed'))}
+   };
+  });
+ }
  async function approve({indexedDB,storage,mainKey,overlayKey,expectedRaw,proposal,approved,now,eventContext}={}){
   if(!storage||typeof storage.getItem!=='function'||typeof mainKey!=='string'||!mainKey||typeof overlayKey!=='string'||!overlayKey||mainKey===overlayKey||typeof expectedRaw!=='string')return fail('invalid','storage context');
   let native,source,drafts,result;
@@ -70,5 +84,5 @@
    };
   });
  }
- const api={approve,read,revoke};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFFatigueOverlayIDB=api;
+ const api={approve,read,withActive,revoke};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFFatigueOverlayIDB=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
