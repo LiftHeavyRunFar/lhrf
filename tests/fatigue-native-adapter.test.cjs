@@ -15,6 +15,7 @@ function fixture(){
  const eventFreeAttestation={source:'athlete-confirmed',confirmedOn:now,noOtherEventOrTaper:true,boundPlans:JSON.stringify(state.plans)};
  const eventContext={asOfDate:now,eventInformationUnchanged:true,eventFreeAttestation},draftContext={known:true,activeSessionIds:[]};
  const approvedOverlay=overlay.approve({state,assessmentState:n,proposal,enabled:true,approved:true,eventContext,draftContext,now}).overlay;assert.ok(approvedOverlay);
+ approvedOverlay.eventFingerprint=adapter.eventFingerprint(n);
  const change=approvedOverlay.changes[0],occ=state.occurrences.find(o=>o.id===change.occurrenceId),key=occ.planId+'-w'+occ.week+'-'+occ.sessionId;
  const session=p.weeks.flatMap(w=>w.sessions).find(s=>s.catalogueOccurrenceId===key);assert.ok(session);
  const f={native:n,session,approvedOverlay,now,eventContext,draftContext,mainKey:'main',overlayKey:'overlay'};
@@ -27,7 +28,7 @@ test('applies scoped native strength set adjustment at read time with auditable 
  assert.ok(out.session.ex.some((x,i)=>x[1]<f.session.ex[i][1]));assert.deepEqual(f.native,before);
 });
 test('disabled, changed, completed, expired or unknown context always returns original',()=>{
- for(const mutate of [f=>f.native.featureFlags={},f=>f.session.ex[0][1]++,f=>f.draftContext={known:false,activeSessionIds:[]},f=>f.draftContext.activeSessionIds.push(f.session.id),f=>f.native.completedWorkouts.push({id:f.session.id,date:f.now+'T10:00:00Z'}),f=>f.eventContext.eventInformationUnchanged=false,f=>{f.now='2027-01-12';f.eventContext.asOfDate=f.now}]){
+ for(const mutate of [f=>f.native.featureFlags={},f=>f.session.ex[0][1]++,f=>f.draftContext={known:false,activeSessionIds:[]},f=>f.draftContext.activeSessionIds.push(f.session.id),f=>f.native.completedWorkouts.push({id:f.session.id,date:f.now+'T10:00:00Z'}),f=>{f.native.customRoadmap.event='changed'},f=>{f.now='2027-01-12'}]){
   const f=fixture();mutate(f);const before=structuredClone(f.session),out=adapter.resolve(f);assert.equal(out.adjusted,false);assert.deepEqual(out.session,before);
  }
 });
@@ -44,4 +45,9 @@ test('revoked overlay and stale main data are never applied from cached state',(
  f.storage.getItem=key=>key==='overlay'?JSON.stringify({schema:1,kind:'fatigue-overlay-revocation'}):read(key);
  assert.equal(adapter.resolve(f).adjusted,false);
  f.storage.getItem=key=>key==='main'?'{}':read(key);assert.equal(adapter.resolve(f).adjusted,false);
+});
+test('changed event information or a separate competition store fails closed',()=>{
+ const f=fixture();f.native.customRoadmap.unrelatedRaceDate='2027-01-10';assert.equal(adapter.resolve(f).adjusted,false);
+ const another=fixture(),read=another.storage.getItem;another.storage.getItem=key=>key==='competition:lhrf_beta_v1118_clean'?'{}':read(key);
+ assert.equal(adapter.resolve(another).adjusted,false);
 });
