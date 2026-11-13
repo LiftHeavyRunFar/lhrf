@@ -51,3 +51,10 @@ test('changed event information or a separate competition store fails closed',()
  const another=fixture(),read=another.storage.getItem;another.storage.getItem=key=>key==='competition:lhrf_beta_v1118_clean'?'{}':read(key);
  assert.equal(adapter.resolve(another).adjusted,false);
 });
+test('equivalent object key order is accepted, but changed persisted fields are not',()=>{
+ const f=fixture(),read=f.storage.getItem;
+ f.storage.getItem=key=>key==='main'?JSON.stringify(Object.fromEntries(Object.entries(f.native).reverse())):read(key);
+ assert.equal(adapter.resolve(f).adjusted,true);
+ f.storage.getItem=key=>key==='main'?JSON.stringify({...f.native,unpersistedSentinel:true}):read(key);
+ assert.equal(adapter.resolve(f).adjusted,false);
+});
