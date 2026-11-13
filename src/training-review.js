@@ -50,7 +50,8 @@ function knownRace(state,run){
  if(!run.sessionId||!day(run.date))return false;
  const matches=(state.completedWorkouts||[]).filter(w=>w.id===run.sessionId&&day(w.date)===day(run.date));
  if(matches.length!==1)return false;
- return (matches[0].prescription?.runs||[]).some(r=>r.role==='race'||(r.steps||[]).some(step=>step.role==='race'));
+ const prescribed=matches[0].prescription?.runs||[];
+ return prescribed.length===1&&(prescribed[0].role==='race'||(prescribed[0].steps||[]).some(step=>step.role==='race'));
 }
 function assess(state,now=new Date()){
  const planFirst=state.customRoadmap?.planFirstVersion===1;
