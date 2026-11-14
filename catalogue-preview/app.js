@@ -22,6 +22,7 @@
   };
   let state;
   let preview = null;
+  let meetProposal = null;
   let currentPage = 'catalogue';
 
   function node(tag, attrs = {}, ...children) {
@@ -200,6 +201,23 @@
       { continuation: continuation.checked })));
     renderDays();
     settings.replaceChildren();
+    if (!native && ['powerlifting-three-day','powerlifting-four-day'].includes(programme.id)) {
+      const toggle = node('input', { type: 'checkbox', name: 'meetEntry' });
+      const details = node('div', { hidden: true },
+        label('Actual competition date', 'actualMeetDate', { type: 'date' }),
+        node('p', { class: 'hint' }, 'The competition date replaces the template event weekday. The first calendar week below is ignored for this route.'),
+        node('label', {}, 'How does your recent lifting compare?', node('select', { name: 'recentWork' },
+          node('option', { value: 'unknown' }, 'I am not sure'), node('option', { value: 'comparable' }, 'Similar recent work'), node('option', { value: 'not-comparable' }, 'Not similar'))),
+        node('label', {}, 'Have you recently had an easier week?', node('select', { name: 'recentDeload' },
+          node('option', { value: 'unknown' }, 'I am not sure'), node('option', { value: 'recent' }, 'Yes'), node('option', { value: 'none' }, 'No'))));
+      const oldStrength = state.plans.filter(p => p.snapshot.discipline === 'strength' && state.occurrences.some(o=>o.planId===p.id && o.status==='planned'));
+      if (oldStrength.length) details.append(node('label', {}, 'Strength programme to switch from', node('select', { name: 'activePlanId', required: true },
+        node('option', { value: '' }, 'Choose a programme'), oldStrength.map(p=>node('option', { value: p.id }, p.snapshot.title + ' · ' + p.start)))));
+      toggle.addEventListener('change', () => { details.hidden=!toggle.checked; for (const input of details.querySelectorAll('input, select')) input.disabled=!toggle.checked; });
+      for (const input of details.querySelectorAll('input, select')) input.disabled=true;
+      settings.append(node('fieldset', {}, node('legend', {}, 'Preparing for a competition?'),
+        node('label', {}, toggle, 'I have a competition in 6–12 weeks'), details));
+    }
     const optional = node('details', { class: 'setup-optional' }, node('summary', {}, 'Add a recent race time (optional)'));
     if (programme.discipline === 'strength' && programme.id !== 'lifting-foundation') {
       const number = { type: 'number', step: 'any', min: '1', inputmode: 'decimal' };
@@ -255,7 +273,14 @@
         recentHalfSeconds: programme.id === 'half-marathon' ? raceSeconds : null,
         recentMarathonSeconds: programme.id.startsWith('marathon') ? raceSeconds : null,
       });
-      preview = training.enrol(native ? native.state() : state, scheduleFromForm(snapshot, form), start, 'preview');
+      meetProposal = null;
+      if (form.has('meetEntry')) {
+        if (!globalThis.LHRFMeetEntry) throw Error('Meet preparation is not available in this view.');
+        const activePlanId=form.get('activePlanId') || null;
+        if (state.plans.some(p=>p.snapshot.discipline==='strength'&&state.occurrences.some(o=>o.planId===p.id&&o.status==='planned')) && !activePlanId) throw Error('Choose the strength programme you want to switch from.');
+        meetProposal=globalThis.LHRFMeetEntry.propose({snapshot,today:localDay(),meetDate:form.get('actualMeetDate'),days:form.getAll('trainingDay').map(Number),recentWork:form.get('recentWork'),recentDeload:form.get('recentDeload'),state,activePlanId});
+        preview=globalThis.LHRFMeetEntry.apply(state,meetProposal,'preview');
+      } else preview = training.enrol(native ? native.state() : state, scheduleFromForm(snapshot, form), start, 'preview');
       renderPreview();
       showMessage('');
       $('catalogue-title').focus();
@@ -370,7 +395,9 @@
         return;
       }
       tryAction(() => {
-        commit(training.enrol(state, snapshot, start, globalThis.crypto.randomUUID()));
+        if (meetProposal && !$('preview').querySelector('[name="reviewMeet"]')?.checked) throw Error('Confirm you have reviewed the proposed transition before accepting.');
+        commit(meetProposal ? globalThis.LHRFMeetEntry.apply(state, meetProposal, globalThis.crypto.randomUUID()) : training.enrol(state, snapshot, start, globalThis.crypto.randomUUID()));
+        meetProposal = null;
         preview = null;
         renderPreview();
         showSetup();
@@ -382,6 +409,7 @@
     }, 'primary');
     const edit = button('Edit setup', () => {
       preview = null;
+      meetProposal = null;
       renderPreview();
       showSetup(snapshot.discipline);
       const dayControl = $('training-days').querySelector('input[name="trainingDay"]');
@@ -406,7 +434,18 @@
     const templateRace = isTwoRunMarathon
       ? training.calendar(preview).find(item => item.plan.id === 'preview' && item.session.id === 'race') : null;
     const adjacent = runDays.length === 2 && (runDays[1] - runDays[0] === 1 || runDays[0] + 7 - runDays[1] === 1);
+    const meetReview=meetProposal ? node('section', { class:'panel', 'aria-label':'Meet preparation review' }, heading('Meet preparation review','h3'),
+      node('p', {}, 'Competition: '+dateText(meetProposal.meetDate)+' · starts with template week '+meetProposal.sourceFirst+'.'),
+      heading('Proposed first week','h3'),
+      ...training.calendar(preview).filter(x=>x.planId==='preview'&&x.week===1).map(x=>node('article',{},heading(dateText(x.date)+' · '+x.session.title,'h4'),dosePanel(x.session))),
+      node('p', {}, 'Easier template weeks: '+(meetProposal.easier.length?meetProposal.easier.map(w=>'week '+w+' (week of '+dateText(training.addDays(meetProposal.start,7*(w-meetProposal.sourceFirst)))+')').join(', '):'none in this selection')+'. Final template week 12 is your taper and meet.'),
+      node('ul', {}, meetProposal.warnings.map(w=>node('li',{},w))),
+      heading('Final week and meet','h3'),
+      ...training.calendar(preview).filter(x=>x.planId==='preview'&&x.week===meetProposal.weeks).map(x=>node('article',{},heading(dateText(x.date)+' · '+x.session.title,'h4'),dosePanel(x.session))),
+      node('p', {}, meetProposal.supersededIds.length+' future planned strength sessions will be replaced; completed history, original snapshots and running remain.'),
+      node('label', {}, node('input',{type:'checkbox',name:'reviewMeet'}), 'I have reviewed the opening week, easier weeks, final week and transition.')) : null;
     region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
+      meetReview,
       templateRace ? node('p', { class: 'warn' }, 'Template marathon: ' + dateText(templateRace.date) +
         ' (week ' + snapshot.durationWeeks + '). Compare this with your actual event date: dates are not automatically aligned, and this does not assess suitability. If your event is sooner, the full ' + snapshot.durationWeeks + '-week plan will not fit; do not skip ahead without individual coaching.') : null,
       week, adjacent ? node('p', { class: 'warn', role: 'status' },
