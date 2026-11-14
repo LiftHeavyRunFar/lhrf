@@ -6,6 +6,8 @@ on:
       - 'tests/owner-site-fixture.sha256'
       - 'tests/owner-site-meet.browser.cjs'
       - 'tests/owner-site-partial.browser.cjs'
+      - 'tests/owner-rollover.browser.cjs'
+      - 'tests/owner-running-rollover.browser.cjs'
       - 'tests/meet-matrix-independent.test.cjs'
       - 'tests/meet-independent.browser.cjs'
       - 'tests/meet-partial-independent.browser.cjs'
@@ -34,3 +36,5 @@ jobs:
       - run: sha256sum -c tests/owner-site-fixture.sha256
       - run: node tests/owner-site-meet.browser.cjs
       - run: node tests/owner-site-partial.browser.cjs
+      - run: node tests/owner-rollover.browser.cjs
+      - run: node tests/owner-running-rollover.browser.cjs

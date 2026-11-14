@@ -23,6 +23,7 @@
   let state;
   let preview = null;
   let meetProposal = null;
+  let nextBlock = null;
   let currentPage = 'catalogue';
 
   function node(tag, attrs = {}, ...children) {
@@ -153,6 +154,7 @@
   }
 
   function chooseDiscipline(discipline) {
+    nextBlock = null;
     $('plan-form').reset();
     const choices = new Map(programmes.filter(item => item.discipline === discipline).map(item => {
       const key = programmeGroup(item);
@@ -189,7 +191,10 @@
 
   function makeSettings() {
     const programme = activeProgramme();
-    $('entry').textContent = programme.entry;
+    if (programme.id === 'marathon-two-run-16') {
+      $('entry').replaceChildren(node('p', {}, 'Two runs a week for 16 weeks. For established runners. Please check the entry guidance before choosing.'),
+        node('details', {}, node('summary', {}, 'Entry guidance and limitations'), node('p', {}, programme.entry)));
+    } else $('entry').textContent = programme.entry;
     const settings = $('settings');
     const days = $('training-days');
     const extension = $('continuation-option');
@@ -260,6 +265,7 @@
       const form = new FormData(event.currentTarget);
       const programme = activeProgramme();
       const start = form.get('monday');
+      if (nextBlock && start <= nextBlock.endDate) throw Error('Choose a first week after the current programme ends on ' + dateText(nextBlock.endDate) + '.');
       const raceSeconds = Number(form.get('raceMinutes')) * 60;
       const snapshot = catalogue.previewProgramme(programme.id, {
         continuation: form.has('continuation'),
@@ -335,11 +341,17 @@
           node('ul', { class: 'warnings' }, conflicts.map(pair => node('li', {}, names(pair))))) : null);
     }
     if (!conflicts.length) return node('div');
-    return node('details', { class: 'panel', open: Boolean(weekFilter) },
-      node('summary', {}, conflicts.length + ' lower-body and run pairing' + (conflicts.length === 1 ? '' : 's') + ' to review'),
-      node('p', { class: 'hint' }, 'These sessions are on the same or neighbouring days and may feel demanding. You can keep your chosen days or use Edit setup below to change them.'),
-      node('ul', { class: 'warnings' }, conflicts.map(([first, next]) => node('li', {},
-        dateText(first.date) + ' · ' + first.session.title + ' / ' + dateText(next.date) + ' · ' + next.session.title))));
+    const grouped = new Map();
+    for (const [first, next] of conflicts) {
+      const label = [first, next].map(item => new Intl.DateTimeFormat('en-GB', {weekday:'long',timeZone:'UTC'}).format(training.parseDate(item.date)) + ' · ' + item.session.title).join(' / ');
+      if (!grouped.has(label)) grouped.set(label, []);
+      grouped.get(label).push(dateText(first.date) + ' / ' + dateText(next.date));
+    }
+    return node('section', { class: 'panel', 'aria-label': 'Schedule guidance' },
+      heading('Your training days', 'h3'),
+      node('p', { class: 'hint' }, 'These sessions are close together and may feel demanding. You can keep your days or use Edit setup to change them.'),
+      node('ul', { class: 'warnings' }, [...grouped].map(([label, dates]) => node('li', {}, label + ' (' + dates.length + (dates.length === 1 ? ' pairing)' : ' pairings)'),
+        node('details', {}, node('summary', {}, 'See dates'), node('ul', {}, dates.map(date => node('li', {}, date))))))));
   }
 
   function rangeText(values, format = String) {
@@ -398,6 +410,7 @@
         if (meetProposal && !$('preview').querySelector('[name="reviewMeet"]')?.checked) throw Error('Confirm you have reviewed the proposed transition before accepting.');
         commit(meetProposal ? globalThis.LHRFMeetEntry.apply(state, meetProposal, globalThis.crypto.randomUUID()) : training.enrol(state, snapshot, start, globalThis.crypto.randomUUID()));
         meetProposal = null;
+        nextBlock = null;
         preview = null;
         renderPreview();
         showSetup();
@@ -451,7 +464,7 @@
       node('p', {}, meetProposal.supersededIds.length+' future planned strength sessions will be replaced; completed history, original snapshots and running remain.'),
       meetProposal.supersededDetails.length ? node('details',{},node('summary',{},'See the strength sessions to be replaced'),node('ul',{},meetProposal.supersededDetails.map(x=>node('li',{},dateText(x.date)+' · '+x.title)))) : null,
       node('label', {}, node('input',{type:'checkbox',name:'reviewMeet'}), 'I have reviewed the opening week, easier weeks, final week and transition.')) : null;
-    region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
+    region.replaceChildren(...[node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
       meetReview,
       templateRace ? node('p', { class: 'warn' }, 'Template marathon: ' + dateText(templateRace.date) +
         ' (week ' + snapshot.durationWeeks + '). Compare this with your actual event date: dates are not automatically aligned, and this does not assess suitability. If your event is sooner, the full ' + snapshot.durationWeeks + '-week plan will not fit; do not skip ahead without individual coaching.') : null,
@@ -459,7 +472,7 @@
         'Your two running days are consecutive. Consider spacing them to allow recovery; check the long run against harder lower-body training too.') : null,
       conflictPanel(preview, 'preview'),
       node('div', { class: 'actions preview-actions' }, add, edit),
-      node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks));
+      node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks)].filter(item => item !== null && item !== undefined));
   }
 
   let calendarWeek = null;
@@ -496,7 +509,24 @@
         renderPreview();
         chooseDiscipline(other);
       })) : null;
-    region.replaceChildren(...(addDiscipline ? [addDiscipline] : []), node('label', {}, 'Week of', picker),
+    const nextActions = [];
+    for (const discipline of Object.keys(disciplineNames)) {
+      const items = ordered.filter(item => item.plan.snapshot.discipline === discipline);
+      if (!items.length) continue;
+      const endDate = items.reduce((end, item) => item.date > end ? item.date : end, items[0].date);
+      if (endDate > last) continue;
+      nextActions.push(node('div', { class: 'panel' },
+        node('p', {}, 'Your ' + disciplineNames[discipline].toLowerCase() + ' programme is scheduled to end ' + dateText(endDate) + '.'),
+        button('Choose next ' + disciplineNames[discipline].toLowerCase() + ' programme', () => {
+          navigate('catalogue'); preview = null; renderPreview(); chooseDiscipline(discipline);
+          nextBlock = { discipline, endDate };
+          const weekday = training.parseDate(endDate).getUTCDay();
+          const earliest = training.addDays(endDate, ((8 - weekday) % 7) || 7);
+          if ($('monday').value < earliest) $('monday').value = earliest;
+          showMessage('Choose your next programme. The other discipline and workout history stay in place.');
+        })));
+    }
+    region.replaceChildren(...(addDiscipline ? [addDiscipline] : []), ...nextActions, node('label', {}, 'Week of', picker),
       conflictPanel(state, null, [calendarWeek, last]), ...list);
   }
 
