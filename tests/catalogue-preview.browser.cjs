@@ -69,7 +69,6 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.equal(await page.locator('#programme option[value="10k"]').count(), 0);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
     await enrol('powerlifting-four-day', '2026-11-16', async () => {
-      await page.getByText('Add reference maxes (optional)', { exact: true }).click();
       await page.getByLabel('Squat (kg)', { exact: true }).fill('140');
       await page.getByLabel('Bench (kg)', { exact: true }).fill('95');
       await page.getByLabel('Deadlift (kg)', { exact: true }).fill('170');
@@ -235,7 +234,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await existingApp.getByLabel('First calendar week').fill('2026-11-16');
     await existingApp.getByRole('button', { name: 'Preview programme' }).click();
     const fatigue = existingApp.getByRole('region', { name: 'Fatigue review' });
-    assert.match(await fatigue.innerText(), /Demanding run|demanding run/);
+    assert.match(await fatigue.innerText(), /runs and lower-body sessions/i);
     assert.ok(await fatigue.locator('li').count() > 0);
     assert.match(await firstWeek.innerText(), /Your first week together/);
     assert.equal(await firstWeek.locator('dd > div').count(), 6);
