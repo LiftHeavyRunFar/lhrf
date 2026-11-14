@@ -15,7 +15,7 @@ jobs:
       - name: Checkout exact candidate
         uses: actions/checkout@v4
         with:
-          ref: 8d272e252980f266e18a4c42bc488a9d6a9c29eb
+          ref: 2e31f800e48600f2282d18964216bcffc51e4370
           path: candidate
       - name: Checkout pre-existing baseline
         uses: actions/checkout@v4
