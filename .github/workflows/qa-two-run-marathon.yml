@@ -5,6 +5,9 @@ on:
       - 'src/programme-catalogue.js'
       - 'src/native-catalogue.js'
       - 'catalogue-preview/app.js'
+      - 'tests/marathon-16.test.cjs'
+      - 'tests/marathon-16.browser.cjs'
+      - 'tests/marathon-16-native.browser.cjs'
       - 'tests/marathon-two-run.test.cjs'
       - 'tests/marathon-two-run.browser.cjs'
       - 'tests/marathon-warning.browser.cjs'
@@ -19,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/marathon-two-run.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs
+      - run: node --test tests/marathon-16.test.cjs tests/marathon-two-run.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - name: Select browser
         run: |
@@ -30,4 +33,6 @@ jobs:
           fi
       - run: node tests/marathon-two-run.browser.cjs
       - run: node tests/marathon-warning.browser.cjs
+      - run: node tests/marathon-16.browser.cjs
+      - run: node tests/marathon-16-native.browser.cjs
       - run: node tests/catalogue-preview.browser.cjs
