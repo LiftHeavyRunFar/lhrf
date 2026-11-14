@@ -48,3 +48,13 @@ test('native snapshot preserves times, race metadata and input; no fabricated di
   assert.equal(race.eventType,'running'); assert.equal(race.scheduledDate,'2027-03-07');
   assert.equal(race.eventDate,race.scheduledDate); assert.equal(race.runs[0].distanceKm,42.195);
 });
+test('event date is a template output, not an actual race input or automatic alignment', () => {
+  const snapshot=training.scheduleSnapshot(catalogue.previewProgramme('marathon-two-run-16'),[1,6],6);
+  const state=training.enrol(training.empty(),snapshot,'2026-11-16','run');
+  const scheduled=state.occurrences.find(o=>o.sessionId==='race').date;
+  const hypotheticalActualRace='2027-03-14';
+  assert.equal(scheduled,'2027-03-07'); assert.notEqual(scheduled,hypotheticalActualRace);
+  assert.equal('actualEventDate' in state.plans[0],false);
+  const acrossDst=training.enrol(training.empty(),snapshot,'2026-12-07','dst');
+  assert.equal(acrossDst.occurrences.find(o=>o.sessionId==='race').date,'2027-03-28');
+});
