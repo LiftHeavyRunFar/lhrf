@@ -1,0 +1,31 @@
+name: Two-run marathon catalogue acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/programme-catalogue.js'
+      - 'src/native-catalogue.js'
+      - 'catalogue-preview/app.js'
+      - 'tests/marathon-two-run.test.cjs'
+      - 'tests/marathon-two-run.browser.cjs'
+      - '.github/workflows/qa-two-run-marathon.yml'
+jobs:
+  catalogue:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/marathon-two-run.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Select browser
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROMIUM_EXECUTABLE=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - run: node tests/marathon-two-run.browser.cjs
+      - run: node tests/catalogue-preview.browser.cjs
