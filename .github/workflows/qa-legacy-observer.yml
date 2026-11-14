@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'tests/legacy-observer-recovery.browser.cjs'
+      - 'tests/legacy-namespace.browser.cjs'
       - '.github/workflows/qa-legacy-observer.yml'
 jobs:
   observer:
@@ -28,3 +29,4 @@ jobs:
             npx playwright install --with-deps chromium
           fi
       - run: node tests/legacy-observer-recovery.browser.cjs
+      - run: node tests/legacy-namespace.browser.cjs
