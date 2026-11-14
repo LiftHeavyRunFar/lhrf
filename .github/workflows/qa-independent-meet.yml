@@ -2,6 +2,10 @@ name: Independent meet transition QA
 on:
   pull_request:
     paths:
+      - 'tests/owner-site-fixture/**'
+      - 'tests/owner-site-fixture.sha256'
+      - 'tests/owner-site-meet.browser.cjs'
+      - 'tests/owner-site-partial.browser.cjs'
       - 'tests/meet-matrix-independent.test.cjs'
       - 'tests/meet-independent.browser.cjs'
       - 'tests/meet-partial-independent.browser.cjs'
@@ -27,3 +31,6 @@ jobs:
           fi
       - run: node tests/meet-independent.browser.cjs
       - run: node tests/meet-partial-independent.browser.cjs
+      - run: sha256sum -c tests/owner-site-fixture.sha256
+      - run: node tests/owner-site-meet.browser.cjs
+      - run: node tests/owner-site-partial.browser.cjs
