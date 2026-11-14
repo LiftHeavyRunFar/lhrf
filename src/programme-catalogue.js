@@ -481,6 +481,25 @@
       durationSeconds: steps.reduce((total, step) => total + step.durationSeconds, 0) };
   }
 
+  // Conservative time-based template, not a prediction of distance or race readiness.
+  // The second outing in week 24 is the actual event, not an added training run.
+  const twoRunMarathonMinutes = [
+    [40,75], [40,80], [45,85], [40,70], [45,90], [45,95],
+    [45,100], [40,80], [45,105], [45,110], [50,115], [40,90],
+    [50,120], [50,125], [50,130], [45,100], [50,135], [55,140],
+    [55,145], [45,110], [55,150], [45,115], [40,85], [25,0],
+  ];
+  function twoRunMarathonWeeks() {
+    return twoRunMarathonMinutes.map(([short, long], index) => {
+      const easy = timedRun('easy', 1, 'Conversational easy run',
+        [{ role: 'work', effort: 'easy', durationSeconds: short * 60 }]);
+      const longer = long ? timedRun('long', 6, 'Conversational long run',
+        [{ role: 'work', effort: 'easy', durationSeconds: long * 60 }]) :
+        raceRun(42195, 0, 0, 'marathon', 'Marathon');
+      return { week: index + 1, sessions: [easy, longer] };
+    });
+  }
+
   function runningBase({ continuation = false } = {}) {
     const rows = [[25,25,30], [25,30,35], [30,30,40], [25,30,35],
       [30,35,45], [35,35,50], [35,40,55], [35,40,60]];
@@ -539,6 +558,9 @@
     { id: 'marathon-timed', title: 'Marathon · timed long runs', discipline: 'running',
       sessionsPerWeek: 4, durationWeeks: 24, build: () => marathonWeeks(true),
       entry: 'Four weekly runs and 30–38 km for six weeks, with a recent 85-minute easy outing. At 9:00/km, the 200-minute peak covers about 22 km. Check race cutoffs and likely time on feet.' },
+    { id: 'marathon-two-run', title: 'Marathon · two runs', discipline: 'running',
+      sessionsPerWeek: 2, durationWeeks: 24, build: twoRunMarathonWeeks,
+      entry: 'For established runners: two runs weekly for the last 4–6 weeks, including separate comfortable 40-minute and 75-minute easy outings and a normal next-day response. Two runs can limit preparation and performance compared with more frequent running; a finish is not guaranteed. These times are a template, not a required pace or distance. If your base is lower or unknown, build a sustainable base and consider delaying the event or reviewing with a qualified coach; Running Base needs three weekly days. Space your two runs where practical, consider hard lower-body lifting and practise fuelling. Check race cutoffs and recovery. Choose the first week and event day to fit your event: dates are not automatically aligned. The installed workout screen currently requires actual distance and duration even for timed runs; Garmin workout export for timed steps is not supported.' },
   ];
 
   function listProgrammes() {
