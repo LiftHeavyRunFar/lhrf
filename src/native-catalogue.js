@@ -77,6 +77,10 @@
         }
         if (source.kind === 'run') {
           session.run = true;
+          if (source.id === 'race' && plan.snapshot.id === 'marathon-two-run') {
+            session.eventType = 'running';
+            session.eventDate = date;
+          }
           session.runs.push({ name, role: source.id === 'race' && plan.snapshot.id === 'marathon-two-run' ? 'race' : source.id === 'long' ? 'long-run' : source.id === 'quality' ? 'quality-run' : 'easy-run',
             distanceKm: (source.distanceMetres || 0) / 1000, distanceKnown: Boolean(source.distanceMetres),
             ...(source.durationSeconds ? { minutes: source.durationSeconds / 60 } : {}),
