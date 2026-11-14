@@ -4,6 +4,7 @@ on:
     paths:
       - 'tests/legacy-observer-recovery.browser.cjs'
       - 'tests/legacy-namespace.browser.cjs'
+      - 'tests/legacy-migration-restart.browser.cjs'
       - '.github/workflows/qa-legacy-observer.yml'
 jobs:
   observer:
@@ -30,3 +31,4 @@ jobs:
           fi
       - run: node tests/legacy-observer-recovery.browser.cjs
       - run: node tests/legacy-namespace.browser.cjs
+      - run: node tests/legacy-migration-restart.browser.cjs
