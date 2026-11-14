@@ -103,7 +103,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
 
     await page.getByRole('button', { name: 'Add running' }).click();
     await page.getByRole('heading', { name: 'Running', exact: true }).waitFor();
-    assert.equal(await page.locator('#programme option').count(), 6);
+    assert.equal(await page.locator('#programme option').count(), 7);
     await enrol('10k', '2026-11-16', async () => {
       await page.getByText('Add a recent race time (optional)', { exact: true }).click();
       await page.getByLabel('Recent 10K time (minutes)').fill('55');
