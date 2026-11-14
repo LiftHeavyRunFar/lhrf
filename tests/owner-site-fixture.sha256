@@ -1,0 +1,8 @@
+4a4de3c0604094a55979245765f983bb202a42d704e237389b6fb0f3bfce2526  tests/owner-site-fixture/catalogue-preview/index.html
+2cd220e189a37a19022c69319bcca311ba660d112931c217c9e0d5bf4d82cf0b  tests/owner-site-fixture/catalogue-preview/app.css
+d657fc5eef90973b053fba5680e757ea1a933997e41a88c35f986db1a45a9f85  tests/owner-site-fixture/catalogue-preview/app.js
+3a29da90977abc7f5ad8b1a136598f8988a4e8c592eb83c715fa6bda494b544a  tests/owner-site-fixture/src/programme-catalogue.js
+e9e4f8d34ae59d518124f29b6b2d08581a0a058e0afff4c1e3f790bb4574c31c  tests/owner-site-fixture/src/catalogue-training.js
+b6ca95b7def506e3646a867fd254a37a1d97c44dc477692b7fe03a64cdd894cc  tests/owner-site-fixture/src/meet-entry.js
+763d6dde62b35d775e82fbd7c41cf1d406ab6ceb4a998692971ebeb55aebb3c7  tests/owner-site-fixture/src/garmin-workout.js
+b0ed4dbc1a3e03ba10c295040875ecd2a8de2336dddeda098bb6859a22bb317b  tests/owner-site-fixture/src/local-activity-import.js
