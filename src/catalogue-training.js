@@ -36,8 +36,8 @@
     return { plan, session };
   }
 
-  function enrol(state, snapshot, monday, id, placements = {}) {
-    if (state.plans.some(plan => plan.id === id || (plan.snapshot.id === snapshot.id && plan.start === monday))) {
+  function enrol(state, snapshot, monday, id, placements = {}, options = {}) {
+    if (state.plans.some(plan => plan.id === id || (plan.id !== options.ignoreDuplicatePlanId && plan.snapshot.id === snapshot.id && plan.start === monday))) {
       throw new Error('That programme is already on the calendar for this start date.');
     }
     const occurrences = makeOccurrences(snapshot, monday, id).map(item => {
