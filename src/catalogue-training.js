@@ -36,8 +36,8 @@
     return { plan, session };
   }
 
-  function enrol(state, snapshot, monday, id, placements = {}) {
-    if (state.plans.some(plan => plan.id === id || (plan.snapshot.id === snapshot.id && plan.start === monday))) {
+  function enrol(state, snapshot, monday, id, placements = {}, options = {}) {
+    if (state.plans.some(plan => plan.id === id || (plan.id !== options.ignoreDuplicatePlanId && plan.snapshot.id === snapshot.id && plan.start === monday))) {
       throw new Error('That programme is already on the calendar for this start date.');
     }
     const occurrences = makeOccurrences(snapshot, monday, id).map(item => {
@@ -143,7 +143,7 @@
   }
 
   function calendar(state) {
-    return state.occurrences.map(item => ({ ...item, ...sessionFor(state, item) }))
+    return state.occurrences.filter(item => !['superseded','not-scheduled'].includes(item.status)).map(item => ({ ...item, ...sessionFor(state, item) }))
       .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   }
 
