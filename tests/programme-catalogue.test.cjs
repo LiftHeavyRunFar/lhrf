@@ -50,7 +50,7 @@ test('the two-run 10K keeps race week to two outings and counts recovery between
 });
 
 test('preview calls return independent data and reject invalid programme input', () => {
-  assert.equal(catalogue.listProgrammes().length, 12);
+  assert.equal(catalogue.listProgrammes().length, 13);
   const preview = catalogue.previewProgramme('10k-two-run');
   preview.weeks[0].sessions[0].steps[0].distanceMetres = 1;
   assert.equal(catalogue.previewProgramme('10k-two-run').weeks[0].sessions[0].steps[0].distanceMetres, 1500);

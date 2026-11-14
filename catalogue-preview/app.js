@@ -399,8 +399,12 @@
         node('dt', {}, shortDate.format(training.parseDate(date))),
         node('dd', {}, firstWeek.filter(item => item.date === date)
           .map(item => node('div', {}, item.session.title)))))));
+    const runDays = snapshot.id === 'marathon-two-run' ? training.scheduleOptions(snapshot).days.slice().sort((a, b) => a - b) : [];
+    const adjacent = runDays.length === 2 && (runDays[1] - runDays[0] === 1 || runDays[0] + 7 - runDays[1] === 1);
     region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
-      week, conflictPanel(preview, 'preview'),
+      week, adjacent ? node('p', { class: 'warn', role: 'status' },
+        'Your two running days are consecutive. Consider spacing them to allow recovery; check the long run against harder lower-body training too.') : null,
+      conflictPanel(preview, 'preview'),
       node('div', { class: 'actions preview-actions' }, add, edit),
       node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks));
   }
