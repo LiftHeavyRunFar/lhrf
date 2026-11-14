@@ -29,14 +29,17 @@ const root = path.resolve(__dirname, '..');
       await page.getByRole('button',{name:'Edit setup',exact:true}).click();
       await page.getByLabel('Final week event day').selectOption('0');
       await page.getByRole('button',{name:'Preview programme',exact:true}).click();
-      assert.match(await page.locator('#native-catalogue-preview').innerText(),/Template marathon: Mon, 26 Apr 2027 \(week 24\)/);
+      assert.match(await page.locator('#native-catalogue-message').innerText(), /event day after the last training session/i);
+      await page.getByLabel('Final week event day').selectOption('5');
+      await page.getByRole('button',{name:'Preview programme',exact:true}).click();
+      assert.match(await page.locator('#native-catalogue-preview').innerText(),/Template marathon: Sat, 1 May 2027 \(week 24\)/);
       await page.getByRole('button',{name:'Get my programme',exact:true}).click();
       await page.getByRole('button',{name:'Go to programme'}).click();
       const state = await page.evaluate(()=>JSON.parse(localStorage.getItem('lhrf_beta_v1118_clean')));
       assert.equal(state.reviewedProgramme.weeks.length,24);
-      assert.equal(state.reviewedProgramme.weeks[23].sessions.find(s=>s.runs?.some(r=>r.role==='race')).scheduledDate,'2027-04-26');
+      assert.equal(state.reviewedProgramme.weeks[23].sessions.find(s=>s.runs?.some(r=>r.role==='race')).scheduledDate,'2027-05-01');
       assert.equal(state.reviewedProgramme.weeks[15].sessions.find(s=>s.runs?.some(r=>r.role==='long-run')).runs[0].minutes,100);
-      console.log('PASS',zone,'default + Monday template dates, advisory, persisted unchanged 24-week schedule');
+      console.log('PASS',zone,'default + Saturday template dates and invalid Monday rejection, advisory, persisted unchanged 24-week schedule');
       await context.close();
     }
   } finally { await browser.close(); }
