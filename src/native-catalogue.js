@@ -77,11 +77,11 @@
         }
         if (source.kind === 'run') {
           session.run = true;
-          if (source.id === 'race' && plan.snapshot.id === 'marathon-two-run') {
+          if (source.id === 'race' && ['marathon-two-run', 'marathon-two-run-16'].includes(plan.snapshot.id)) {
             session.eventType = 'running';
             session.eventDate = date;
           }
-          session.runs.push({ name, role: source.id === 'race' && plan.snapshot.id === 'marathon-two-run' ? 'race' : source.id === 'long' ? 'long-run' : source.id === 'quality' ? 'quality-run' : 'easy-run',
+          session.runs.push({ name, role: source.id === 'race' && ['marathon-two-run', 'marathon-two-run-16'].includes(plan.snapshot.id) ? 'race' : source.id === 'long' ? 'long-run' : source.id === 'quality' ? 'quality-run' : 'easy-run',
             distanceKm: (source.distanceMetres || 0) / 1000, distanceKnown: Boolean(source.distanceMetres),
             ...(source.durationSeconds ? { minutes: source.durationSeconds / 60 } : {}),
             rpe: Math.max(...source.steps.map(step => effort[step.effort][1])), coachNote: source.note || '',
