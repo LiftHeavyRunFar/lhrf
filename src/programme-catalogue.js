@@ -489,8 +489,14 @@
     [50,120], [50,125], [50,130], [45,100], [50,135], [55,140],
     [55,145], [45,110], [55,150], [45,115], [40,85], [25,0],
   ];
-  function twoRunMarathonWeeks() {
-    return twoRunMarathonMinutes.map(([short, long], index) => {
+  const twoRunMarathon16Minutes = [
+    [45,100], [45,105], [50,110], [40,90],
+    [50,115], [50,120], [50,125], [45,100],
+    [50,130], [55,135], [55,140], [45,110],
+    [55,150], [45,115], [40,85], [25,0],
+  ];
+  function twoRunMarathonWeeks(rows = twoRunMarathonMinutes) {
+    return rows.map(([short, long], index) => {
       const easy = timedRun('easy', 1, 'Conversational easy run',
         [{ role: 'work', effort: 'easy', durationSeconds: short * 60 }]);
       const longer = long ? timedRun('long', 6, 'Conversational long run',
@@ -559,8 +565,11 @@
       sessionsPerWeek: 4, durationWeeks: 24, build: () => marathonWeeks(true),
       entry: 'Four weekly runs and 30–38 km for six weeks, with a recent 85-minute easy outing. At 9:00/km, the 200-minute peak covers about 22 km. Check race cutoffs and likely time on feet.' },
     { id: 'marathon-two-run', title: 'Marathon · two runs', discipline: 'running',
-      sessionsPerWeek: 2, durationWeeks: 24, build: twoRunMarathonWeeks,
+      sessionsPerWeek: 2, durationWeeks: 24, build: () => twoRunMarathonWeeks(),
       entry: 'For established runners: two runs weekly for the last 4–6 weeks, including separate comfortable 40-minute and 75-minute easy outings and a normal next-day response. Two runs can limit preparation and performance compared with more frequent running; a finish is not guaranteed. These times are a template, not a required pace or distance. If your base is lower or unknown, build a sustainable base and consider delaying the event or reviewing with a qualified coach; Running Base needs three weekly days. Space your two runs where practical, consider hard lower-body lifting and practise fuelling. Check race cutoffs and recovery. Choose the first week and event day to fit your event: dates are not automatically aligned. The installed workout screen currently requires actual distance and duration even for timed runs; Garmin workout export for timed steps is not supported.' },
+    { id: 'marathon-two-run-16', title: 'Marathon · two runs · 16 weeks', discipline: 'running',
+      sessionsPerWeek: 2, durationWeeks: 16, build: () => twoRunMarathonWeeks(twoRunMarathon16Minutes),
+      entry: 'For established, currently recovered runners: two runs weekly over the last 4–6 weeks, including separate comfortable 45-minute and 100-minute easy outings with a normal next-day response. These entry times are coaching assumptions, not safety thresholds; the app does not assess readiness. If your base or recovery is lower or unknown, do not jump to these durations: build a sustainable base and discuss your event timing with a qualified coach; consider a later event. A recent marathon needs recovery first. Two runs limit preparation and may limit performance; finishing safely is not guaranteed. At 9 minutes/km the 150-minute peak covers about 16.7 km; check time on feet, fuelling and event cutoff, and review the gap to race distance. Space runs where practical; place hard lower-body lifting away from the long run, or consider lighter lower-body maintenance while retaining your chosen strength priorities. Do not make up missed sessions. The displayed race date is the template date, not automatic event alignment. Actual distance and duration are required to save timed runs; Garmin export of timed steps is unsupported.' },
   ];
 
   function listProgrammes() {
