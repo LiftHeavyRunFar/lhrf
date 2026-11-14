@@ -210,7 +210,7 @@
           label('Plate increment (kg)', 'increment', { ...number, min: '0.1', value: 2.5 })),
         node('p', { class: 'hint' }, 'Add a recent max for suggested weights.')));
     }
-    if (programme.discipline === 'running' && programme.id !== 'running-base' && programme.id !== 'marathon-two-run') {
+    if (programme.discipline === 'running' && programme.id !== 'running-base' && !['marathon-two-run', 'marathon-two-run-16'].includes(programme.id)) {
       const race = programme.id.startsWith('10k') ? '10K' : programme.id === 'half-marathon' ? 'half marathon' : 'marathon';
       optional.append(label('Recent ' + race + ' time (minutes)', 'raceMinutes',
         { type: 'number', inputmode: 'decimal', min: 1, step: 'any', placeholder: race === '10K' ? 'e.g. 55' : '' }),
@@ -399,13 +399,14 @@
         node('dt', {}, shortDate.format(training.parseDate(date))),
         node('dd', {}, firstWeek.filter(item => item.date === date)
           .map(item => node('div', {}, item.session.title)))))));
-    const runDays = snapshot.id === 'marathon-two-run' ? training.scheduleOptions(snapshot).days.slice().sort((a, b) => a - b) : [];
-    const templateRace = snapshot.id === 'marathon-two-run'
+    const isTwoRunMarathon = ['marathon-two-run', 'marathon-two-run-16'].includes(snapshot.id);
+    const runDays = isTwoRunMarathon ? training.scheduleOptions(snapshot).days.slice().sort((a, b) => a - b) : [];
+    const templateRace = isTwoRunMarathon
       ? training.calendar(preview).find(item => item.plan.id === 'preview' && item.session.id === 'race') : null;
     const adjacent = runDays.length === 2 && (runDays[1] - runDays[0] === 1 || runDays[0] + 7 - runDays[1] === 1);
     region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
       templateRace ? node('p', { class: 'warn' }, 'Template marathon: ' + dateText(templateRace.date) +
-        ' (week 24). Compare this with your actual event date: dates are not automatically aligned, and this does not assess suitability. If your event is sooner, the full 24-week plan will not fit; do not skip ahead without individual coaching.') : null,
+        ' (week ' + snapshot.durationWeeks + '). Compare this with your actual event date: dates are not automatically aligned, and this does not assess suitability. If your event is sooner, the full ' + snapshot.durationWeeks + '-week plan will not fit; do not skip ahead without individual coaching.') : null,
       week, adjacent ? node('p', { class: 'warn', role: 'status' },
         'Your two running days are consecutive. Consider spacing them to allow recovery; check the long run against harder lower-body training too.') : null,
       conflictPanel(preview, 'preview'),

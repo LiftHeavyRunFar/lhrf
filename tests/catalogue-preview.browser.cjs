@@ -60,7 +60,8 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     assert.match(await page.locator('#choose-discipline').innerText(), /add the other discipline after setup/);
     assert.equal(await page.locator('#plan-form').isVisible(), false);
     await page.getByRole('button', { name: 'Running', exact: true }).click();
-    assert.equal(await page.locator('#programme option').count(), 6);
+    assert.equal(await page.locator('#programme option').count(), 7);
+    assert.equal(await page.locator('#programme option[value="marathon-two-run-16"]').count(), 1);
     assert.equal(await page.locator('#programme option[value="powerlifting-four-day"]').count(), 0);
     await page.getByRole('button', { name: 'Change discipline' }).click();
     await page.getByRole('button', { name: 'Strength training', exact: true }).click();
@@ -102,7 +103,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
 
     await page.getByRole('button', { name: 'Add running' }).click();
     await page.getByRole('heading', { name: 'Running', exact: true }).waitFor();
-    assert.equal(await page.locator('#programme option').count(), 6);
+    assert.equal(await page.locator('#programme option').count(), 7);
     await enrol('10k', '2026-11-16', async () => {
       await page.getByText('Add a recent race time (optional)', { exact: true }).click();
       await page.getByLabel('Recent 10K time (minutes)').fill('55');
