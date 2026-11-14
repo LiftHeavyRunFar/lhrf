@@ -200,15 +200,14 @@
       { continuation: continuation.checked })));
     renderDays();
     settings.replaceChildren();
-    const optional = node('details', { class: 'setup-optional' }, node('summary', {},
-      programme.discipline === 'strength' ? 'Add reference maxes (optional)' : 'Add a recent race time (optional)'));
+    const optional = node('details', { class: 'setup-optional' }, node('summary', {}, 'Add a recent race time (optional)'));
     if (programme.discipline === 'strength' && programme.id !== 'lifting-foundation') {
       const number = { type: 'number', step: 'any', min: '1', inputmode: 'decimal' };
-      optional.append(node('fieldset', {}, node('legend', {}, 'Reference maxes'),
+      settings.append(node('fieldset', {}, node('legend', {}, 'Your recent best lifts (optional)'),
         node('div', { class: 'grid' }, label('Squat (kg)', 'squat', number), label('Bench (kg)', 'bench', number),
           label('Deadlift (kg)', 'deadlift', number),
           label('Plate increment (kg)', 'increment', { ...number, min: '0.1', value: 2.5 })),
-        node('p', { class: 'hint' }, 'Add a recent max for suggested weights.')));
+        node('p', { class: 'hint' }, 'Enter recent best weights to see suggested starting weights. Leave blank if unsure.')));
     }
     if (programme.discipline === 'running' && programme.id !== 'running-base' && !['marathon-two-run', 'marathon-two-run-16'].includes(programme.id)) {
       const race = programme.id.startsWith('10k') ? '10K' : programme.id === 'half-marathon' ? 'half marathon' : 'marathon';
@@ -304,7 +303,7 @@
       const names = pair => pair.map(item => dateText(item.date) + ' · ' + item.session.title).join(' / ');
       return node('section', { class: 'panel', 'aria-label': 'Fatigue review' }, heading('Fatigue review', 'h3'),
         conflicts.length ? node('p', { class: 'hint' },
-          'A demanding run falls within a day of a harder lower-body session. Change your days in Edit setup if you need more recovery.') :
+          'These runs and lower-body sessions are on the same or neighbouring days. This can make recovery harder. You can keep these days, or choose Edit setup below to change your running days.') :
           node('p', { class: 'hint' }, 'Your hard runs and harder lower-body sessions are on separate, non-consecutive days.'),
         conflicts.length ? node('ul', { class: 'warnings' }, conflicts.slice(0, 3).map(pair => node('li', {}, names(pair)))) : null,
         conflicts.length > 3 ? node('details', {}, node('summary', {}, 'See all ' + conflicts.length + ' pairings'),
@@ -313,7 +312,7 @@
     if (!conflicts.length) return node('div');
     return node('details', { class: 'panel', open: Boolean(weekFilter) },
       node('summary', {}, conflicts.length + ' lower-body and run pairing' + (conflicts.length === 1 ? '' : 's') + ' to review'),
-      node('p', { class: 'hint' }, 'These sessions are on the same or adjacent days. Decide whether their placement suits you.'),
+      node('p', { class: 'hint' }, 'These sessions are on the same or neighbouring days and may feel demanding. You can keep your chosen days or use Edit setup below to change them.'),
       node('ul', { class: 'warnings' }, conflicts.map(([first, next]) => node('li', {},
         dateText(first.date) + ' · ' + first.session.title + ' / ' + dateText(next.date) + ' · ' + next.session.title))));
   }
@@ -385,6 +384,9 @@
       preview = null;
       renderPreview();
       showSetup(snapshot.discipline);
+      const dayControl = $('training-days').querySelector('input[name="trainingDay"]');
+      dayControl?.focus();
+      $('training-days').scrollIntoView({ block: 'start' });
     }, 'secondary');
     const blocks = [];
     for (let offset = 0; offset < snapshot.weeks.length; offset += 4) {
