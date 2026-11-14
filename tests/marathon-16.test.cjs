@@ -1,0 +1,50 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const catalogue = require('../src/programme-catalogue');
+const training = require('../src/catalogue-training');
+const native = require('../src/native-catalogue');
+const registry = require('../src/exercise-registry');
+const gym = require('../src/gym-equipment');
+const inventory = require('./equipment-fixtures.cjs').fullInventory();
+const crypto = require('node:crypto');
+const expected = [[45,100],[45,105],[50,110],[40,90],[50,115],[50,120],[50,125],[45,100],[50,130],[55,135],[55,140],[45,110],[55,150],[45,115],[40,85],[25,0]];
+test('distinct 16-week prescription, easier weeks, taper and race', () => {
+  const p = catalogue.previewProgramme('marathon-two-run-16');
+  assert.equal(p.durationWeeks, 16);
+  assert.deepEqual(p.weeks.map(w => w.sessions.map(s => (s.durationSeconds || 0)/60)), expected);
+  assert.ok(p.weeks.every(w => w.sessions.length === 2));
+  assert.ok(p.weeks.slice(0,15).every(w => w.sessions.every(s => s.steps.every(t => t.effort === 'easy' && t.paceSecondsPerKm === null))));
+  const race = p.weeks[15].sessions[1];
+  assert.equal(race.distanceMetres,42195); assert.equal(race.steps[0].role,'race');
+  for (const n of [4,8,12]) assert.ok(expected[n-1][1] < expected[n-2][1]);
+  assert.ok(expected[12][1]>expected[13][1] && expected[13][1]>expected[14][1]);
+  assert.match(p.entry,/45-minute and 100-minute/); assert.match(p.entry,/base or recovery is lower or unknown/);
+  assert.match(p.entry,/does not assess readiness/); assert.match(p.entry,/not automatic event alignment/);
+  assert.match(p.entry,/hard lower-body lifting/); assert.match(p.entry,/Do not make up missed sessions/);
+});
+test('the previously drafted 24-week option stays byte-for-byte unchanged', () => {
+  const hash=crypto.createHash('sha256').update(JSON.stringify(catalogue.previewProgramme('marathon-two-run'))).digest('hex');
+  assert.equal(hash,'4bf704f617d3032c120cfdf4650e9309cacaecd61bf8773c332f5178c1517a94');
+});
+test('16-week scenario schedules event Sunday with no Monday run, without mutating input or strength', () => {
+  const snapshot = catalogue.previewProgramme('marathon-two-run-16'); const input=JSON.stringify(snapshot);
+  const planned = training.scheduleSnapshot(snapshot,[1,6],6);
+  let state = training.enrol(training.empty(),catalogue.previewProgramme('powerlifting-three-day'),'2026-11-16','strength');
+  const original=JSON.stringify(state.plans[0]); state=training.enrol(state,planned,'2026-11-16','run');
+  assert.equal(JSON.stringify(state.plans[0]),original); assert.equal(JSON.stringify(snapshot),input);
+  const race=state.occurrences.find(o=>o.planId==='run' && o.week===16 && o.sessionId==='race');
+  assert.equal(race.date,'2027-03-07'); assert.equal(race.status,'planned');
+  assert.ok(state.occurrences.filter(o=>o.planId==='run').every(o=>new Date(o.date+'T12:00:00Z').getUTCDay()!==1));
+  assert.throws(()=>training.scheduleSnapshot(snapshot,[1,6],0),/event day after/i);
+  assert.ok(training.conflicts(state,'run').length>0);
+});
+test('native snapshot preserves times, race metadata and input; no fabricated distance', () => {
+  const plans=[{id:'r',start:'2026-11-16',snapshot:catalogue.previewProgramme('marathon-two-run-16')}];
+  const before=JSON.stringify(plans); const result=native.buildProgramme(plans,null,{training,registry,gym,inventory,now:'2026-11-14T00:00:00Z',equipment:[]});
+  assert.equal(JSON.stringify(plans),before); assert.equal(result.weeks.length,16);
+  const first=result.weeks[0].sessions.find(s=>s.runs[0].role==='long-run').runs[0];
+  assert.equal(first.minutes,100); assert.equal(first.distanceKnown,false);
+  const race=result.weeks[15].sessions.find(s=>s.runs[0].role==='race');
+  assert.equal(race.eventType,'running'); assert.equal(race.scheduledDate,'2027-03-07');
+  assert.equal(race.eventDate,race.scheduledDate); assert.equal(race.runs[0].distanceKm,42.195);
+});
