@@ -1,0 +1,29 @@
+/* Isolated meet-entry draft. The source template and saved history are never mutated. */
+(function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./catalogue-training'):root.LHRFCatalogueTraining);if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFMeetEntry=api})(globalThis,function(T){'use strict';
+ const ids=['powerlifting-three-day','powerlifting-four-day'];
+ function proposed({snapshot,today,meetDate,days,recentWork='unknown',recentDeload='unknown',state,activePlanId=null}){
+  if(!snapshot||!ids.includes(snapshot.id)||snapshot.weeks.length!==12)throw Error('Choose a three- or four-day powerlifting template.');
+  const startDate=T.parseDate(today),event=T.parseDate(meetDate),distance=(event-startDate)/86400000,weeks=Math.ceil(distance/7);
+  if(!Number.isInteger(distance)||distance<42||distance>84||weeks<6||weeks>12)throw Error('Choose a meet between 6 and 12 weeks away; shorter and longer routes need separate review.');
+  if(!['comparable','not-comparable','unknown'].includes(recentWork)||!['recent','none','unknown'].includes(recentDeload))throw Error('Choose a valid recent training and deload response.');
+  const count=snapshot.sessionsPerWeek,chosen=[...new Set(days||[])].sort((a,b)=>a-b);if(chosen.length!==count||chosen.some(x=>!Number.isInteger(x)||x<0||x>6))throw Error('Choose exactly '+count+' training days.');
+  const eventMonday=T.addDays(meetDate,-((event.getUTCDay()+6)%7));const start=T.addDays(eventMonday,-7*(weeks-1));const sourceFirst=13-weeks;
+  const sliced=structuredClone(snapshot);sliced.durationWeeks=weeks;sliced.weeks=sliced.weeks.slice(sourceFirst-1).map((w,i)=>({...w,sourceWeek:w.week,week:i+1,sessions:w.sessions.map((s,j)=>({...s,day:s.kind==='event'?((event.getUTCDay()+6)%7):chosen[j]}))}));
+  const placements={};const dates=[];for(const w of sliced.weeks.slice(0,-1))for(const s of w.sessions){const date=T.addDays(start,(w.week-1)*7+s.day);if(date<today)throw Error('This start would put an opening workout in the past. Choose another setup for review.');dates.push(date);}
+  const last=sliced.weeks.at(-1),taper=last.sessions.filter(s=>s.kind!=='event'),chosenDates=chosen.map(day=>T.addDays(eventMonday,day)).filter(d=>d<meetDate&&d>=today&&!dates.includes(d));
+  const candidate=[...chosenDates];for(let n=7;n>=1;n--){const d=T.addDays(meetDate,-n);if(d>=today&&!dates.includes(d)&&!candidate.includes(d))candidate.push(d)}
+  const priority=candidate.slice(0,taper.length).sort();if(priority.length!==taper.length)throw Error('The final week cannot fit these sessions before the meet; coaching review required.');
+  for(let i=0;i<taper.length;i++)placements[last.week+'/'+taper[i].id]=priority[i];placements[last.week+'/meet']=meetDate;
+  const moved=priority.some(d=>!chosenDates.includes(d));
+  let active=activePlanId&&state?.plans.find(p=>p.id===activePlanId);if(activePlanId&&(!active||active.snapshot.discipline!=='strength'))throw Error('Choose an existing strength programme to switch from.');
+  const planned=(state?.occurrences||[]).filter(o=>active&&o.planId===active.id&&o.date>=start&&o.status==='planned'&&!state.drafts?.[o.id]);
+  if(active&&(state?.occurrences||[]).some(o=>o.planId===active.id&&o.date>=start&&o.status==='planned'&&state.drafts?.[o.id]))throw Error('Finish or preserve the in-progress workout before reviewing a switch.');
+  const events=planned.filter(o=>active.snapshot.weeks[o.week-1]?.sessions.find(s=>s.id===o.sessionId)?.kind==='event');
+  const superseded=planned.filter(o=>!events.includes(o));
+  const easier=snapshot.weeks.filter((w,i)=>i>0&&i<11&&w.sessions.flatMap(s=>s.groups||[]).reduce((n,g)=>n+g.sets,0)<snapshot.weeks[i-1].sessions.flatMap(s=>s.groups||[]).reduce((n,g)=>n+g.sets,0)&&w.sessions.flatMap(s=>s.groups||[]).reduce((n,g)=>n+g.sets,0)<snapshot.weeks[i+1].sessions.flatMap(s=>s.groups||[]).reduce((n,g)=>n+g.sets,0)).map(w=>w.week).filter(w=>w>=sourceFirst);
+  const warnings=[];warnings.push(recentWork==='comparable'?'You reported similar recent training; verify the proposed opening work.':recentWork==='not-comparable'?'Recent work was not comparable: this transition may be unsuitable; coaching review is needed.':'Recent training is unknown: the proposed start is uncertain; review before accepting.');warnings.push(recentDeload==='recent'?'You reported a recent easier week. Check the easier week shown below; it has not been moved or removed.':recentDeload==='unknown'?'Recent deload history is unknown; the template easier weeks have not been moved or removed.':'Check the shown easier weeks against your recent work; none was automatically moved.');if(moved)warnings.push('At least one final-week session is proposed outside your usual days to keep it before the meet; review the exact dates.');if(events.length)warnings.push('Existing scheduled meet or benchmark remains on its original date: '+events.map(e=>e.date).join(', ')+'. Check whether both events are intended.');warnings.push('This is a draft, not a readiness assessment. Running prescriptions and completed work remain unchanged.');
+  return {snapshot:sliced,start,meetDate,placements,sourceFirst,weeks,easier,warnings,activePlanId,requiresReview:recentWork!=='comparable'||recentDeload==='unknown'||recentDeload==='recent',supersededIds:superseded.map(o=>o.id),stateRevision:state?.revision??null};
+ }
+ function apply(state,proposal,id){if(!proposal||!id)throw Error('Review a proposal first.');if(proposal.stateRevision!==null&&state.revision!==proposal.stateRevision)throw Error('Training changed since review. Review the proposal again.');const keep=structuredClone(state);const candidates=new Set(proposal.supersededIds);keep.occurrences=keep.occurrences.map(o=>candidates.has(o.id)?{...o,status:'superseded',previousStatus:o.status}:o);return T.enrol(keep,proposal.snapshot,proposal.start,id,proposal.placements)}
+ return {propose:proposed,apply};
+});
