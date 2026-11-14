@@ -7,6 +7,7 @@ on:
       - 'catalogue-preview/app.js'
       - 'tests/marathon-two-run.test.cjs'
       - 'tests/marathon-two-run.browser.cjs'
+      - 'tests/marathon-warning.browser.cjs'
       - '.github/workflows/qa-two-run-marathon.yml'
 jobs:
   catalogue:
@@ -28,4 +29,5 @@ jobs:
             npx playwright install --with-deps chromium
           fi
       - run: node tests/marathon-two-run.browser.cjs
+      - run: node tests/marathon-warning.browser.cjs
       - run: node tests/catalogue-preview.browser.cjs
