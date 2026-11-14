@@ -143,7 +143,7 @@
   }
 
   function calendar(state) {
-    return state.occurrences.map(item => ({ ...item, ...sessionFor(state, item) }))
+    return state.occurrences.filter(item => item.status !== 'superseded').map(item => ({ ...item, ...sessionFor(state, item) }))
       .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id));
   }
 
