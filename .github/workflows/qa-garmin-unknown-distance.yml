@@ -1,0 +1,29 @@
+name: Garmin unknown distance review QA
+on:
+  pull_request:
+    paths:
+      - 'src/garmin-import.js'
+      - 'tests/garmin-import.test.cjs'
+      - 'tests/garmin-unknown-distance.browser.cjs'
+      - '.github/workflows/qa-garmin-unknown-distance.yml'
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Select browser
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROMIUM_EXECUTABLE=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - run: node --test tests/garmin-import.test.cjs
+      - run: node tests/garmin-unknown-distance.browser.cjs
+      - run: node tests/garmin-import.browser.cjs
