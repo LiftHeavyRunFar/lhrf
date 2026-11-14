@@ -449,6 +449,7 @@
       heading('Final week and meet','h3'),
       ...training.calendar(preview).filter(x=>x.planId==='preview'&&x.week===meetProposal.weeks).map(x=>node('article',{},heading(dateText(x.date)+' · '+x.session.title,'h4'),dosePanel(x.session))),
       node('p', {}, meetProposal.supersededIds.length+' future planned strength sessions will be replaced; completed history, original snapshots and running remain.'),
+      meetProposal.supersededDetails.length ? node('details',{},node('summary',{},'See the strength sessions to be replaced'),node('ul',{},meetProposal.supersededDetails.map(x=>node('li',{},dateText(x.date)+' · '+x.title)))) : null,
       node('label', {}, node('input',{type:'checkbox',name:'reviewMeet'}), 'I have reviewed the opening week, easier weeks, final week and transition.')) : null;
     region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
       meetReview,
