@@ -12,6 +12,7 @@
   const PREFIX = 'beta-v1:'; // v1.40.6 reset removes keys beginning with "lhrf".
   const STAGE = PREFIX + 'staged-import';
   const STORE = PREFIX + 'history';
+  const IMPORT_LOCK = PREFIX + 'cutover';
   const key = name => name === MAIN ? STORE : PREFIX + 'app:' + name;
 
   function validate(raw) {
@@ -30,7 +31,16 @@
     }
   }
 
-  function stage(storage) {
+  function withImportLock(locks, action) {
+    if (!locks?.request) throw new Error('Cutover requires an exclusive browser lock.');
+    return locks.request(IMPORT_LOCK, { mode: 'exclusive' }, action);
+  }
+
+  function stage(storage, locks = globalThis.navigator?.locks) {
+    return withImportLock(locks, () => stageSnapshot(storage));
+  }
+
+  function stageSnapshot(storage) {
     if (storage.getItem(STORE) !== null) return 'already-initialised';
     requireIdleLegacy(storage);
     const raw = validate(storage.getItem(MAIN));
@@ -41,7 +51,11 @@
     return 'staged';
   }
 
-  function commit(storage) {
+  function commit(storage, locks = globalThis.navigator?.locks) {
+    return withImportLock(locks, () => commitSnapshot(storage));
+  }
+
+  function commitSnapshot(storage) {
     if (storage.getItem(STORE) !== null) return 'already-initialised';
     requireIdleLegacy(storage);
     const reviewed = validate(storage.getItem(STAGE));
