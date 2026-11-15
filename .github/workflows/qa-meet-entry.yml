@@ -12,6 +12,8 @@ on:
       - 'tests/native-meet-integration.browser.cjs'
       - 'tests/native-owner-candidate.browser.cjs'
       - 'tests/owner-standalone-safety.browser.cjs'
+      - 'tests/owner-offline-isolation.browser.cjs'
+      - 'sw.js'
       - 'index.html'
       - '.github/workflows/qa-meet-entry.yml'
 jobs:
@@ -37,3 +39,4 @@ jobs:
       - run: node tests/native-meet-integration.browser.cjs
       - run: node tests/native-owner-candidate.browser.cjs
       - run: node tests/owner-standalone-safety.browser.cjs
+      - run: node tests/owner-offline-isolation.browser.cjs
