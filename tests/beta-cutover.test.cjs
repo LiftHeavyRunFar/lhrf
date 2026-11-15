@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { MAIN, LIVE, STAGE, STORE, key, stage: stageImport, commit: commitImport, scoped } = require('../src/beta-cutover.js');
+const { createHash } = require('node:crypto');
+const { MAIN, LIVE, STAGE, STORE, key, stage: stageImport, commit: commitImport, restoreArchive, scoped } = require('../src/beta-cutover.js');
 
 const snapshot = id => JSON.stringify({
   sets: [], runs: [], checkins: [], completedWorkouts: [{ id }], provenance: 'fictional',
@@ -10,6 +11,7 @@ function storage(initial = {}) {
   const map = new Map(Object.entries(initial));
   let queue = Promise.resolve();
   return {
+    get length() { return map.size; },
     locks: { request(name, options, operation) {
       assert.equal(name, 'beta-v1:cutover');
       assert.deepEqual(options, { mode: 'exclusive' });
@@ -114,4 +116,54 @@ test('missing exclusive lock blocks the import before storage is written', () =>
   assert.throws(() => commitImport(disk, null), /exclusive browser lock/);
   assert.equal(disk.getItem(STAGE), null);
   assert.equal(disk.getItem(STORE), null);
+});
+
+const checksum = raw => createHash('sha256').update(raw, 'utf8').digest('hex');
+
+test('archive restore is atomic, preserves exact bytes and rejects overlapping restores', async () => {
+  const disk = storage();
+  const raw = original + '\n';
+  const results = await Promise.allSettled([
+    restoreArchive(disk, raw, checksum(raw), disk.locks),
+    restoreArchive(disk, raw, checksum(raw), disk.locks),
+  ]);
+  assert.deepEqual(results.map(result => result.status).sort(), ['fulfilled', 'rejected']);
+  assert.equal(results.find(result => result.status === 'fulfilled').value, 'restored');
+  assert.match(results.find(result => result.status === 'rejected').reason.message, /already exists/);
+  assert.equal(scoped(disk).getItem(MAIN), raw);
+  assert.equal(disk.getItem(MAIN), null);
+  assert.equal(disk.getItem(STAGE), null);
+});
+
+test('archive restore rejects invalid records, unaudited bytes and dirty targets without writing', async () => {
+  const disk = storage();
+  const invalid = [
+    ['{', /invalid JSON/],
+    ['{"sets":[],"runs":[],"checkins":[]}', /missing or duplicate workout IDs/],
+    ['{"sets":[null],"runs":[],"checkins":[],"completedWorkouts":[]}', /invalid history record/],
+    ['{"sets":[],"runs":[],"checkins":[],"completedWorkouts":[{"id":" " }]}', /missing or duplicate workout IDs/],
+    ['{"sets":[],"runs":[],"checkins":[],"completedWorkouts":[{"id":"same"},{"id":"same"}]}', /missing or duplicate workout IDs/],
+  ];
+  for (const [raw, error] of invalid) await assert.rejects(restoreArchive(disk, raw, checksum(raw), disk.locks), error);
+  await assert.rejects(restoreArchive(disk, original, '', disk.locks), /requires its recorded/);
+  await assert.rejects(restoreArchive(disk, original + '\n', checksum(original), disk.locks), /does not match/);
+  await assert.rejects(restoreArchive(disk, original, checksum(original), null), /exclusive browser lock/);
+  assert.equal(disk.length, 0);
+  for (const name of [MAIN, STAGE, LIVE, key(LIVE)]) {
+    const dirty = storage({ [name]: original });
+    await assert.rejects(restoreArchive(dirty, original, checksum(original), dirty.locks), /clean isolated profile/);
+    assert.equal(dirty.getItem(name), original);
+    assert.equal(dirty.getItem(STORE), null);
+  }
+});
+
+test('archive restore leaves a clean profile available for retry after a write failure', async () => {
+  const disk = storage();
+  const write = disk.setItem;
+  disk.setItem = () => { throw Error('synthetic quota failure'); };
+  await assert.rejects(restoreArchive(disk, original, checksum(original), disk.locks), /quota failure/);
+  assert.equal(disk.length, 0);
+  disk.setItem = write;
+  assert.equal(await restoreArchive(disk, original, checksum(original), disk.locks), 'restored');
+  assert.equal(disk.getItem(STORE), original);
 });
