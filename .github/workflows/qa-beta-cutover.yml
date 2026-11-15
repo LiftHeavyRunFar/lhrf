@@ -34,6 +34,8 @@ jobs:
             npx playwright install --with-deps chromium
           fi
       - run: node tests/beta-cutover.browser.cjs
+      - name: Exercise versioned beta workout flow with the actual offline worker
+        run: node tests/beta-cutover-offline.browser.cjs
       - name: Recheck normal native workout save and reload
         if: ${{ !cancelled() }}
         run: node tests/today-flow.browser.cjs
