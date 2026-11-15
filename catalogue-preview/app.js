@@ -454,7 +454,7 @@
       node('p', {}, meetProposal.supersededIds.length+' future planned strength sessions will be replaced; completed history, original snapshots and running remain.'),
       meetProposal.supersededDetails.length ? node('details',{},node('summary',{},'See the strength sessions to be replaced'),node('ul',{},meetProposal.supersededDetails.map(x=>node('li',{},dateText(x.date)+' · '+x.title)))) : null,
       node('label', {}, node('input',{type:'checkbox',name:'reviewMeet'}), 'I have reviewed the opening week, easier weeks, final week and transition.')) : null;
-    region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
+    region.replaceChildren(...[node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
       meetReview,
       templateRace ? node('p', { class: 'warn' }, 'Template marathon: ' + dateText(templateRace.date) +
         ' (week ' + snapshot.durationWeeks + '). Compare this with your actual event date: dates are not automatically aligned, and this does not assess suitability. If your event is sooner, the full ' + snapshot.durationWeeks + '-week plan will not fit; do not skip ahead without individual coaching.') : null,
@@ -462,7 +462,7 @@
         'Your two running days are consecutive. Consider spacing them to allow recovery; check the long run against harder lower-body training too.') : null,
       conflictPanel(preview, 'preview'),
       node('div', { class: 'actions preview-actions' }, add, edit),
-      node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks));
+      node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks)].filter(Boolean));
   }
 
   let calendarWeek = null;
