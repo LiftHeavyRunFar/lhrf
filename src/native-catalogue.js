@@ -268,8 +268,13 @@
         complete();
         return;
       }
-      const plans = training.enrol(catalogueState(), snapshot, start, root.crypto.randomUUID()).plans;
-      const programme = build(plans, data, { equipment });
+      const enrolled = training.enrol(catalogueState(), snapshot, start, root.crypto.randomUUID());
+      const preserveReview = Boolean(data.customRoadmap?.catalogueOccurrences);
+      const programme = build(enrolled.plans, data, {
+        equipment,
+        ...(preserveReview ? { reviewedOccurrences: enrolled.occurrences } : {}),
+      });
+      if (preserveReview) programme.config.catalogueOccurrences = enrolled.occurrences;
       root.LHRFProgrammeReplacement.validateProgramme(programme);
       if (data.customRoadmap && !data.customRoadmap.cataloguePlans) {
         await review(programme);
