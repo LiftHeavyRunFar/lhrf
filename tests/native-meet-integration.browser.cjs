@@ -1,13 +1,23 @@
 // Independent synthetic browser QA, isolated test origin; no real athletes or Garmin.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
-const root=path.resolve(__dirname,'..'),DATA='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
+const packaged=Boolean(process.env.OWNER_CANDIDATE_ROOT);
+const root=path.resolve(process.env.OWNER_CANDIDATE_ROOT||path.join(__dirname,'..'));
+const DATA='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
 const ORIGIN='https://native-meet-qa.test',PENDING_RUN=LIVE+'_pendingRun';
 async function setup(browser,id,{includeRunning=true,sourceRoot=root}={}){
  const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
  page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
- await page.addInitScript(()=>{window.LHRF_NATIVE_MEET_TEST=true});
+ if(!packaged) await page.addInitScript(()=>{window.LHRF_NATIVE_MEET_TEST=true});
  await page.route('**/*',r=>{const url=new URL(r.request().url());if(url.origin!==ORIGIN)return r.abort();let p=url.pathname;if(p.endsWith('/'))p+='index.html';const f=path.resolve(sourceRoot,'.'+p);if(!f.startsWith(sourceRoot+path.sep)||!fs.existsSync(f))return r.fulfill({status:404});const ext=path.extname(f);return r.fulfill({body:fs.readFileSync(f),contentType:ext==='.js'?'application/javascript':ext==='.css'?'text/css':ext==='.json'?'application/json':'text/html'})});
+ if(packaged) await page.route('https://example.invalid/**',r=>r.fulfill({body:'allowed',headers:{'Access-Control-Allow-Origin':'*'}}));
  await page.clock.install({time:new Date('2026-11-16T09:00:00Z')});await page.goto(ORIGIN+'/');
+ if(packaged){
+  assert.equal(await page.evaluate(()=>window.LHRF_NATIVE_MEET_TEST),true);
+  assert.match(await page.locator('body').innerText(),/PRIVATE PRACTICE ONLY/);
+  assert.deepEqual(await page.evaluate(()=>[window.LHRFIntervals,window.LHRFGarminImport,window.LHRFLocalActivityImportUI,window.LHRFGarminWorkout].map(module=>typeof module)),Array(4).fill('undefined'));
+  assert.equal(await page.evaluate(async()=>{try{await fetch('https://example.invalid/test');return 'allowed'}catch{return 'blocked'}}),'blocked');
+  assert.equal(await page.evaluate(()=>{try{window.open('https://example.invalid');return 'allowed'}catch{return 'blocked'}}),'blocked');
+ }
  await page.getByRole('button',{name:'Strength training',exact:true}).click();await page.locator('#native-catalogue-programme').selectOption(id);
  if(id==='powerlifting-four-day')for(const lift of ['Squat','Bench','Deadlift'])await page.getByLabel(lift+' · where do you struggle?').selectOption('unsure');
  await page.getByLabel('First calendar week').fill('2026-11-16');await page.getByRole('button',{name:'Preview programme',exact:true}).click();await page.getByRole('button',{name:'Get my programme',exact:true}).click();
@@ -15,6 +25,11 @@ async function setup(browser,id,{includeRunning=true,sourceRoot=root}={}){
   await page.getByRole('button',{name:'Add running programme'}).click();await page.locator('#native-catalogue-programme').selectOption('marathon-two-run-16');await page.getByLabel('First calendar week').fill('2026-11-16');await page.getByRole('button',{name:'Preview programme',exact:true}).click();await page.getByRole('button',{name:'Get my programme',exact:true}).click();
  }else await page.getByRole('button',{name:'Go to programme',exact:true}).click();
  await page.locator('#catalogueSetupDialog').waitFor({state:'hidden'});
+ if(packaged){
+  await page.locator('nav [data-screen="settings"]').click();
+  for(const selector of ['#sendIntervalsWorkout','#garminImportOpen','#activityFile'])
+   assert.equal(await page.locator(selector).isVisible(),false,selector);
+ }
  const state=()=>page.evaluate(k=>JSON.parse(localStorage.getItem(k)),DATA),installed=await state();assert.equal(installed.customRoadmap.cataloguePlans.length,includeRunning?2:1);
  const first=installed.activeSchedule.filter(s=>s.ex?.length).sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];assert.ok(first);
  await page.clock.setFixedTime(new Date(first.scheduledDate+'T09:00:00Z'));await page.reload();
