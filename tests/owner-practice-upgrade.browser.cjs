@@ -11,13 +11,16 @@ const marker = 'fictional-owner-upgrade-history';
 const pending = 'lhrf_fresh_beta_live_v1114_pendingRun';
 const types = { '.js': 'application/javascript', '.html': 'text/html', '.css': 'text/css' };
 
-async function run() {
-  const revision = (await fs.readFile(path.join(candidate, 'OWNER-TEST-REVISION.txt'), 'utf8')).split('\n')[0];
-  assert.equal(revision, process.env.OWNER_SOURCE_SHA);
+async function verifyUpgrade(browser, revision, canonicalRoute) {
   let active = previous;
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
-    const relative = url.pathname.endsWith('/') ? url.pathname + 'index.html' : url.pathname;
+    const serveCanonicalPage = canonicalRoute && active === candidate;
+    if (serveCanonicalPage && url.pathname === '/refresh.html') {
+      return res.writeHead(307, {location: '/refresh', 'cache-control': 'no-store'}).end();
+    }
+    const pathname = serveCanonicalPage && url.pathname === '/refresh' ? '/refresh.html' : url.pathname;
+    const relative = pathname.endsWith('/') ? pathname + 'index.html' : pathname;
     const file = path.resolve(active, '.' + relative);
     if (!file.startsWith(active + path.sep)) return res.writeHead(404).end();
     try {
@@ -33,13 +36,10 @@ async function run() {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 
-  let browser;
+  let context;
   try {
     const origin = 'http://localhost:' + server.address().port + '/';
-    browser = await chromium.launch({
-      headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: ['--no-sandbox'],
-    });
-    const context = await browser.newContext({viewport: {width: 393, height: 852}, serviceWorkers: 'allow'});
+    context = await browser.newContext({viewport: {width: 393, height: 852}, serviceWorkers: 'allow'});
     const page = await context.newPage();
     page.setDefaultTimeout(25000);
     await page.goto(origin);
@@ -54,6 +54,7 @@ async function run() {
 
     active = candidate;
     await page.goto(origin + 'refresh.html');
+    assert.equal(new URL(page.url()).pathname, canonicalRoute ? '/refresh' : '/refresh.html');
     const update = page.getByRole('button', {name: 'Update now'});
     await update.click();
     await page.getByText(/Finish your workout or pending run/).waitFor();
@@ -74,11 +75,26 @@ async function run() {
     await confirmRevision();
     assert.equal(await page.evaluate(() => navigator.onLine), false);
     assert.equal(await page.evaluate(key => localStorage.getItem(key), marker), history);
-    console.log('PASS previous owner package lacks refresh page; candidate updates with guarded synthetic storage and reopens offline.');
+    console.log('PASS guarded owner-practice update via ' + (canonicalRoute ? '307 to /refresh' : '/refresh.html') +
+      ' preserves synthetic storage and reopens offline.');
   } finally {
-    await browser?.close();
+    await context?.close();
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));
+  }
+}
+
+async function run() {
+  const revision = (await fs.readFile(path.join(candidate, 'OWNER-TEST-REVISION.txt'), 'utf8')).split('\n')[0];
+  assert.equal(revision, process.env.OWNER_SOURCE_SHA);
+  const browser = await chromium.launch({
+    headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: ['--no-sandbox'],
+  });
+  try {
+    await verifyUpgrade(browser, revision, true);
+    await verifyUpgrade(browser, revision, false);
+  } finally {
+    await browser.close();
   }
 }
 

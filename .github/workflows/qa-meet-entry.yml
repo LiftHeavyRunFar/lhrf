@@ -89,6 +89,19 @@ jobs:
           replace_once("sw.js", "const CACHE = 'lhrf-shell-v1.40.6';",
                        f"const CACHE = 'lhrf-shell-v{release}';")
           replace_once("sw.js", "const SHELL = [", "const SHELL = ['./refresh.html',")
+          # Sites redirects the owner practice update page from /refresh.html to /refresh.
+          # Apply this to the isolated practice package only.
+          replace_once("sw.js",
+                       """  if (event.data === 'LHRF_ACTIVATE_UPDATE' && event.source?.url && new URL(event.source.url).pathname === new URL('refresh.html', self.registration.scope).pathname) {
+            event.waitUntil(self.skipWaiting());
+          }""",
+                       """  if (event.data !== 'LHRF_ACTIVATE_UPDATE' || !event.source?.url) return;
+          const source = new URL(event.source.url);
+          const scope = new URL(self.registration.scope);
+          const updatePaths = ['refresh.html', 'refresh'].map(name => new URL(name, scope).pathname);
+          if (source.origin === scope.origin && updatePaths.includes(source.pathname)) {
+            event.waitUntil(self.skipWaiting());
+          }""")
           replace_once("refresh.html", "<head>", '<head>\n  <meta http-equiv="Content-Security-Policy" '
                        'content="default-src \'self\'; script-src \'self\' \'unsafe-inline\'; '
                        'style-src \'self\' \'unsafe-inline\'; connect-src \'self\'; form-action \'none\'; '
