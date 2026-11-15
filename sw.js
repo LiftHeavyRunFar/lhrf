@@ -7,6 +7,7 @@ SHELL.push(
   './catalogue-preview/app.css',
   './src/programme-catalogue.js',
   './src/catalogue-training.js',
+  './src/meet-entry.js',
   './src/native-catalogue.js',
   './src/training-storage.js',
   './src/competition-programme.js',
