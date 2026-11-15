@@ -80,7 +80,7 @@ async function addRunningAfterMeet(browser, id) {
   await page.locator('nav [data-screen="plan"]').click();
   await page.getByRole('button',{name:'Add running',exact:true}).click();
   await page.locator('#native-catalogue-programme').selectOption('10k');
-  await page.getByLabel('Runs per week').selectOption('2');
+  await page.locator('#native-catalogue-run-count').selectOption('2');
   await page.getByLabel('First calendar week').fill('2026-11-16');
   await page.getByRole('button',{name:'Preview programme',exact:true}).click();
   assert.doesNotMatch(await page.locator('#native-catalogue-preview').innerText(),/\bnull(?:null)?\b/);
