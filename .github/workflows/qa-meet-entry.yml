@@ -9,6 +9,8 @@ on:
       - 'catalogue-preview/app.js'
       - 'tests/meet-entry*'
       - 'tests/native-meet-occurrences.test.cjs'
+      - 'tests/native-meet-integration.browser.cjs'
+      - 'index.html'
       - '.github/workflows/qa-meet-entry.yml'
 jobs:
   meet-entry:
@@ -30,3 +32,4 @@ jobs:
             npx playwright install --with-deps chromium
           fi
       - run: node tests/meet-entry.browser.cjs
+      - run: node tests/native-meet-integration.browser.cjs
