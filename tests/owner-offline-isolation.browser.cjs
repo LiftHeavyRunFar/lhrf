@@ -1,6 +1,6 @@
 // Isolated local HTTP origins; synthetic data only. No Garmin connection.
 const fs=require('node:fs'),http=require('node:http'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
-const root=path.resolve(__dirname,'..');
+const root=path.resolve(process.env.OWNER_CANDIDATE_ROOT || 'native-owner-test-dist');
 function server(){return new Promise(resolve=>{const s=http.createServer((req,res)=>{let p=new URL(req.url,'http://localhost').pathname;if(p.endsWith('/'))p+='index.html';const f=path.resolve(root,'.'+p);if(!f.startsWith(root+path.sep)||!fs.existsSync(f)||!fs.statSync(f).isFile()){res.writeHead(404).end();return}const ext=path.extname(f);res.setHeader('Content-Type',ext==='.js'?'application/javascript':ext==='.css'?'text/css':ext==='.json'||ext==='.webmanifest'?'application/json':ext==='.html'?'text/html':'application/octet-stream');fs.createReadStream(f).pipe(res)});s.listen(0,()=>resolve(s))})}
 (async()=>{const a=await server(),b=await server(),browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});try{
  const context=await browser.newContext({viewport:{width:393,height:852},serviceWorkers:'allow'}),page=await context.newPage();page.setDefaultTimeout(20000);
