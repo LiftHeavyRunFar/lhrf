@@ -6,7 +6,7 @@ This draft starts from #180 at `239fe5f38878023e45c6dd3d855ed958d7633ff1`. That 
 
 - Account for every old writer with outstanding work. Reconnect, complete or explicitly preserve its work, review any competing histories manually, and close all old copies before choosing the snapshot. If an offline copy cannot be accounted for, the source is not known to be complete. A storage read cannot prove every old client is idle or prove which edits were already overwritten.
 - Require an idle source on the browser being cut over. No active strength or running draft, pending run, or unfinished programme replacement. Export, verify and keep a separately stored legacy backup before staging. The prototype imports the ordinary main history only. It does not migrate the competition store or auxiliary keys. Approval would be required for any real-data migration.
-- Use one beta writer. New beta tabs still use whole-record saves. This design does not solve two beta tabs racing one another.
+- Use one beta workout writer. New beta tabs still use whole-record saves. This design does not solve two beta tabs racing one another. The import itself requires browser Web Locks and serializes overlapping attempts. Legacy clients do not participate in that lock.
 
 ## Staging and verification
 
