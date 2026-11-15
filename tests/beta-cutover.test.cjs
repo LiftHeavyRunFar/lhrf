@@ -122,7 +122,9 @@ const checksum = raw => createHash('sha256').update(raw, 'utf8').digest('hex');
 
 test('archive restore is atomic, preserves exact bytes and rejects overlapping restores', async () => {
   const disk = storage();
-  const raw = original + '\n';
+  const record = JSON.parse(original);
+  record.completedWorkouts = [{id: 'fri::strength', week: 1}, {id: 'fri::strength', week: 2}];
+  const raw = JSON.stringify(record, null, 2) + '\n';
   const results = await Promise.allSettled([
     restoreArchive(disk, raw, checksum(raw), disk.locks),
     restoreArchive(disk, raw, checksum(raw), disk.locks),
@@ -131,6 +133,7 @@ test('archive restore is atomic, preserves exact bytes and rejects overlapping r
   assert.equal(results.find(result => result.status === 'fulfilled').value, 'restored');
   assert.match(results.find(result => result.status === 'rejected').reason.message, /already exists/);
   assert.equal(scoped(disk).getItem(MAIN), raw);
+  assert.deepEqual(JSON.parse(disk.getItem(STORE)).completedWorkouts, record.completedWorkouts);
   assert.equal(disk.getItem(MAIN), null);
   assert.equal(disk.getItem(STAGE), null);
 });
@@ -139,10 +142,10 @@ test('archive restore rejects invalid records, unaudited bytes and dirty targets
   const disk = storage();
   const invalid = [
     ['{', /invalid JSON/],
-    ['{"sets":[],"runs":[],"checkins":[]}', /missing or duplicate workout IDs/],
+    ['{"sets":[],"runs":[],"checkins":[]}', /missing or invalid workout IDs/],
     ['{"sets":[null],"runs":[],"checkins":[],"completedWorkouts":[]}', /invalid history record/],
-    ['{"sets":[],"runs":[],"checkins":[],"completedWorkouts":[{"id":" " }]}', /missing or duplicate workout IDs/],
-    ['{"sets":[],"runs":[],"checkins":[],"completedWorkouts":[{"id":"same"},{"id":"same"}]}', /missing or duplicate workout IDs/],
+    ['{"sets":[],"runs":[],"checkins":[],"completedWorkouts":[{"id":" " }]}', /missing or invalid workout IDs/],
+    ['{"sets":[],"runs":[],"checkins":[],"completedWorkouts":[{"week":1}]}', /missing or invalid workout IDs/],
   ];
   for (const [raw, error] of invalid) await assert.rejects(restoreArchive(disk, raw, checksum(raw), disk.locks), error);
   await assert.rejects(restoreArchive(disk, original, '', disk.locks), /requires its recorded/);
