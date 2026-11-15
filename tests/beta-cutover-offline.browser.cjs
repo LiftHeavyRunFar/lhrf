@@ -29,6 +29,7 @@ async function startServer(currentLane = () => 'beta') {
     // other. Explicit service-worker Cache Storage still holds the shell.
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Fixture-Lane', lane);
+    res.setHeader('Content-Security-Policy', "connect-src 'self'");
     if (route === '/control.html') {
       res.setHeader('Content-Type', 'text/html');
       return res.end('<!doctype html><title>Offline cutover control</title><script src="/cutover.js"></script>');
@@ -77,8 +78,6 @@ async function simulateDowngrade(browser) {
       viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
       timezoneId: 'Europe/London', serviceWorkers: 'allow',
     });
-    await context.route('**/*', route =>
-      new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
     const control = await context.newPage();
     await control.goto(origin + '/control.html');
     const source = JSON.stringify(fixture);
@@ -140,6 +139,8 @@ async function simulateDowngrade(browser) {
       // permitted refresh page, after closing the previous workout writer.
       const refresh = await context.newPage();
       await refresh.goto(app + 'refresh.html');
+      await refresh.waitForFunction(worker => navigator.serviceWorker.controller?.scriptURL === worker,
+        app + workerScript(lane));
       lane = nextLane;
       const worker = app + workerScript(nextLane);
       await control.evaluate(({app, worker}) =>
@@ -151,8 +152,13 @@ async function simulateDowngrade(browser) {
       await context.setOffline(true);
       await currentPage.close();
       await refresh.evaluate(async worker => {
-        const waiting = (await navigator.serviceWorker.getRegistration()).waiting;
-        if (waiting?.scriptURL !== worker) throw Error('The reviewed shell is not waiting.');
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration.active?.scriptURL === worker) return;
+        const waiting = registration.waiting;
+        if (waiting?.scriptURL !== worker) {
+          throw Error('Expected waiting worker ' + worker + '; found ' + waiting?.scriptURL +
+            ' waiting and ' + registration.active?.scriptURL + ' active.');
+        }
         waiting.postMessage('LHRF_ACTIVATE_UPDATE');
       }, worker);
       await refresh.waitForFunction(worker => navigator.serviceWorker.controller?.scriptURL === worker, worker);
