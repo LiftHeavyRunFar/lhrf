@@ -52,6 +52,11 @@ async function verifyUpgrade(browser, revision, canonicalRoute) {
     }, {marker, pending});
     const history = await page.evaluate(key => localStorage.getItem(key), marker);
 
+    // Keep the old app open so the staged worker cannot activate just because
+    // navigating to the update page leaves no clients on the previous version.
+    const legacy = await context.newPage();
+    await legacy.goto(origin);
+    await legacy.waitForFunction(() => navigator.serviceWorker.controller !== null);
     active = candidate;
     await page.goto(origin + 'refresh.html');
     assert.equal(new URL(page.url()).pathname, canonicalRoute ? '/refresh' : '/refresh.html');
