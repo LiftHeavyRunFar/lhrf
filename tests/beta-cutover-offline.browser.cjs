@@ -46,7 +46,7 @@ async function startServer() {
 
 async function run() {
   const server = await startServer();
-  const origin = 'http://127.0.0.1:' + server.address().port;
+  const origin = 'http://localhost:' + server.address().port;
   const app = origin + '/beta/';
   const worker = app + 'sw.js';
   let browser;
