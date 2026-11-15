@@ -81,9 +81,11 @@
     if (rows.some(row => !row || typeof row !== 'object' || Array.isArray(row))) {
       throw new Error('The beta archive contains an invalid history record.');
     }
-    const ids = record.completedWorkouts?.map(workout => workout.id);
-    if (!ids || ids.some(id => typeof id !== 'string' || !id.trim()) || new Set(ids).size !== ids.length) {
-      throw new Error('The beta archive contains missing or duplicate workout IDs.');
+    // A legacy schedule can reuse an ID across weeks. Restore the rows in
+    // order and prevent duplication by guarding the restore, not the IDs.
+    if (!record.completedWorkouts ||
+        record.completedWorkouts.some(({id}) => typeof id !== 'string' || !id.trim())) {
+      throw new Error('The beta archive contains missing or invalid workout IDs.');
     }
     if (typeof expectedSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(expectedSha256)) {
       throw new Error('The beta archive requires its recorded SHA-256 checksum.');
