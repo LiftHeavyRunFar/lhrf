@@ -15,13 +15,23 @@
   const IMPORT_LOCK = PREFIX + 'cutover';
   const key = name => name === MAIN ? STORE : PREFIX + 'app:' + name;
 
-  function validate(raw) {
+  function parseHistory(raw) {
     if (typeof raw !== 'string') throw new Error('There is no history snapshot to import.');
-    const record = JSON.parse(raw);
+    let record;
+    try {
+      record = JSON.parse(raw);
+    } catch {
+      throw new Error('The history snapshot is invalid JSON.');
+    }
     if (!record || !['sets', 'runs', 'checkins'].every(name => Array.isArray(record[name])) ||
         ('completedWorkouts' in record && !Array.isArray(record.completedWorkouts))) {
       throw new Error('The history snapshot is invalid.');
     }
+    return record;
+  }
+
+  function validate(raw) {
+    parseHistory(raw);
     return raw;
   }
 
@@ -65,6 +75,32 @@
     return 'imported';
   }
 
+  async function restoreArchive(storage, raw, expectedSha256, locks = globalThis.navigator?.locks) {
+    const record = parseHistory(raw);
+    const rows = [...record.sets, ...record.runs, ...record.checkins, ...(record.completedWorkouts ?? [])];
+    if (rows.some(row => !row || typeof row !== 'object' || Array.isArray(row))) {
+      throw new Error('The beta archive contains an invalid history record.');
+    }
+    const ids = record.completedWorkouts?.map(workout => workout.id);
+    if (!ids || ids.some(id => typeof id !== 'string' || !id.trim()) || new Set(ids).size !== ids.length) {
+      throw new Error('The beta archive contains missing or duplicate workout IDs.');
+    }
+    if (typeof expectedSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(expectedSha256)) {
+      throw new Error('The beta archive requires its recorded SHA-256 checksum.');
+    }
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+    const actual = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
+    if (actual !== expectedSha256) throw new Error('The beta archive does not match its recorded checksum.');
+
+    return withImportLock(locks, () => {
+      if (storage.getItem(STORE) !== null) throw new Error('Beta history already exists. Nothing was restored.');
+      if (storage.length !== 0) throw new Error('Restore requires a clean isolated profile.');
+      // Keep the archive bytes and use the history key itself as the commit.
+      storage.setItem(STORE, raw);
+      return 'restored';
+    });
+  }
+
   function scoped(storage) {
     const requireImported = () => validate(storage.getItem(STORE));
     requireImported();
@@ -84,5 +120,5 @@
     };
   }
 
-  return { MAIN, LIVE, STAGE, STORE, key, stage, commit, scoped };
+  return { MAIN, LIVE, STAGE, STORE, key, stage, commit, restoreArchive, scoped };
 });
