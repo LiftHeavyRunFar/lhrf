@@ -73,9 +73,6 @@ async function openApp(context, lane) {
         }
         return originalAdd.call(this, type, handler, options);
       };
-      window.__lifecycle = [];
-      document.addEventListener('freeze', () => window.__lifecycle.push('freeze'));
-      document.addEventListener('resume', () => window.__lifecycle.push('resume'));
     });
   }
   await page.goto(origin + '/' + lane + '/index.html');
@@ -113,6 +110,17 @@ const writeLegacy = (page, id) => page.evaluate(id => {
   next.completedWorkouts.push({id, name: 'Fictional stale workout', week: 1, date: '2026-10-23T12:00:00Z'});
   return save(next, {notify: false});
 }, id);
+
+async function withDeadline(promise, label) {
+  let timer;
+  try {
+    return await Promise.race([promise, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Timed out waiting for ' + label)), 10000);
+    })]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function run() {
   const browser = await chromium.launch({
@@ -169,9 +177,14 @@ async function run() {
     const oldB = await openApp(context, 'old');
     let beta = await openApp(context, 'beta');
     await beta.bringToFront();
-    const frozen = await context.newCDPSession(oldA);
-    await frozen.send('Page.setWebLifecycleState', {state: 'frozen'});
-    await recordWorkout(beta); // Old A remains frozen from before this save.
+    const debuggerSession = await context.newCDPSession(oldA);
+    await debuggerSession.send('Debugger.enable');
+    const paused = new Promise(resolve => debuggerSession.once('Debugger.paused', resolve));
+    await debuggerSession.send('Debugger.pause');
+    // Give the old page a statement at which to pause even if it is idle.
+    const probe = oldA.evaluate(() => 'legacy execution resumed').then(value => ({value}), error => ({error}));
+    await withDeadline(paused, 'the old tab debugger pause');
+    await recordWorkout(beta); // Old A's JavaScript is paused throughout this save.
     const saved = await beta.evaluate(MAIN => JSON.parse(window.LHRFStorage.local.getItem(MAIN)), MAIN);
     assert.deepEqual(saved.completedWorkouts.slice(0, fixture.completedWorkouts.length), fixture.completedWorkouts);
     assert.equal(saved.completedWorkouts.filter(workout => workout.id === 'fri::strength').length, 1);
@@ -184,16 +197,13 @@ async function run() {
     console.log('PASS normal native workout start, draft reload and completion in versioned beta storage.');
 
     await context.setOffline(true);
-    await frozen.send('Page.setWebLifecycleState', {state: 'active'});
+    const resumed = new Promise(resolve => debuggerSession.once('Debugger.resumed', resolve));
+    await debuggerSession.send('Debugger.resume');
+    await withDeadline(resumed, 'the old tab debugger resume');
+    assert.deepEqual(await withDeadline(probe, 'legacy script execution after resume'), {value: 'legacy execution resumed'});
     await oldA.bringToFront();
-    await oldA.waitForFunction(() => window.__lifecycle.includes('resume'), null, {polling: 100})
-      .catch(async error => {
-        console.error('Legacy page lifecycle observed:', await oldA.evaluate(() => window.__lifecycle));
-        throw error;
-      });
-    assert.deepEqual(await oldA.evaluate(() => window.__lifecycle), ['freeze', 'resume']);
     assert.equal(await oldA.evaluate(() => navigator.onLine), false);
-    console.log('PASS Chromium delivered freeze and resume events to the stale legacy page; it resumed offline.');
+    console.log('PASS Chromium debugger confirmed stale legacy JavaScript paused across the save and resumed offline.');
     await beta.close();
     assert.equal(await writeLegacy(oldA, 'legacy-offline-A'), true);
     assert.equal(await read(oldA, STORE), savedRaw);
@@ -221,9 +231,9 @@ async function run() {
     assert.equal(await read(control, MAIN), null);
     assert.equal(await read(beta, STORE), savedRaw, 'legacy reset must not delete beta storage');
     await context.close();
-    console.log('PASS two stale legacy saves after CDP resume offline, repeated imports, and legacy reset cannot alter the saved beta workout.');
+    console.log('PASS two stale offline legacy saves after debugger resume, repeated imports, and legacy reset cannot alter the saved beta workout.');
     console.log('REPRODUCED LIMIT: the first of two uncaptured old snapshots is lost from legacy storage.');
-    console.log('Scope: Chromium CDP freeze, routed offline responses, single beta writer, synthetic only.');
+    console.log('Scope: simulated suspension by pausing Chromium JavaScript, routed offline responses, single beta writer, synthetic only.');
   } finally {
     await browser.close();
   }
