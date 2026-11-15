@@ -19,6 +19,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Check out the product source from the owner-practice build
+        uses: actions/checkout@v4
+        with:
+          ref: af48c572c07b080b066cfe1378099fdcab00f04d
+          path: owner-practice-repro
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -33,3 +38,5 @@ jobs:
           fi
       - run: node tests/meet-entry.browser.cjs
       - run: node tests/native-meet-integration.browser.cjs
+        env:
+          LHRF_OWNER_REPRO_ROOT: owner-practice-repro
