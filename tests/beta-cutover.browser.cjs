@@ -3,6 +3,8 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
+const {createHash} = require('node:crypto');
 const vm = require('node:vm');
 const {createRequire} = require('node:module');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -80,12 +82,16 @@ async function openApp(context, lane) {
   return page;
 }
 
-async function recordWorkout(page) {
+async function startStrengthWorkout(page) {
   await page.locator('[data-session-id="fri::strength"]').click();
   await page.locator('#previewStart').click();
   await page.locator('#readinessContinue').click();
   await page.locator('.live-set [data-field="rpe"]').first().fill('8');
   await page.locator('.live-set .set-check').first().click();
+}
+
+async function recordWorkout(page) {
+  await startStrengthWorkout(page);
   await page.reload();
   await page.locator('nav [data-screen="train"]').click();
   assert.equal(await page.locator('.set-check.checked').count(), 1, 'beta in-progress workout survives app reload');
@@ -110,6 +116,159 @@ const writeLegacy = (page, id) => page.evaluate(id => {
   next.completedWorkouts.push({id, name: 'Fictional stale workout', week: 1, date: '2026-10-23T12:00:00Z'});
   return save(next, {notify: false});
 }, id);
+
+const digest = raw => createHash('sha256').update(raw, 'utf8').digest('hex');
+const workoutIds = raw => JSON.parse(raw).completedWorkouts.map(workout => workout.id);
+const workoutCounts = raw => {
+  const {completedWorkouts, sets, runs, checkins} = JSON.parse(raw);
+  return {workouts: completedWorkouts.length, sets: sets.length, runs: runs.length, checkins: checkins.length};
+};
+
+async function verifyBackup(directory, name, raw) {
+  const file = path.join(directory, name);
+  await fs.promises.writeFile(file, raw, {flag: 'wx'});
+  const archived = await fs.promises.readFile(file, 'utf8');
+  assert.equal(digest(archived), digest(raw));
+  assert.deepEqual(workoutIds(archived), workoutIds(raw));
+  return archived;
+}
+
+async function rehearseCutoverAndRollback(browser) {
+  const context = await browser.newContext({
+    viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
+    timezoneId: 'Europe/London', serviceWorkers: 'block',
+  });
+  const archive = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'lhrf-synthetic-rehearsal-'));
+  try {
+    await mountRoutes(context);
+    let control = await context.newPage();
+    await control.goto(origin + '/control.html');
+    const setSource = raw => control.evaluate(({MAIN, raw}) => localStorage.setItem(MAIN, raw), {MAIN, raw});
+    await setSource(original);
+
+    // These are the only legacy copies in this fixture. The test operator
+    // captures each surviving value before the next suspended writer saves.
+    const legacyCopies = [
+      {edit: 'rehearsal-legacy-a', page: await openApp(context, 'old')},
+      {edit: 'rehearsal-legacy-b', page: await openApp(context, 'old')},
+    ];
+    for (const copy of legacyCopies) {
+      assert.equal(await writeLegacy(copy.page, copy.edit), true);
+      const raw = await read(control, MAIN);
+      assert.deepEqual(workoutIds(raw), [...workoutIds(original), copy.edit]);
+      copy.snapshot = await verifyBackup(archive, copy.edit + '.json', raw);
+    }
+    const accountForLegacyEdits = raw => {
+      const ids = workoutIds(raw);
+      const unresolved = legacyCopies.filter(({edit}) => ids.filter(id => id === edit).length !== 1);
+      assert.deepEqual(unresolved.map(({edit}) => edit), [], 'unresolved legacy edits');
+    };
+    const latestLegacy = await read(control, MAIN);
+    assert.equal(latestLegacy, legacyCopies[1].snapshot);
+    assert.throws(() => accountForLegacyEdits(latestLegacy), /unresolved legacy edits/);
+    assert.equal(await read(control, STAGE), null);
+    assert.equal(await read(control, STORE), null);
+    console.log('PASS operator preflight halted on a known legacy edit missing after a competing write.');
+
+    // Fixture-only manual reconciliation from both captured histories. Compare
+    // all other fields so this example never discards a competing change.
+    const resolved = JSON.parse(original);
+    for (const {edit, snapshot, page} of legacyCopies) {
+      const {completedWorkouts, ...otherFields} = JSON.parse(snapshot);
+      const {completedWorkouts: prior, ...originalFields} = JSON.parse(original);
+      assert.deepEqual(otherFields, originalFields);
+      assert.deepEqual(completedWorkouts.slice(0, -1), prior);
+      assert.equal(completedWorkouts.at(-1).id, edit);
+      resolved.completedWorkouts.push(completedWorkouts.at(-1));
+      await page.close();
+    }
+    const reconciled = JSON.stringify(resolved);
+    await setSource(reconciled);
+    accountForLegacyEdits(await read(control, MAIN));
+
+    // An actual in-progress native workout creates the source draft key.
+    const legacy = await openApp(context, 'old');
+    await startStrengthWorkout(legacy);
+    const activeDraft = await read(control, LIVE);
+    assert.ok(activeDraft);
+    await assert.rejects(control.evaluate(() => window.LHRFBetaCutover.stage(localStorage)),
+      /Finish or recover the legacy workout/);
+    assert.equal(await read(control, LIVE), activeDraft);
+    assert.deepEqual(workoutIds(await read(control, MAIN)), workoutIds(reconciled));
+    assert.equal(await read(control, STAGE), null);
+    assert.equal(await read(control, STORE), null);
+    // Finish the fictional draft through the app before freezing history.
+    await legacy.locator('#liveFinish').click();
+    await legacy.locator('#finishAndSave').click();
+    await legacy.locator('#liveFeedbackSkip').click();
+    assert.equal(await read(control, LIVE), null);
+    await legacy.close();
+    assert.deepEqual(context.pages(), [control], 'all known legacy pages are closed before snapshot');
+
+    const frozen = await verifyBackup(archive, 'legacy-frozen.json', await read(control, MAIN));
+    const legacyIds = [...workoutIds(reconciled), 'fri::strength'];
+    assert.deepEqual(workoutIds(frozen), legacyIds);
+    accountForLegacyEdits(frozen);
+    assert.equal(await control.evaluate(() => window.LHRFBetaCutover.stage(localStorage)), 'staged');
+    assert.equal(await read(control, STAGE), frozen);
+    await control.close();
+    control = await context.newPage();
+    await control.goto(origin + '/control.html');
+    assert.equal(await read(control, STORE), null);
+    assert.equal(digest(await read(control, MAIN)), digest(frozen));
+    assert.equal(digest(await read(control, STAGE)), digest(frozen));
+    assert.equal(await control.evaluate(() => window.LHRFBetaCutover.commit(localStorage)), 'imported');
+    assert.equal(await read(control, STORE), frozen);
+    assert.deepEqual(workoutCounts(await read(control, STORE)), workoutCounts(frozen));
+    assert.deepEqual(workoutIds(await read(control, STORE)), legacyIds);
+    assert.equal(await control.evaluate(() => window.LHRFBetaCutover.commit(localStorage)), 'already-initialised');
+    console.log('PASS active workout blocked staging and was completed; verified frozen snapshot survived closing the importer and committed once.');
+    console.log('EVIDENCE frozen', digest(frozen), JSON.stringify(workoutCounts(frozen)), JSON.stringify(legacyIds));
+
+    const beta = await openApp(context, 'beta');
+    await beta.locator('[data-session-id="fri::run"]').click();
+    await beta.locator('#previewStart').click();
+    if (await beta.locator('#readinessModal[open]').count()) await beta.locator('#readinessContinue').click();
+    await beta.locator('#liveRunKm').fill('1.8');
+    await beta.locator('#liveRunMinutes').fill('14');
+    await beta.locator('#liveLogRun').click();
+    await beta.locator('#liveFinish').click();
+    await beta.locator('#finishAndSave').click();
+    await beta.locator('#liveFeedbackSkip').click();
+    await beta.reload();
+    const saved = await read(beta, STORE);
+    const betaIds = [...legacyIds, 'fri::run'];
+    assert.deepEqual(workoutIds(saved), betaIds);
+    assert.deepEqual(JSON.parse(saved).completedWorkouts.slice(0, -1), JSON.parse(frozen).completedWorkouts);
+    assert.deepEqual(JSON.parse(saved).sets, JSON.parse(frozen).sets);
+    assert.deepEqual(JSON.parse(saved).runs.slice(0, -1), JSON.parse(frozen).runs);
+    assert.equal(JSON.parse(saved).runs.at(-1).km, 1.8);
+    assert.deepEqual(JSON.parse(saved).activeSchedule, JSON.parse(frozen).activeSchedule);
+    assert.equal(await read(control, MAIN), frozen);
+    await beta.close();
+
+    // Rollback is selecting the verified legacy view after closing the beta
+    // writer and verifying both independent backups. No overwrite or replay.
+    assert.equal(await verifyBackup(archive, 'rollback-legacy.json', await read(control, MAIN)), frozen);
+    assert.equal(await verifyBackup(archive, 'rollback-beta.json', await read(control, STORE)), saved);
+    const legacyAfterRollback = await openApp(context, 'old');
+    assert.deepEqual(await legacyAfterRollback.evaluate(() => data.completedWorkouts.map(workout => workout.id)), legacyIds);
+    assert.equal(await read(control, MAIN), frozen);
+    assert.equal(await read(control, STORE), saved);
+    await legacyAfterRollback.close();
+
+    const betaRecovery = await openApp(context, 'beta');
+    assert.deepEqual(await betaRecovery.evaluate(() => data.completedWorkouts.map(workout => workout.id)), betaIds);
+    assert.equal(await read(betaRecovery, STORE), saved);
+    assert.equal(await control.evaluate(() => window.LHRFBetaCutover.commit(localStorage)), 'already-initialised');
+    assert.equal(await read(betaRecovery, STORE), saved);
+    console.log('PASS rollback reopened the original app; the new workout remained in the verified beta backup and on beta re-entry.');
+    console.log('EVIDENCE beta', digest(saved), JSON.stringify(workoutCounts(saved)), JSON.stringify(betaIds));
+  } finally {
+    await context.close();
+    await fs.promises.rm(archive, {recursive: true, force: true});
+  }
+}
 
 async function withDeadline(promise, label) {
   let timer;
@@ -234,6 +393,7 @@ async function run() {
     console.log('PASS two stale offline legacy saves after debugger resume, repeated imports, and legacy reset cannot alter the saved beta workout.');
     console.log('REPRODUCED LIMIT: the first of two uncaptured old snapshots is lost from legacy storage.');
     console.log('Scope: simulated suspension by pausing Chromium JavaScript, routed offline responses, single beta writer, synthetic only.');
+    await rehearseCutoverAndRollback(browser);
   } finally {
     await browser.close();
   }
