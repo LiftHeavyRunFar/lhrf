@@ -592,7 +592,7 @@
           file.value = '';
         }
       });
-      // Synthetic owner candidate: Garmin file import is unavailable.
+      form.append(node('label', {}, 'Import completed Garmin activity · FIT, TCX or GPX', file), status, clear);
       showImport();
     } else {
       groups.forEach((group, g) => {
@@ -669,7 +669,7 @@
       if (session.includedStrides || session.steps.some(step => !step.distanceMetres)) {
         actions.append(node('p', { class: 'hint' }, 'This timed or stride-based workout is available in the app. FIT download is available for distance-only sessions.'));
       } else {
-        // Synthetic owner candidate: Garmin workout export is unavailable.
+        actions.append(button('Download Garmin FIT', () => exportRun(session, output)));
       }
     }
     const parts = [node('div', { class: 'dialog-head' }, title, close),
