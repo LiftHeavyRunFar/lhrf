@@ -35,4 +35,5 @@ jobs:
           fi
       - run: node tests/beta-cutover.browser.cjs
       - name: Recheck normal native workout save and reload
+        if: ${{ !cancelled() }}
         run: node tests/today-flow.browser.cjs
