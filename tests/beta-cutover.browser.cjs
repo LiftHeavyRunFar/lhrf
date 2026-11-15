@@ -133,6 +133,43 @@ async function verifyBackup(directory, name, raw) {
   return archived;
 }
 
+async function restoreInCleanProfile(browser, file, expectedSha256, expectedIds) {
+  const fresh = await browser.newContext({
+    viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
+    timezoneId: 'Europe/London', serviceWorkers: 'block',
+  });
+  try {
+    await mountRoutes(fresh);
+    const raw = await fs.promises.readFile(file, 'utf8');
+    const restore = await fresh.newPage();
+    await restore.goto(origin + '/control.html');
+    assert.equal(await restore.evaluate(() => localStorage.length), 0);
+    const restoreFile = candidate => restore.evaluate(({candidate, expectedSha256}) =>
+      window.LHRFBetaCutover.restoreArchive(localStorage, candidate, expectedSha256), {candidate, expectedSha256});
+    await assert.rejects(restoreFile(raw + '\n'), /does not match its recorded checksum/);
+    assert.equal(await restore.evaluate(() => localStorage.length), 0);
+    assert.equal(await restoreFile(raw), 'restored');
+    await assert.rejects(restoreFile(raw), /Beta history already exists/);
+    assert.equal(await read(restore, STORE), raw);
+    assert.equal(await read(restore, MAIN), null);
+    assert.equal(await read(restore, STAGE), null);
+    await restore.close();
+
+    const app = await openApp(fresh, 'beta');
+    await app.reload();
+    await app.waitForFunction(() => typeof save === 'function' && window.LHRFLive);
+    assert.deepEqual(await app.evaluate(() => data.completedWorkouts.map(workout => workout.id)), expectedIds);
+    assert.deepEqual(await app.evaluate(() => ({sets: data.sets, runs: data.runs})),
+      {sets: JSON.parse(raw).sets, runs: JSON.parse(raw).runs});
+    assert.equal(await read(app, STORE), raw);
+    assert.equal(await read(app, MAIN), null);
+    console.log('PASS restored saved beta archive in a clean profile; altered archive and repeated restore rejected.');
+    console.log('EVIDENCE restored', digest(raw), JSON.stringify(workoutCounts(raw)), JSON.stringify(expectedIds));
+  } finally {
+    await fresh.close();
+  }
+}
+
 async function rehearseCutoverAndRollback(browser) {
   const context = await browser.newContext({
     viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
@@ -264,6 +301,7 @@ async function rehearseCutoverAndRollback(browser) {
     assert.equal(await read(betaRecovery, STORE), saved);
     console.log('PASS rollback reopened the original app; the new workout remained in the verified beta backup and on beta re-entry.');
     console.log('EVIDENCE beta', digest(saved), JSON.stringify(workoutCounts(saved)), JSON.stringify(betaIds));
+    await restoreInCleanProfile(browser, path.join(archive, 'rollback-beta.json'), digest(saved), betaIds);
   } finally {
     await context.close();
     await fs.promises.rm(archive, {recursive: true, force: true});
