@@ -223,17 +223,51 @@
     function build(plans, data, options = {}) {
       return buildProgramme(plans, data.reviewedProgramme, {
         training, registry: root.LHRFExercises, gym: root.LHRFGymEquipment, now: new Date().toISOString(),
-        inventory: data.equipmentInventory ?? data.customRoadmap?.equipmentInventory, equipment: [], ...options,
+        inventory: data.equipmentInventory ?? data.customRoadmap?.equipmentInventory, equipment: [],
+        ...(data.customRoadmap?.catalogueOccurrences ? { reviewedOccurrences: data.customRoadmap.catalogueOccurrences } : {}), ...options,
       });
     }
 
     function catalogueState() {
-      return (state().customRoadmap?.cataloguePlans || []).reduce((result, plan) =>
-        training.enrol(result, plan.snapshot, plan.start, plan.id), training.empty());
+      const data = state();
+      const result = (data.customRoadmap?.cataloguePlans || []).reduce((result, plan) => {
+        const prior = result.plans.filter(item => item.snapshot.id === plan.snapshot.id && item.start === plan.start);
+        if (prior.length > 1) throw Error('The saved programme history needs review before switching.');
+        return training.enrol(result, plan.snapshot, plan.start, plan.id, {}, { ignoreDuplicatePlanId: prior[0]?.id });
+      }, training.empty());
+      if (data.customRoadmap?.catalogueOccurrences) result.occurrences = structuredClone(data.customRoadmap.catalogueOccurrences);
+      const sessions = new Map((data.reviewedProgramme?.weeks || []).flatMap(w => w.sessions).filter(s => s.catalogueOccurrenceId).map(s => [s.catalogueOccurrenceId, s]));
+      const base = id => String(id || '').replace(/::(?:strength|run)$/, '');
+      for (const occurrence of result.occurrences) {
+        const session = sessions.get(occurrence.planId + '-w' + occurrence.week + '-' + occurrence.sessionId);
+        if (!session) continue;
+        const completed = (data.completedWorkouts || []).filter(row => base(row.parentId || row.id) === session.id);
+        const sets = (data.sets || []).filter(row => base(row.sessionId) === session.id);
+        const runs = (data.runs || []).filter(row => base(row.sessionId) === session.id);
+        if (completed.length || sets.length || runs.length) {
+          occurrence.status = 'logged';
+          result.logs[occurrence.id] = { loggedAt: completed.at(-1)?.date || sets.at(-1)?.date || runs.at(-1)?.date || null,
+            sets: sets.map(row => ({ exerciseId: row.exerciseId || row.exercise || null, dose: row.reps ?? null,
+              weightKg: row.weight ?? null, rpe: row.rpe ?? null })) };
+        }
+      }
+      result.nativeRecordToken = JSON.stringify(data);
+      return result;
     }
 
-    async function approve(snapshot, start, equipment) {
+    async function approve(snapshot, start, equipment, meetProposal, reviewedState) {
       const data = state();
+      if (meetProposal) {
+        if (!root.LHRF_NATIVE_MEET_TEST || !root.LHRFMeetEntry) throw Error('Meet preparation is unavailable.');
+        const current = catalogueState();
+        if (JSON.stringify(current) !== reviewedState) throw Error('Training changed since review. Review the proposal again.');
+        const accepted = root.LHRFMeetEntry.apply(current, meetProposal, root.crypto.randomUUID());
+        const programme = build(accepted.plans, data, { equipment, reviewedOccurrences: accepted.occurrences });
+        programme.config.catalogueOccurrences = structuredClone(accepted.occurrences);
+        persistProgramme(programme, data);
+        complete();
+        return;
+      }
       const plans = training.enrol(catalogueState(), snapshot, start, root.crypto.randomUUID()).plans;
       const programme = build(plans, data, { equipment });
       root.LHRFProgrammeReplacement.validateProgramme(programme);
@@ -260,11 +294,16 @@
         }
       }
       host.replaceChildren(section);
-      setup = root.LHRFMountCatalogue(host, { state: catalogueState, approve });
+      setup = root.LHRFMountCatalogue(host, { state: catalogueState, approve, meetEnabled: root.LHRF_NATIVE_MEET_TEST === true });
     }
 
     async function editDays(plan) {
       showPanel('Change ' + disciplines[plan.snapshot.discipline] + ' days');
+      if (state().customRoadmap?.catalogueOccurrences) {
+        text('p', 'Day changes are not available for a reviewed meet transition in this test.', panel);
+        action('Close', panel, () => dialog.close(), true);
+        return;
+      }
       text('p', 'Changes apply to future weeks with no recorded training. Event dates stay as scheduled.', panel);
       try {
         await loadSetup();
@@ -318,6 +357,8 @@
       scheduleButtons.replaceChildren();
       for (const plan of plans) action('Change ' + disciplines[plan.snapshot.discipline] + ' days',
         scheduleButtons, () => editDays(plan), true);
+      if (root.LHRF_NATIVE_MEET_TEST === true && plans.some(plan => plan.snapshot.discipline === 'strength'))
+        action('Review meet preparation', scheduleButtons, () => open('strength', true), true);
       const missing = Object.keys(disciplines).find(discipline => !enrolled.has(discipline));
       for (const button of startButtons) button.hidden = enrolled.size > 0;
       for (const other of otherButtons) {
