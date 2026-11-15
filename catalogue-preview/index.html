@@ -40,13 +40,15 @@
         <button id="change-discipline" type="button">Change discipline</button>
         <label for="programme">Programme</label>
         <select id="programme" name="programme" required></select>
-        <p id="entry" class="hint"></p>
+        <div id="entry"></div>
         <div id="run-frequency" hidden></div>
         <div id="training-days"></div>
 
-        <label for="monday">First calendar week</label>
-        <input id="monday" name="monday" type="date" required>
-        <p class="hint">Pick a Monday. Your first workout follows the days you selected.</p>
+        <div id="first-calendar-week">
+          <label for="monday">First calendar week</label>
+          <input id="monday" name="monday" type="date" required>
+          <p class="hint">Pick a Monday.</p>
+        </div>
         <div id="settings"></div>
         <div id="continuation-option"></div>
         <button class="primary" type="submit">Preview programme</button>
