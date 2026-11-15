@@ -100,8 +100,18 @@ async function simulateDowngrade(browser) {
         }
       });
       await page.goto(app);
-      await page.waitForFunction(worker => navigator.serviceWorker.controller?.scriptURL === worker,
-        app + workerScript(expectedLane));
+      const expectedWorker = app + workerScript(expectedLane);
+      try {
+        await page.waitForFunction(worker => navigator.serviceWorker.controller?.scriptURL === worker, expectedWorker);
+      } catch (cause) {
+        const installed = await page.evaluate(async () => ({
+          controller: navigator.serviceWorker.controller?.scriptURL,
+          active: (await navigator.serviceWorker.getRegistration())?.active?.scriptURL,
+          caches: await caches.keys(),
+        }));
+        throw new Error('Expected ' + expectedWorker + ' on first open: ' +
+          JSON.stringify({installed, adapterResponses}), {cause});
+      }
       const shell = await page.evaluate(async ({cacheName, adapterPath, MAIN}) => {
         const url = new URL(adapterPath, location.href).href;
         const cached = await (await caches.open(cacheName)).match(url);
@@ -126,6 +136,10 @@ async function simulateDowngrade(browser) {
     }
 
     async function activateShell(nextLane, currentPage) {
+      // Use the pinned worker's explicit activation message from its
+      // permitted refresh page, after closing the previous workout writer.
+      const refresh = await context.newPage();
+      await refresh.goto(app + 'refresh.html');
       lane = nextLane;
       const worker = app + workerScript(nextLane);
       await control.evaluate(({app, worker}) =>
@@ -136,6 +150,12 @@ async function simulateDowngrade(browser) {
       // network connection, including when returning to beta.
       await context.setOffline(true);
       await currentPage.close();
+      await refresh.evaluate(async worker => {
+        const waiting = (await navigator.serviceWorker.getRegistration()).waiting;
+        if (waiting?.scriptURL !== worker) throw Error('The reviewed shell is not waiting.');
+        waiting.postMessage('LHRF_ACTIVATE_UPDATE');
+      }, worker);
+      await refresh.waitForFunction(worker => navigator.serviceWorker.controller?.scriptURL === worker, worker);
       await control.waitForFunction(async ({app, worker, cache, previous}) => {
         const registration = await navigator.serviceWorker.getRegistration(app);
         const cachesOnOrigin = await caches.keys();
@@ -144,6 +164,7 @@ async function simulateDowngrade(browser) {
           cachesOnOrigin.includes(cache) && !cachesOnOrigin.includes(previous);
       }, {app, worker, cache: workerCache(nextLane), previous: workerCache(nextLane === 'beta' ? 'legacy' : 'beta')},
       {timeout: 15000});
+      await refresh.close();
     }
 
     const stored = name => control.evaluate(key => localStorage.getItem(key), name);
