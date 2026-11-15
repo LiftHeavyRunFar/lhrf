@@ -41,6 +41,7 @@ async function review(page,id,oldId){await page.locator('nav [data-screen="plan"
   await page.locator('.day-slide.is-current').getByRole('button',{name:/^Preview workout /}).first().click();await page.locator('#previewStart').click();if(await page.locator('#readinessModal[open]').count())await page.locator('#readinessContinue').click();
   const draft=await page.evaluate(k=>localStorage.getItem(k),LIVE),before=await state();assert.ok(draft,'native workout draft must exist');
   await review(page,id,old.id);const panel=page.getByRole('region',{name:'Meet preparation review'});if(await panel.isVisible()){await page.getByLabel('I have reviewed the opening week, easier weeks, final week and transition.').check();await page.getByRole('button',{name:'Get my programme',exact:true}).click()}
+  assert.match(await page.locator('#native-catalogue-message').innerText(),/active workout|in-progress workout/i,'the active-workout guard must explain the rejection');
   assert.deepEqual(await state(),before,'active workout must prevent programme change');assert.equal(await page.evaluate(k=>localStorage.getItem(k),LIVE),draft,'active draft must remain identical');
   await page.reload();assert.equal(await page.evaluate(k=>localStorage.getItem(k),LIVE),draft,'active draft survives reload');assert.deepEqual(await state(),before);console.log('PASS native synthetic active-draft rejection',id);
  }finally{await active.context.close()}
