@@ -132,6 +132,9 @@ async function simulateDowngrade(browser) {
         navigator.serviceWorker.register(worker, {scope: app, updateViaCache: 'none'}), {app, worker});
       await currentPage.waitForFunction(async worker =>
         (await navigator.serviceWorker.getRegistration()).waiting?.scriptURL === worker, worker);
+      // The target has been downloaded. Activate it and open it without a
+      // network connection, including when returning to beta.
+      await context.setOffline(true);
       await currentPage.close();
       await control.waitForFunction(async ({app, worker, cache, previous}) => {
         const registration = await navigator.serviceWorker.getRegistration(app);
@@ -153,7 +156,6 @@ async function simulateDowngrade(browser) {
     assert.equal(await stored(MAIN), source);
 
     await activateShell('legacy', beta);
-    await context.setOffline(true);
     const legacy = await openShell('legacy', true);
     assert.deepEqual(await legacy.evaluate(() => data.completedWorkouts.map(workout => workout.id)), legacyIds);
     assert.equal(await stored(MAIN), source);
@@ -161,7 +163,6 @@ async function simulateDowngrade(browser) {
 
     await context.setOffline(false);
     await activateShell('beta', legacy);
-    await context.setOffline(true);
     beta = await openShell('beta', true);
     assert.deepEqual(await beta.evaluate(() => data.completedWorkouts.map(workout => workout.id)), betaIds);
     assert.match(await beta.locator('[data-session-id="fri::strength"]').innerText(), /3 sets logged/);
@@ -213,9 +214,9 @@ async function run() {
     }
 
     const page = await openPractice();
-    assert.equal(await page.evaluate(async () => Boolean(await caches.match(
-      new URL(storageScript('beta'), location.href),
-    ))), true, 'the cutover adapter was cached by the worker');
+    assert.equal(await page.evaluate(async adapterPath => Boolean(await caches.match(
+      new URL(adapterPath, location.href),
+    )), storageScript('beta')), true, 'the cutover adapter was cached by the worker');
     const closed = new Promise(resolve => server.close(resolve));
     server.closeAllConnections();
     await closed;
