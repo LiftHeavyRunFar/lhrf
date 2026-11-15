@@ -10,6 +10,11 @@ on:
       - 'tests/meet-entry*'
       - 'tests/native-meet-occurrences.test.cjs'
       - 'tests/native-meet-integration.browser.cjs'
+      - 'tests/native-owner-candidate.browser.cjs'
+      - 'tests/owner-standalone-safety.browser.cjs'
+      - 'tests/owner-offline-isolation.browser.cjs'
+      - 'sw.js'
+      - 'scripts/build-native-owner-candidate.mjs'
       - 'index.html'
       - '.github/workflows/qa-meet-entry.yml'
 jobs:
@@ -19,6 +24,13 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Checkout original v1.40.6 for the hybrid catalogue regression
+        uses: actions/checkout@v4
+        with:
+          ref: 87046db2925e1db2dd6e0af71d4b0c72b3d60395
+          path: production-v1406
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -33,3 +45,21 @@ jobs:
           fi
       - run: node tests/meet-entry.browser.cjs
       - run: node tests/native-meet-integration.browser.cjs
+      - name: Verify pinned product files and package only the private practice build
+        run: |
+          git diff --exit-code af48c572c07b080b066cfe1378099fdcab00f04d -- index.html sw.js manifest.webmanifest catalogue-preview src assets icon-lhrf.svg 'icon-lhrf-*.png'
+          node scripts/build-native-owner-candidate.mjs
+      - run: node tests/native-owner-candidate.browser.cjs
+      - run: node tests/owner-standalone-safety.browser.cjs
+      - run: node tests/owner-offline-isolation.browser.cjs
+      - name: Re-run unchanged catalogue and hybrid journeys on product files
+        run: |
+          node tests/catalogue-preview.browser.cjs
+          node tests/hybrid-owner-journey.browser.cjs
+      - name: Retain tested owner-only practice package for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: lhrf-owner-practice-${{ github.event.pull_request.head.sha }}
+          path: native-owner-test-dist/
+          if-no-files-found: error
+          retention-days: 7
