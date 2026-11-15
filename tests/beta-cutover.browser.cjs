@@ -154,10 +154,16 @@ async function run() {
     assert.equal(await read(control, STAGE), staged, 'the source edit must not replace the reviewed staging bytes');
     assert.match(await read(control, MAIN), /intervening legacy edit/);
     await control.evaluate(({MAIN, original}) => localStorage.setItem(MAIN, original), {MAIN, original});
-    await control.evaluate(() => window.LHRFBetaCutover.stage(localStorage));
+    assert.equal(await control.evaluate(() => window.LHRFBetaCutover.stage(localStorage)), 'already-staged');
     await control.reload();
-    assert.equal(await control.evaluate(() => window.LHRFBetaCutover.commit(localStorage)), 'imported');
+    const anotherImporter = await context.newPage();
+    await anotherImporter.goto(origin + '/control.html');
+    const overlapping = await Promise.all([control, anotherImporter].map(page =>
+      page.evaluate(() => window.LHRFBetaCutover.commit(localStorage))));
+    assert.deepEqual(overlapping.sort(), ['already-initialised', 'imported']);
+    await anotherImporter.close();
     assert.equal(await read(control, MAIN), original);
+    console.log('PASS staged import blocks active/pending/locked state and intervening source edits; staged reload and overlapping two-tab import initialise once.');
 
     const oldA = await openApp(context, 'old');
     const oldB = await openApp(context, 'old');
@@ -175,13 +181,20 @@ async function run() {
     const savedRaw = await read(beta, STORE);
     assert.ok(savedRaw);
     assert.equal(await read(beta, MAIN), original, 'beta saves must never write legacy history');
+    console.log('PASS normal native workout start, draft reload and completion in versioned beta storage.');
 
-    await beta.close();
     await context.setOffline(true);
     await frozen.send('Page.setWebLifecycleState', {state: 'active'});
-    await oldA.waitForFunction(() => window.__lifecycle.includes('resume'));
+    await oldA.bringToFront();
+    await oldA.waitForFunction(() => window.__lifecycle.includes('resume'), null, {polling: 100})
+      .catch(async error => {
+        console.error('Legacy page lifecycle observed:', await oldA.evaluate(() => window.__lifecycle));
+        throw error;
+      });
     assert.deepEqual(await oldA.evaluate(() => window.__lifecycle), ['freeze', 'resume']);
     assert.equal(await oldA.evaluate(() => navigator.onLine), false);
+    console.log('PASS Chromium delivered freeze and resume events to the stale legacy page; it resumed offline.');
+    await beta.close();
     assert.equal(await writeLegacy(oldA, 'legacy-offline-A'), true);
     assert.equal(await read(oldA, STORE), savedRaw);
     assert.match(await read(oldA, MAIN), /legacy-offline-A/);
@@ -208,8 +221,7 @@ async function run() {
     assert.equal(await read(control, MAIN), null);
     assert.equal(await read(beta, STORE), savedRaw, 'legacy reset must not delete beta storage');
     await context.close();
-    console.log('PASS staged import blocks active/pending/locked state and intervening source edits; safe stage/reload/commit.');
-    console.log('PASS actual workout save and draft reload in versioned storage; CDP-frozen old tab resuming offline, a second stale writer, repeated imports, and legacy reset cannot alter beta workout.');
+    console.log('PASS two stale legacy saves after CDP resume offline, repeated imports, and legacy reset cannot alter the saved beta workout.');
     console.log('REPRODUCED LIMIT: the first of two uncaptured old snapshots is lost from legacy storage.');
     console.log('Scope: Chromium CDP freeze, routed offline responses, single beta writer, synthetic only.');
   } finally {
