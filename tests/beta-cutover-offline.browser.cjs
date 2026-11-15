@@ -22,6 +22,10 @@ async function startServer(currentLane = () => 'beta') {
   const server = http.createServer((req, res) => {
     const route = new URL(req.url, 'http://localhost').pathname;
     const lane = currentLane();
+    // Keep the ordinary HTTP cache from serving one lane's assets to the
+    // other. Explicit service-worker Cache Storage still holds the shell.
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Fixture-Lane', lane);
     if (route === '/control.html') {
       res.setHeader('Content-Type', 'text/html');
       return res.end('<!doctype html><title>Offline cutover control</title><script src="/cutover.js"></script>');
@@ -80,7 +84,20 @@ async function simulateDowngrade(browser) {
       await page.clock.install({time: new Date('2026-10-23T10:00:00+01:00')});
       await page.goto(app);
       await page.waitForFunction(() => !!navigator.serviceWorker.controller);
-      assert.equal(await page.evaluate(() => Boolean(window.LHRFBetaCutover)), expectedLane === 'beta');
+      const shell = await page.evaluate(async cacheName => {
+        const url = new URL('src/training-storage.js', location.href).href;
+        const cached = await (await caches.open(cacheName)).match(url);
+        return {
+          loadedAdapter: Boolean(window.LHRFBetaCutover),
+          cachedLane: cached?.headers.get('X-Fixture-Lane'),
+          cachedAdapter: (await cached?.text())?.includes('root.LHRFBetaCutover') ?? null,
+        };
+      }, workerCache(expectedLane));
+      assert.deepEqual(shell, {
+        loadedAdapter: expectedLane === 'beta',
+        cachedLane: expectedLane,
+        cachedAdapter: expectedLane === 'beta',
+      });
       return page;
     }
 
