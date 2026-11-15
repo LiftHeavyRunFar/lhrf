@@ -17,10 +17,13 @@ const types = {
 };
 
 const workerCache = lane => 'beta-cutover-shell-v1.40.6-' + lane;
+const workerScript = lane => 'sw.js?adapter=' + lane;
+const storageScript = lane => lane === 'beta' ? 'src/training-storage-beta-v1.js' : 'src/training-storage.js';
 
 async function startServer(currentLane = () => 'beta') {
   const server = http.createServer((req, res) => {
-    const route = new URL(req.url, 'http://localhost').pathname;
+    const url = new URL(req.url, 'http://localhost');
+    const route = url.pathname;
     const lane = currentLane();
     // Keep the ordinary HTTP cache from serving one lane's assets to the
     // other. Explicit service-worker Cache Storage still holds the shell.
@@ -30,7 +33,7 @@ async function startServer(currentLane = () => 'beta') {
       res.setHeader('Content-Type', 'text/html');
       return res.end('<!doctype html><title>Offline cutover control</title><script src="/cutover.js"></script>');
     }
-    if (route === '/cutover.js' || (route === '/beta/src/training-storage.js' && lane === 'beta')) {
+    if (route === '/cutover.js' || (route === '/beta/' + storageScript('beta') && lane === 'beta')) {
       res.setHeader('Content-Type', 'application/javascript');
       return res.end(route === '/cutover.js' ? moduleSource : moduleSource + '\n' + betaMount);
     }
@@ -42,12 +45,20 @@ async function startServer(currentLane = () => 'beta') {
     }
     res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
     if (relative === 'sw.js') {
-      // Both shells use the pinned v1.40.6 app. Separate caches exercise real
-      // worker activation while keeping the release check on the pinned HTML.
+      if (url.searchParams.get('adapter') !== lane) return res.writeHead(404).end();
+      // Bind the worker, cache, and adapter URL to the same QA revision.
+      // The beta and legacy shells still share a single registration scope.
       return res.end(fs.readFileSync(file, 'utf8')
         .replaceAll('lhrf-shell-', 'beta-cutover-shell-')
         .replace("'beta-cutover-shell-v1.40.6'", JSON.stringify(workerCache(lane)))
-        .replace("CACHE.slice('beta-cutover-shell-v'.length)", "'1.40.6'"));
+        .replace("CACHE.slice('beta-cutover-shell-v'.length)", "'1.40.6'")
+        .replace("'./src/training-storage.js'", JSON.stringify('./' + storageScript(lane))));
+    }
+    if (path.basename(file) === 'index.html' && path.dirname(file) === oldRoot) {
+      return res.end(fs.readFileSync(file, 'utf8')
+        .replace('src="./src/training-storage.js"', 'src="./' + storageScript(lane) + '"')
+        .replace("register('./sw.js', {scope:'./'})",
+          "register('./" + workerScript(lane) + "', {scope:'./', updateViaCache:'none'})"));
     }
     fs.createReadStream(file).pipe(res);
   });
@@ -77,54 +88,58 @@ async function simulateDowngrade(browser) {
       await window.LHRFBetaCutover.commit(localStorage);
     }, {MAIN, source});
 
-    async function openShell(expectedLane) {
+    async function openShell(expectedLane, offline = false) {
       const page = await context.newPage();
       page.setDefaultTimeout(12000);
       page.on('dialog', dialog => dialog.accept());
       await page.clock.install({time: new Date('2026-10-23T10:00:00+01:00')});
       const adapterResponses = [];
       page.on('response', response => {
-        if (new URL(response.url()).pathname.endsWith('/src/training-storage.js')) {
-          adapterResponses.push({lane: response.headers()['x-fixture-lane'], fromWorker: response.fromServiceWorker()});
+        if (/\/src\/training-storage(?:-beta-v1)?\.js$/.test(new URL(response.url()).pathname)) {
+          adapterResponses.push({url: response.url(), lane: response.headers()['x-fixture-lane'], fromWorker: response.fromServiceWorker()});
         }
       });
       await page.goto(app);
-      await page.waitForFunction(() => !!navigator.serviceWorker.controller);
-      const firstAdapter = await page.evaluate(() => Boolean(window.LHRFBetaCutover));
-      if (firstAdapter !== (expectedLane === 'beta')) {
-        // Keep initial launch evidence distinct from the controlled reload.
-        console.log('GAP first offline launch used a different adapter than the active shell cache', expectedLane, adapterResponses);
-        await page.reload();
-        await page.waitForFunction(() => !!navigator.serviceWorker.controller);
-      }
-      const shell = await page.evaluate(async cacheName => {
-        const url = new URL('src/training-storage.js', location.href).href;
+      await page.waitForFunction(worker => navigator.serviceWorker.controller?.scriptURL === worker,
+        app + workerScript(expectedLane));
+      const shell = await page.evaluate(async ({cacheName, adapterPath, MAIN}) => {
+        const url = new URL(adapterPath, location.href).href;
         const cached = await (await caches.open(cacheName)).match(url);
         return {
-          loadedAdapter: Boolean(window.LHRFBetaCutover),
+          storageKey: window.LHRFStorage?.key(MAIN),
           cachedLane: cached?.headers.get('X-Fixture-Lane'),
           cachedAdapter: (await cached?.text())?.includes('root.LHRFBetaCutover') ?? null,
+          offline: !navigator.onLine,
         };
-      }, workerCache(expectedLane));
+      }, {cacheName: workerCache(expectedLane), adapterPath: storageScript(expectedLane), MAIN});
       assert.deepEqual(shell, {
-        loadedAdapter: expectedLane === 'beta',
+        storageKey: expectedLane === 'beta' ? STORE : MAIN,
         cachedLane: expectedLane,
         cachedAdapter: expectedLane === 'beta',
+        offline,
       }, JSON.stringify(adapterResponses));
+      if (offline) {
+        assert.deepEqual(adapterResponses,
+          [{url: app + storageScript(expectedLane), lane: expectedLane, fromWorker: true}]);
+      }
       return page;
     }
 
     async function activateShell(nextLane, currentPage) {
       lane = nextLane;
-      await currentPage.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
-      await currentPage.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration()).waiting);
+      const worker = app + workerScript(nextLane);
+      await control.evaluate(({app, worker}) =>
+        navigator.serviceWorker.register(worker, {scope: app, updateViaCache: 'none'}), {app, worker});
+      await currentPage.waitForFunction(async worker =>
+        (await navigator.serviceWorker.getRegistration()).waiting?.scriptURL === worker, worker);
       await currentPage.close();
-      await control.waitForFunction(async ({app, cache, previous}) => {
+      await control.waitForFunction(async ({app, worker, cache, previous}) => {
         const registration = await navigator.serviceWorker.getRegistration(app);
         const cachesOnOrigin = await caches.keys();
-        return registration?.active?.state === 'activated' &&
+        return registration?.active?.scriptURL === worker && registration.active.state === 'activated' &&
+          !registration.waiting && !registration.installing &&
           cachesOnOrigin.includes(cache) && !cachesOnOrigin.includes(previous);
-      }, {app, cache: workerCache(nextLane), previous: workerCache(nextLane === 'beta' ? 'legacy' : 'beta')},
+      }, {app, worker, cache: workerCache(nextLane), previous: workerCache(nextLane === 'beta' ? 'legacy' : 'beta')},
       {timeout: 15000});
     }
 
@@ -139,8 +154,7 @@ async function simulateDowngrade(browser) {
 
     await activateShell('legacy', beta);
     await context.setOffline(true);
-    const legacy = await openShell('legacy');
-    assert.equal(await legacy.evaluate(() => navigator.onLine), false);
+    const legacy = await openShell('legacy', true);
     assert.deepEqual(await legacy.evaluate(() => data.completedWorkouts.map(workout => workout.id)), legacyIds);
     assert.equal(await stored(MAIN), source);
     assert.equal(await stored(STORE), betaSnapshot);
@@ -148,12 +162,13 @@ async function simulateDowngrade(browser) {
     await context.setOffline(false);
     await activateShell('beta', legacy);
     await context.setOffline(true);
-    beta = await openShell('beta');
+    beta = await openShell('beta', true);
     assert.deepEqual(await beta.evaluate(() => data.completedWorkouts.map(workout => workout.id)), betaIds);
     assert.match(await beta.locator('[data-session-id="fri::strength"]').innerText(), /3 sets logged/);
     assert.equal(await stored(MAIN), source);
     assert.equal(await stored(STORE), betaSnapshot);
     console.log('PASS mobile Chromium same-scope worker switch beta → legacy → beta: old cache retired, both shells reopen offline, beta workout retained byte-for-byte.');
+    console.log('EVIDENCE offline legacy IDs', JSON.stringify(legacyIds), 'returned beta IDs', JSON.stringify(betaIds));
   } finally {
     await context?.close();
     server.closeAllConnections();
@@ -165,7 +180,7 @@ async function run() {
   const server = await startServer();
   const origin = 'http://localhost:' + server.address().port;
   const app = origin + '/beta/';
-  const worker = app + 'sw.js';
+  const worker = app + workerScript('beta');
   let browser;
   try {
     browser = await chromium.launch({
@@ -199,7 +214,7 @@ async function run() {
 
     const page = await openPractice();
     assert.equal(await page.evaluate(async () => Boolean(await caches.match(
-      new URL('./src/training-storage.js', location.href),
+      new URL(storageScript('beta'), location.href),
     ))), true, 'the cutover adapter was cached by the worker');
     const closed = new Promise(resolve => server.close(resolve));
     server.closeAllConnections();
@@ -224,8 +239,7 @@ async function run() {
     assert.equal(await stored(reopened, MAIN), source);
     console.log('PASS pinned service worker reopened the beta offline with the server closed. Native workout draft, completion, reload and legacy source were preserved.');
     await context.close();
-    // Keep the failing shell-switch case reproducible separately from the
-    // established single-shell offline regression.
+    // The switch is separately selectable and runs in its own context.
     if (process.argv.includes('--downgrade-diagnostic')) await simulateDowngrade(browser);
   } finally {
     await browser?.close();
