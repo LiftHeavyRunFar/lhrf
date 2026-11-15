@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{chromium}=require('playwright');
 const root=path.resolve(__dirname,'..'),DATA='lhrf_beta_v1118_clean',LIVE='lhrf_fresh_beta_live_v1114';
 const ORIGIN='https://native-meet-qa.test',PENDING_RUN=LIVE+'_pendingRun';
-async function setup(browser,id){
+async function setup(browser,id,{includeRunning=true}={}){
  const context=await browser.newContext({viewport:{width:393,height:852},isMobile:true,hasTouch:true,timezoneId:'Europe/London',serviceWorkers:'block'}),page=await context.newPage(),errors=[];
  page.setDefaultTimeout(12000);page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
  await page.addInitScript(()=>{window.LHRF_NATIVE_MEET_TEST=true});
@@ -11,8 +11,11 @@ async function setup(browser,id){
  await page.getByRole('button',{name:'Strength training',exact:true}).click();await page.locator('#native-catalogue-programme').selectOption(id);
  if(id==='powerlifting-four-day')for(const lift of ['Squat','Bench','Deadlift'])await page.getByLabel(lift+' · where do you struggle?').selectOption('unsure');
  await page.getByLabel('First calendar week').fill('2026-11-16');await page.getByRole('button',{name:'Preview programme',exact:true}).click();await page.getByRole('button',{name:'Get my programme',exact:true}).click();
- await page.getByRole('button',{name:'Add running programme'}).click();await page.locator('#native-catalogue-programme').selectOption('marathon-two-run-16');await page.getByLabel('First calendar week').fill('2026-11-16');await page.getByRole('button',{name:'Preview programme',exact:true}).click();await page.getByRole('button',{name:'Get my programme',exact:true}).click();await page.locator('#catalogueSetupDialog').waitFor({state:'hidden'});
- const state=()=>page.evaluate(k=>JSON.parse(localStorage.getItem(k)),DATA),installed=await state();assert.equal(installed.customRoadmap.cataloguePlans.length,2);
+ if(includeRunning){
+  await page.getByRole('button',{name:'Add running programme'}).click();await page.locator('#native-catalogue-programme').selectOption('marathon-two-run-16');await page.getByLabel('First calendar week').fill('2026-11-16');await page.getByRole('button',{name:'Preview programme',exact:true}).click();await page.getByRole('button',{name:'Get my programme',exact:true}).click();
+ }else await page.getByRole('button',{name:'Go to programme',exact:true}).click();
+ await page.locator('#catalogueSetupDialog').waitFor({state:'hidden'});
+ const state=()=>page.evaluate(k=>JSON.parse(localStorage.getItem(k)),DATA),installed=await state();assert.equal(installed.customRoadmap.cataloguePlans.length,includeRunning?2:1);
  const first=installed.activeSchedule.filter(s=>s.ex?.length).sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];assert.ok(first);
  await page.clock.setFixedTime(new Date(first.scheduledDate+'T09:00:00Z'));await page.reload();
  for(const dot of await page.locator('#dayDots button').all())if((await dot.getAttribute('aria-label')||'').toLowerCase().startsWith(first.day.toLowerCase())){await dot.click();break}
@@ -60,6 +63,47 @@ async function verifyRejectedWrites(page, panel, id) {
  console.log('PASS native synthetic failed meet save leaves training unchanged', id);
 }
 
+async function addRunningAfterMeet(browser, id) {
+ const {context,page,state,logged,errors} = await setup(browser,id,{includeRunning:false});
+ try {
+  const old = logged.customRoadmap.cataloguePlans[0];
+  await page.clock.setFixedTime(new Date('2026-11-20T09:00:00Z'));
+  await page.reload();
+  await review(page,id,old.id);
+  await page.getByLabel('I have reviewed the opening week, easier weeks, final week and transition.').check();
+  await page.getByRole('button',{name:'Get my programme',exact:true}).click();
+  await page.locator('#catalogueSetupDialog').waitFor({state:'hidden'});
+  const before = await state();
+  const sessions = data => data.reviewedProgramme.weeks.flatMap(week=>week.sessions);
+  assert.ok(sessions(before).some(session=>session.eventType==='strength'&&session.eventDate==='2027-01-05'));
+
+  await page.locator('nav [data-screen="plan"]').click();
+  await page.getByRole('button',{name:'Add running',exact:true}).click();
+  await page.locator('#native-catalogue-programme').selectOption('10k');
+  await page.getByLabel('Runs per week').selectOption('2');
+  await page.getByLabel('First calendar week').fill('2026-11-16');
+  await page.getByRole('button',{name:'Preview programme',exact:true}).click();
+  assert.doesNotMatch(await page.locator('#native-catalogue-preview').innerText(),/\bnull(?:null)?\b/);
+  await page.getByRole('button',{name:'Get my programme',exact:true}).click();
+  await page.locator('#catalogueSetupDialog').waitFor({state:'hidden'});
+
+  const after = await state();
+  const running = after.customRoadmap.cataloguePlans.at(-1);
+  assert.equal(running.snapshot.discipline,'running');
+  assert.equal(running.snapshot.sessionsPerWeek,2);
+  assert.equal(running.snapshot.durationWeeks,6);
+  assert.deepEqual(sessions(after).filter(s=>!s.catalogueOccurrenceId?.startsWith(running.id+'-')),sessions(before));
+  assert.deepEqual(after.customRoadmap.catalogueOccurrences.filter(o=>o.planId!==running.id),before.customRoadmap.catalogueOccurrences);
+  assert.equal(after.customRoadmap.catalogueOccurrences.filter(o=>o.planId===running.id).length,12);
+  assert.deepEqual(after.completedWorkouts,before.completedWorkouts);
+  assert.deepEqual(after.sets,before.sets);
+  await page.reload();
+  assert.deepEqual(await state(),after);
+  assert.deepEqual(errors,[]);
+  console.log('PASS native add two-run 10K after reviewed meet, preserving strength dates and history',id);
+ } finally { await context.close(); }
+}
+
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{for(const id of ['powerlifting-three-day','powerlifting-four-day']){
  const {context,page,state,logged,errors}=await setup(browser,id);try{
  const old=logged.customRoadmap.cataloguePlans.find(p=>p.snapshot.id===id),running=logged.customRoadmap.cataloguePlans.find(p=>p.snapshot.discipline==='running');assert.ok(old&&running);
@@ -87,5 +131,6 @@ async function verifyRejectedWrites(page, panel, id) {
   assert.deepEqual(await state(),before,'active workout must prevent programme change');assert.equal(await page.evaluate(k=>localStorage.getItem(k),LIVE),draft,'active draft must remain identical');
   await page.reload();assert.equal(await page.evaluate(k=>localStorage.getItem(k),LIVE),draft,'active draft survives reload');assert.deepEqual(await state(),before);console.log('PASS native synthetic active-draft rejection',id);
  }finally{await active.context.close()}
+ await addRunningAfterMeet(browser,id);
  }
  }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
