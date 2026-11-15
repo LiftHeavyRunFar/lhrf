@@ -6,6 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const {createHash} = require('node:crypto');
 const vm = require('node:vm');
+const {isDeepStrictEqual} = require('node:util');
 const {createRequire} = require('node:module');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const {MAIN, LIVE, STAGE, STORE, key} = require('../src/beta-cutover.js');
@@ -378,6 +379,145 @@ async function verifyLateNativeLegacyCompletion(browser) {
   }
 }
 
+// Only this harness can enumerate every writer it created in this context.
+// The deployed app cannot supply the complete roster or grant this gate.
+async function requireCutoverReview(control, { roster, receipts, reviewed }) {
+  if (!roster) throw Error('There is no verified complete legacy writer roster.');
+  if (control.context().pages().some(page => page !== control)) {
+    throw Error('Close every legacy writer before cutover.');
+  }
+  const current = await read(control, MAIN);
+  if (current !== reviewed) throw Error('Legacy history changed after review.');
+  const rows = JSON.parse(reviewed).completedWorkouts;
+  for (const writer of roster) {
+    if (!receipts.has(writer)) throw Error('Missing receipt for writer ' + writer);
+    for (const edit of receipts.get(writer)) {
+      const matches = rows.filter(row => row.id === edit.id && row.week === edit.week);
+      if (matches.length !== 1 || !isDeepStrictEqual(matches[0], edit)) {
+        throw Error('Unaccounted or disputed legacy edit: ' + writer + ' / ' + edit.id);
+      }
+    }
+  }
+}
+
+async function gateStage(control, review) {
+  await requireCutoverReview(control, review);
+  return control.evaluate(() => window.LHRFBetaCutover.stage(localStorage));
+}
+
+async function gateCommit(control, review) {
+  await requireCutoverReview(control, review);
+  return control.evaluate(() => window.LHRFBetaCutover.commit(localStorage));
+}
+
+async function verifyCutoverGate(browser) {
+  for (const scenario of ['unverified', 'late', 'reconciled']) {
+    const context = await browser.newContext({serviceWorkers: 'block', timezoneId: 'Europe/London'});
+    try {
+      await mountRoutes(context);
+      const control = await context.newPage();
+      await control.goto(origin + '/control.html');
+      const setFixture = reviewed =>
+        control.evaluate(({MAIN, reviewed}) => localStorage.setItem(MAIN, reviewed), {MAIN, reviewed});
+      await setFixture(original);
+      const oldA = await openApp(context, 'old');
+      await context.setOffline(true);
+      assert.equal(await oldA.evaluate(() => navigator.onLine), false);
+
+      if (scenario === 'unverified') {
+        const review = {roster: null, receipts: new Map(), reviewed: original};
+        await assert.rejects(gateStage(control, review), /no verified complete legacy writer roster/);
+        assert.equal(await read(control, MAIN), original);
+        await context.setOffline(false);
+        assert.equal(await oldA.evaluate(() => navigator.onLine), true);
+        assert.equal(await writeLegacy(oldA, 'unaccounted-after-reconnect'), true);
+        const lateRaw = await read(control, MAIN);
+        assert.match(lateRaw, /unaccounted-after-reconnect/);
+        await oldA.close();
+        await assert.rejects(gateCommit(control, review), /no verified complete legacy writer roster/);
+        assert.equal(await read(control, MAIN), lateRaw);
+        assert.equal(await read(control, STAGE), null);
+        assert.equal(await read(control, STORE), null);
+        console.log('PASS unknown writer topology blocks staging and commit even after an old tab reconnects and saves.');
+        continue;
+      }
+
+      // Capture both raw legacy histories before the later stale writer can
+      // overwrite the first. Only the fixture operator has these receipts.
+      const oldB = await openApp(context, 'old');
+      assert.equal(await writeLegacy(oldA, 'gate-legacy-a'), true);
+      const rawA = await read(control, MAIN);
+      assert.equal(await writeLegacy(oldB, 'gate-legacy-b'), true);
+      const rawB = await read(control, MAIN);
+      assert.doesNotMatch(rawB, /gate-legacy-a/);
+      await oldA.close();
+      await oldB.close();
+      const first = JSON.parse(rawA).completedWorkouts.at(-1);
+      const second = JSON.parse(rawB).completedWorkouts.at(-1);
+      const roster = ['A', 'B'];
+      const receipts = new Map([['A', [first]], ['B', [second]]]);
+      await assert.rejects(gateStage(control, {
+        roster, receipts: new Map([['B', [second]]]), reviewed: rawB,
+      }), /Missing receipt for writer A/);
+      await assert.rejects(gateStage(control, {roster, receipts, reviewed: rawB}), /Unaccounted or disputed legacy edit: A/);
+      assert.equal(await read(control, MAIN), rawB);
+      assert.equal(await read(control, STAGE), null);
+      assert.equal(await read(control, STORE), null);
+
+      // The existing reconciliation rehearsal compares all other fields.
+      // This repeat uses the retained receipts, not last-write-wins.
+      const reconciled = JSON.parse(original);
+      for (const [raw, edit] of [[rawA, first], [rawB, second]]) {
+        const captured = JSON.parse(raw);
+        assert.deepEqual(captured.completedWorkouts.pop(), edit);
+        assert.deepEqual(captured, JSON.parse(original));
+      }
+      reconciled.completedWorkouts.push(first, second);
+      const reviewed = JSON.stringify(reconciled);
+      await setFixture(reviewed);
+      const disagreement = new Map(receipts);
+      disagreement.set('A', [{...first, notes: 'Different version of the same fictional workout'}]);
+      await assert.rejects(gateStage(control, {
+        roster, receipts: disagreement, reviewed,
+      }), /Unaccounted or disputed legacy edit: A/);
+      const review = {roster, receipts, reviewed};
+      assert.equal(await gateStage(control, review), 'staged');
+      assert.equal(await read(control, STAGE), reviewed);
+      assert.equal(await read(control, STORE), null);
+
+      if (scenario === 'late') {
+        const late = await openApp(context, 'old');
+        assert.equal(await late.evaluate(() => navigator.onLine), false);
+        await assert.rejects(gateCommit(control, review), /Close every legacy writer/);
+        await context.setOffline(false);
+        assert.equal(await late.evaluate(() => navigator.onLine), true);
+        assert.equal(await writeLegacy(late, 'late-after-reviewed-stage'), true);
+        const lateRaw = await read(control, MAIN);
+        await late.close();
+        await assert.rejects(gateCommit(control, review), /Legacy history changed after review/);
+        await assert.rejects(control.evaluate(() => window.LHRFBetaCutover.commit(localStorage)),
+          /Legacy history changed since staging/);
+        assert.equal(await read(control, STAGE), reviewed);
+        assert.equal(await read(control, MAIN), lateRaw);
+        assert.match(lateRaw, /late-after-reviewed-stage/);
+        assert.equal(await read(control, STORE), null);
+        console.log('PASS a legacy client reappearing after staging blocks commit, and its reconnect write preserves both raw versions for review.');
+      } else {
+        await context.setOffline(false);
+        await control.reload();
+        assert.equal(await gateCommit(control, review), 'imported');
+        assert.equal(await gateCommit(control, review), 'already-initialised');
+        assert.equal(await read(control, MAIN), reviewed);
+        assert.equal(await read(control, STORE), reviewed);
+        assert.deepEqual(workoutIds(await read(control, STORE)), ['tue', 'sun', 'gate-legacy-a', 'gate-legacy-b']);
+        console.log('PASS missing and disputed receipts block staging; closed fictional roster and reconciled receipts import once after reload.');
+      }
+    } finally {
+      await context.close();
+    }
+  }
+}
+
 async function run() {
   const browser = await chromium.launch({
     headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
@@ -492,6 +632,7 @@ async function run() {
     console.log('Scope: simulated suspension by pausing Chromium JavaScript, routed offline responses, single beta writer, synthetic only.');
     await verifyLateNativeLegacyCompletion(browser);
     await rehearseCutoverAndRollback(browser);
+    await verifyCutoverGate(browser);
   } finally {
     await browser.close();
   }
