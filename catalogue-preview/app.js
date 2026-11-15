@@ -201,7 +201,7 @@
       { continuation: continuation.checked })));
     renderDays();
     settings.replaceChildren();
-    if (!native && ['powerlifting-three-day','powerlifting-four-day'].includes(programme.id)) {
+    if ((!native || native.meetEnabled) && ['powerlifting-three-day','powerlifting-four-day'].includes(programme.id)) {
       const toggle = node('input', { type: 'checkbox', name: 'meetEntry' });
       const details = node('div', { hidden: true },
         label('Actual competition date', 'actualMeetDate', { type: 'date' }),
@@ -275,6 +275,7 @@
       });
       meetProposal = null;
       if (form.has('meetEntry')) {
+        if (native) state = native.state();
         if (!globalThis.LHRFMeetEntry) throw Error('Meet preparation is not available in this view.');
         const activePlanId=form.get('activePlanId') || null;
         if (state.plans.some(p=>p.snapshot.discipline==='strength'&&state.occurrences.some(o=>o.planId===p.id&&o.status==='planned')) && !activePlanId) throw Error('Choose the strength programme you want to switch from.');
@@ -385,7 +386,9 @@
       if (native) {
         add.disabled = true;
         try {
-          await native.approve(snapshot, start, new FormData($('plan-form')).getAll('equipment'));
+          if (meetProposal && !$('preview').querySelector('[name="reviewMeet"]')?.checked) throw Error('Confirm you have reviewed the proposed transition before accepting.');
+          await native.approve(snapshot, start, new FormData($('plan-form')).getAll('equipment'), meetProposal, meetProposal ? JSON.stringify(state) : null);
+          meetProposal = null;
           preview = null;
           renderPreview();
         } catch (error) {
@@ -726,6 +729,7 @@
         if (draft.preview) form.requestSubmit();
       },
       open: (discipline, lockDiscipline) => {
+      state = native.state();
       $('change-discipline').hidden = Boolean(lockDiscipline);
       preview = null;
       renderPreview();
