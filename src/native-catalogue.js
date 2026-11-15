@@ -11,7 +11,7 @@
   const stepLabels = { 'warm-up': 'Warm-up', recovery: 'Recovery', work: 'Work', 'cool-down': 'Cool-down', race: 'Race' };
   const pace = seconds => Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') + '/km';
 
-  function buildProgramme(plans, current, { training, registry, gym, inventory, now, equipment, rescheduleId, protectedWeek }) {
+  function buildProgramme(plans, current, { training, registry, gym, inventory, now, equipment, rescheduleId, protectedWeek, reviewedOccurrences }) {
     const first = plans[0].start;
     if (plans.some(plan => plan.start < first)) throw Error('Choose a start date on or after ' + first + '.');
     const id = current?.config?.cataloguePlans ? current.config.programmeId : 'catalogue-' + plans[0].id;
@@ -38,23 +38,51 @@
       (training.parseDate(plan.start) - training.parseDate(first)) / 604800000 + plan.snapshot.durationWeeks), 0);
     if (end > 104) throw Error('Choose a start date within the next two years of your first programme.');
     config.weeks = end;
+    let reviewed = null;
+    if (reviewedOccurrences !== undefined) {
+      if (!Array.isArray(reviewedOccurrences)) throw Error('Reviewed sessions are unavailable. Review the transition again.');
+      reviewed = new Map();
+      for (const occurrence of reviewedOccurrences) {
+        const plan = plans.find(item => item.id === occurrence.planId);
+        const source = plan?.snapshot.weeks.find(item => item.week === occurrence.week)?.sessions.find(item => item.id === occurrence.sessionId);
+        const key = [occurrence.planId, occurrence.week, occurrence.sessionId].join('/');
+        if (!source || occurrence.id !== key || reviewed.has(key) || !['planned', 'logged', 'superseded', 'not-scheduled'].includes(occurrence.status)) {
+          throw Error('Reviewed sessions are inconsistent. Review the transition again.');
+        }
+        training.parseDate(occurrence.date);
+        reviewed.set(key, occurrence);
+      }
+      const count = plans.reduce((n, plan) => n + plan.snapshot.weeks.reduce((sum, week) => sum + week.sessions.length, 0), 0);
+      if (reviewed.size !== count) throw Error('Reviewed sessions are incomplete. Review the transition again.');
+    }
     const weeks = Array.from({ length: end }, (_, i) => ({
       week: i + 1, phase: 'Programme catalogue', feasible: true, blockingIssues: [], sessions: [],
     }));
     for (const plan of plans) {
       const offset = (training.parseDate(plan.start) - training.parseDate(first)) / 604800000;
       for (const week of plan.snapshot.weeks) for (const source of week.sessions) {
-        const target = weeks[offset + week.week - 1];
-        const date = training.addDays(first, (target.week - 1) * 7 + source.day);
+        const occurrence = reviewed?.get([plan.id, week.week, source.id].join('/'));
+        if (occurrence && ['superseded', 'not-scheduled'].includes(occurrence.status)) continue;
+        const date = occurrence?.date || training.addDays(first, (offset + week.week - 1) * 7 + source.day);
+        const dayOffset = (training.parseDate(date) - training.parseDate(first)) / 86400000;
+        const target = weeks[Math.floor(dayOffset / 7)];
+        if (!target) throw Error('A reviewed session falls outside the programme calendar. Review the transition again.');
+        const day = weekdays[(training.parseDate(date).getUTCDay() + 6) % 7];
         const key = plan.id + '-w' + week.week + '-' + source.id;
         const saved = previous.get(key);
         if (saved) {
+          if (occurrence?.status === 'logged' && saved.scheduledDate !== date) throw Error('A completed workout date changed. Review the transition again.');
+          if (occurrence && saved.scheduledDate !== date) {
+            target.sessions.push({ ...saved, scheduledDate: date, day, week: target.week,
+              ...(saved.eventDate ? { eventDate: date } : {}) });
+            continue;
+          }
           const change = plan.id === rescheduleId && !protectedWeek(target.week) && source.kind !== 'event' && source.id !== 'race';
           target.sessions.push(change ? { ...saved, scheduledDate: date, day: weekdays[source.day] } : saved);
           continue;
         }
         const name = source.title;
-        const session = { id: id + '-' + key, catalogueOccurrenceId: key, day: weekdays[source.day],
+        const session = { id: id + '-' + key, catalogueOccurrenceId: key, day,
           name, desc: source.note || '', scheduledDate: date, week: target.week, phase: target.phase,
           ex: [], runs: [], run: false, variationNotes: [], hybridNotes: [] };
         if (source.kind === 'strength') session.ex = source.groups.map(group => {
