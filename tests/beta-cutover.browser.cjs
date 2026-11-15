@@ -419,6 +419,16 @@ async function verifyCutoverGate(browser) {
       await control.goto(origin + '/control.html');
       const setFixture = reviewed =>
         control.evaluate(({MAIN, reviewed}) => localStorage.setItem(MAIN, reviewed), {MAIN, reviewed});
+      const saveAndObserve = async (writer, id) => {
+        assert.equal(await writeLegacy(writer, id), true);
+        const captured = await read(writer, MAIN);
+        assert.equal(workoutIds(captured).at(-1), id);
+        // Cross-tab storage visibility can lag the writer's successful save.
+        // Require the reviewer to observe the exact bytes before continuing.
+        await control.waitForFunction(({MAIN, captured}) => localStorage.getItem(MAIN) === captured,
+          {MAIN, captured}, {timeout: 10000});
+        return captured;
+      };
       await setFixture(original);
       const oldA = await openApp(context, 'old');
       await context.setOffline(true);
@@ -430,9 +440,7 @@ async function verifyCutoverGate(browser) {
         assert.equal(await read(control, MAIN), original);
         await context.setOffline(false);
         assert.equal(await oldA.evaluate(() => navigator.onLine), true);
-        assert.equal(await writeLegacy(oldA, 'unaccounted-after-reconnect'), true);
-        const lateRaw = await read(control, MAIN);
-        assert.match(lateRaw, /unaccounted-after-reconnect/);
+        const lateRaw = await saveAndObserve(oldA, 'unaccounted-after-reconnect');
         await oldA.close();
         await assert.rejects(gateCommit(control, review), /no verified complete legacy writer roster/);
         assert.equal(await read(control, MAIN), lateRaw);
@@ -445,10 +453,8 @@ async function verifyCutoverGate(browser) {
       // Capture both raw legacy histories before the later stale writer can
       // overwrite the first. Only the fixture operator has these receipts.
       const oldB = await openApp(context, 'old');
-      assert.equal(await writeLegacy(oldA, 'gate-legacy-a'), true);
-      const rawA = await read(control, MAIN);
-      assert.equal(await writeLegacy(oldB, 'gate-legacy-b'), true);
-      const rawB = await read(control, MAIN);
+      const rawA = await saveAndObserve(oldA, 'gate-legacy-a');
+      const rawB = await saveAndObserve(oldB, 'gate-legacy-b');
       assert.doesNotMatch(rawB, /gate-legacy-a/);
       await oldA.close();
       await oldB.close();
@@ -491,8 +497,7 @@ async function verifyCutoverGate(browser) {
         await assert.rejects(gateCommit(control, review), /Close every legacy writer/);
         await context.setOffline(false);
         assert.equal(await late.evaluate(() => navigator.onLine), true);
-        assert.equal(await writeLegacy(late, 'late-after-reviewed-stage'), true);
-        const lateRaw = await read(control, MAIN);
+        const lateRaw = await saveAndObserve(late, 'late-after-reviewed-stage');
         await late.close();
         await assert.rejects(gateCommit(control, review), /Legacy history changed after review/);
         await assert.rejects(control.evaluate(() => window.LHRFBetaCutover.commit(localStorage)),
