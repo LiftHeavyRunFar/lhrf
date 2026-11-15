@@ -3,10 +3,15 @@ on:
   pull_request:
     paths:
       - 'src/meet-entry.js'
+      - 'src/native-catalogue.js'
       - 'src/catalogue-training.js'
       - 'catalogue-preview/index.html'
       - 'catalogue-preview/app.js'
       - 'tests/meet-entry*'
+      - 'tests/native-meet-occurrences.test.cjs'
+      - 'tests/native-meet-integration.browser.cjs'
+      - 'tests/owner-practice-upgrade.browser.cjs'
+      - 'index.html'
       - '.github/workflows/qa-meet-entry.yml'
 jobs:
   meet-entry:
@@ -15,10 +20,15 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Check out the product source from the owner-practice build
+        uses: actions/checkout@v4
+        with:
+          ref: af48c572c07b080b066cfe1378099fdcab00f04d
+          path: owner-practice-repro
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/meet-entry.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs
+      - run: node --test tests/meet-entry.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs tests/native-meet-occurrences.test.cjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - name: Select browser
         run: |
@@ -28,3 +38,95 @@ jobs:
             npx playwright install --with-deps chromium
           fi
       - run: node tests/meet-entry.browser.cjs
+      - run: node tests/native-meet-integration.browser.cjs
+        env:
+          LHRF_OWNER_REPRO_ROOT: owner-practice-repro
+
+  owner-practice-package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      OWNER_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      OWNER_CANDIDATE_ROOT: native-owner-test-dist
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Check out the last tested owner package builder
+        uses: actions/checkout@v4
+        with:
+          ref: b71fc28fc94f153cc8bc91eb55803013fdac70f9
+          path: previous-owner-source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build exact-head owner package in temporary staging
+        run: |
+          test "$(git rev-parse HEAD)" = "$OWNER_SOURCE_SHA"
+          staging="$(mktemp -d)"
+          git archive "$OWNER_SOURCE_SHA" | tar -x -C "$staging"
+          cp previous-owner-source/scripts/build-native-owner-candidate.mjs "$staging/scripts/"
+          OWNER_STAGING="$staging" python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          staging = Path(os.environ["OWNER_STAGING"])
+          sha = os.environ["OWNER_SOURCE_SHA"]
+          release = f"1.40.6-owner-{sha[:12]}"
+
+          def replace_once(file, old, new):
+              path = staging / file
+              text = path.read_text()
+              assert text.count(old) == 1, (file, old)
+              path.write_text(text.replace(old, new))
+
+          replace_once("scripts/build-native-owner-candidate.mjs",
+                       "af48c572c07b080b066cfe1378099fdcab00f04d", sha)
+          for file in ["index.html", "catalogue-preview/index.html"]:
+              replace_once(file, 'name="lhrf-release" content="1.40.6"',
+                           f'name="lhrf-release" content="{release}"')
+          replace_once("sw.js", "const CACHE = 'lhrf-shell-v1.40.6';",
+                       f"const CACHE = 'lhrf-shell-v{release}';")
+          replace_once("sw.js", "const SHELL = [", "const SHELL = ['./refresh.html',")
+          # Sites redirects the owner practice update page from /refresh.html to /refresh.
+          # Apply this to the isolated practice package only.
+          replace_once("sw.js",
+                       "  if (event.data === 'LHRF_ACTIVATE_UPDATE' && event.source?.url && "
+                       "new URL(event.source.url).pathname === new URL('refresh.html', self.registration.scope).pathname) {\n"
+                       "    event.waitUntil(self.skipWaiting());\n"
+                       "  }",
+                       "  if (event.data !== 'LHRF_ACTIVATE_UPDATE' || !event.source?.url) return;\n"
+                       "  const source = new URL(event.source.url);\n"
+                       "  const scope = new URL(self.registration.scope);\n"
+                       "  const updatePaths = ['refresh.html', 'refresh'].map(name => new URL(name, scope).pathname);\n"
+                       "  if (source.origin === scope.origin && updatePaths.includes(source.pathname)) {\n"
+                       "    event.waitUntil(self.skipWaiting());\n"
+                       "  }")
+          replace_once("refresh.html", "<head>", '<head>\n  <meta http-equiv="Content-Security-Policy" '
+                       'content="default-src \'self\'; script-src \'self\' \'unsafe-inline\'; '
+                       'style-src \'self\' \'unsafe-inline\'; connect-src \'self\'; form-action \'none\'; '
+                       'frame-src \'none\'; object-src \'none\'; base-uri \'none\'">')
+          PY
+          node "$staging/scripts/build-native-owner-candidate.mjs" "$OWNER_CANDIDATE_ROOT"
+          test "$(head -n 1 "$OWNER_CANDIDATE_ROOT/OWNER-TEST-REVISION.txt")" = "$OWNER_SOURCE_SHA"
+          node previous-owner-source/scripts/build-native-owner-candidate.mjs previous-owner-dist
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Select browser
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROMIUM_EXECUTABLE=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - run: node tests/native-meet-integration.browser.cjs
+      - run: node previous-owner-source/tests/owner-standalone-safety.browser.cjs
+      - run: node previous-owner-source/tests/owner-offline-isolation.browser.cjs
+      - run: node tests/owner-practice-upgrade.browser.cjs
+      - name: Retain the tested owner package for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: lhrf-owner-practice-${{ github.event.pull_request.head.sha }}
+          path: native-owner-test-dist/
+          if-no-files-found: error
+          retention-days: 7

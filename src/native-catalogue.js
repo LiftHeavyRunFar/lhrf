@@ -11,7 +11,7 @@
   const stepLabels = { 'warm-up': 'Warm-up', recovery: 'Recovery', work: 'Work', 'cool-down': 'Cool-down', race: 'Race' };
   const pace = seconds => Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0') + '/km';
 
-  function buildProgramme(plans, current, { training, registry, gym, inventory, now, equipment, rescheduleId, protectedWeek }) {
+  function buildProgramme(plans, current, { training, registry, gym, inventory, now, equipment, rescheduleId, protectedWeek, reviewedOccurrences }) {
     const first = plans[0].start;
     if (plans.some(plan => plan.start < first)) throw Error('Choose a start date on or after ' + first + '.');
     const id = current?.config?.cataloguePlans ? current.config.programmeId : 'catalogue-' + plans[0].id;
@@ -38,23 +38,51 @@
       (training.parseDate(plan.start) - training.parseDate(first)) / 604800000 + plan.snapshot.durationWeeks), 0);
     if (end > 104) throw Error('Choose a start date within the next two years of your first programme.');
     config.weeks = end;
+    let reviewed = null;
+    if (reviewedOccurrences !== undefined) {
+      if (!Array.isArray(reviewedOccurrences)) throw Error('Reviewed sessions are unavailable. Review the transition again.');
+      reviewed = new Map();
+      for (const occurrence of reviewedOccurrences) {
+        const plan = plans.find(item => item.id === occurrence.planId);
+        const source = plan?.snapshot.weeks.find(item => item.week === occurrence.week)?.sessions.find(item => item.id === occurrence.sessionId);
+        const key = [occurrence.planId, occurrence.week, occurrence.sessionId].join('/');
+        if (!source || occurrence.id !== key || reviewed.has(key) || !['planned', 'logged', 'superseded', 'not-scheduled'].includes(occurrence.status)) {
+          throw Error('Reviewed sessions are inconsistent. Review the transition again.');
+        }
+        training.parseDate(occurrence.date);
+        reviewed.set(key, occurrence);
+      }
+      const count = plans.reduce((n, plan) => n + plan.snapshot.weeks.reduce((sum, week) => sum + week.sessions.length, 0), 0);
+      if (reviewed.size !== count) throw Error('Reviewed sessions are incomplete. Review the transition again.');
+    }
     const weeks = Array.from({ length: end }, (_, i) => ({
       week: i + 1, phase: 'Programme catalogue', feasible: true, blockingIssues: [], sessions: [],
     }));
     for (const plan of plans) {
       const offset = (training.parseDate(plan.start) - training.parseDate(first)) / 604800000;
       for (const week of plan.snapshot.weeks) for (const source of week.sessions) {
-        const target = weeks[offset + week.week - 1];
-        const date = training.addDays(first, (target.week - 1) * 7 + source.day);
+        const occurrence = reviewed?.get([plan.id, week.week, source.id].join('/'));
+        if (occurrence && ['superseded', 'not-scheduled'].includes(occurrence.status)) continue;
+        const date = occurrence?.date || training.addDays(first, (offset + week.week - 1) * 7 + source.day);
+        const dayOffset = (training.parseDate(date) - training.parseDate(first)) / 86400000;
+        const target = weeks[Math.floor(dayOffset / 7)];
+        if (!target) throw Error('A reviewed session falls outside the programme calendar. Review the transition again.');
+        const day = weekdays[(training.parseDate(date).getUTCDay() + 6) % 7];
         const key = plan.id + '-w' + week.week + '-' + source.id;
         const saved = previous.get(key);
         if (saved) {
+          if (occurrence?.status === 'logged' && saved.scheduledDate !== date) throw Error('A completed workout date changed. Review the transition again.');
+          if (occurrence && saved.scheduledDate !== date) {
+            target.sessions.push({ ...saved, scheduledDate: date, day, week: target.week,
+              ...(saved.eventDate ? { eventDate: date } : {}) });
+            continue;
+          }
           const change = plan.id === rescheduleId && !protectedWeek(target.week) && source.kind !== 'event' && source.id !== 'race';
           target.sessions.push(change ? { ...saved, scheduledDate: date, day: weekdays[source.day] } : saved);
           continue;
         }
         const name = source.title;
-        const session = { id: id + '-' + key, catalogueOccurrenceId: key, day: weekdays[source.day],
+        const session = { id: id + '-' + key, catalogueOccurrenceId: key, day,
           name, desc: source.note || '', scheduledDate: date, week: target.week, phase: target.phase,
           ex: [], runs: [], run: false, variationNotes: [], hybridNotes: [] };
         if (source.kind === 'strength') session.ex = source.groups.map(group => {
@@ -195,19 +223,58 @@
     function build(plans, data, options = {}) {
       return buildProgramme(plans, data.reviewedProgramme, {
         training, registry: root.LHRFExercises, gym: root.LHRFGymEquipment, now: new Date().toISOString(),
-        inventory: data.equipmentInventory ?? data.customRoadmap?.equipmentInventory, equipment: [], ...options,
+        inventory: data.equipmentInventory ?? data.customRoadmap?.equipmentInventory, equipment: [],
+        ...(data.customRoadmap?.catalogueOccurrences ? { reviewedOccurrences: data.customRoadmap.catalogueOccurrences } : {}), ...options,
       });
     }
 
     function catalogueState() {
-      return (state().customRoadmap?.cataloguePlans || []).reduce((result, plan) =>
-        training.enrol(result, plan.snapshot, plan.start, plan.id), training.empty());
+      const data = state();
+      const result = (data.customRoadmap?.cataloguePlans || []).reduce((result, plan) => {
+        const prior = result.plans.filter(item => item.snapshot.id === plan.snapshot.id && item.start === plan.start);
+        if (prior.length > 1) throw Error('The saved programme history needs review before switching.');
+        return training.enrol(result, plan.snapshot, plan.start, plan.id, {}, { ignoreDuplicatePlanId: prior[0]?.id });
+      }, training.empty());
+      if (data.customRoadmap?.catalogueOccurrences) result.occurrences = structuredClone(data.customRoadmap.catalogueOccurrences);
+      const sessions = new Map((data.reviewedProgramme?.weeks || []).flatMap(w => w.sessions).filter(s => s.catalogueOccurrenceId).map(s => [s.catalogueOccurrenceId, s]));
+      const base = id => String(id || '').replace(/::(?:strength|run)$/, '');
+      for (const occurrence of result.occurrences) {
+        const session = sessions.get(occurrence.planId + '-w' + occurrence.week + '-' + occurrence.sessionId);
+        if (!session) continue;
+        const completed = (data.completedWorkouts || []).filter(row => base(row.parentId || row.id) === session.id);
+        const sets = (data.sets || []).filter(row => base(row.sessionId) === session.id);
+        const runs = (data.runs || []).filter(row => base(row.sessionId) === session.id);
+        if (completed.length || sets.length || runs.length) {
+          occurrence.status = 'logged';
+          result.logs[occurrence.id] = { loggedAt: completed.at(-1)?.date || sets.at(-1)?.date || runs.at(-1)?.date || null,
+            sets: sets.map(row => ({ exerciseId: row.exerciseId || row.exercise || null, dose: row.reps ?? null,
+              weightKg: row.weight ?? null, rpe: row.rpe ?? null })) };
+        }
+      }
+      result.nativeRecordToken = JSON.stringify(data);
+      return result;
     }
 
-    async function approve(snapshot, start, equipment) {
+    async function approve(snapshot, start, equipment, meetProposal, reviewedState) {
       const data = state();
-      const plans = training.enrol(catalogueState(), snapshot, start, root.crypto.randomUUID()).plans;
-      const programme = build(plans, data, { equipment });
+      if (meetProposal) {
+        if (!root.LHRF_NATIVE_MEET_TEST || !root.LHRFMeetEntry) throw Error('Meet preparation is unavailable.');
+        const current = catalogueState();
+        if (JSON.stringify(current) !== reviewedState) throw Error('Training changed since review. Review the proposal again.');
+        const accepted = root.LHRFMeetEntry.apply(current, meetProposal, root.crypto.randomUUID());
+        const programme = build(accepted.plans, data, { equipment, reviewedOccurrences: accepted.occurrences });
+        programme.config.catalogueOccurrences = structuredClone(accepted.occurrences);
+        persistProgramme(programme, data);
+        complete();
+        return;
+      }
+      const enrolled = training.enrol(catalogueState(), snapshot, start, root.crypto.randomUUID());
+      const preserveReview = Boolean(data.customRoadmap?.catalogueOccurrences);
+      const programme = build(enrolled.plans, data, {
+        equipment,
+        ...(preserveReview ? { reviewedOccurrences: enrolled.occurrences } : {}),
+      });
+      if (preserveReview) programme.config.catalogueOccurrences = enrolled.occurrences;
       root.LHRFProgrammeReplacement.validateProgramme(programme);
       if (data.customRoadmap && !data.customRoadmap.cataloguePlans) {
         await review(programme);
@@ -232,11 +299,16 @@
         }
       }
       host.replaceChildren(section);
-      setup = root.LHRFMountCatalogue(host, { state: catalogueState, approve });
+      setup = root.LHRFMountCatalogue(host, { state: catalogueState, approve, meetEnabled: root.LHRF_NATIVE_MEET_TEST === true });
     }
 
     async function editDays(plan) {
       showPanel('Change ' + disciplines[plan.snapshot.discipline] + ' days');
+      if (state().customRoadmap?.catalogueOccurrences) {
+        text('p', 'Day changes are not available for a reviewed meet transition in this test.', panel);
+        action('Close', panel, () => dialog.close(), true);
+        return;
+      }
       text('p', 'Changes apply to future weeks with no recorded training. Event dates stay as scheduled.', panel);
       try {
         await loadSetup();
@@ -290,6 +362,8 @@
       scheduleButtons.replaceChildren();
       for (const plan of plans) action('Change ' + disciplines[plan.snapshot.discipline] + ' days',
         scheduleButtons, () => editDays(plan), true);
+      if (root.LHRF_NATIVE_MEET_TEST === true && plans.some(plan => plan.snapshot.discipline === 'strength'))
+        action('Review meet preparation', scheduleButtons, () => open('strength', true), true);
       const missing = Object.keys(disciplines).find(discipline => !enrolled.has(discipline));
       for (const button of startButtons) button.hidden = enrolled.size > 0;
       for (const other of otherButtons) {
