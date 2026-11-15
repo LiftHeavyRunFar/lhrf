@@ -16,14 +16,17 @@ const types = {
   '.png': 'image/png',
 };
 
-async function startServer() {
+const workerCache = lane => 'beta-cutover-shell-v1.40.6-' + lane;
+
+async function startServer(currentLane = () => 'beta') {
   const server = http.createServer((req, res) => {
     const route = new URL(req.url, 'http://localhost').pathname;
+    const lane = currentLane();
     if (route === '/control.html') {
       res.setHeader('Content-Type', 'text/html');
       return res.end('<!doctype html><title>Offline cutover control</title><script src="/cutover.js"></script>');
     }
-    if (route === '/cutover.js' || route === '/beta/src/training-storage.js') {
+    if (route === '/cutover.js' || (route === '/beta/src/training-storage.js' && lane === 'beta')) {
       res.setHeader('Content-Type', 'application/javascript');
       return res.end(route === '/cutover.js' ? moduleSource : moduleSource + '\n' + betaMount);
     }
@@ -35,13 +38,97 @@ async function startServer() {
     }
     res.setHeader('Content-Type', types[path.extname(file)] || 'application/octet-stream');
     if (relative === 'sw.js') {
-      // Exercise the pinned v1.40.6 worker with a cache name reserved for the QA lane.
-      return res.end(fs.readFileSync(file, 'utf8').replaceAll('lhrf-shell-', 'beta-cutover-shell-'));
+      // Both shells use the pinned v1.40.6 app. Separate caches exercise real
+      // worker activation while keeping the release check on the pinned HTML.
+      return res.end(fs.readFileSync(file, 'utf8')
+        .replaceAll('lhrf-shell-', 'beta-cutover-shell-')
+        .replace("'beta-cutover-shell-v1.40.6'", JSON.stringify(workerCache(lane)))
+        .replace("CACHE.slice('beta-cutover-shell-v'.length)", "'1.40.6'"));
     }
     fs.createReadStream(file).pipe(res);
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   return server;
+}
+
+async function simulateDowngrade(browser) {
+  let lane = 'beta';
+  const server = await startServer(() => lane);
+  const origin = 'http://localhost:' + server.address().port;
+  const app = origin + '/beta/';
+  let context;
+  try {
+    context = await browser.newContext({
+      viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
+      timezoneId: 'Europe/London', serviceWorkers: 'allow',
+    });
+    await context.route('**/*', route =>
+      new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+    const control = await context.newPage();
+    await control.goto(origin + '/control.html');
+    const source = JSON.stringify(fixture);
+    await control.evaluate(async ({MAIN, source}) => {
+      localStorage.setItem(MAIN, source);
+      await window.LHRFBetaCutover.stage(localStorage);
+      await window.LHRFBetaCutover.commit(localStorage);
+    }, {MAIN, source});
+
+    async function openShell(expectedLane) {
+      const page = await context.newPage();
+      page.setDefaultTimeout(12000);
+      page.on('dialog', dialog => dialog.accept());
+      await page.clock.install({time: new Date('2026-10-23T10:00:00+01:00')});
+      await page.goto(app);
+      await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+      assert.equal(await page.evaluate(() => Boolean(window.LHRFBetaCutover)), expectedLane === 'beta');
+      return page;
+    }
+
+    async function activateShell(nextLane, currentPage) {
+      lane = nextLane;
+      await currentPage.evaluate(async () => (await navigator.serviceWorker.getRegistration()).update());
+      await currentPage.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration()).waiting);
+      await currentPage.close();
+      await control.waitForFunction(async ({app, cache, previous}) => {
+        const registration = await navigator.serviceWorker.getRegistration(app);
+        const cachesOnOrigin = await caches.keys();
+        return registration?.active?.state === 'activated' &&
+          cachesOnOrigin.includes(cache) && !cachesOnOrigin.includes(previous);
+      }, {app, cache: workerCache(nextLane), previous: workerCache(nextLane === 'beta' ? 'legacy' : 'beta')},
+      {timeout: 15000});
+    }
+
+    const stored = name => control.evaluate(key => localStorage.getItem(key), name);
+    let beta = await openShell('beta');
+    await recordWorkout(beta);
+    const betaSnapshot = await stored(STORE);
+    const betaIds = JSON.parse(betaSnapshot).completedWorkouts.map(workout => workout.id);
+    const legacyIds = fixture.completedWorkouts.map(workout => workout.id);
+    assert.deepEqual(betaIds, [...legacyIds, 'fri::strength']);
+    assert.equal(await stored(MAIN), source);
+
+    await activateShell('legacy', beta);
+    await context.setOffline(true);
+    const legacy = await openShell('legacy');
+    assert.equal(await legacy.evaluate(() => navigator.onLine), false);
+    assert.deepEqual(await legacy.evaluate(() => data.completedWorkouts.map(workout => workout.id)), legacyIds);
+    assert.equal(await stored(MAIN), source);
+    assert.equal(await stored(STORE), betaSnapshot);
+
+    await context.setOffline(false);
+    await activateShell('beta', legacy);
+    await context.setOffline(true);
+    beta = await openShell('beta');
+    assert.deepEqual(await beta.evaluate(() => data.completedWorkouts.map(workout => workout.id)), betaIds);
+    assert.match(await beta.locator('[data-session-id="fri::strength"]').innerText(), /3 sets logged/);
+    assert.equal(await stored(MAIN), source);
+    assert.equal(await stored(STORE), betaSnapshot);
+    console.log('PASS mobile Chromium same-scope worker switch beta → legacy → beta: old cache retired, both shells reopen offline, beta workout retained byte-for-byte.');
+  } finally {
+    await context?.close();
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+  }
 }
 
 async function run() {
@@ -107,6 +194,7 @@ async function run() {
     assert.equal(await stored(reopened, MAIN), source);
     console.log('PASS pinned service worker reopened the beta offline with the server closed. Native workout draft, completion, reload and legacy source were preserved.');
     await context.close();
+    await simulateDowngrade(browser);
   } finally {
     await browser?.close();
     if (server.listening) await new Promise(resolve => server.close(resolve));
