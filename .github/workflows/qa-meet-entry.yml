@@ -3,10 +3,12 @@ on:
   pull_request:
     paths:
       - 'src/meet-entry.js'
+      - 'src/native-catalogue.js'
       - 'src/catalogue-training.js'
       - 'catalogue-preview/index.html'
       - 'catalogue-preview/app.js'
       - 'tests/meet-entry*'
+      - 'tests/native-meet-occurrences.test.cjs'
       - '.github/workflows/qa-meet-entry.yml'
 jobs:
   meet-entry:
@@ -18,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/meet-entry.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs
+      - run: node --test tests/meet-entry.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs tests/native-meet-occurrences.test.cjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - name: Select browser
         run: |
