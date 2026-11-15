@@ -37,7 +37,7 @@ async function review(page,id,oldId){await page.locator('nav [data-screen="plan"
  const active=await setup(browser,id);try{
   const {page,state,logged}=active,old=logged.customRoadmap.cataloguePlans.find(p=>p.snapshot.id===id);
   const next=logged.activeSchedule.filter(s=>s.ex?.length&&s.scheduledDate>'2026-11-16').sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];assert.ok(next);
-  await page.clock.setFixedTime(new Date(next.scheduledDate+'T09:00:00Z'));await page.reload();for(const dot of await page.locator('#dayDots button').all())if((await dot.getAttribute('aria-label')||'').toLowerCase().startsWith(next.day.toLowerCase())){await dot.click();break}
+  await page.clock.setFixedTime(new Date(next.scheduledDate+'T09:00:00Z'));await page.reload();await page.locator('nav [data-screen="today"]').click();for(const dot of await page.locator('#dayDots button').all())if((await dot.getAttribute('aria-label')||'').toLowerCase().startsWith(next.day.toLowerCase())){await dot.click();break}
   await page.locator('.day-slide.is-current').getByRole('button',{name:/^Preview workout /}).first().click();await page.locator('#previewStart').click();if(await page.locator('#readinessModal[open]').count())await page.locator('#readinessContinue').click();
   const draft=await page.evaluate(k=>localStorage.getItem(k),LIVE),before=await state();assert.ok(draft,'native workout draft must exist');
   await review(page,id,old.id);const panel=page.getByRole('region',{name:'Meet preparation review'});if(await panel.isVisible()){await page.getByLabel('I have reviewed the opening week, easier weeks, final week and transition.').check();await page.getByRole('button',{name:'Get my programme',exact:true}).click()}
