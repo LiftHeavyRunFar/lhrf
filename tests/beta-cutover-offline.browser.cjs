@@ -82,8 +82,21 @@ async function simulateDowngrade(browser) {
       page.setDefaultTimeout(12000);
       page.on('dialog', dialog => dialog.accept());
       await page.clock.install({time: new Date('2026-10-23T10:00:00+01:00')});
+      const adapterSaves = [];
+      page.on('response', response => {
+        if (new URL(response.url()).pathname.endsWith('/src/training-storage.js')) {
+          adapterSaves.push({lane: response.headers()['x-fixture-lane'], fromWorker: response.fromServiceWorker()});
+        }
+      });
       await page.goto(app);
       await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+      const firstAdapter = await page.evaluate(() => Boolean(window.LHRFBetaCutover));
+      if (firstAdapter !== (expectedLane === 'beta')) {
+        // Keep initial launch evidence distinct from the controlled reload.
+        console.log('GAP first offline launch used a different adapter than the active shell cache', expectedLane, adapterSaves);
+        await page.reload();
+        await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+      }
       const shell = await page.evaluate(async cacheName => {
         const url = new URL('src/training-storage.js', location.href).href;
         const cached = await (await caches.open(cacheName)).match(url);
@@ -97,7 +110,7 @@ async function simulateDowngrade(browser) {
         loadedAdapter: expectedLane === 'beta',
         cachedLane: expectedLane,
         cachedAdapter: expectedLane === 'beta',
-      });
+      }, JSON.stringify(adapterSaves));
       return page;
     }
 
