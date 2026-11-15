@@ -135,42 +135,34 @@ async function simulateDowngrade(browser) {
     }
 
     async function activateShell(nextLane, currentPage) {
-      // Use the pinned worker's explicit activation message from its
-      // permitted refresh page, after closing the previous workout writer.
-      const refresh = await context.newPage();
-      await refresh.goto(app + 'refresh.html');
-      await refresh.waitForFunction(worker => navigator.serviceWorker.controller?.scriptURL === worker,
-        app + workerScript(lane));
+      const previous = lane;
+      // Retire the old registration with all workout writers closed. This
+      // leaves both history keys alone and avoids competing update jobs.
+      await currentPage.close();
+      assert.deepEqual(context.pages(), [control], 'no workout client may be open during the switch');
+      assert.equal(await control.evaluate(async ({app, previousWorker}) => {
+        const registration = await navigator.serviceWorker.getRegistration(app);
+        if (registration?.scope !== app || registration.active?.scriptURL !== previousWorker) {
+          throw Error('The previous shell registration could not be identified.');
+        }
+        return registration.unregister();
+      }, {app, previousWorker: app + workerScript(previous)}), true);
+      await control.waitForFunction(async app => !(await navigator.serviceWorker.getRegistration(app)), app);
+
       lane = nextLane;
       const worker = app + workerScript(nextLane);
       await control.evaluate(({app, worker}) =>
-        navigator.serviceWorker.register(worker, {scope: app, updateViaCache: 'none'}), {app, worker});
-      await currentPage.waitForFunction(async worker =>
-        (await navigator.serviceWorker.getRegistration()).waiting?.scriptURL === worker, worker);
-      // The target has been downloaded. Activate it and open it without a
-      // network connection, including when returning to beta.
-      await context.setOffline(true);
-      await currentPage.close();
-      await refresh.evaluate(async worker => {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration.active?.scriptURL === worker) return;
-        const waiting = registration.waiting;
-        if (waiting?.scriptURL !== worker) {
-          throw Error('Expected waiting worker ' + worker + '; found ' + waiting?.scriptURL +
-            ' waiting and ' + registration.active?.scriptURL + ' active.');
-        }
-        waiting.postMessage('LHRF_ACTIVATE_UPDATE');
-      }, worker);
-      await refresh.waitForFunction(worker => navigator.serviceWorker.controller?.scriptURL === worker, worker);
+        navigator.serviceWorker.register(worker, {scope: app, updateViaCache: 'none'}).then(() => true),
+      {app, worker});
       await control.waitForFunction(async ({app, worker, cache, previous}) => {
         const registration = await navigator.serviceWorker.getRegistration(app);
         const cachesOnOrigin = await caches.keys();
         return registration?.active?.scriptURL === worker && registration.active.state === 'activated' &&
           !registration.waiting && !registration.installing &&
           cachesOnOrigin.includes(cache) && !cachesOnOrigin.includes(previous);
-      }, {app, worker, cache: workerCache(nextLane), previous: workerCache(nextLane === 'beta' ? 'legacy' : 'beta')},
+      }, {app, worker, cache: workerCache(nextLane), previous: workerCache(previous)},
       {timeout: 15000});
-      await refresh.close();
+      await context.setOffline(true);
     }
 
     const stored = name => control.evaluate(key => localStorage.getItem(key), name);
@@ -195,7 +187,7 @@ async function simulateDowngrade(browser) {
     assert.match(await beta.locator('[data-session-id="fri::strength"]').innerText(), /3 sets logged/);
     assert.equal(await stored(MAIN), source);
     assert.equal(await stored(STORE), betaSnapshot);
-    console.log('PASS mobile Chromium same-scope worker switch beta → legacy → beta: old cache retired, both shells reopen offline, beta workout retained byte-for-byte.');
+    console.log('PASS mobile Chromium same-scope worker retirement and switch beta → legacy → beta: both shells reopen offline, beta workout retained byte-for-byte.');
     console.log('EVIDENCE offline legacy IDs', JSON.stringify(legacyIds), 'returned beta IDs', JSON.stringify(betaIds));
   } finally {
     await context?.close();
