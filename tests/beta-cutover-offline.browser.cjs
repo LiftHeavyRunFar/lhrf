@@ -162,7 +162,11 @@ async function simulateDowngrade(browser) {
           cachesOnOrigin.includes(cache) && !cachesOnOrigin.includes(previous);
       }, {app, worker, cache: workerCache(nextLane), previous: workerCache(previous)},
       {timeout: 15000});
+      // Confirm the installed shell has controlled a real navigation before
+      // taking away the network. A registration/cache read alone is weaker.
+      const verifiedShell = await openShell(nextLane);
       await context.setOffline(true);
+      await verifiedShell.close();
     }
 
     const stored = name => control.evaluate(key => localStorage.getItem(key), name);
