@@ -8,7 +8,7 @@ const {createHash} = require('node:crypto');
 const vm = require('node:vm');
 const {createRequire} = require('node:module');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
-const {MAIN, LIVE, STAGE, STORE} = require('../src/beta-cutover.js');
+const {MAIN, LIVE, STAGE, STORE, key} = require('../src/beta-cutover.js');
 
 const root = path.resolve(__dirname, '..');
 const oldRoot = path.join(root, 'production-v1406');
@@ -319,6 +319,65 @@ async function withDeadline(promise, label) {
   }
 }
 
+async function verifyLateNativeLegacyCompletion(browser) {
+  const context = await browser.newContext({
+    viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
+    timezoneId: 'Europe/London', serviceWorkers: 'block',
+  });
+  try {
+    await mountRoutes(context);
+    const control = await context.newPage();
+    await control.goto(origin + '/control.html');
+    await control.evaluate(({MAIN, original}) => localStorage.setItem(MAIN, original), {MAIN, original});
+    const legacy = await openApp(context, 'old');
+    assert.deepEqual(await control.evaluate(async () => {
+      const api = window.LHRFBetaCutover;
+      return [await api.stage(localStorage), await api.commit(localStorage)];
+    }), ['staged', 'imported']);
+
+    // The already-open old client starts the same session after cutover.
+    await startStrengthWorkout(legacy);
+    const legacyDraft = await read(legacy, LIVE);
+    assert.ok(legacyDraft);
+    const beta = await openApp(context, 'beta');
+    await recordWorkout(beta);
+    const betaHistory = await read(beta, STORE);
+    const sessionId = 'fri::strength';
+    const betaRecord = JSON.parse(betaHistory).completedWorkouts.at(-1);
+    assert.equal(betaRecord.id, sessionId);
+    assert.equal(betaRecord.completedSets, 3);
+    assert.equal(await read(legacy, LIVE), legacyDraft, 'beta completion preserves the outstanding legacy draft');
+    assert.equal(await read(beta, key(LIVE)), null);
+
+    await context.setOffline(true);
+    await legacy.reload();
+    await legacy.locator('nav [data-screen="train"]').click();
+    assert.equal(await legacy.evaluate(() => navigator.onLine), false);
+    assert.equal(await read(legacy, LIVE), legacyDraft);
+    assert.equal(await legacy.locator('.set-check.checked').count(), 1);
+    await legacy.locator('#liveNotes').fill('Synthetic late legacy finish');
+    await legacy.locator('#liveFinish').click();
+    await legacy.locator('#finishAndSave').click();
+    await legacy.locator('#liveFeedbackSkip').click();
+
+    const legacyHistory = await read(legacy, MAIN);
+    const legacyRecord = JSON.parse(legacyHistory).completedWorkouts.at(-1);
+    assert.equal(legacyRecord.id, sessionId);
+    assert.equal(legacyRecord.notes, 'Synthetic late legacy finish');
+    assert.equal(legacyRecord.completedSets, 1);
+    assert.equal(await read(legacy, LIVE), null);
+    assert.equal(await read(beta, STORE), betaHistory, 'the same legacy session ID must not replace beta history');
+    await beta.reload();
+    await beta.waitForFunction(() => typeof save === 'function' && window.LHRFLive);
+    assert.deepEqual(await beta.evaluate(() => data.completedWorkouts.at(-1)), betaRecord);
+    assert.equal(await read(beta, STORE), betaHistory);
+    assert.equal(await read(beta, MAIN), legacyHistory);
+    console.log('PASS late native legacy draft resumed and finished offline with the same workout ID; legacy kept one set and beta kept three.');
+  } finally {
+    await context.close();
+  }
+}
+
 async function run() {
   const browser = await chromium.launch({
     headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
@@ -431,6 +490,7 @@ async function run() {
     console.log('PASS two stale offline legacy saves after debugger resume, repeated imports, and legacy reset cannot alter the saved beta workout.');
     console.log('REPRODUCED LIMIT: the first of two uncaptured old snapshots is lost from legacy storage.');
     console.log('Scope: simulated suspension by pausing Chromium JavaScript, routed offline responses, single beta writer, synthetic only.');
+    await verifyLateNativeLegacyCompletion(browser);
     await rehearseCutoverAndRollback(browser);
   } finally {
     await browser.close();
