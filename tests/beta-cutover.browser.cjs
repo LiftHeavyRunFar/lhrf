@@ -437,6 +437,172 @@ async function gateCommit(control, review) {
   return control.evaluate(() => window.LHRFBetaCutover.commit(localStorage));
 }
 
+async function verifyWriterEnumeration(browser) {
+  const knownProfile = await browser.newContext({serviceWorkers: 'block'});
+  const unseenProfile = await browser.newContext({serviceWorkers: 'block'});
+  try {
+    const openWriter = async (context, writer) => {
+      await mountRoutes(context);
+      const observer = await context.newPage();
+      await observer.goto(origin + '/control.html');
+      await observer.evaluate(({MAIN, original}) => localStorage.setItem(MAIN, original), {MAIN, original});
+      const app = await openApp(context, 'old');
+      // This cooperative probe is an optimistic test. Pinned legacy
+      // clients do not advertise their presence for an operator census.
+      await app.evaluate(writer => {
+        window.rosterWriter = new BroadcastChannel('fictional-writer-roster');
+        window.rosterWriter.onmessage = ({data}) => {
+          if (data === 'probe') window.rosterWriter.postMessage(writer);
+        };
+      }, writer);
+      return {observer, app};
+    };
+    const known = await openWriter(knownProfile, 'A');
+    const unseen = await openWriter(unseenProfile, 'B');
+    await unseenProfile.setOffline(true);
+    assert.equal(await unseen.app.evaluate(() => navigator.onLine), false);
+    assert.equal(await writeLegacy(unseen.app, 'unseen-offline-workout'), true);
+    const offlineEdit = await read(unseen.app, MAIN);
+    assert.deepEqual(workoutIds(offlineEdit), ['tue', 'sun', 'unseen-offline-workout']);
+
+    const probe = async (observer, expected) => {
+      await observer.evaluate(() => {
+        window.rosterAnswers = [];
+        window.rosterProbe = new BroadcastChannel('fictional-writer-roster');
+        window.rosterProbe.onmessage = ({data}) => window.rosterAnswers.push(data);
+        window.rosterProbe.postMessage('probe');
+      });
+      await observer.waitForFunction(writer => window.rosterAnswers.includes(writer), expected);
+    };
+    await probe(known.observer, 'A');
+    await probe(unseen.observer, 'B');
+    assert.deepEqual(await known.observer.evaluate(() => window.rosterAnswers), ['A']);
+    assert.deepEqual(await unseen.observer.evaluate(() => window.rosterAnswers), ['B']);
+    await known.app.close();
+    assert.deepEqual(knownProfile.pages(), [known.observer]);
+    assert.ok(!unseen.app.isClosed(), 'the separate profile still has a legacy writer');
+
+    // A successful reply and an empty local tab list cannot certify a
+    // full roster. Refuse before creating a receipt, stage or destination.
+    const incomplete = {roster: null, receipts: new Map(), reviewed: original};
+    await assert.rejects(gateStage(known.observer, incomplete), /no verified complete legacy writer roster/);
+    await assert.rejects(gateCommit(known.observer, incomplete), /no verified complete legacy writer roster/);
+    assert.equal(await read(known.observer, MAIN), original);
+    assert.equal(await read(known.observer, STAGE), null);
+    assert.equal(await read(known.observer, STORE), null);
+    await unseenProfile.setOffline(false);
+    await unseen.app.reload();
+    assert.equal(await read(unseen.app, MAIN), offlineEdit);
+    assert.equal(await read(unseen.app, STORE), null);
+    console.log('PASS a cooperative local census saw A but missed offline writer B in another profile. Cutover refused before capture; B reconnected with its edit intact.');
+  } finally {
+    await unseenProfile.close();
+    await knownProfile.close();
+  }
+}
+
+async function verifyFreshStart(browser) {
+  const betaOrigin = 'https://fresh-beta-qa.test';
+  const betaRoot = path.join(root, 'fresh-beta-source');
+  const context = await browser.newContext({
+    viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
+    serviceWorkers: 'block', timezoneId: 'Europe/London',
+  });
+  try {
+    await mountRoutes(context);
+    await context.route(betaOrigin + '/**', route => {
+      let routePath = new URL(route.request().url()).pathname;
+      if (routePath.endsWith('/')) routePath += 'index.html';
+      const file = path.resolve(betaRoot, '.' + routePath);
+      if (!file.startsWith(betaRoot + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+        return route.fulfill({status: 404});
+      }
+      const types = {'.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.html': 'text/html'};
+      return route.fulfill({body: fs.readFileSync(file), contentType: types[path.extname(file)] || 'application/octet-stream'});
+    });
+    const control = await context.newPage();
+    await control.goto(origin + '/control.html');
+    const legacy = JSON.stringify({...fixture, sentinel: {keep: 'legacy-origin-only'}});
+    await control.evaluate(({MAIN, LIVE, legacy}) => {
+      localStorage.setItem(MAIN, legacy);
+      localStorage.setItem(LIVE + '_pendingRun', JSON.stringify({fixture: 'Fictional legacy pending run'}));
+      localStorage.setItem('fictional-legacy-auxiliary', 'Fictional legacy settings');
+    }, {MAIN, LIVE, legacy});
+    const snapshot = page => page.evaluate(() => Object.fromEntries(Object.keys(localStorage).sort()
+      .map(key => [key, localStorage.getItem(key)])));
+    const oldApp = await openApp(context, 'old');
+    const legacyBefore = await snapshot(control);
+    assert.equal(legacyBefore[MAIN], legacy);
+    assert.match(legacyBefore[LIVE + '_pendingRun'], /Fictional legacy pending run/);
+    assert.equal(legacyBefore['fictional-legacy-auxiliary'], 'Fictional legacy settings');
+    const sibling = await context.newPage();
+    await sibling.goto(origin + '/control.html?fresh-path-control');
+    assert.deepEqual(await snapshot(sibling), legacyBefore, 'a second path on the legacy origin is not isolated');
+    await sibling.close();
+
+    const page = await context.newPage();
+    const otherRequests = [];
+    page.on('request', request => {
+      const url = new URL(request.url());
+      if (['http:', 'https:'].includes(url.protocol) && url.origin !== betaOrigin) otherRequests.push(url.origin);
+    });
+    page.on('dialog', dialog => dialog.accept());
+    page.setDefaultTimeout(12000);
+    await page.clock.install({time: new Date('2026-11-16T09:00:00Z')});
+    await page.goto(betaOrigin + '/');
+    assert.equal(await read(page, MAIN), null);
+    assert.equal(await read(page, LIVE + '_pendingRun'), null);
+    assert.deepEqual(await page.evaluate(() => [
+      data.completedWorkouts?.length ?? 0, data.sets.length, data.runs.length, data.sentinel ?? null,
+    ]), [0, 0, 0, null]);
+    await page.getByRole('button', {name: 'Strength training', exact: true}).click();
+    await page.locator('#native-catalogue-programme').selectOption('powerlifting-three-day');
+    await page.getByLabel('First calendar week').fill('2026-11-16');
+    await page.getByRole('button', {name: 'Preview programme', exact: true}).click();
+    await page.getByRole('button', {name: 'Get my programme', exact: true}).click();
+    await page.getByRole('button', {name: 'Go to programme', exact: true}).click();
+    await page.locator('#catalogueSetupDialog').waitFor({state: 'hidden'});
+    const installed = JSON.parse(await read(page, MAIN));
+    const first = installed.activeSchedule.filter(row => row.ex?.length)
+      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))[0];
+    assert.ok(first);
+    await page.clock.setFixedTime(new Date(first.scheduledDate + 'T09:00:00Z'));
+    await page.reload();
+    for (const dot of await page.locator('#dayDots button').all()) {
+      if ((await dot.getAttribute('aria-label') || '').toLowerCase().startsWith(first.day.toLowerCase())) {
+        await dot.click();
+        break;
+      }
+    }
+    await page.locator('.day-slide.is-current').getByRole('button', {name: /^Preview workout /}).first().click();
+    await page.locator('#previewStart').click();
+    if (await page.locator('#readinessModal[open]').count()) await page.locator('#readinessContinue').click();
+    const set = page.locator('.live-set').first();
+    if (!Number(await set.locator('[data-field="weight"]').inputValue())) await set.locator('[data-field="weight"]').fill('20');
+    await set.locator('[data-field="rpe"]').fill('7');
+    await set.locator('.set-check').click();
+    await page.locator('#liveFinish').click();
+    await page.locator('#finishAndSave').click();
+    if (await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
+    const saved = await read(page, MAIN);
+    assert.equal(JSON.parse(saved).completedWorkouts.length, 1);
+    assert.equal(JSON.parse(saved).sets.length, 1);
+    assert.equal(JSON.parse(saved).sentinel, undefined);
+    await page.reload();
+    assert.equal(await read(page, MAIN), saved);
+    assert.deepEqual(await snapshot(control), legacyBefore);
+    assert.deepEqual(otherRequests, [], 'fresh start must not request the legacy origin or a connection service');
+    assert.equal(await read(page, STAGE), null);
+    assert.equal(await read(page, STORE), null);
+    assert.equal(await writeLegacy(oldApp, 'separate-origin-late-write'), true);
+    assert.match(await read(oldApp, MAIN), /separate-origin-late-write/);
+    assert.equal(await read(page, MAIN), saved);
+    console.log('PASS distinct-origin blank product source loaded no legacy records, installed a three-day plan, saved one workout and reloaded. Legacy history and ancillary keys stayed byte-identical until its own late save; beta stayed exact afterward.');
+  } finally {
+    await context.close();
+  }
+}
+
 async function verifyCutoverGate(browser) {
   for (const scenario of ['unverified', 'late', 'reconciled', 'conflicting']) {
     const directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'lhrf-cutover-gate-'));
@@ -820,6 +986,8 @@ async function run() {
     await rehearseCutoverAndRollback(browser);
     await verifyCutoverGate(browser);
     await verifyLegacyWriteBoundary(browser);
+    await verifyWriterEnumeration(browser);
+    await verifyFreshStart(browser);
   } finally {
     await browser.close();
   }

@@ -21,6 +21,11 @@ jobs:
         with:
           ref: 87046db2925e1db2dd6e0af71d4b0c72b3d60395
           path: production-v1406
+      - name: Checkout pinned owner-practice product source for the fresh-start rehearsal
+        uses: actions/checkout@v4
+        with:
+          ref: 131062847d7b0a14d558a12d262939b7a198c6de
+          path: fresh-beta-source
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
