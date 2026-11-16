@@ -442,10 +442,18 @@ async function verifyCutoverGate(browser) {
         await startStrengthWorkout(oldA);
         await oldA.locator('#liveNotes').fill(notes);
         const offlineDraft = await read(oldA, LIVE);
+        // Readiness is saved separately before the workout begins, even offline.
+        const preFinishRaw = await read(oldA, MAIN);
+        const prior = JSON.parse(original);
+        const preFinish = JSON.parse(preFinishRaw);
+        assert.equal(preFinish.checkins.length, prior.checkins.length + 1);
+        assert.deepEqual(preFinish.completedWorkouts, prior.completedWorkouts);
+        assert.deepEqual(preFinish.sets, prior.sets);
         assert.ok(offlineDraft, 'the old app must persist an unfinished workout before cutover');
         assert.equal(JSON.parse(offlineDraft).notes, notes);
-        await control.waitForFunction(({LIVE, offlineDraft}) => localStorage.getItem(LIVE) === offlineDraft,
-          {LIVE, offlineDraft}, {timeout: 10000});
+        await control.waitForFunction(({MAIN, LIVE, preFinishRaw, offlineDraft}) =>
+          localStorage.getItem(MAIN) === preFinishRaw && localStorage.getItem(LIVE) === offlineDraft,
+        {MAIN, LIVE, preFinishRaw, offlineDraft}, {timeout: 10000});
 
         // The test can inspect the draft, but the reviewer has no receipt
         // or verified roster for the legacy writer.
@@ -454,7 +462,7 @@ async function verifyCutoverGate(browser) {
         await assert.rejects(gateCommit(control, review), /no verified complete legacy writer roster/);
         await assert.rejects(control.evaluate(() => window.LHRFBetaCutover.stage(localStorage)),
           /Finish or recover the legacy workout/);
-        assert.equal(await read(control, MAIN), original);
+        assert.equal(await read(control, MAIN), preFinishRaw);
         assert.equal(await read(control, LIVE), offlineDraft);
         assert.equal(await read(control, STAGE), null);
         assert.equal(await read(control, STORE), null);
@@ -467,7 +475,6 @@ async function verifyCutoverGate(browser) {
         await oldA.locator('#finishAndSave').click();
         await oldA.locator('#liveFeedbackSkip').click();
         const lateRaw = await read(oldA, MAIN);
-        const prior = JSON.parse(original);
         const late = JSON.parse(lateRaw);
         const completion = late.completedWorkouts.at(-1);
         assert.equal(completion.id, 'fri::strength');
@@ -477,6 +484,8 @@ async function verifyCutoverGate(browser) {
         assert.equal(late.sets.length, prior.sets.length + 1);
         assert.deepEqual(late.sets.slice(0, prior.sets.length), prior.sets);
         assert.deepEqual(late.customRoadmap, prior.customRoadmap);
+        assert.deepEqual(late.checkins, preFinish.checkins);
+        assert.deepEqual(late.sentinel, prior.sentinel);
         await control.waitForFunction(({MAIN, LIVE, lateRaw}) =>
           localStorage.getItem(MAIN) === lateRaw && localStorage.getItem(LIVE) === null,
         {MAIN, LIVE, lateRaw}, {timeout: 10000});
