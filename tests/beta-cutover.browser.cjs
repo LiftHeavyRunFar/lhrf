@@ -412,7 +412,10 @@ async function gateCommit(control, review) {
 
 async function verifyCutoverGate(browser) {
   for (const scenario of ['unverified', 'late', 'reconciled']) {
-    const context = await browser.newContext({serviceWorkers: 'block', timezoneId: 'Europe/London'});
+    const context = await browser.newContext({
+      viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
+      serviceWorkers: 'block', timezoneId: 'Europe/London',
+    });
     try {
       await mountRoutes(context);
       const control = await context.newPage();
@@ -435,18 +438,55 @@ async function verifyCutoverGate(browser) {
       assert.equal(await oldA.evaluate(() => navigator.onLine), false);
 
       if (scenario === 'unverified') {
+        const notes = 'Fictional offline set before cutover';
+        await startStrengthWorkout(oldA);
+        await oldA.locator('#liveNotes').fill(notes);
+        const offlineDraft = await read(oldA, LIVE);
+        assert.ok(offlineDraft, 'the old app must persist an unfinished workout before cutover');
+        assert.equal(JSON.parse(offlineDraft).notes, notes);
+        await control.waitForFunction(({LIVE, offlineDraft}) => localStorage.getItem(LIVE) === offlineDraft,
+          {LIVE, offlineDraft}, {timeout: 10000});
+
+        // The test can inspect the draft, but the reviewer has no receipt
+        // or verified roster for the legacy writer.
         const review = {roster: null, receipts: new Map(), reviewed: original};
         await assert.rejects(gateStage(control, review), /no verified complete legacy writer roster/);
+        await assert.rejects(gateCommit(control, review), /no verified complete legacy writer roster/);
+        await assert.rejects(control.evaluate(() => window.LHRFBetaCutover.stage(localStorage)),
+          /Finish or recover the legacy workout/);
         assert.equal(await read(control, MAIN), original);
+        assert.equal(await read(control, LIVE), offlineDraft);
+        assert.equal(await read(control, STAGE), null);
+        assert.equal(await read(control, STORE), null);
+
         await context.setOffline(false);
         assert.equal(await oldA.evaluate(() => navigator.onLine), true);
-        const lateRaw = await saveAndObserve(oldA, 'unaccounted-after-reconnect');
+        assert.equal(await read(oldA, LIVE), offlineDraft);
+        assert.equal(await oldA.locator('.set-check.checked').count(), 1);
+        await oldA.locator('#liveFinish').click();
+        await oldA.locator('#finishAndSave').click();
+        await oldA.locator('#liveFeedbackSkip').click();
+        const lateRaw = await read(oldA, MAIN);
+        const prior = JSON.parse(original);
+        const late = JSON.parse(lateRaw);
+        const completion = late.completedWorkouts.at(-1);
+        assert.equal(completion.id, 'fri::strength');
+        assert.equal(completion.notes, notes);
+        assert.equal(completion.completedSets, 1);
+        assert.deepEqual(late.completedWorkouts, [...prior.completedWorkouts, completion]);
+        assert.equal(late.sets.length, prior.sets.length + 1);
+        assert.deepEqual(late.sets.slice(0, prior.sets.length), prior.sets);
+        assert.deepEqual(late.customRoadmap, prior.customRoadmap);
+        await control.waitForFunction(({MAIN, LIVE, lateRaw}) =>
+          localStorage.getItem(MAIN) === lateRaw && localStorage.getItem(LIVE) === null,
+        {MAIN, LIVE, lateRaw}, {timeout: 10000});
         await oldA.close();
         await assert.rejects(gateCommit(control, review), /no verified complete legacy writer roster/);
         assert.equal(await read(control, MAIN), lateRaw);
+        assert.equal(await read(control, LIVE), null);
         assert.equal(await read(control, STAGE), null);
         assert.equal(await read(control, STORE), null);
-        console.log('PASS unknown writer topology blocks staging and commit even after an old tab reconnects and saves.');
+        console.log('PASS the unreceipted offline set blocked cutover; reconnect saved it once in legacy and migration remained refused.');
         continue;
       }
 
