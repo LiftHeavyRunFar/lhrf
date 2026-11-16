@@ -11,6 +11,7 @@ on:
       - 'tests/native-meet-occurrences.test.cjs'
       - 'tests/native-meet-integration.browser.cjs'
       - 'tests/owner-practice-upgrade.browser.cjs'
+      - 'tests/owner-practice-journeys.browser.cjs'
       - 'index.html'
       - '.github/workflows/qa-meet-entry.yml'
 jobs:
@@ -107,6 +108,13 @@ jobs:
                        'content="default-src \'self\'; script-src \'self\' \'unsafe-inline\'; '
                        'style-src \'self\' \'unsafe-inline\'; connect-src \'self\'; form-action \'none\'; '
                        'frame-src \'none\'; object-src \'none\'; base-uri \'none\'">')
+          # Omit UI for integration modules already excluded from owner practice.
+          replace_once("index.html", "  if(session.runs?.length&&!completedRun){",
+                       "  if(window.LHRFOpenGarminReview&&session.runs?.length&&!completedRun){")
+          replace_once("index.html", "(completedRun?[]:session.runs||[]).forEach",
+                       "(!window.LHRFIntervals||completedRun?[]:session.runs||[]).forEach")
+          replace_once("src/training-review.js", "sync.className='secondary';const status=",
+                       "sync.className='secondary';sync.hidden=!root.LHRFOpenGarminReview;const status=")
           PY
           node "$staging/scripts/build-native-owner-candidate.mjs" "$OWNER_CANDIDATE_ROOT"
           test "$(head -n 1 "$OWNER_CANDIDATE_ROOT/OWNER-TEST-REVISION.txt")" = "$OWNER_SOURCE_SHA"
@@ -123,6 +131,7 @@ jobs:
       - run: node previous-owner-source/tests/owner-standalone-safety.browser.cjs
       - run: node previous-owner-source/tests/owner-offline-isolation.browser.cjs
       - run: node tests/owner-practice-upgrade.browser.cjs
+      - run: node tests/owner-practice-journeys.browser.cjs
       - name: Retain the tested owner package for review
         uses: actions/upload-artifact@v4
         with:
