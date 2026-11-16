@@ -6,6 +6,7 @@ const path = require('node:path');
 const os = require('node:os');
 const {createHash} = require('node:crypto');
 const vm = require('node:vm');
+const {isDeepStrictEqual} = require('node:util');
 const {createRequire} = require('node:module');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const {MAIN, LIVE, STAGE, STORE, key} = require('../src/beta-cutover.js');
@@ -111,11 +112,15 @@ async function recordWorkout(page) {
 }
 
 const read = (page, key) => page.evaluate(name => localStorage.getItem(name), key);
-const writeLegacy = (page, id) => page.evaluate(id => {
+const writeLegacy = (page, id, weight = null) => page.evaluate(({id, weight}) => {
   const next = structuredClone(data);
   next.completedWorkouts.push({id, name: 'Fictional stale workout', week: 1, date: '2026-10-23T12:00:00Z'});
+  if (weight !== null) {
+    next.sets.push({date: '2026-10-23T12:00:00Z', sessionId: id, week: 1, exercise: 'Bench press',
+      set: 1, weight, reps: 2, rpe: 7});
+  }
   return save(next, {notify: false});
-}, id);
+}, {id, weight});
 
 const digest = raw => createHash('sha256').update(raw, 'utf8').digest('hex');
 const workoutIds = raw => JSON.parse(raw).completedWorkouts.map(workout => workout.id);
@@ -378,6 +383,493 @@ async function verifyLateNativeLegacyCompletion(browser) {
   }
 }
 
+// Only this harness can enumerate every writer it created in this context.
+// The deployed app cannot supply the complete roster or grant this gate.
+async function requireCutoverReview(control, { roster, receipts, reviewed }) {
+  if (!roster) throw Error('There is no verified complete legacy writer roster.');
+  if (control.context().pages().some(page => page !== control)) {
+    throw Error('Close every legacy writer before cutover.');
+  }
+  const baseline = JSON.parse(original);
+  const expected = structuredClone(baseline);
+  const historyFields = ['completedWorkouts', 'sets', 'runs'];
+  const occurrences = new Map();
+  for (const writer of roster) {
+    const receipt = receipts.get(writer);
+    if (!receipt) throw Error('Missing receipt for writer ' + writer);
+    const raw = await fs.promises.readFile(receipt.file, 'utf8').catch(error => {
+      if (error.code === 'ENOENT') throw Error('Missing capture for writer ' + writer);
+      throw error;
+    });
+    if (digest(raw) !== receipt.sha256) throw Error('Capture checksum mismatch for writer ' + writer);
+    const captured = JSON.parse(raw);
+    const additions = Object.fromEntries(historyFields.map(field => [field, captured[field].splice(baseline[field].length)]));
+    const [edit] = additions.completedWorkouts;
+    // The rehearsal exercises one appended workout per writer. Anything
+    // outside that fixture, including unrelated changes, needs human review.
+    if (!isDeepStrictEqual(captured, baseline) || additions.completedWorkouts.length !== 1 ||
+        [...additions.sets, ...additions.runs].some(row => row.sessionId !== edit.id || row.week !== edit.week)) {
+      throw Error('Capture needs manual reconciliation for writer ' + writer);
+    }
+    const occurrence = JSON.stringify([edit.id, edit.week]);
+    const prior = occurrences.get(occurrence);
+    if (prior) {
+      if (!isDeepStrictEqual(prior, additions)) throw Error('Disputed legacy occurrence: ' + edit.id);
+      continue;
+    }
+    occurrences.set(occurrence, additions);
+    for (const field of historyFields) expected[field].push(...additions[field]);
+  }
+  if (!isDeepStrictEqual(JSON.parse(reviewed), expected)) {
+    throw Error('Reviewed history does not preserve the verified captures.');
+  }
+  const current = await read(control, MAIN);
+  if (current !== reviewed) throw Error('Legacy history changed after review.');
+}
+
+async function gateStage(control, review) {
+  await requireCutoverReview(control, review);
+  return control.evaluate(() => window.LHRFBetaCutover.stage(localStorage));
+}
+
+async function gateCommit(control, review) {
+  await requireCutoverReview(control, review);
+  return control.evaluate(() => window.LHRFBetaCutover.commit(localStorage));
+}
+
+async function verifyWriterEnumeration(browser) {
+  const knownProfile = await browser.newContext({serviceWorkers: 'block'});
+  const unseenProfile = await browser.newContext({serviceWorkers: 'block'});
+  try {
+    const openWriter = async (context, writer) => {
+      await mountRoutes(context);
+      const observer = await context.newPage();
+      await observer.goto(origin + '/control.html');
+      await observer.evaluate(({MAIN, original}) => localStorage.setItem(MAIN, original), {MAIN, original});
+      const app = await openApp(context, 'old');
+      // This cooperative probe is an optimistic test. Pinned legacy
+      // clients do not advertise their presence for an operator census.
+      await app.evaluate(writer => {
+        window.rosterWriter = new BroadcastChannel('fictional-writer-roster');
+        window.rosterWriter.onmessage = ({data}) => {
+          if (data === 'probe') window.rosterWriter.postMessage(writer);
+        };
+      }, writer);
+      return {observer, app};
+    };
+    const known = await openWriter(knownProfile, 'A');
+    const unseen = await openWriter(unseenProfile, 'B');
+    await unseenProfile.setOffline(true);
+    assert.equal(await unseen.app.evaluate(() => navigator.onLine), false);
+    assert.equal(await writeLegacy(unseen.app, 'unseen-offline-workout'), true);
+    const offlineEdit = await read(unseen.app, MAIN);
+    assert.deepEqual(workoutIds(offlineEdit), ['tue', 'sun', 'unseen-offline-workout']);
+
+    const probe = async (observer, expected) => {
+      await observer.evaluate(() => {
+        window.rosterAnswers = [];
+        window.rosterProbe = new BroadcastChannel('fictional-writer-roster');
+        window.rosterProbe.onmessage = ({data}) => window.rosterAnswers.push(data);
+        window.rosterProbe.postMessage('probe');
+      });
+      await observer.waitForFunction(writer => window.rosterAnswers.includes(writer), expected);
+    };
+    await probe(known.observer, 'A');
+    await probe(unseen.observer, 'B');
+    assert.deepEqual(await known.observer.evaluate(() => window.rosterAnswers), ['A']);
+    assert.deepEqual(await unseen.observer.evaluate(() => window.rosterAnswers), ['B']);
+    await known.app.close();
+    assert.deepEqual(knownProfile.pages(), [known.observer]);
+    assert.ok(!unseen.app.isClosed(), 'the separate profile still has a legacy writer');
+
+    // A successful reply and an empty local tab list cannot certify a
+    // full roster. Refuse before creating a receipt, stage or destination.
+    const incomplete = {roster: null, receipts: new Map(), reviewed: original};
+    await assert.rejects(gateStage(known.observer, incomplete), /no verified complete legacy writer roster/);
+    await assert.rejects(gateCommit(known.observer, incomplete), /no verified complete legacy writer roster/);
+    assert.equal(await read(known.observer, MAIN), original);
+    assert.equal(await read(known.observer, STAGE), null);
+    assert.equal(await read(known.observer, STORE), null);
+    await unseenProfile.setOffline(false);
+    await unseen.app.reload();
+    assert.equal(await read(unseen.app, MAIN), offlineEdit);
+    assert.equal(await read(unseen.app, STORE), null);
+    console.log('PASS a cooperative local census saw A but missed offline writer B in another profile. Cutover refused before capture; B reconnected with its edit intact.');
+  } finally {
+    await unseenProfile.close();
+    await knownProfile.close();
+  }
+}
+
+async function verifyFreshStart(browser) {
+  const betaOrigin = 'https://fresh-beta-qa.test';
+  const betaRoot = path.join(root, 'fresh-beta-source');
+  const context = await browser.newContext({
+    viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
+    serviceWorkers: 'block', timezoneId: 'Europe/London',
+  });
+  try {
+    await mountRoutes(context);
+    await context.route(betaOrigin + '/**', route => {
+      let routePath = new URL(route.request().url()).pathname;
+      if (routePath.endsWith('/')) routePath += 'index.html';
+      const file = path.resolve(betaRoot, '.' + routePath);
+      if (!file.startsWith(betaRoot + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
+        return route.fulfill({status: 404});
+      }
+      const types = {'.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json', '.html': 'text/html'};
+      return route.fulfill({body: fs.readFileSync(file), contentType: types[path.extname(file)] || 'application/octet-stream'});
+    });
+    const control = await context.newPage();
+    await control.goto(origin + '/control.html');
+    const legacy = JSON.stringify({...fixture, sentinel: {keep: 'legacy-origin-only'}});
+    await control.evaluate(({MAIN, LIVE, legacy}) => {
+      localStorage.setItem(MAIN, legacy);
+      localStorage.setItem(LIVE + '_pendingRun', JSON.stringify({fixture: 'Fictional legacy pending run'}));
+      localStorage.setItem('fictional-legacy-auxiliary', 'Fictional legacy settings');
+    }, {MAIN, LIVE, legacy});
+    const snapshot = page => page.evaluate(() => Object.fromEntries(Object.keys(localStorage).sort()
+      .map(key => [key, localStorage.getItem(key)])));
+    const oldApp = await openApp(context, 'old');
+    const legacyBefore = await snapshot(control);
+    assert.equal(legacyBefore[MAIN], legacy);
+    assert.match(legacyBefore[LIVE + '_pendingRun'], /Fictional legacy pending run/);
+    assert.equal(legacyBefore['fictional-legacy-auxiliary'], 'Fictional legacy settings');
+    const sibling = await context.newPage();
+    await sibling.goto(origin + '/control.html?fresh-path-control');
+    assert.deepEqual(await snapshot(sibling), legacyBefore, 'a second path on the legacy origin is not isolated');
+    await sibling.close();
+
+    const page = await context.newPage();
+    const otherRequests = [];
+    page.on('request', request => {
+      const url = new URL(request.url());
+      if (['http:', 'https:'].includes(url.protocol) && url.origin !== betaOrigin) otherRequests.push(url.origin);
+    });
+    page.on('dialog', dialog => dialog.accept());
+    page.setDefaultTimeout(12000);
+    await page.clock.install({time: new Date('2026-11-16T09:00:00Z')});
+    await page.goto(betaOrigin + '/');
+    assert.equal(await read(page, MAIN), null);
+    assert.equal(await read(page, LIVE + '_pendingRun'), null);
+    assert.deepEqual(await page.evaluate(() => [
+      data.completedWorkouts?.length ?? 0, data.sets.length, data.runs.length, data.sentinel ?? null,
+    ]), [0, 0, 0, null]);
+    await page.getByRole('button', {name: 'Strength training', exact: true}).click();
+    await page.locator('#native-catalogue-programme').selectOption('powerlifting-three-day');
+    await page.getByLabel('First calendar week').fill('2026-11-16');
+    await page.getByRole('button', {name: 'Preview programme', exact: true}).click();
+    await page.getByRole('button', {name: 'Get my programme', exact: true}).click();
+    await page.getByRole('button', {name: 'Go to programme', exact: true}).click();
+    await page.locator('#catalogueSetupDialog').waitFor({state: 'hidden'});
+    const installed = JSON.parse(await read(page, MAIN));
+    const first = installed.activeSchedule.filter(row => row.ex?.length)
+      .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))[0];
+    assert.ok(first);
+    await page.clock.setFixedTime(new Date(first.scheduledDate + 'T09:00:00Z'));
+    await page.reload();
+    for (const dot of await page.locator('#dayDots button').all()) {
+      if ((await dot.getAttribute('aria-label') || '').toLowerCase().startsWith(first.day.toLowerCase())) {
+        await dot.click();
+        break;
+      }
+    }
+    await page.locator('.day-slide.is-current').getByRole('button', {name: /^Preview workout /}).first().click();
+    await page.locator('#previewStart').click();
+    if (await page.locator('#readinessModal[open]').count()) await page.locator('#readinessContinue').click();
+    const set = page.locator('.live-set').first();
+    if (!Number(await set.locator('[data-field="weight"]').inputValue())) await set.locator('[data-field="weight"]').fill('20');
+    await set.locator('[data-field="rpe"]').fill('7');
+    await set.locator('.set-check').click();
+    await page.locator('#liveFinish').click();
+    await page.locator('#finishAndSave').click();
+    if (await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
+    const saved = await read(page, MAIN);
+    assert.equal(JSON.parse(saved).completedWorkouts.length, 1);
+    assert.equal(JSON.parse(saved).sets.length, 1);
+    assert.equal(JSON.parse(saved).sentinel, undefined);
+    await page.reload();
+    assert.equal(await read(page, MAIN), saved);
+    assert.deepEqual(await snapshot(control), legacyBefore);
+    assert.deepEqual(otherRequests, [], 'fresh start must not request the legacy origin or a connection service');
+    assert.equal(await read(page, STAGE), null);
+    assert.equal(await read(page, STORE), null);
+    assert.equal(await writeLegacy(oldApp, 'separate-origin-late-write'), true);
+    assert.match(await read(oldApp, MAIN), /separate-origin-late-write/);
+    assert.equal(await read(page, MAIN), saved);
+    console.log('PASS distinct-origin blank product source loaded no legacy records, installed a three-day plan, saved one workout and reloaded. Legacy history and ancillary keys stayed byte-identical until its own late save; beta stayed exact afterward.');
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyCutoverGate(browser) {
+  for (const scenario of ['unverified', 'late', 'reconciled', 'conflicting']) {
+    const directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'lhrf-cutover-gate-'));
+    const context = await browser.newContext({
+      viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
+      serviceWorkers: 'block', timezoneId: 'Europe/London',
+    });
+    try {
+      await mountRoutes(context);
+      const control = await context.newPage();
+      await control.goto(origin + '/control.html');
+      const setFixture = reviewed =>
+        control.evaluate(({MAIN, reviewed}) => localStorage.setItem(MAIN, reviewed), {MAIN, reviewed});
+      const saveAndObserve = async (writer, id, weight) => {
+        assert.equal(await writeLegacy(writer, id, weight), true);
+        const captured = await read(writer, MAIN);
+        assert.equal(workoutIds(captured).at(-1), id);
+        // Cross-tab storage visibility can lag the writer's successful save.
+        // Require the reviewer to observe the exact bytes before continuing.
+        await control.waitForFunction(({MAIN, captured}) => localStorage.getItem(MAIN) === captured,
+          {MAIN, captured}, {timeout: 10000});
+        return captured;
+      };
+      await setFixture(original);
+      const oldA = await openApp(context, 'old');
+      await context.setOffline(true);
+      assert.equal(await oldA.evaluate(() => navigator.onLine), false);
+
+      if (scenario === 'unverified') {
+        const notes = 'Fictional offline set before cutover';
+        await startStrengthWorkout(oldA);
+        await oldA.locator('#liveNotes').fill(notes);
+        const offlineDraft = await read(oldA, LIVE);
+        // Readiness is saved separately before the workout begins, even offline.
+        const preFinishRaw = await read(oldA, MAIN);
+        const prior = JSON.parse(original);
+        const preFinish = JSON.parse(preFinishRaw);
+        assert.equal(preFinish.checkins.length, prior.checkins.length + 1);
+        assert.deepEqual(preFinish.completedWorkouts, prior.completedWorkouts);
+        assert.deepEqual(preFinish.sets, prior.sets);
+        assert.ok(offlineDraft, 'the old app must persist an unfinished workout before cutover');
+        assert.equal(JSON.parse(offlineDraft).notes, notes);
+        await control.waitForFunction(({MAIN, LIVE, preFinishRaw, offlineDraft}) =>
+          localStorage.getItem(MAIN) === preFinishRaw && localStorage.getItem(LIVE) === offlineDraft,
+        {MAIN, LIVE, preFinishRaw, offlineDraft}, {timeout: 10000});
+
+        // The test can inspect the draft, but the reviewer has no receipt
+        // or verified roster for the legacy writer.
+        const review = {roster: null, receipts: new Map(), reviewed: original};
+        await assert.rejects(gateStage(control, review), /no verified complete legacy writer roster/);
+        await assert.rejects(gateCommit(control, review), /no verified complete legacy writer roster/);
+        await assert.rejects(control.evaluate(() => window.LHRFBetaCutover.stage(localStorage)),
+          /Finish or recover the legacy workout/);
+        assert.equal(await read(control, MAIN), preFinishRaw);
+        assert.equal(await read(control, LIVE), offlineDraft);
+        assert.equal(await read(control, STAGE), null);
+        assert.equal(await read(control, STORE), null);
+
+        await context.setOffline(false);
+        assert.equal(await oldA.evaluate(() => navigator.onLine), true);
+        assert.equal(await read(oldA, LIVE), offlineDraft);
+        assert.equal(await oldA.locator('.set-check.checked').count(), 1);
+        await oldA.locator('#liveFinish').click();
+        await oldA.locator('#finishAndSave').click();
+        await oldA.locator('#liveFeedbackSkip').click();
+        const lateRaw = await read(oldA, MAIN);
+        const late = JSON.parse(lateRaw);
+        const completion = late.completedWorkouts.at(-1);
+        assert.equal(completion.id, 'fri::strength');
+        assert.equal(completion.notes, notes);
+        assert.equal(completion.completedSets, 1);
+        assert.deepEqual(late.completedWorkouts, [...prior.completedWorkouts, completion]);
+        assert.equal(late.sets.length, prior.sets.length + 1);
+        assert.deepEqual(late.sets.slice(0, prior.sets.length), prior.sets);
+        assert.deepEqual(late.customRoadmap, prior.customRoadmap);
+        assert.deepEqual(late.checkins, preFinish.checkins);
+        assert.deepEqual(late.sentinel, prior.sentinel);
+        await control.waitForFunction(({MAIN, LIVE, lateRaw}) =>
+          localStorage.getItem(MAIN) === lateRaw && localStorage.getItem(LIVE) === null,
+        {MAIN, LIVE, lateRaw}, {timeout: 10000});
+        await oldA.close();
+        await assert.rejects(gateCommit(control, review), /no verified complete legacy writer roster/);
+        assert.equal(await read(control, MAIN), lateRaw);
+        assert.equal(await read(control, LIVE), null);
+        assert.equal(await read(control, STAGE), null);
+        assert.equal(await read(control, STORE), null);
+        console.log('PASS the unreceipted offline set blocked cutover; reconnect saved it once in legacy and migration remained refused.');
+        continue;
+      }
+
+      // Capture both raw legacy histories before the later stale writer can
+      // overwrite the first. Only the fixture operator has these receipts.
+      const oldB = await openApp(context, 'old');
+      const conflict = scenario === 'conflicting';
+      const rawA = await saveAndObserve(oldA, conflict ? 'gate-shared-workout' : 'gate-legacy-a', conflict ? 100 : null);
+      await verifyBackup(directory, 'writer-A.json', rawA);
+      const rawB = await saveAndObserve(oldB, conflict ? 'gate-shared-workout' : 'gate-legacy-b', conflict ? 105 : null);
+      await verifyBackup(directory, 'writer-B.json', rawB);
+      await oldA.close();
+      await oldB.close();
+      const first = JSON.parse(rawA).completedWorkouts.at(-1);
+      const second = JSON.parse(rawB).completedWorkouts.at(-1);
+      const roster = ['A', 'B'];
+      const receiptA = {file: path.join(directory, 'writer-A.json'), sha256: digest(rawA)};
+      const receiptB = {file: path.join(directory, 'writer-B.json'), sha256: digest(rawB)};
+      const receipts = new Map([['A', receiptA], ['B', receiptB]]);
+      const assertRefused = async (evidence, reason) => {
+        const review = {roster, receipts: evidence, reviewed: rawB};
+        await assert.rejects(gateStage(control, review), reason);
+        await assert.rejects(gateCommit(control, review), reason);
+        assert.equal(await read(control, MAIN), rawB);
+        assert.equal(await read(control, STAGE), null);
+        assert.equal(await read(control, STORE), null);
+        assert.equal(await fs.promises.readFile(receiptA.file, 'utf8'), rawA);
+        assert.equal(await fs.promises.readFile(receiptB.file, 'utf8'), rawB);
+      };
+
+      if (conflict) {
+        assert.deepEqual(JSON.parse(rawA).completedWorkouts, JSON.parse(rawB).completedWorkouts);
+        assert.equal(JSON.parse(rawA).sets.at(-1).weight, 100);
+        assert.equal(JSON.parse(rawB).sets.at(-1).weight, 105);
+        assert.notEqual(receiptA.sha256, receiptB.sha256);
+        await assertRefused(receipts, /Disputed legacy occurrence: gate-shared-workout/);
+        for (const [raw, receipt] of [[rawA, receiptA], [rawB, receiptB]]) {
+          await restoreInCleanProfile(browser, receipt.file, receipt.sha256, workoutIds(raw));
+        }
+        await assertRefused(receipts, /Disputed legacy occurrence: gate-shared-workout/);
+        console.log('PASS conflicting 100 kg and 105 kg captures stop stage and commit; both restored separately with source and archives unchanged.');
+        continue;
+      }
+
+      if (scenario === 'reconciled') {
+        await assertRefused(new Map([['B', receiptB]]), /Missing receipt for writer A/);
+        // Withhold A's archive from the operator without deleting the test
+        // oracle. This lets the harness verify neither original file changed.
+        const missing = { ...receiptA, file: path.join(directory, 'unavailable.json') };
+        await assertRefused(new Map([['A', missing], ['B', receiptB]]), /Missing capture for writer A/);
+        const invalid = { ...receiptA, sha256: receiptB.sha256 };
+        await assertRefused(new Map([['A', invalid], ['B', receiptB]]), /Capture checksum mismatch for writer A/);
+        await assertRefused(receipts, /Reviewed history does not preserve the verified captures/);
+        console.log('PASS missing receipt, missing archive, wrong checksum and omitted edit stop stage and commit; archives and source unchanged.');
+      }
+
+      // The existing reconciliation rehearsal compares all other fields.
+      // This repeat uses the retained receipts, not last-write-wins.
+      const reconciled = JSON.parse(original);
+      for (const [raw, edit] of [[rawA, first], [rawB, second]]) {
+        const captured = JSON.parse(raw);
+        assert.deepEqual(captured.completedWorkouts.pop(), edit);
+        assert.deepEqual(captured, JSON.parse(original));
+      }
+      reconciled.completedWorkouts.push(first, second);
+      const reviewed = JSON.stringify(reconciled);
+      await setFixture(reviewed);
+      const review = {roster, receipts, reviewed};
+      assert.equal(await gateStage(control, review), 'staged');
+      assert.equal(await read(control, STAGE), reviewed);
+      assert.equal(await read(control, STORE), null);
+
+      if (scenario === 'late') {
+        const late = await openApp(context, 'old');
+        assert.equal(await late.evaluate(() => navigator.onLine), false);
+        await assert.rejects(gateCommit(control, review), /Close every legacy writer/);
+        await context.setOffline(false);
+        assert.equal(await late.evaluate(() => navigator.onLine), true);
+        const lateRaw = await saveAndObserve(late, 'late-after-reviewed-stage');
+        await late.close();
+        await assert.rejects(gateCommit(control, review), /Legacy history changed after review/);
+        await assert.rejects(control.evaluate(() => window.LHRFBetaCutover.commit(localStorage)),
+          /Legacy history changed since staging/);
+        assert.equal(await read(control, STAGE), reviewed);
+        assert.equal(await read(control, MAIN), lateRaw);
+        assert.match(lateRaw, /late-after-reviewed-stage/);
+        assert.equal(await read(control, STORE), null);
+        console.log('PASS a legacy client reappearing after staging blocks commit, and its reconnect write preserves both raw versions for review.');
+      } else {
+        await context.setOffline(false);
+        await control.reload();
+        assert.equal(await gateCommit(control, review), 'imported');
+        assert.equal(await gateCommit(control, review), 'already-initialised');
+        assert.equal(await read(control, MAIN), reviewed);
+        assert.equal(await read(control, STORE), reviewed);
+        assert.deepEqual(workoutIds(await read(control, STORE)), ['tue', 'sun', 'gate-legacy-a', 'gate-legacy-b']);
+        console.log('PASS verified disk receipts for all fictional writers permit one reconciled import after reload.');
+      }
+    } finally {
+      await context.close();
+      await fs.promises.rm(directory, {recursive: true, force: true});
+    }
+  }
+}
+
+// Controlled ordering against the pinned save, with an archive outside browser storage.
+async function verifyLegacyWriteBoundary(browser) {
+  const directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'lhrf-legacy-boundary-'));
+  const context = await browser.newContext({serviceWorkers: 'block', timezoneId: 'Europe/London'});
+  try {
+    await mountRoutes(context);
+    const control = await context.newPage();
+    await control.goto(origin + '/control.html');
+    await control.evaluate(({MAIN, original}) => localStorage.setItem(MAIN, original), {MAIN, original});
+    const first = await openApp(context, 'old');
+    const stale = await openApp(context, 'old');
+    const lock = await stale.evaluate(() => window.LHRFProgrammeReplacement.LOCK_KEY);
+    await context.setOffline(true);
+    assert.equal(await first.evaluate(() => navigator.onLine), false);
+    assert.equal(await stale.evaluate(() => navigator.onLine), false);
+
+    assert.equal(await writeLegacy(first, 'offline-first-captured'), true);
+    const older = await read(first, MAIN);
+    assert.deepEqual(workoutIds(older), [...workoutIds(original), 'offline-first-captured']);
+    const archive = 'offline-first.json';
+    await verifyBackup(directory, archive, older);
+    await stale.waitForFunction(({MAIN, older}) => localStorage.getItem(MAIN) === older, {MAIN, older});
+    assert.deepEqual(await stale.evaluate(() => data.completedWorkouts.map(row => row.id)), workoutIds(original));
+
+    const visibleLock = 'fictional-lock-before-save';
+    await control.evaluate(({lock, visibleLock}) => localStorage.setItem(lock, visibleLock), {lock, visibleLock});
+    await stale.waitForFunction(({lock, visibleLock}) => localStorage.getItem(lock) === visibleLock, {lock, visibleLock});
+    assert.equal(await writeLegacy(stale, 'offline-second-stale'), false);
+    assert.match(await stale.evaluate(() => lhrfSaveError), /programme transaction is in progress/);
+    assert.equal(await read(stale, MAIN), older);
+    console.log('PASS the pinned legacy save rejects a second stale writer when the transaction marker is already visible.');
+
+    await control.evaluate(name => localStorage.removeItem(name), lock);
+    await stale.waitForFunction(name => localStorage.getItem(name) === null, lock);
+    const interleaving = await stale.evaluate(lock => {
+      const getItem = Storage.prototype.getItem;
+      const marker = 'fictional-lock-after-read';
+      let observed;
+      Storage.prototype.getItem = function (name) {
+        const value = getItem.call(this, name);
+        if (this === localStorage && name === lock) {
+          observed = value;
+          // Model another client installing the marker after this read.
+          this.setItem(lock, marker);
+        }
+        return value;
+      };
+      try {
+        const next = structuredClone(data);
+        next.completedWorkouts.push({id: 'offline-second-stale', name: 'Fictional later save', week: 1,
+          date: '2026-10-23T12:00:00Z'});
+        const accepted = save(next, {notify: false});
+        return {observed, accepted, marker: getItem.call(localStorage, lock)};
+      } finally {
+        Storage.prototype.getItem = getItem;
+      }
+    }, lock);
+    assert.deepEqual(interleaving, {observed: null, accepted: true, marker: 'fictional-lock-after-read'});
+    const overwritten = await read(stale, MAIN);
+    assert.deepEqual(workoutIds(overwritten), [...workoutIds(original), 'offline-second-stale']);
+    await control.waitForFunction(({MAIN, overwritten}) => localStorage.getItem(MAIN) === overwritten,
+      {MAIN, overwritten});
+    assert.equal(await read(control, STAGE), null);
+    assert.equal(await read(control, STORE), null);
+    console.log('REPRODUCED LIMIT: a marker installed after the existing check cannot stop the stale legacy overwrite.');
+
+    await restoreInCleanProfile(browser, path.join(directory, archive), digest(older), workoutIds(older));
+    assert.equal(await read(control, MAIN), overwritten, 'archive restore cannot rewrite the source profile');
+    console.log('PASS the independently archived first offline edit restores in a clean synthetic profile with exact bytes.');
+  } finally {
+    await context.close();
+    await fs.promises.rm(directory, {recursive: true, force: true});
+  }
+}
+
 async function run() {
   const browser = await chromium.launch({
     headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
@@ -492,6 +984,10 @@ async function run() {
     console.log('Scope: simulated suspension by pausing Chromium JavaScript, routed offline responses, single beta writer, synthetic only.');
     await verifyLateNativeLegacyCompletion(browser);
     await rehearseCutoverAndRollback(browser);
+    await verifyCutoverGate(browser);
+    await verifyLegacyWriteBoundary(browser);
+    await verifyWriterEnumeration(browser);
+    await verifyFreshStart(browser);
   } finally {
     await browser.close();
   }
