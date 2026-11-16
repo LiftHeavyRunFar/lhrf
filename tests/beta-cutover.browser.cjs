@@ -112,11 +112,15 @@ async function recordWorkout(page) {
 }
 
 const read = (page, key) => page.evaluate(name => localStorage.getItem(name), key);
-const writeLegacy = (page, id) => page.evaluate(id => {
+const writeLegacy = (page, id, weight = null) => page.evaluate(({id, weight}) => {
   const next = structuredClone(data);
   next.completedWorkouts.push({id, name: 'Fictional stale workout', week: 1, date: '2026-10-23T12:00:00Z'});
+  if (weight !== null) {
+    next.sets.push({date: '2026-10-23T12:00:00Z', sessionId: id, week: 1, exercise: 'Bench press',
+      set: 1, weight, reps: 2, rpe: 7});
+  }
   return save(next, {notify: false});
-}, id);
+}, {id, weight});
 
 const digest = raw => createHash('sha256').update(raw, 'utf8').digest('hex');
 const workoutIds = raw => JSON.parse(raw).completedWorkouts.map(workout => workout.id);
@@ -386,18 +390,41 @@ async function requireCutoverReview(control, { roster, receipts, reviewed }) {
   if (control.context().pages().some(page => page !== control)) {
     throw Error('Close every legacy writer before cutover.');
   }
+  const baseline = JSON.parse(original);
+  const expected = structuredClone(baseline);
+  const historyFields = ['completedWorkouts', 'sets', 'runs'];
+  const occurrences = new Map();
+  for (const writer of roster) {
+    const receipt = receipts.get(writer);
+    if (!receipt) throw Error('Missing receipt for writer ' + writer);
+    const raw = await fs.promises.readFile(receipt.file, 'utf8').catch(error => {
+      if (error.code === 'ENOENT') throw Error('Missing capture for writer ' + writer);
+      throw error;
+    });
+    if (digest(raw) !== receipt.sha256) throw Error('Capture checksum mismatch for writer ' + writer);
+    const captured = JSON.parse(raw);
+    const additions = Object.fromEntries(historyFields.map(field => [field, captured[field].splice(baseline[field].length)]));
+    const [edit] = additions.completedWorkouts;
+    // The rehearsal exercises one appended workout per writer. Anything
+    // outside that fixture, including unrelated changes, needs human review.
+    if (!isDeepStrictEqual(captured, baseline) || additions.completedWorkouts.length !== 1 ||
+        [...additions.sets, ...additions.runs].some(row => row.sessionId !== edit.id || row.week !== edit.week)) {
+      throw Error('Capture needs manual reconciliation for writer ' + writer);
+    }
+    const occurrence = JSON.stringify([edit.id, edit.week]);
+    const prior = occurrences.get(occurrence);
+    if (prior) {
+      if (!isDeepStrictEqual(prior, additions)) throw Error('Disputed legacy occurrence: ' + edit.id);
+      continue;
+    }
+    occurrences.set(occurrence, additions);
+    for (const field of historyFields) expected[field].push(...additions[field]);
+  }
+  if (!isDeepStrictEqual(JSON.parse(reviewed), expected)) {
+    throw Error('Reviewed history does not preserve the verified captures.');
+  }
   const current = await read(control, MAIN);
   if (current !== reviewed) throw Error('Legacy history changed after review.');
-  const rows = JSON.parse(reviewed).completedWorkouts;
-  for (const writer of roster) {
-    if (!receipts.has(writer)) throw Error('Missing receipt for writer ' + writer);
-    for (const edit of receipts.get(writer)) {
-      const matches = rows.filter(row => row.id === edit.id && row.week === edit.week);
-      if (matches.length !== 1 || !isDeepStrictEqual(matches[0], edit)) {
-        throw Error('Unaccounted or disputed legacy edit: ' + writer + ' / ' + edit.id);
-      }
-    }
-  }
 }
 
 async function gateStage(control, review) {
@@ -411,7 +438,8 @@ async function gateCommit(control, review) {
 }
 
 async function verifyCutoverGate(browser) {
-  for (const scenario of ['unverified', 'late', 'reconciled']) {
+  for (const scenario of ['unverified', 'late', 'reconciled', 'conflicting']) {
+    const directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'lhrf-cutover-gate-'));
     const context = await browser.newContext({
       viewport: {width: 393, height: 852}, isMobile: true, hasTouch: true,
       serviceWorkers: 'block', timezoneId: 'Europe/London',
@@ -422,8 +450,8 @@ async function verifyCutoverGate(browser) {
       await control.goto(origin + '/control.html');
       const setFixture = reviewed =>
         control.evaluate(({MAIN, reviewed}) => localStorage.setItem(MAIN, reviewed), {MAIN, reviewed});
-      const saveAndObserve = async (writer, id) => {
-        assert.equal(await writeLegacy(writer, id), true);
+      const saveAndObserve = async (writer, id, weight) => {
+        assert.equal(await writeLegacy(writer, id, weight), true);
         const captured = await read(writer, MAIN);
         assert.equal(workoutIds(captured).at(-1), id);
         // Cross-tab storage visibility can lag the writer's successful save.
@@ -502,22 +530,55 @@ async function verifyCutoverGate(browser) {
       // Capture both raw legacy histories before the later stale writer can
       // overwrite the first. Only the fixture operator has these receipts.
       const oldB = await openApp(context, 'old');
-      const rawA = await saveAndObserve(oldA, 'gate-legacy-a');
-      const rawB = await saveAndObserve(oldB, 'gate-legacy-b');
-      assert.doesNotMatch(rawB, /gate-legacy-a/);
+      const conflict = scenario === 'conflicting';
+      const rawA = await saveAndObserve(oldA, conflict ? 'gate-shared-workout' : 'gate-legacy-a', conflict ? 100 : null);
+      await verifyBackup(directory, 'writer-A.json', rawA);
+      const rawB = await saveAndObserve(oldB, conflict ? 'gate-shared-workout' : 'gate-legacy-b', conflict ? 105 : null);
+      await verifyBackup(directory, 'writer-B.json', rawB);
       await oldA.close();
       await oldB.close();
       const first = JSON.parse(rawA).completedWorkouts.at(-1);
       const second = JSON.parse(rawB).completedWorkouts.at(-1);
       const roster = ['A', 'B'];
-      const receipts = new Map([['A', [first]], ['B', [second]]]);
-      await assert.rejects(gateStage(control, {
-        roster, receipts: new Map([['B', [second]]]), reviewed: rawB,
-      }), /Missing receipt for writer A/);
-      await assert.rejects(gateStage(control, {roster, receipts, reviewed: rawB}), /Unaccounted or disputed legacy edit: A/);
-      assert.equal(await read(control, MAIN), rawB);
-      assert.equal(await read(control, STAGE), null);
-      assert.equal(await read(control, STORE), null);
+      const receiptA = {file: path.join(directory, 'writer-A.json'), sha256: digest(rawA)};
+      const receiptB = {file: path.join(directory, 'writer-B.json'), sha256: digest(rawB)};
+      const receipts = new Map([['A', receiptA], ['B', receiptB]]);
+      const assertRefused = async (evidence, reason) => {
+        const review = {roster, receipts: evidence, reviewed: rawB};
+        await assert.rejects(gateStage(control, review), reason);
+        await assert.rejects(gateCommit(control, review), reason);
+        assert.equal(await read(control, MAIN), rawB);
+        assert.equal(await read(control, STAGE), null);
+        assert.equal(await read(control, STORE), null);
+        assert.equal(await fs.promises.readFile(receiptA.file, 'utf8'), rawA);
+        assert.equal(await fs.promises.readFile(receiptB.file, 'utf8'), rawB);
+      };
+
+      if (conflict) {
+        assert.deepEqual(JSON.parse(rawA).completedWorkouts, JSON.parse(rawB).completedWorkouts);
+        assert.equal(JSON.parse(rawA).sets.at(-1).weight, 100);
+        assert.equal(JSON.parse(rawB).sets.at(-1).weight, 105);
+        assert.notEqual(receiptA.sha256, receiptB.sha256);
+        await assertRefused(receipts, /Disputed legacy occurrence: gate-shared-workout/);
+        for (const [raw, receipt] of [[rawA, receiptA], [rawB, receiptB]]) {
+          await restoreInCleanProfile(browser, receipt.file, receipt.sha256, workoutIds(raw));
+        }
+        await assertRefused(receipts, /Disputed legacy occurrence: gate-shared-workout/);
+        console.log('PASS conflicting 100 kg and 105 kg captures stop stage and commit; both restored separately with source and archives unchanged.');
+        continue;
+      }
+
+      if (scenario === 'reconciled') {
+        await assertRefused(new Map([['B', receiptB]]), /Missing receipt for writer A/);
+        // Withhold A's archive from the operator without deleting the test
+        // oracle. This lets the harness verify neither original file changed.
+        const missing = { ...receiptA, file: path.join(directory, 'unavailable.json') };
+        await assertRefused(new Map([['A', missing], ['B', receiptB]]), /Missing capture for writer A/);
+        const invalid = { ...receiptA, sha256: receiptB.sha256 };
+        await assertRefused(new Map([['A', invalid], ['B', receiptB]]), /Capture checksum mismatch for writer A/);
+        await assertRefused(receipts, /Reviewed history does not preserve the verified captures/);
+        console.log('PASS missing receipt, missing archive, wrong checksum and omitted edit stop stage and commit; archives and source unchanged.');
+      }
 
       // The existing reconciliation rehearsal compares all other fields.
       // This repeat uses the retained receipts, not last-write-wins.
@@ -530,11 +591,6 @@ async function verifyCutoverGate(browser) {
       reconciled.completedWorkouts.push(first, second);
       const reviewed = JSON.stringify(reconciled);
       await setFixture(reviewed);
-      const disagreement = new Map(receipts);
-      disagreement.set('A', [{...first, notes: 'Different version of the same fictional workout'}]);
-      await assert.rejects(gateStage(control, {
-        roster, receipts: disagreement, reviewed,
-      }), /Unaccounted or disputed legacy edit: A/);
       const review = {roster, receipts, reviewed};
       assert.equal(await gateStage(control, review), 'staged');
       assert.equal(await read(control, STAGE), reviewed);
@@ -564,10 +620,11 @@ async function verifyCutoverGate(browser) {
         assert.equal(await read(control, MAIN), reviewed);
         assert.equal(await read(control, STORE), reviewed);
         assert.deepEqual(workoutIds(await read(control, STORE)), ['tue', 'sun', 'gate-legacy-a', 'gate-legacy-b']);
-        console.log('PASS missing and disputed receipts block staging; closed fictional roster and reconciled receipts import once after reload.');
+        console.log('PASS verified disk receipts for all fictional writers permit one reconciled import after reload.');
       }
     } finally {
       await context.close();
+      await fs.promises.rm(directory, {recursive: true, force: true});
     }
   }
 }
