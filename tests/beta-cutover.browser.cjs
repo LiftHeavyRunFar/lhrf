@@ -572,6 +572,81 @@ async function verifyCutoverGate(browser) {
   }
 }
 
+// Controlled ordering against the pinned save, with an archive outside browser storage.
+async function verifyLegacyWriteBoundary(browser) {
+  const directory = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'lhrf-legacy-boundary-'));
+  const context = await browser.newContext({serviceWorkers: 'block', timezoneId: 'Europe/London'});
+  try {
+    await mountRoutes(context);
+    const control = await context.newPage();
+    await control.goto(origin + '/control.html');
+    await control.evaluate(({MAIN, original}) => localStorage.setItem(MAIN, original), {MAIN, original});
+    const first = await openApp(context, 'old');
+    const stale = await openApp(context, 'old');
+    const lock = await stale.evaluate(() => window.LHRFProgrammeReplacement.LOCK_KEY);
+    await context.setOffline(true);
+    assert.equal(await first.evaluate(() => navigator.onLine), false);
+    assert.equal(await stale.evaluate(() => navigator.onLine), false);
+
+    assert.equal(await writeLegacy(first, 'offline-first-captured'), true);
+    const older = await read(first, MAIN);
+    assert.deepEqual(workoutIds(older), [...workoutIds(original), 'offline-first-captured']);
+    const archive = 'offline-first.json';
+    await verifyBackup(directory, archive, older);
+    await stale.waitForFunction(({MAIN, older}) => localStorage.getItem(MAIN) === older, {MAIN, older});
+    assert.deepEqual(await stale.evaluate(() => data.completedWorkouts.map(row => row.id)), workoutIds(original));
+
+    const visibleLock = 'fictional-lock-before-save';
+    await control.evaluate(({lock, visibleLock}) => localStorage.setItem(lock, visibleLock), {lock, visibleLock});
+    await stale.waitForFunction(({lock, visibleLock}) => localStorage.getItem(lock) === visibleLock, {lock, visibleLock});
+    assert.equal(await writeLegacy(stale, 'offline-second-stale'), false);
+    assert.match(await stale.evaluate(() => lhrfSaveError), /programme transaction is in progress/);
+    assert.equal(await read(stale, MAIN), older);
+    console.log('PASS the pinned legacy save rejects a second stale writer when the transaction marker is already visible.');
+
+    await control.evaluate(name => localStorage.removeItem(name), lock);
+    await stale.waitForFunction(name => localStorage.getItem(name) === null, lock);
+    const interleaving = await stale.evaluate(lock => {
+      const getItem = Storage.prototype.getItem;
+      const marker = 'fictional-lock-after-read';
+      let observed;
+      Storage.prototype.getItem = function (name) {
+        const value = getItem.call(this, name);
+        if (this === localStorage && name === lock) {
+          observed = value;
+          // Model another client installing the marker after this read.
+          this.setItem(lock, marker);
+        }
+        return value;
+      };
+      try {
+        const next = structuredClone(data);
+        next.completedWorkouts.push({id: 'offline-second-stale', name: 'Fictional later save', week: 1,
+          date: '2026-10-23T12:00:00Z'});
+        const accepted = save(next, {notify: false});
+        return {observed, accepted, marker: getItem.call(localStorage, lock)};
+      } finally {
+        Storage.prototype.getItem = getItem;
+      }
+    }, lock);
+    assert.deepEqual(interleaving, {observed: null, accepted: true, marker: 'fictional-lock-after-read'});
+    const overwritten = await read(stale, MAIN);
+    assert.deepEqual(workoutIds(overwritten), [...workoutIds(original), 'offline-second-stale']);
+    await control.waitForFunction(({MAIN, overwritten}) => localStorage.getItem(MAIN) === overwritten,
+      {MAIN, overwritten});
+    assert.equal(await read(control, STAGE), null);
+    assert.equal(await read(control, STORE), null);
+    console.log('REPRODUCED LIMIT: a marker installed after the existing check cannot stop the stale legacy overwrite.');
+
+    await restoreInCleanProfile(browser, path.join(directory, archive), digest(older), workoutIds(older));
+    assert.equal(await read(control, MAIN), overwritten, 'archive restore cannot rewrite the source profile');
+    console.log('PASS the independently archived first offline edit restores in a clean synthetic profile with exact bytes.');
+  } finally {
+    await context.close();
+    await fs.promises.rm(directory, {recursive: true, force: true});
+  }
+}
+
 async function run() {
   const browser = await chromium.launch({
     headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
@@ -687,6 +762,7 @@ async function run() {
     await verifyLateNativeLegacyCompletion(browser);
     await rehearseCutoverAndRollback(browser);
     await verifyCutoverGate(browser);
+    await verifyLegacyWriteBoundary(browser);
   } finally {
     await browser.close();
   }
