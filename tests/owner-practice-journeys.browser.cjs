@@ -106,8 +106,10 @@ async function native(context, origin) {
   assert.deepEqual(after.customRoadmap, before.customRoadmap);
   assert.deepEqual(after.reviewedProgramme, before.reviewedProgramme);
   await page.locator('nav [data-screen="settings"]').click();
-  await page.locator('#settingsServices > summary').click();
-  await page.locator('#garminAdvanced > summary').click();
+  await page.locator('#settings.active').waitFor();
+  const services = page.locator('#settingsServices');
+  assert.equal(await services.count(), 1, 'settings services exist in the shared UI');
+  assert.equal(await services.isVisible(), false, 'practice does not expose connected services');
   for (const id of ['sendIntervalsWorkout', 'garminImportOpen', 'activityFile', 'garminIncomingSave']) {
     assert.equal(await page.locator('#' + id).isVisible(), false, id);
   }
