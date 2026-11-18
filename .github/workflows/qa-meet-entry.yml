@@ -11,6 +11,8 @@ on:
       - 'tests/native-meet-occurrences.test.cjs'
       - 'tests/native-meet-integration.browser.cjs'
       - 'tests/owner-practice-upgrade.browser.cjs'
+      - 'src/earned-strength.js'
+      - 'tests/earned-strength*'
       - 'index.html'
       - '.github/workflows/qa-meet-entry.yml'
 jobs:
@@ -29,6 +31,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --test tests/meet-entry.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs tests/native-meet-occurrences.test.cjs
+      - run: node --test tests/earned-strength.test.cjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - name: Select browser
         run: |
@@ -41,6 +44,7 @@ jobs:
       - run: node tests/native-meet-integration.browser.cjs
         env:
           LHRF_OWNER_REPRO_ROOT: owner-practice-repro
+      - run: node tests/earned-strength.browser.cjs
 
   owner-practice-package:
     runs-on: ubuntu-latest
@@ -123,6 +127,7 @@ jobs:
       - run: node previous-owner-source/tests/owner-standalone-safety.browser.cjs
       - run: node previous-owner-source/tests/owner-offline-isolation.browser.cjs
       - run: node tests/owner-practice-upgrade.browser.cjs
+      - run: node tests/earned-strength.browser.cjs
       - name: Retain the tested owner package for review
         uses: actions/upload-artifact@v4
         with:
