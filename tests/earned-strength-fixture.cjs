@@ -45,10 +45,19 @@ function fixture(id = 'powerlifting-four-day', kind = 'peak') {
     target = base.result.weeks[0].sessions.find(row => row.ex.some(ex =>
       ex[5].exerciseId === 'competition-bench' && ex[1] === 3 && ex[2] === 5));
   }
+  const running = {id: 'fictional-running', start: base.plan.start,
+    snapshot: catalogue.previewProgramme('10k-two-run', {recent10kSeconds: 3900})};
+  base.result = native.buildProgramme([base.plan, running], null, {
+    training, registry, gym, inventory: fullInventory(), equipment: [], now: base.plan.start + 'T09:00:00Z',
+  });
   const state = {onboardingComplete: true, customRoadmap: base.result.config,
     reviewedProgramme: base.result, activeSchedule: base.result.weeks[target.week - 1].sessions,
     activeCustomWeek: target.week, completedWorkouts: [], sets: [], runs: [], checkins: [],
     equipmentInventory: fullInventory(), decisions: [], overrides: {}};
+  const runDate = training.addDays(base.plan.start, -2) + 'T10:00:00Z';
+  state.runs.push({sessionId: 'fictional-prior-run', date: runDate, week: 1, km: 3, min: 20});
+  state.completedWorkouts.push({id: 'fictional-prior-run', date: runDate, week: 1, component: 'run',
+    completedRun: true, name: 'Prior fictional easy run', prescription: {ex: [], runs: [{distanceKm: 3}]}});
   if (kind === 'peak') {
     for (const [week, actual] of [[7, 142.5], [9, 145]]) {
       const session = base.result.weeks[week - 1].sessions.find(row => row.ex.some(ex =>

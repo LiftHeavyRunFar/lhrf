@@ -52,6 +52,8 @@
     const id = identity(exercise);
     const cutoff = Date.parse(live.started || now);
     const seen = new Set();
+    const keys = (state.completedWorkouts || []).map(stamp);
+    if (keys.some((key, index) => keys.indexOf(key) !== index)) return [];
     const rows = (state.completedWorkouts || []).filter(row => {
       const time = Date.parse(row.date);
       const key = stamp(row);
@@ -117,7 +119,8 @@
       .flatMap(item => item.sessions.map(row => plan.id + '-w' + item.week + '-' + row.id)));
     const taperDates = (state.reviewedProgramme?.weeks || []).flatMap(item => item.sessions)
       .filter(row => taperIds.has(row.catalogueOccurrenceId)).map(row => row.scheduledDate);
-    if (!taperDates.length || taperDates.some(date => !date || date <= live.scheduledDate)) return null;
+    if (taperDates.length !== taperIds.size ||
+        taperDates.some(date => !date || date <= live.scheduledDate)) return null;
     const original = live.originalPrescription?.ex?.[index] || exercise;
     if (!positive(original[3]) || original[3] !== exercise[3] || original[4] !== exercise[4]) return null;
 
@@ -231,10 +234,12 @@
       return element;
     };
     if (accepted) {
+      const hasEntries = Object.keys(live.entries || {}).some(key => key.startsWith(index + '_'));
       status.textContent = accepted.date === localDay(now)
         ? 'Use the RPE cap and reduce the weight if needed.'
-        : 'This approval has expired. Use the original prescription before recording new sets.';
-      if (!Object.keys(live.entries || {}).some(key => key.startsWith(index + '_'))) {
+        : hasEntries ? 'This approval expired. Finish the workout with your saved sets.'
+        : 'This approval expired. Use the original prescription before recording new sets.';
+      if (!hasEntries) {
         button('Use original prescription', () => update(revert(live, index)));
       }
     } else {

@@ -44,6 +44,8 @@ for (const [name, alter] of [
   ['wrong day', f => { f.live.scheduledDate = '2027-01-01'; }],
   ['stale historical evidence', f => { f.state.completedWorkouts.forEach(row => { row.date = '2020-01-01T10:00:00Z'; }); }],
   ['missing taper dates', f => { f.state.reviewedProgramme.weeks = []; }],
+  ['one missing taper session', f => { f.state.reviewedProgramme.weeks.at(-1).sessions.pop(); }],
+  ['duplicate history record', f => { f.state.completedWorkouts.push(structuredClone(f.state.completedWorkouts[0])); }],
   ['interleaved taper before the peak', f => {
     f.state.reviewedProgramme.weeks.at(-1).sessions[0].scheduledDate = f.live.scheduledDate;
   }],
@@ -78,4 +80,12 @@ test('recorded sets prevent reverting an accepted prescription', () => {
   approved.entries[f.index + '_0'] = {weight: 147.5, reps: 1, rpe: 8.5, done: true};
   assert.throws(() => earned.revert(approved, f.index), /Recorded sets/);
   assert.equal(earned.localDay('2027-01-24T00:30:00Z'), '2027-01-24');
+});
+
+test('a reviewed approval expires on the following training date', () => {
+  const f = fixture();
+  const proposal = earned.assess(f.state, f.live, f.index, f.now);
+  const tomorrow = new Date(Date.parse(f.now) + 86400000).toISOString();
+  assert.throws(() => earned.approve(f.state, f.live, proposal, confirmed, tomorrow), /changed/);
+  assert.equal(f.live.ex[f.index][4], 8.5);
 });
