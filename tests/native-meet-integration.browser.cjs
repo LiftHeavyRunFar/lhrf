@@ -137,6 +137,68 @@ async function addRunningAfterMeet(browser, id, baseline) {
  } finally { await context.close(); }
 }
 
+
+async function verifyRaceLogging(browser) {
+ const {context,page,state,errors} = await setup(browser,'powerlifting-three-day',{includeRunning:false});
+ try {
+  await page.locator('nav [data-screen="plan"]').click();
+  await page.getByRole('button',{name:'Add running',exact:true}).click();
+  await page.locator('#native-catalogue-programme').selectOption('10k');
+  await page.locator('#native-catalogue-run-count').selectOption('2');
+  await page.getByLabel('First calendar week').fill('2026-11-16');
+  await page.getByRole('button',{name:'Preview programme',exact:true}).click();
+  await page.getByRole('button',{name:'Get my programme',exact:true}).click();
+  await page.locator('#catalogueSetupDialog').waitFor({state:'hidden'});
+  const before = await state();
+  const race = before.reviewedProgramme.weeks.flatMap(week=>week.sessions)
+   .find(session=>session.runs?.some(run=>run.steps?.some(step=>step.role==='race')));
+  assert.ok(race);
+  assert.equal(race.runs[0].role,'race');
+  assert.deepEqual(race.runs[0].steps.map(step=>[step.role,step.distanceKm]),
+   [['warm-up',1.5],['race',10],['cool-down',0.5]]);
+  await page.clock.setFixedTime(new Date(race.scheduledDate+'T09:00:00Z'));
+  await page.reload();
+  await page.locator('nav [data-screen="today"]').click();
+  for(const dot of await page.locator('#dayDots button').all()) {
+   if((await dot.getAttribute('aria-label')||'').toLowerCase().startsWith(race.day.toLowerCase())) {
+    await dot.click(); break;
+   }
+  }
+  await page.locator('.day-slide.is-current').getByRole('button',{name:'Preview workout '+race.name,exact:true}).click();
+  await page.locator('#previewStart').click();
+  await page.locator('#readinessModal[open]').waitFor();
+  await page.locator('#sleep').selectOption('1');
+  await page.locator('#energy').selectOption('1');
+  await page.locator('#soreness').selectOption('5');
+  await page.locator('#stress').selectOption('5');
+  await page.locator('#readinessContinue').click();
+  assert.match(await page.locator('#readinessSafety').innerText(),/Readiness is low/);
+  assert.equal(await page.getByRole('button',{name:'Accept adjustment',exact:true}).count(),0);
+  await page.locator('#readinessContinue').click();
+  await page.locator('#liveRunKm').fill('10');
+  await page.locator('#liveRunMinutes').fill('55');
+  await page.locator('#liveLogRun').click();
+  await page.locator('#liveFinish').click();
+  await page.locator('#finishAndSave').click();
+  if(await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
+  const after = await state();
+  assert.equal(after.runs.at(-1).type,'race');
+  assert.equal(after.runs.at(-1).km,10);
+  assert.equal(after.runs.at(-1).min,55);
+  assert.equal(after.runs.filter(run=>run.sessionId===race.id).length,1);
+  assert.deepEqual(after.runs.slice(0,-1),before.runs||[]);
+  assert.deepEqual(after.completedWorkouts.slice(0,-1),before.completedWorkouts);
+  assert.deepEqual(after.sets,before.sets);
+  assert.deepEqual(after.garminSync,before.garminSync);
+  assert.deepEqual(after.reviewedProgramme,before.reviewedProgramme);
+  assert.deepEqual(after.completedWorkouts.at(-1).prescription.runs[0].steps,race.runs[0].steps);
+  await page.reload();
+  assert.deepEqual(await state(),after);
+  assert.deepEqual(errors,[]);
+  console.log('PASS native race save/reload with existing strength history and reviewed programme preserved');
+ } finally { await context.close(); }
+}
+
 (async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox','--disable-dev-shm-usage']});try{for(const id of ['powerlifting-three-day','powerlifting-four-day']){
  const {context,page,state,logged,errors}=await setup(browser,id);try{
  const old=logged.customRoadmap.cataloguePlans.find(p=>p.snapshot.id===id),running=logged.customRoadmap.cataloguePlans.find(p=>p.snapshot.discipline==='running');assert.ok(old&&running);
@@ -177,4 +239,5 @@ async function addRunningAfterMeet(browser, id, baseline) {
  if(process.env.LHRF_OWNER_REPRO_ROOT) await addRunningAfterMeet(browser,id,path.resolve(process.env.LHRF_OWNER_REPRO_ROOT));
  await addRunningAfterMeet(browser,id);
  }
+ await verifyRaceLogging(browser);
  }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

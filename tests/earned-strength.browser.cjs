@@ -32,7 +32,8 @@ async function run() {
     browser = await chromium.launch({headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
       args: ['--no-sandbox', '--disable-dev-shm-usage']});
     for (const [id, kind] of [['powerlifting-three-day', 'peak'], ['powerlifting-four-day', 'peak'], ['general-strength', 'volume']]) {
-      const f = fixture(id, kind);
+      const f = fixture(id, kind, {futureRace: true});
+      f.state.garminSync = {connected: false, fictionalSentinel: 'retain-unlinked-state', lastActivityId: 'fictional-prior-activity'};
       const context = await browser.newContext({viewport: {width: 393, height: 852}, isMobile: true,
         hasTouch: true, timezoneId: 'Europe/London', serviceWorkers: 'allow'});
       try {
@@ -103,6 +104,18 @@ async function run() {
 
         // Exercise the original fallback, then explicitly approve once more.
         await panel().locator('summary').click();
+        await page.evaluate(key => {
+          const setItem = Storage.prototype.setItem;
+          Storage.prototype.setItem = function (name, value) {
+            if (this === localStorage && name === key) {
+              Storage.prototype.setItem = setItem;
+              throw new DOMException('Fictional reverse interruption', 'QuotaExceededError');
+            }
+            return setItem.call(this, name, value);
+          };
+        }, LIVE);
+        await panel().getByRole('button', {name: 'Use original prescription', exact: true}).click();
+        assert.deepEqual(await draft(), approved, 'failed reverse must retain the durable approval');
         await panel().getByRole('button', {name: 'Use original prescription', exact: true}).click();
         assert.deepEqual((await draft()).ex, before.ex);
         await panel().locator('summary').click();
@@ -133,11 +146,50 @@ async function run() {
         assert.deepEqual(after.customRoadmap, planBefore);
         assert.deepEqual(after.reviewedProgramme, reviewedBefore);
         assert.deepEqual(after.runs, baseline.runs);
+        assert.deepEqual(after.garminSync, baseline.garminSync);
         const saved = after.completedWorkouts.at(-1);
         assert.equal(saved.strengthProgressionDecisions.length, 1);
         assert.deepEqual(saved.originalPrescription.ex, before.ex);
         assert.equal(saved.prescription.ex[f.index][3], expectedWeight);
         assert.equal(await page.evaluate(key => localStorage.getItem(key), LIVE), null);
+        if (kind === 'peak') {
+          // Same fictional profile: a later native race save must retain the
+          // earned workout's original/adjusted audit and every earlier record.
+          await context.setOffline(false);
+          const race = after.reviewedProgramme.weeks.flatMap(week => week.sessions)
+            .find(session => session.runs?.some(run => run.role === 'race'));
+          assert.ok(race);
+          assert.ok(race.scheduledDate > f.live.scheduledDate);
+          await page.clock.setFixedTime(new Date(race.scheduledDate + 'T09:00:00Z'));
+          await page.reload();
+          await page.locator('nav [data-screen="today"]').click();
+          for (const dot of await page.locator('#dayDots button').all()) {
+            if ((await dot.getAttribute('aria-label') || '').toLowerCase().startsWith(race.day.toLowerCase())) {
+              await dot.click(); break;
+            }
+          }
+          await page.locator('.day-slide.is-current').getByRole('button', {name: 'Preview workout ' + race.name, exact: true}).click();
+          await page.locator('#previewStart').click();
+          if (await page.locator('#readinessModal[open]').count()) await page.locator('#readinessContinue').click();
+          await page.locator('#liveRunKm').fill('10');
+          await page.locator('#liveRunMinutes').fill('55');
+          await page.locator('#liveLogRun').click();
+          await page.locator('#liveFinish').click();
+          await page.locator('#finishAndSave').click();
+          if (await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
+          const raced = await stored();
+          assert.equal(raced.runs.at(-1).type, 'race');
+          assert.equal(raced.runs.filter(run => run.sessionId === race.id).length, 1);
+          assert.deepEqual(raced.runs.slice(0, -1), after.runs);
+          assert.deepEqual(raced.completedWorkouts.slice(0, -1), after.completedWorkouts);
+          assert.deepEqual(raced.sets, after.sets);
+          assert.deepEqual(raced.customRoadmap, after.customRoadmap);
+          assert.deepEqual(raced.reviewedProgramme, after.reviewedProgramme);
+          assert.deepEqual(raced.garminSync, after.garminSync);
+          await page.reload();
+          assert.deepEqual(await stored(), raced);
+          console.log('PASS', id, 'earned completion then race save/reload retains original/adjusted audit, earlier records, reviewed running/strength plans and Garmin sentinel.');
+        }
         assert.deepEqual(errors, []);
         console.log('PASS', id, kind, 'explicit approval, original fallback, interrupted save and retry, real worker offline reopen, completion audit and immutable programme/history.');
       } finally {

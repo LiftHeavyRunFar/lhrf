@@ -33,7 +33,7 @@ function completed(state, session, date, transform = ex => ex) {
   return row;
 }
 
-function fixture(id = 'powerlifting-four-day', kind = 'peak') {
+function fixture(id = 'powerlifting-four-day', kind = 'peak', {futureRace = false} = {}) {
   const base = programme(id);
   let target;
   if (kind === 'peak') {
@@ -45,7 +45,7 @@ function fixture(id = 'powerlifting-four-day', kind = 'peak') {
     target = base.result.weeks[0].sessions.find(row => row.ex.some(ex =>
       ex[5].exerciseId === 'competition-bench' && ex[1] === 3 && ex[2] === 5));
   }
-  const running = {id: 'fictional-running', start: base.plan.start,
+  const running = {id: 'fictional-running', start: futureRace ? training.addDays(base.plan.start, (target.week - 1) * 7) : base.plan.start,
     snapshot: catalogue.previewProgramme('10k-two-run', {recent10kSeconds: 3900})};
   base.result = native.buildProgramme([base.plan, running], null, {
     training, registry, gym, inventory: fullInventory(), equipment: [], now: base.plan.start + 'T09:00:00Z',

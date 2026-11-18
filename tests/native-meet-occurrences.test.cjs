@@ -20,3 +20,68 @@ for(const id of ['powerlifting-three-day','powerlifting-four-day']) for(const me
  assert.equal(all.find(s=>s.catalogueOccurrenceId==='old-w1-A').id,before.weeks.flatMap(w=>w.sessions).find(s=>s.catalogueOccurrenceId==='old-w1-A').id);
  for(const invalid of [restored.occurrences.slice(1),[...restored.occurrences,restored.occurrences[0]],restored.occurrences.map((o,i)=>i?o:{...o,status:'unknown'})])assert.throws(()=>N.buildProgramme(restored.plans,restored.previous,{...options,reviewedOccurrences:invalid}),/Reviewed sessions/);
 });
+
+{
+const assert = require('node:assert/strict');
+const test = require('node:test');
+const { buildProgramme } = require('../src/native-catalogue.js');
+const { previewProgramme } = require('../src/programme-catalogue.js');
+const training = require('../src/catalogue-training.js');
+const registry = require('../src/exercise-registry.js');
+
+const raceTemplates = [
+  ['10k-two-run', 12, 10, false],
+  ['10k-three-run', 12, 10, false],
+  ['half-marathon', 22.6, 21.1, false],
+  ['marathon-distance', 42.195, 42.195, false],
+  ['marathon-timed', 42.195, 42.195, false],
+  ['marathon-two-run', 42.195, 42.195, true],
+  ['marathon-two-run-16', 42.195, 42.195, true],
+];
+
+const options = {
+  training, registry, equipment: [], now: '2026-11-16T12:00:00Z',
+};
+const build = (plan, previous) => buildProgramme([plan], previous, options);
+
+for (const [id, targetKm, raceKm, markedEvent] of raceTemplates) {
+  test(id + ' labels its new race occurrence without changing its prescription', () => {
+    const snapshot = previewProgramme(id, { recent10kSeconds: 3300 });
+    const plan = { id, snapshot, start: '2026-11-16' };
+    const before = JSON.stringify(plan);
+    const generated = build(plan);
+    const sessions = generated.weeks.flatMap(week => week.sessions);
+    const race = sessions.find(session => session.catalogueOccurrenceId.endsWith('-race'));
+    const sourceWeek = snapshot.weeks.find(week => week.sessions.some(session => session.id === 'race'));
+    const source = sourceWeek.sessions.find(session => session.id === 'race');
+
+    assert.equal(race.runs[0].role, 'race');
+    assert.equal(race.runs[0].distanceKm, targetKm);
+    assert.equal(race.runs[0].steps.find(step => step.role === 'race').distanceKm, raceKm);
+    assert.equal(race.scheduledDate, training.addDays(plan.start, (sourceWeek.week - 1) * 7 + source.day));
+    assert.equal(race.eventType, markedEvent ? 'running' : undefined);
+    assert.equal(race.eventDate, markedEvent ? race.scheduledDate : undefined);
+    assert.equal(JSON.stringify(plan), before);
+
+    for (const session of sessions.filter(item => item !== race)) {
+      const expected = session.catalogueOccurrenceId.endsWith('-long') ? 'long-run'
+        : session.catalogueOccurrenceId.endsWith('-quality') ? 'quality-run' : 'easy-run';
+      assert.equal(session.runs[0].role, expected);
+    }
+  });
+}
+
+test('preserves a race occurrence already in a reviewed programme', () => {
+  const id = '10k-two-run';
+  const plan = { id, snapshot: previewProgramme(id), start: '2026-11-16' };
+  const previous = build(plan);
+  const race = previous.weeks.flatMap(week => week.sessions)
+    .find(session => session.catalogueOccurrenceId.endsWith('-race'));
+  race.runs[0].role = 'easy-run';
+  const before = JSON.stringify(previous);
+
+  assert.deepEqual(build(plan, previous), previous);
+  assert.equal(JSON.stringify(previous), before);
+});
+
+}
