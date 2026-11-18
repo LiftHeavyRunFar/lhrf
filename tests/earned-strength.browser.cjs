@@ -65,6 +65,8 @@ async function run() {
         await page.locator('#previewStart').click();
         if (await page.locator('#readinessModal[open]').count()) await page.locator('#readinessContinue').click();
         const panel = () => page.locator('[data-earned-strength="' + f.index + '"]');
+        const targetExercise = page.locator('.live-ex').nth(f.index);
+        if (!await targetExercise.evaluate(el => el.open)) await targetExercise.locator(':scope > summary').click();
         await panel().locator('summary').click();
         const accept = () => panel().getByRole('button', {name: 'Accept for this workout', exact: true});
         assert.equal(await accept().isEnabled(), false);

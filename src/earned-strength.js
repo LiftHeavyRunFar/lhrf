@@ -14,6 +14,14 @@
   const stamp = row => row.id + '|' + row.date + '|' + row.week;
   const positive = value => typeof value === 'number' && Number.isFinite(value) && value > 0;
 
+  function evidenceRecord(row) {
+    const {strengthProgressionDecisions, originalPrescription, prescription, ...record} = row;
+    return {...clone(record), prescription: {ex: (prescription?.ex || []).map(ex => {
+      const {earnedStrengthDecision, ...meta} = ex[5] || {};
+      return [...ex.slice(0, 5), clone(meta)];
+    }), runs: clone(prescription?.runs || [])}};
+  }
+
   function localDay(now) {
     return new Date(now).toLocaleDateString('en-CA', {timeZone: 'Europe/London'});
   }
@@ -154,7 +162,7 @@
     if (nextWeight > ceiling || (kind === 'peak-single' && !history.every(item =>
       item.working[0].weight > item.prescribed.find(ex => ex[2] === 1)[3]))) return null;
     const evidence = history.map(({row, sets, feedback}) => ({
-      record: stamp(row), date: row.date, originalRecord: clone(row), sets: clone(sets), feedback: clone(feedback),
+      record: stamp(row), date: row.date, originalRecord: evidenceRecord(row), sets: clone(sets), feedback: clone(feedback),
     }));
     const adjustedMeta = clone(meta);
     if (kind === 'peak-single') adjustedMeta.cue = String(adjustedMeta.cue || '')
