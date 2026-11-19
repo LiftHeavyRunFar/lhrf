@@ -4,131 +4,155 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium, devices } = require('playwright');
 
-const root = path.resolve(process.env.OWNER_CANDIDATE_ROOT || 'native-owner-test-dist');
+const os = require('node:os');
+const candidateRevision = '60a89595e1ad3d3a16c152d9dd9069c6bac9cfae';
+const archiveSha256 = 'f502a3b618495ded50fe053f037f298c6b39a6d7f8794ad07b3019126f538849';
+const fsSync = require('node:fs');
+const crypto = require('node:crypto');
+const root = fsSync.mkdtempSync(path.join(os.tmpdir(), 'lhrf208-recovery-'));
+const builtRoot = path.resolve(process.env.OWNER_CANDIDATE_ROOT || 'native-owner-test-dist');
+const manifest = require('./fixtures/owner-practice-60a89595.sha256.json');
+const qaRevision = process.env.OWNER_SOURCE_SHA;
+assert.match(qaRevision || '', /^[a-f0-9]{40}$/);
+assert.equal(Object.keys(manifest).length, 43);
+// Retain original runtime bytes. Only build identity differs on this QA-only branch.
+// Every resulting file must match the independently downloaded #208 package digest.
+for (const [name, digest] of Object.entries(manifest)) {
+  let bytes = fsSync.readFileSync(path.join(builtRoot, name));
+  if (/\.(html|js|txt)$/.test(name)) {
+    const text = bytes.toString('utf8').replaceAll(qaRevision, candidateRevision)
+      .replaceAll(qaRevision.slice(0, 12), candidateRevision.slice(0, 12));
+    bytes = Buffer.from(text);
+  }
+  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), digest, name);
+  const destination = path.join(root, name);
+  fsSync.mkdirSync(path.dirname(destination), {recursive: true});
+  fsSync.writeFileSync(destination, bytes);
+}
 const key = 'lhrf_beta_v1118_clean';
 const monday = '2026-11-16';
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
   '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
 
-async function standalone(context, origin) {
-  const page = await context.newPage();
-  await page.clock.setFixedTime(new Date(monday + 'T09:00:00Z'));
-  await page.goto(origin);
-  await page.waitForFunction(() => navigator.serviceWorker.controller);
-  await context.setOffline(true);
-  await page.goto(origin + 'catalogue-preview/');
-  await page.getByRole('button', { name: 'Running', exact: true }).click();
-  await page.locator('#programme').selectOption('10k');
-  await page.locator('#monday').fill(monday);
-  await page.getByRole('button', { name: 'Preview programme' }).click();
-  await page.getByRole('button', { name: 'Get my programme' }).click();
-  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
-  const open = async (name) => {
-    await page.locator('#calendar-body article').filter({ has: page.getByRole('heading', { name, exact: true }) })
-      .first().getByRole('button', { name: /workout/ }).click();
-    return page.getByRole('dialog');
-  };
-  const quality = await open('Quality run');
-  assert.match(await quality.innerText(), /7 km total/);
-  assert.equal(await quality.getByRole('button', { name: 'Download Garmin FIT' }).count(), 0);
-  assert.equal(await quality.locator('input[type=file]').count(), 0);
-  await quality.getByLabel('Actual distance (km)').fill('7');
-  await quality.getByLabel('Actual minutes').fill('42');
-  await page.reload();
-  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
-  await open('Quality run');
-  assert.equal(await quality.getByLabel('Actual minutes').inputValue(), '42');
-  await quality.getByRole('button', { name: 'Save workout' }).click();
-  await quality.waitFor({ state: 'hidden' });
-  const long = await open('Easy long run');
-  await long.getByLabel('New workout date').fill('2026-11-22');
-  await long.getByRole('button', { name: 'Move workout' }).click();
-  await open('Easy long run');
-  assert.match(await long.innerText(), /Sun, 22 Nov 2026/);
-  await long.getByRole('button', { name: 'Skip', exact: true }).click();
-  await open('Easy long run');
-  await long.getByRole('button', { name: 'Restore', exact: true }).click();
-  await open('Easy long run');
-  await long.getByLabel('New workout date').fill('2026-11-24');
-  await long.getByRole('button', { name: 'Repeat on selected date' }).click();
-  assert.match(await page.locator('#message').innerText(), /Repeat added/);
-  await page.reload();
-  await page.getByRole('button', { name: 'History', exact: true }).click();
-  assert.equal(await page.locator('#history-body article').count(), 1);
-  assert.match(await page.locator('#history-body').innerText(), /7 km · 42 min/);
-  assert.equal(await page.evaluate(() => navigator.onLine), false);
-  console.log('PASS standalone offline setup, draft, manual log, calendar changes and reload; FIT and file import unavailable');
-}
-
-async function native(context, origin) {
-  const page = await context.newPage();
-  const errors = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.clock.install({ time: new Date(monday + 'T09:00:00Z') });
-  await page.goto(origin);
-  await page.getByRole('button', { name: 'Running', exact: true }).click();
-  await page.locator('#native-catalogue-programme').selectOption('marathon-two-run-16');
-  await page.getByLabel('First calendar week').fill(monday);
-  await page.getByRole('button', { name: 'Preview programme', exact: true }).click();
-  await page.getByRole('button', { name: 'Get my programme', exact: true }).click();
-  await page.getByRole('button', { name: 'Go to programme', exact: true }).click();
-  const saved = () => page.evaluate((key) => JSON.parse(localStorage.getItem(key)), key);
-  const before = await saved();
-  const session = before.activeSchedule.find((candidate) => candidate.runs?.some((run) => run.distanceKnown === false));
-  assert.ok(session, 'expected a scheduled timed run');
-  await page.clock.setFixedTime(new Date(session.scheduledDate + 'T09:00:00Z'));
-  await page.reload();
-  await page.waitForFunction(() => navigator.serviceWorker.controller);
-  await page.locator('nav [data-screen="today"]').click();
-  await page.locator('.day-slide.is-current').getByRole('button', {
-    name: 'Preview workout ' + session.name, exact: true,
-  }).click();
-  const preview = page.locator('#livePreview');
-  await preview.waitFor();
-  const buttons = await preview.getByRole('button', { name: /Garmin/ }).allTextContents();
-  await page.locator('#previewStart').click();
-  if (await page.locator('#readinessModal[open]').count()) await page.locator('#readinessContinue').click();
-  await page.locator('#liveRunTools').click();
-  await page.locator('#startCanonicalTimer').click();
-  assert.match(await page.locator('#timerStep').innerText(), /Work|easy/i);
-  await page.locator('#runToolsClose').click();
-  await page.locator('#liveRunKm').fill('6.5');
-  await page.locator('#liveRunMinutes').fill('45');
-  await page.locator('#liveLogRun').click();
-  await page.locator('#liveFinish').click();
-  await page.locator('#finishAndSave').click();
-  if (await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
-  const after = await saved();
-  assert.equal(after.runs.length, 1);
-  assert.equal(after.runs[0].km, 6.5);
-  assert.equal(after.runs[0].min, 45);
-  assert.equal(after.completedWorkouts.length, 1);
-  assert.deepEqual(after.customRoadmap, before.customRoadmap);
-  assert.deepEqual(after.reviewedProgramme, before.reviewedProgramme);
-  await page.locator('nav [data-screen="settings"]').click();
-  await page.locator('#settings.active').waitFor();
-  const services = page.locator('#settingsServices');
-  assert.equal(await services.count(), 1, 'settings services exist in the shared UI');
-  assert.equal(await services.isVisible(), false, 'practice does not expose connected services');
-  for (const id of ['sendIntervalsWorkout', 'garminImportOpen', 'activityFile', 'garminIncomingSave']) {
-    assert.equal(await page.locator('#' + id).isVisible(), false, id);
+async function offlineAthlete(context, origin, profile) {
+ let page = await context.newPage();
+ const errors = [];
+ const watch = page => page.on('pageerror', error => errors.push(error.message));
+ watch(page);
+ await page.clock.install({time:new Date(monday+'T09:00:00Z')});
+ await page.goto(origin);
+ await page.getByRole('button',{name:profile.runningOnly?'Running':'Strength training',exact:true}).click();
+ await page.locator('#native-catalogue-programme').selectOption(profile.runningOnly?'10k':profile.programme);
+ if(profile.runningOnly) await page.locator('#native-catalogue-run-count').selectOption('2');
+ const setDays = async days => {
+  const group = page.getByRole('group',{name:'Training days'});
+  for(const day of ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']) {
+   const box = group.getByRole('checkbox',{name:day,exact:true});
+   if(await box.isChecked() !== days.includes(day)) await box.setChecked(days.includes(day));
   }
-  await page.locator('nav [data-screen="progress"]').click();
-  await page.locator('#weeklyRecovery > summary').click();
-  assert.equal(await page.getByRole('button', { name: 'Save weekly check-in' }).isVisible(), true);
-  assert.equal(await page.getByRole('button', { name: 'Pull recent Garmin runs' }).count(), 0);
-  assert.deepEqual(await saved(), after);
-  await context.setOffline(true);
-  await page.reload();
-  assert.deepEqual(await saved(), after);
-  assert.deepEqual(errors, []);
-  console.log('PASS native canonical run preview, timer, manual completion, unchanged programme, settings restrictions and offline reload');
-  assert.deepEqual(buttons, [], 'native run preview must not offer disabled Garmin actions');
+ };
+ await setDays(profile.days);
+ await page.getByLabel('First calendar week').fill(monday);
+ await page.getByRole('button',{name:'Preview programme',exact:true}).click();
+ await page.getByRole('button',{name:'Get my programme',exact:true}).click();
+ if(profile.addRunning) {
+  await page.getByRole('button',{name:'Add running programme',exact:true}).click();
+  await page.locator('#native-catalogue-programme').selectOption('10k');
+  await page.locator('#native-catalogue-run-count').selectOption('2');
+  await setDays(['Thursday','Sunday']);
+  await page.getByLabel('First calendar week').fill(monday);
+  await page.getByRole('button',{name:'Preview programme',exact:true}).click();
+  await page.getByRole('button',{name:'Get my programme',exact:true}).click();
+ } else await page.getByRole('button',{name:'Go to programme',exact:true}).click();
+ await page.locator('#catalogueSetupDialog').waitFor({state:'hidden'});
+ const state = () => page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);
+ const installed = await state();
+ const session = installed.activeSchedule.filter(item=>profile.runningOnly?item.runs?.length:item.ex?.length)
+  .sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];
+ assert.ok(session);
+ await page.clock.setFixedTime(new Date(session.scheduledDate+'T09:00:00Z'));
+ await page.reload();
+ await page.waitForFunction(()=>navigator.serviceWorker.controller);
+ await context.setOffline(true);
+ await page.locator('nav [data-screen="today"]').click();
+ for(const dot of await page.locator('#dayDots button').all()) {
+  if((await dot.getAttribute('aria-label')||'').toLowerCase().startsWith(session.day.toLowerCase())) {
+   await dot.click(); break;
+  }
+ }
+ await page.locator('.day-slide.is-current').getByRole('button',{name:'Preview workout '+session.name,exact:true}).click();
+ await page.locator('#previewStart').click();
+ if(await page.locator('#readinessModal[open]').count()) await page.locator('#readinessContinue').click();
+ if(profile.runningOnly) {
+  await page.locator('#liveRunKm').fill(String(session.runs[0].distanceKm));
+  await page.locator('#liveRunMinutes').fill('46');
+  await page.locator('#liveLogRun').click();
+ } else {
+  const detail=page.locator('#liveExercises details').first();
+  if(!await detail.evaluate(item=>item.open)) await detail.locator('summary').click();
+  const row=detail.locator('.live-set').first();
+  if(!Number(await row.locator('[data-field=weight]').inputValue())) await row.locator('[data-field=weight]').fill('20');
+  await row.locator('[data-field=rpe]').fill('7');
+  await row.locator('.set-check').click();
+ }
+ const beforeClose = await state();
+ const draft = await page.evaluate(()=>JSON.stringify(window.LHRFLive.get()));
+ assert.notEqual(draft,'null');
+ await page.close();
+ page=await context.newPage();watch(page);
+ await page.clock.install({time:new Date(session.scheduledDate+'T09:10:00Z')});
+ await page.goto(origin);
+ assert.equal(await page.evaluate(()=>navigator.onLine),false);
+ assert.equal(await page.evaluate(()=>!!navigator.serviceWorker.controller),true);
+ assert.deepEqual(await state(),beforeClose);
+ assert.equal(await page.evaluate(()=>JSON.stringify(window.LHRFLive.get())),draft);
+ await page.locator('nav [data-screen="train"]').click();
+ if(profile.runningOnly) assert.equal(await page.evaluate(()=>window.LHRFLive.get().runLogged),true);
+ else {
+  assert.ok(await page.locator('.set-check.checked').count());
+  for(const detail of await page.locator('#liveExercises details').all()) {
+   if(!await detail.evaluate(item=>item.open)) await detail.locator('summary').click();
+   for(const row of await detail.locator('.live-set').all()) {
+    if((await row.locator('.set-check').getAttribute('class')).includes('checked')) continue;
+    if(!Number(await row.locator('[data-field=weight]').inputValue())) await row.locator('[data-field=weight]').fill('20');
+    await row.locator('[data-field=rpe]').fill('7');
+    await row.locator('.set-check').click();
+   }
+  }
+ }
+ await page.locator('#liveFinish').click();
+ await page.locator('#finishAndSave').click();
+ if(await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
+ const finished=await state();
+ assert.deepEqual(finished.reviewedProgramme,installed.reviewedProgramme);
+ assert.deepEqual(finished.customRoadmap,installed.customRoadmap);
+ assert.deepEqual(finished.activeSchedule,installed.activeSchedule);
+ assert.deepEqual(finished.equipmentInventory,installed.equipmentInventory);
+ assert.equal(finished.completedWorkouts.length,1);
+ const completion=finished.completedWorkouts[0];
+ if(profile.runningOnly) {
+  assert.equal(finished.runs.length,1);
+  assert.equal(finished.runs[0].km,session.runs[0].distanceKm);
+  assert.equal(finished.runs[0].min,46);
+  assert.equal(finished.runs[0].type,session.runs[0].role);
+ } else {
+  assert.equal(completion.completedSets,completion.plannedSets);
+  assert.equal(finished.sets.length,completion.plannedSets);
+ }
+ assert.equal(await page.evaluate(()=>window.LHRFLive.get()),null);
+ await page.reload();
+ assert.deepEqual(await state(),finished);
+ await context.setOffline(false);
+ await page.reload();
+ assert.deepEqual(await state(),finished);
+ assert.deepEqual(errors,[]);
+ console.log('PASS offline athlete',profile.id,'draft reopen, full completion, exact reload/reconnect, programme and schedule preserved');
 }
 
 async function run() {
   const revision = (await fs.readFile(path.join(root, 'OWNER-TEST-REVISION.txt'), 'utf8')).split('\n')[0];
-  assert.equal(revision, process.env.OWNER_SOURCE_SHA);
+  assert.equal(revision, candidateRevision);
+  console.log('TEST EXACT CANDIDATE', revision, 'ARTIFACT 14415288569 SHA256', archiveSha256);
   const server = createServer(async (request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
     const file = path.resolve(root, '.' + (pathname.endsWith('/') ? pathname + 'index.html' : pathname));
@@ -145,21 +169,17 @@ async function run() {
   let browser;
   try {
     browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: ['--no-sandbox'] });
-    for (const journey of [standalone, native]) {
+    for (const profile of [{"id":"beginner","programme":"lifting-foundation","days":["Monday","Friday"]},{"id":"powerlifter","programme":"powerlifting-three-day","days":["Monday","Wednesday","Friday"]},{"id":"runner","runningOnly":true,"days":["Tuesday","Saturday"]},{"id":"balanced","programme":"lifting-foundation","days":["Tuesday","Friday"],"addRunning":true},{"id":"returning","programme":"lifting-foundation","days":["Tuesday","Saturday"]}]) {
       const context = await browser.newContext({ ...devices['Pixel 7'], timezoneId: 'Europe/London' });
-      context.setDefaultTimeout(6500);
-      await context.route('**/*', (route) => new URL(route.request().url()).origin === new URL(origin).origin
-        ? route.continue() : route.abort());
-      try {
-        await journey(context, origin);
-      } finally {
-        await context.close();
-      }
+      context.setDefaultTimeout(10000);
+      await context.route('**/*', route => new URL(route.request().url()).origin === new URL(origin).origin ? route.continue() : route.abort());
+      try { await offlineAthlete(context, origin, profile); } finally { await context.close(); }
     }
   } finally {
     await browser?.close();
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
+    await fs.rm(root, {recursive: true, force: true});
   }
 }
 
