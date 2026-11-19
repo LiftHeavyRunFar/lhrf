@@ -21,7 +21,8 @@ for (const [name, digest] of Object.entries(manifest)) {
   let bytes = fsSync.readFileSync(path.join(builtRoot, name));
   if (/\.(html|js|txt)$/.test(name)) {
     const text = bytes.toString('utf8').replaceAll(qaRevision, candidateRevision)
-      .replaceAll(qaRevision.slice(0, 12), candidateRevision.slice(0, 12));
+      .replaceAll(qaRevision.slice(0, 12), candidateRevision.slice(0, 12))
+      .replaceAll(qaRevision.slice(0, 8), candidateRevision.slice(0, 8));
     bytes = Buffer.from(text);
   }
   assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), digest, name);
