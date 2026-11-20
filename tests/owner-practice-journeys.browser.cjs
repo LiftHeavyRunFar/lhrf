@@ -148,6 +148,74 @@ async function offlineAthlete(context, origin, profile) {
  assert.deepEqual(await state(),finished);
  assert.deepEqual(errors,[]);
  console.log('PASS offline athlete',profile.id,'draft reopen, full completion, exact reload/reconnect, programme and schedule preserved');
+ if(profile.addRunning) await offlineRunAfterStrength(context, origin, page, finished, errors);
+}
+
+
+async function offlineRunAfterStrength(context, origin, page, strengthState, errors) {
+ const runSession = strengthState.activeSchedule.filter(session=>session.runs?.length)
+  .sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];
+ assert.ok(runSession, 'balanced athlete retains a scheduled run');
+ assert.ok(strengthState.sets.length > 0, 'strength records exist before the run');
+ const read = () => page.evaluate(key=>JSON.parse(localStorage.getItem(key)), key);
+ await page.clock.setFixedTime(new Date(runSession.scheduledDate+'T09:00:00Z'));
+ await context.setOffline(true);
+ await page.reload();
+ assert.equal(await page.evaluate(()=>navigator.onLine), false);
+ await page.locator('nav [data-screen="today"]').click();
+ for(const dot of await page.locator('#dayDots button').all()) {
+  if((await dot.getAttribute('aria-label')||'').toLowerCase().startsWith(runSession.day.toLowerCase())) {
+   await dot.click(); break;
+  }
+ }
+ await page.locator('.day-slide.is-current').getByRole('button', {
+  name:'Preview workout '+runSession.name, exact:true,
+ }).click();
+ await page.locator('#previewStart').click();
+ if(await page.locator('#readinessModal[open]').count()) await page.locator('#readinessContinue').click();
+ await page.locator('#liveRunKm').fill(String(runSession.runs[0].distanceKm));
+ await page.locator('#liveRunMinutes').fill('46');
+ await page.locator('#liveLogRun').click();
+ const pendingState = await read();
+ const pendingDraft = await page.evaluate(()=>JSON.stringify(window.LHRFLive.get()));
+ assert.equal(await page.evaluate(()=>window.LHRFLive.get().runLogged), true);
+ await page.close();
+ page = await context.newPage();
+ page.on('pageerror', error=>errors.push(error.message));
+ await page.clock.install({time:new Date(runSession.scheduledDate+'T09:10:00Z')});
+ await page.goto(origin);
+ assert.equal(await page.evaluate(()=>navigator.onLine), false);
+ assert.equal(await page.evaluate(()=>!!navigator.serviceWorker.controller), true);
+ assert.deepEqual(await read(), pendingState);
+ assert.equal(await page.evaluate(()=>JSON.stringify(window.LHRFLive.get())), pendingDraft);
+ await page.locator('nav [data-screen="train"]').click();
+ await page.locator('#liveFinish').click();
+ await page.locator('#finishAndSave').click();
+ if(await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
+ const completed = await read();
+ assert.deepEqual(completed.completedWorkouts.slice(0,-1), strengthState.completedWorkouts);
+ assert.equal(completed.completedWorkouts.length, strengthState.completedWorkouts.length+1);
+ assert.deepEqual(completed.sets, strengthState.sets);
+ assert.deepEqual(completed.runs.slice(0,-1), strengthState.runs || []);
+ assert.equal(completed.runs.length, (strengthState.runs || []).length+1);
+ const run = completed.runs.at(-1);
+ assert.equal(run.sessionId, runSession.id);
+ assert.equal(run.km, runSession.runs[0].distanceKm);
+ assert.equal(run.min, 46);
+ assert.equal(run.type, runSession.runs[0].role);
+ assert.equal(completed.completedWorkouts.filter(item=>item.id===runSession.id).length, 1);
+ assert.deepEqual(completed.reviewedProgramme, strengthState.reviewedProgramme);
+ assert.deepEqual(completed.customRoadmap, strengthState.customRoadmap);
+ assert.deepEqual(completed.activeSchedule, strengthState.activeSchedule);
+ assert.deepEqual(completed.equipmentInventory, strengthState.equipmentInventory);
+ assert.equal(await page.evaluate(()=>window.LHRFLive.get()), null);
+ await page.reload();
+ assert.deepEqual(await read(), completed);
+ await context.setOffline(false);
+ await page.reload();
+ assert.deepEqual(await read(), completed);
+ assert.deepEqual(errors, []);
+ console.log('PASS balanced second-discipline run offline draft reopen/completion/reconnect preserves exact earlier strength records and both plans');
 }
 
 async function run() {
