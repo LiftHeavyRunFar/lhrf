@@ -485,7 +485,7 @@ function renderPlanDashboard(){
  const strengthCount=sessionsThisWeek.filter(s=>(s.ex||[]).length).length;
  const runCount=sessionsThisWeek.filter(s=>(s.runs||[]).length||s.run).length;
  const goalLabel=({Squat:'Squat',Bench:'Bench',Deadlift:'Deadlift',Running:'Running'})[c.priority]||c.priority||'Balanced';
- $('planDashProgramme').innerHTML='<div class="row" style="justify-content:space-between;align-items:center;gap:8px"><div><b>'+(data.customRoadmap?'Active programme':'Programme preview')+'</b><div class="muted small" style="margin-top:5px">'+goalLabel+' priority · '+strengthCount+' strength sessions · '+runCount+' running sessions / week</div></div><span class="tag">'+(data.customRoadmap?'ACTIVE':'PREVIEW')+'</span></div>'+(data.customRoadmap?'':'<div class="muted small" style="margin-top:9px">This plan has not been activated. Open settings to review and activate it.</div>');
+ $('planDashProgramme').innerHTML='<div class="row" style="justify-content:space-between;align-items:center;gap:8px"><div><b>'+(data.customRoadmap?'Active programme':'Programme preview')+'</b><div class="muted small" style="margin-top:5px">'+(savedCatalogue?'Structured programme':goalLabel+' priority')+' · '+strengthCount+' strength sessions · '+runCount+' running sessions / week</div></div><span class="tag">'+(data.customRoadmap?'ACTIVE':'PREVIEW')+'</span></div>'+(data.customRoadmap?'':'<div class="muted small" style="margin-top:9px">This plan has not been activated. Open settings to review and activate it.</div>');
  // Use actual generated sessions rather than an illustrative shape. This is a planning projection,
  // not completed tonnage; intensity is calculated from load / exercise-specific estimated 1RM.
  const metrics=[];
