@@ -48,6 +48,7 @@ async function setup(browser,id,{includeRunning=true,sourceRoot=root}={}){
   assert.doesNotMatch(await page.locator('#currentProgrammeReview').innerText(),/Bench priority/);
   assert.deepEqual(await state(),unchanged,'read-only labels must preserve all saved state');
   console.log('PASS truthful catalogue labels and read-only review',id);
+  await page.locator('nav [data-screen="today"]').click();
  }
  const first=installed.activeSchedule.filter(s=>s.ex?.length).sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];assert.ok(first);
  await page.clock.setFixedTime(new Date(first.scheduledDate+'T09:00:00Z'));await page.reload();
