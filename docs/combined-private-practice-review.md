@@ -1,5 +1,22 @@
 # Combined private-practice candidate
 
+## Approved separate owner-only recovery test · 21 November 2026
+
+Mark approved package `85d267c334e6ec7b5f6fac49747bd60316d7a0f9` for a separate owner-only fictional-data test copy in this conversation (“Approve. Go”). This consumes that limited publication approval; it does not approve replacing the installed practice site, real-data use, migration, recruitment, merge or release.
+
+- Separate test URL: https://lhrf-recovery-85d267c3-20261121.mark-persson6.chatgpt.site
+- Sites project `appgprj_6b0186bb70888191852bd17fc3221481`, version 1 / `appgprj_6b0186bb70888191852bd17fc3221481~appgver_5cf217661f948191ac82d052e44651a1`.
+- Deployment `appgdep_6b0186f7677881919447cdcd7a149c7c` reported **succeeded**, 21 November 2026 11:56:52 UTC. Pushed hosting source `3794aae737ffc89c3b77903985ae1ca5d04b3d2c` contains the approved artifact runtime unchanged plus its hosting manifest.
+- The deployment archive contains all 44 runtime files byte-identical to the approved package manifest; the original artifact ZIP digest remains `b651d4e29c96c37312bf36f10d0b2c8f98cf7394fc1312d31a02ad6b0adc9465`.
+- Access readback: custom owner-only policy, one owner, no external visitors, groups or editors. The existing installed practice project `appgprj_6af977c3c0f08191a187fd8c40326bc7` still reports version 4 and its original URL; no update was made there.
+- Hosted browser UI acceptance is **blocked by authentication**: navigation reached OpenAI’s “Enter your password” page. No credentials were entered, new legal terms accepted or access policy weakened. This supplies no app-UI or physical acceptance pass.
+
+### Exact remaining device and human handoff
+
+Use only the separate URL and fictional records; do not import history or real athlete settings. On physical Android, cache/open the separate copy online, record unfinished strength work, then exercise offline app/process termination and reopen; repeat for a logged run awaiting completion. Verify all entered values and unfinished work, complete once, reconnect, and check exactly one completion survives another reopen. Record Android/browser versions, installed versus browser context, build marker, termination method and exact observed IDs/values. A normal tab reload is not an abrupt-termination pass. Physical power loss, device storage loss, downgrade and restore remain separately untested. The prior completed Pixel retest on 13106284 stays closed.
+
+Qualified human coaching sign-off on the existing candidate-aligned packet remains pending. This recovery replacement changes no prescriptions. #204's already-loaded legacy-writer limitation and every capture/receipt/unresolved-edit migration blocker remain open. No replacement of the current installed practice site or real-use/release approval is implied.
+
 ## Durable checkpoint repair · verified isolated draft
 
 Fixed implementation and package revision `85d267c334e6ec7b5f6fac49747bd60316d7a0f9`, build `1.40.6-owner-85d267c334e6`. [Focused run 44891277997](https://github.com/LiftHeavyRunFar/lhrf/actions/runs/44891277997) passed both jobs with zero skipped steps. [Artifact 14702265911](https://github.com/LiftHeavyRunFar/lhrf/actions/runs/44891277997/artifacts/14702265911) was downloaded independently. ZIP SHA-256 `b651d4e29c96c37312bf36f10d0b2c8f98cf7394fc1312d31a02ad6b0adc9465`, 45 archive entries comprising 44 runtime files and their manifest. CRC, exact revision and every runtime digest matched. It expires 28 November.
