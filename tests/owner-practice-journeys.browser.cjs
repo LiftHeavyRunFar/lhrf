@@ -35,7 +35,7 @@ const monday = '2026-11-16';
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
   '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
 
-async function offlineAthlete(context, origin, profile) {
+async function offlineAthlete(context, origin, profile, restartBrowser = null) {
  let page = await context.newPage();
  const errors = [];
  const watch = page => page.on('pageerror', error => errors.push(error.message));
@@ -99,7 +99,10 @@ async function offlineAthlete(context, origin, profile) {
  const beforeClose = await state();
  const draft = await page.evaluate(()=>JSON.stringify(window.LHRFLive.get()));
  assert.notEqual(draft,'null');
- await page.close();
+ if (restartBrowser) {
+  await context.close();
+  context = await restartBrowser();
+ } else await page.close();
  page=await context.newPage();watch(page);
  await page.clock.install({time:new Date(session.scheduledDate+'T09:10:00Z')});
  await page.goto(origin);
@@ -243,6 +246,33 @@ async function run() {
       context.setDefaultTimeout(10000);
       await context.route('**/*', route => new URL(route.request().url()).origin === new URL(origin).origin ? route.continue() : route.abort());
       try { await offlineAthlete(context, origin, profile); } finally { await context.close(); }
+
+    }
+    const persistentDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'lhrf208-browser-restart-'));
+    let activeContext;
+    let launches = 0;
+    const launchPersistent = async (offline) => {
+      activeContext = await chromium.launchPersistentContext(persistentDirectory, {
+        ...devices['Pixel 7'], timezoneId: 'Europe/London',
+        executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
+        args: ['--no-sandbox'],
+      });
+      launches += 1;
+      activeContext.setDefaultTimeout(10000);
+      await activeContext.route('**/*', route => new URL(route.request().url()).origin === new URL(origin).origin
+        ? route.continue() : route.abort());
+      await activeContext.setOffline(offline);
+      return activeContext;
+    };
+    try {
+      const profile = {id:'balanced-browser-restart', programme:'lifting-foundation',
+        days:['Tuesday','Friday'], addRunning:true};
+      await offlineAthlete(await launchPersistent(false), origin, profile, () => launchPersistent(true));
+      assert.equal(launches, 2, 'exercise two distinct persistent-browser launches');
+      console.log('PASS full persistent Chromium shutdown/relaunch offline, exact draft recovery and both-discipline completion');
+    } finally {
+      await activeContext?.close();
+      await fs.rm(persistentDirectory, {recursive:true, force:true});
     }
   } finally {
     await browser?.close();
