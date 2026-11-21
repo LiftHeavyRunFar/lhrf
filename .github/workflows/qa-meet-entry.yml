@@ -13,6 +13,11 @@ on:
       - 'tests/owner-practice-upgrade.browser.cjs'
       - 'tests/owner-practice-journeys.browser.cjs'
       - 'src/mobile-ux.js'
+      - 'src/training-start-review.js'
+      - 'src/durable-checkpoint.js'
+      - 'scripts/build-durable-owner-candidate.cjs'
+      - 'tests/training-start*'
+      - 'tests/fixtures/personal-use-reviewed.sha256.json'
       - 'tests/catalogue-workload.test.cjs'
       - 'src/earned-strength.js'
       - 'tests/earned-strength*'
@@ -34,7 +39,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --test tests/meet-entry.test.cjs tests/programme-catalogue.test.cjs tests/catalogue-training.test.cjs tests/native-meet-occurrences.test.cjs
-      - run: node --test tests/earned-strength.test.cjs tests/catalogue-workload.test.cjs
+      - run: node --test tests/earned-strength.test.cjs tests/catalogue-workload.test.cjs tests/training-start-review.test.cjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - name: Select browser
         run: |
@@ -47,6 +52,7 @@ jobs:
       - run: node tests/native-meet-integration.browser.cjs
         env:
           LHRF_OWNER_REPRO_ROOT: owner-practice-repro
+      - run: node tests/training-start-review.browser.cjs
       - run: node tests/earned-strength.browser.cjs
 
   owner-practice-package:
@@ -138,6 +144,7 @@ jobs:
       - run: node previous-owner-source/tests/owner-offline-isolation.browser.cjs
       - run: node tests/owner-practice-upgrade.browser.cjs
       - run: node tests/owner-practice-journeys.browser.cjs
+      - run: node tests/training-start-review.browser.cjs
       - run: node tests/earned-strength.browser.cjs
       - name: Retain the tested owner package for review
         uses: actions/upload-artifact@v4
