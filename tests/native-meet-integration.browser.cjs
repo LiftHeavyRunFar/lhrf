@@ -31,6 +31,25 @@ async function setup(browser,id,{includeRunning=true,sourceRoot=root}={}){
    assert.equal(await page.locator(selector).isVisible(),false,selector);
  }
  const state=()=>page.evaluate(k=>JSON.parse(localStorage.getItem(k)),DATA),installed=await state();assert.equal(installed.customRoadmap.cataloguePlans.length,includeRunning?2:1);
+ if(sourceRoot===root){
+  const unchanged=await state();
+  const caption=unchanged.activeSchedule.filter(s=>s.ex?.length).length+' strength sessions · '+unchanged.activeSchedule.filter(s=>s.runs?.length||s.run).length+' running sessions / week';
+  const title=unchanged.customRoadmap.cataloguePlans.map(p=>p.snapshot.title).join(' + ');
+  await page.locator('nav [data-screen="plan"]').click();
+  assert.equal(await page.locator('#planDashTitle').innerText(),title);
+  assert.ok((await page.locator('#planDashProgramme').innerText()).includes('Structured programme · '+caption));
+  assert.doesNotMatch(await page.locator('#planDashProgramme').innerText(),/Bench priority/);
+  await page.locator('nav [data-screen="settings"]').click();
+  const settings=page.locator('#settingsProgramme');
+  if(!await settings.evaluate(e=>e.open))await settings.locator(':scope > summary').click();
+  await page.locator('#reviewCurrentProgramme').click();
+  assert.ok((await page.locator('#currentProgrammeReview').innerText()).includes(title));
+  assert.ok((await page.locator('#currentProgrammeReview').innerText()).includes(caption));
+  assert.doesNotMatch(await page.locator('#currentProgrammeReview').innerText(),/Bench priority/);
+  assert.deepEqual(await state(),unchanged,'read-only labels must preserve all saved state');
+  console.log('PASS truthful catalogue labels and read-only review',id);
+  await page.locator('nav [data-screen="today"]').click();
+ }
  const first=installed.activeSchedule.filter(s=>s.ex?.length).sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];assert.ok(first);
  await page.clock.setFixedTime(new Date(first.scheduledDate+'T09:00:00Z'));await page.reload();
  for(const dot of await page.locator('#dayDots button').all())if((await dot.getAttribute('aria-label')||'').toLowerCase().startsWith(first.day.toLowerCase())){await dot.click();break}
@@ -239,5 +258,6 @@ async function verifyRaceLogging(browser) {
  if(process.env.LHRF_OWNER_REPRO_ROOT) await addRunningAfterMeet(browser,id,path.resolve(process.env.LHRF_OWNER_REPRO_ROOT));
  await addRunningAfterMeet(browser,id);
  }
+ const general=await setup(browser,'general-strength');await general.context.close();
  await verifyRaceLogging(browser);
  }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
