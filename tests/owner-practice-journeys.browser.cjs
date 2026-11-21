@@ -35,13 +35,21 @@ const monday = '2026-11-16';
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
   '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
 
+async function checkpointReady(page) {
+ await page.waitForFunction(() => window.LHRFDurableCheckpoint?.initialised ||
+  ['failed','conflict'].includes(window.LHRFDurableCheckpoint?.state));
+ const state = await page.evaluate(() => window.LHRFDurableCheckpoint.state);
+ assert.ok(!['failed','conflict'].includes(state), 'checkpoint startup: ' + await page.locator('#durableCheckpointStatus').innerText());
+ await page.evaluate(() => window.LHRFDurableCheckpoint.whenSaved());
+}
+
 async function offlineAthlete(context, origin, profile, restartBrowser = null, abrupt = false) {
  let page = await context.newPage();
  const errors = [];
  const watch = page => page.on('pageerror', error => errors.push(error.message));
  watch(page);
  await page.clock.install({time:new Date(monday+'T09:00:00Z')});
- await page.goto(origin);
+ await page.goto(origin); await checkpointReady(page);
  await page.getByRole('button',{name:profile.runningOnly?'Running':'Strength training',exact:true}).click();
  await page.locator('#native-catalogue-programme').selectOption(profile.runningOnly?'10k':profile.programme);
  if(profile.runningOnly) await page.locator('#native-catalogue-run-count').selectOption('2');
@@ -71,20 +79,20 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null, a
  const session = installed.activeSchedule.filter(item=>profile.runningOnly?item.runs?.length:item.ex?.length)
   .sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];
  assert.ok(session);
- if (abrupt) {
+ if (abrupt && profile.established) {
   const baselineRaw = await page.evaluate(key => localStorage.getItem(key), key);
   // Establish a previously persisted profile before the new, unflushed offline edit.
   await context.close();
   context = await restartBrowser('baseline');
   page = await context.newPage(); watch(page);
   await page.clock.install({time:new Date(monday+'T09:00:00Z')});
-  await page.goto(origin);
+  await page.goto(origin); await checkpointReady(page);
   assert.equal(await page.evaluate(key => localStorage.getItem(key), key), baselineRaw);
   console.log('VERIFIED established disk baseline', profile.id,
    crypto.createHash('sha256').update(baselineRaw).digest('hex'));
  }
  await page.clock.setFixedTime(new Date(session.scheduledDate+'T09:00:00Z'));
- await page.reload();
+ await page.reload(); await checkpointReady(page);
  await page.waitForFunction(()=>navigator.serviceWorker.controller);
  await context.setOffline(true);
  await page.locator('nav [data-screen="today"]').click();
@@ -108,6 +116,8 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null, a
   await row.locator('[data-field=rpe]').fill('7');
   await row.locator('.set-check').click();
  }
+ await page.evaluate(() => window.LHRFDurableCheckpoint.whenSaved());
+ console.log('ACK durable checkpoint', profile.id);
  const rawBeforeClose = await page.evaluate(key => localStorage.getItem(key), key);
  const beforeClose = await state();
  const draft = await page.evaluate(()=>JSON.stringify(window.LHRFLive.get()));
@@ -118,7 +128,7 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null, a
  } else await page.close();
  page=await context.newPage();watch(page);
  await page.clock.install({time:new Date(session.scheduledDate+'T09:10:00Z')});
- await page.goto(origin);
+ await page.goto(origin); await checkpointReady(page);
  assert.equal(await page.evaluate(()=>navigator.onLine),false);
  assert.equal(await page.evaluate(()=>!!navigator.serviceWorker.controller),true);
  const recoveredRaw = await page.evaluate(key => localStorage.getItem(key), key);
@@ -166,10 +176,10 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null, a
   assert.equal(finished.sets.length,completion.plannedSets);
  }
  assert.equal(await page.evaluate(()=>window.LHRFLive.get()),null);
- await page.reload();
+ await page.reload(); await checkpointReady(page);
  assert.deepEqual(await state(),finished);
  await context.setOffline(false);
- await page.reload();
+ await page.reload(); await checkpointReady(page);
  assert.deepEqual(await state(),finished);
  assert.deepEqual(errors,[]);
  console.log('PASS offline athlete',profile.id,'draft reopen, full completion, exact reload/reconnect, programme and schedule preserved');
@@ -185,7 +195,7 @@ async function offlineRunAfterStrength(context, origin, page, strengthState, err
  const read = () => page.evaluate(key=>JSON.parse(localStorage.getItem(key)), key);
  await page.clock.setFixedTime(new Date(runSession.scheduledDate+'T09:00:00Z'));
  await context.setOffline(true);
- await page.reload();
+ await page.reload(); await checkpointReady(page);
  assert.equal(await page.evaluate(()=>navigator.onLine), false);
  await page.locator('nav [data-screen="today"]').click();
  for(const dot of await page.locator('#dayDots button').all()) {
@@ -208,7 +218,7 @@ async function offlineRunAfterStrength(context, origin, page, strengthState, err
  page = await context.newPage();
  page.on('pageerror', error=>errors.push(error.message));
  await page.clock.install({time:new Date(runSession.scheduledDate+'T09:10:00Z')});
- await page.goto(origin);
+ await page.goto(origin); await checkpointReady(page);
  assert.equal(await page.evaluate(()=>navigator.onLine), false);
  assert.equal(await page.evaluate(()=>!!navigator.serviceWorker.controller), true);
  assert.deepEqual(await read(), pendingState);
@@ -234,10 +244,10 @@ async function offlineRunAfterStrength(context, origin, page, strengthState, err
  assert.deepEqual(completed.activeSchedule, strengthState.activeSchedule);
  assert.deepEqual(completed.equipmentInventory, strengthState.equipmentInventory);
  assert.equal(await page.evaluate(()=>window.LHRFLive.get()), null);
- await page.reload();
+ await page.reload(); await checkpointReady(page);
  assert.deepEqual(await read(), completed);
  await context.setOffline(false);
- await page.reload();
+ await page.reload(); await checkpointReady(page);
  assert.deepEqual(await read(), completed);
  assert.deepEqual(errors, []);
  console.log('PASS balanced second-discipline run offline draft reopen/completion/reconnect preserves exact earlier strength records and both plans');
@@ -281,6 +291,49 @@ async function killIsolatedBrowser(context, directory) {
  return main.pid;
 }
 
+async function checkpointControls(context, origin) {
+ const page = context.pages().find(item => item.url().startsWith(origin));
+ assert.ok(page);
+ const before = await page.evaluate(key => localStorage.getItem(key), key);
+ await page.evaluate(() => {
+  const original = IDBDatabase.prototype.transaction;
+  window.restoreCheckpointTransactions = () => { IDBDatabase.prototype.transaction = original; };
+  let abort = true;
+  IDBDatabase.prototype.transaction = function (...arguments_) {
+   const transaction = original.apply(this, arguments_);
+   if (this.name === 'lhrf-owner-durable-checkpoint-v1' && arguments_[1] === 'readwrite' && abort) {
+    abort = false;
+    queueMicrotask(() => transaction.abort());
+   }
+   return transaction;
+  };
+  localStorage.setItem('lhrf_fictional_checkpoint_probe', 'retry-candidate');
+ });
+ await page.waitForFunction(() => window.LHRFDurableCheckpoint.state === 'failed');
+ const failed = await page.evaluate(() => window.LHRFDurableCheckpoint.copies());
+ assert.equal(failed.local.lhrf_fictional_checkpoint_probe, 'retry-candidate');
+ assert.equal(failed.durable.snapshots[0].values.lhrf_fictional_checkpoint_probe, undefined);
+ await page.evaluate(async () => {
+  window.restoreCheckpointTransactions();
+  await window.LHRFDurableCheckpoint.retry();
+ });
+ assert.equal(await page.evaluate(() => window.LHRFDurableCheckpoint.copies()
+  .durable.snapshots[0].values.lhrf_fictional_checkpoint_probe), 'retry-candidate');
+ await page.evaluate(async () => {
+  localStorage.removeItem('lhrf_fictional_checkpoint_probe');
+  await window.LHRFDurableCheckpoint.whenSaved();
+ });
+ assert.equal(await page.evaluate(key => localStorage.getItem(key), key), before);
+ console.log('PASS checkpoint abort holds acknowledgement, retains both copies and retries without changing training records');
+ const second = await context.newPage();
+ await second.goto(origin);
+ await second.waitForFunction(() => window.LHRFDurableCheckpoint?.state === 'failed');
+ assert.match(await second.locator('#durableCheckpointStatus').innerText(), /Another checkpoint writer/);
+ await second.close();
+ assert.equal(await page.evaluate(key => localStorage.getItem(key), key), before);
+ console.log('PASS second cooperative checkpoint writer is refused without changing the active records');
+}
+
 async function abruptRecovery(origin, profile) {
  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lhrf208-abrupt-'));
  let activeContext;
@@ -306,10 +359,48 @@ async function abruptRecovery(origin, profile) {
    killedPid = await killIsolatedBrowser(activeContext, directory);
    return launch(true);
   }, true);
-  assert.equal(launches, 3);
+  assert.equal(launches, profile.established ? 3 : 2);
   assert.ok(killedPid > 0);
   console.log('PASS abrupt browser recovery', profile.id,
    'SIGKILL, same-profile offline relaunch, exact main/draft, one completion and reconnect preservation');
+  if (profile.id === 'unfinished-running-established-profile') {
+   await checkpointControls(activeContext, origin);
+   let page = activeContext.pages().find(item => item.url().startsWith(origin));
+   const main = await page.evaluate(key => localStorage.getItem(key), key);
+   const pendingKey = 'lhrf_fresh_beta_live_v1114_pendingRun';
+   const pending = JSON.stringify({parentId:'fictional-pending-run', week:1,
+    runs:[{name:'Fictional pending easy run',distanceKm:2}],runLogged:false,runEntry:null});
+   await page.evaluate(async ({pendingKey,pending}) => {
+    localStorage.setItem(pendingKey,pending);
+    await window.LHRFDurableCheckpoint.whenSaved();
+   }, {pendingKey,pending});
+   await killIsolatedBrowser(activeContext, directory);
+   await launch(true);
+   page = await activeContext.newPage();
+   await page.clock.install({time:new Date('2026-11-17T09:30:00Z')});
+   await page.goto(origin); await checkpointReady(page);
+   assert.equal(await page.evaluate(key => localStorage.getItem(key), key), main);
+   assert.equal(await page.evaluate(key => localStorage.getItem(key), pendingKey), pending);
+   console.log('PASS pending-run checkpoint survives abrupt offline relaunch with exact completed history');
+   await activeContext.close();
+   await launch(false);
+   await activeContext.addInitScript(key => {
+    if (location.protocol === 'http:') {
+     const state = JSON.parse(localStorage.getItem(key));
+     state.fictionalRecoveryConflict = true;
+     localStorage.setItem(key, JSON.stringify(state));
+    }
+   }, key);
+   page = await activeContext.newPage();
+   await page.goto(origin);
+   await page.waitForFunction(() => window.LHRFDurableCheckpoint?.state === 'conflict');
+   const conflict = await page.evaluate(() => window.LHRFDurableCheckpoint.copies());
+   assert.equal(JSON.parse(conflict.local[key]).fictionalRecoveryConflict, true);
+   assert.equal(conflict.durable.snapshots[0].values[key], main);
+   assert.equal(await page.evaluate(() => typeof window.LHRFLive), 'undefined');
+   console.log('PASS unknown local recovery variant blocks startup and retains local plus durable copies');
+  }
+
  } finally {
   await activeContext?.close();
   await fs.rm(directory, {recursive:true, force:true});
@@ -319,7 +410,10 @@ async function abruptRecovery(origin, profile) {
 async function run() {
   const revision = (await fs.readFile(path.join(root, 'OWNER-TEST-REVISION.txt'), 'utf8')).split('\n')[0];
   assert.equal(revision, candidateRevision);
-  console.log('TEST EXACT CANDIDATE', revision, 'ARTIFACT 14415288569 SHA256', archiveSha256);
+  console.log('VERIFIED BASE CANDIDATE', revision, 'ARTIFACT 14415288569 SHA256', archiveSha256);
+  await require('../scripts/build-durable-owner-candidate.cjs')(root, qaRevision);
+  await fs.cp(root, builtRoot, {recursive:true});
+  console.log('TEST DURABLE DRAFT', qaRevision);
   const server = createServer(async (request, response) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
     const file = path.resolve(root, '.' + (pathname.endsWith('/') ? pathname + 'index.html' : pathname));
@@ -337,8 +431,10 @@ async function run() {
   try {
     // Earlier tab-reopen and graceful-restart cases retain their passing receipts.
     for (const profile of [
-      {id:'unfinished-strength-established-profile', programme:'lifting-foundation', days:['Monday','Friday']},
-      {id:'unfinished-running-established-profile', runningOnly:true, days:['Tuesday','Saturday']},
+      {id:'unfinished-strength-fresh', programme:'lifting-foundation', days:['Monday','Friday']},
+      {id:'unfinished-strength-established-profile', programme:'lifting-foundation', days:['Monday','Friday'], established:true},
+      {id:'unfinished-running-fresh', runningOnly:true, days:['Tuesday','Saturday']},
+      {id:'unfinished-running-established-profile', runningOnly:true, days:['Tuesday','Saturday'], established:true},
     ]) {
       try { await abruptRecovery(origin, profile); }
       catch (error) {

@@ -1,5 +1,16 @@
 # Combined private-practice candidate
 
+## Durable checkpoint repair draft · 21 November 2026
+
+The original #208 crash failures below remain historical failures for `60a89595`. This extension continues #209 and prepares a separately identified, isolated practice package. The existing workflow first builds and verifies the 43 original #208 runtime-file digests. The recovery harness then applies `scripts/build-durable-owner-candidate.cjs`, adds `src/durable-checkpoint.js`, records the new full revision and creates a per-file fixed-package manifest. The uploaded package is the same fixed directory used by the crash cases and subsequent earned-strength package regression. No hosted or installed assets change.
+
+The checkpoint uses an IndexedDB readwrite transaction with the strict durability hint, waits for its complete event, and keeps the training UI paused until acknowledgement. Main state, live workout, pending run and other existing LHRF local values are captured together as raw strings. App scripts start only after checkpoint validation and recovery. The original programme/history representations are retained. Known older or partially missing local snapshots recover from the newest verified checkpoint, with the observed local copy retained in a recovery receipt. An unknown local value, failed checksum or competing cooperative writer blocks startup and exposes both copies. An aborted checkpoint keeps the UI paused and supports retry without silently claiming success.
+
+The sidecar retains 16 recent complete checkpoint snapshots. An older unrecognised variant stops for review. Browser strict durability is a platform hint and this draft requires the supported transaction property. It supplies no physical power-loss or Android acceptance. The Web Lock coordinates only clients using this module; old loaded legacy writers remain subject to #204's limitation.
+
+Retest requirements are the recorded fresh/established strength and running SIGKILL cases, offline same-profile relaunch after the visible checkpoint acknowledgement, exact main/live restoration, one completion and reconnect preservation. Additional checks cover aborted checkpoint/retry, a pending-run snapshot across SIGKILL, an unknown local conflict retaining both copies, and a second cooperative writer. The existing recovery matrix is updated with completed run links and package identity in #209 and #168 after execution. No result is presumed from implementation.
+
+
 ## Recovery matrix · 21 November 2026
 
 Runtime identity is #208 `60a89595e1ad3d3a16c152d9dd9069c6bac9cfae`, build `1.40.6-owner-60a89595e1ad`, artifact 14415288569, ZIP SHA-256 `f502a3b618495ded50fe053f037f298c6b39a6d7f8794ad07b3019126f538849`. All 43 runtime-file digests remain mandatory before testing. The QA branch changes test and evidence files only.
