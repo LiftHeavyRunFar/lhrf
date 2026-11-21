@@ -6,7 +6,9 @@ const os=require('node:os');
 const path=require('node:path');
 const {execFileSync}=require('node:child_process');
 const qa=require('../scripts/recovery-migration-review.cjs');
-const {MAIN,LIVE,adapter,sha}=qa;
+const {MAIN,LIVE,sha}=qa;
+// Historical positive rehearsal only. The supported review module now refuses all imports.
+const adapter=require('./fixtures/beta-cutover-96c9c6a0.cjs');
 const output=process.env.LHRF_RECOVERY_RECEIPTS_DIR;
 const directory=output?path.resolve(output):fs.mkdtempSync(path.join(os.tmpdir(),'lhrf-migration-review-'));
 fs.mkdirSync(directory,{recursive:true});
@@ -40,20 +42,21 @@ function retained(entries) {for(const x of entries)assert.equal(sha(fs.readFileS
 function report(name,entries,result) {retained(entries);reports.push({case:name,synthetic:true,captures:entries.map(x=>({file:path.basename(x.file),receipt:path.basename(x.file).replace(/\.json$/,'.receipt.json'),sha256:x.receipt.sha256})),...result});}
 function merged(...edits) {const d=base();for(const edit of edits)for(const k of ['completedWorkouts','sets','runs'])d[k].push(...edit[k].slice(base()[k].length));return JSON.stringify(d);}
 
-test('mixed recovered/legacy captures reconcile once, preserve same id in distinct weeks and restore once',async()=>{
+test('historical #204 fixture: mixed captures reconcile once and restore once',async()=>{
  const a=historyEdit('same-strength',1,'strength',100),b=historyEdit('same-strength',2,'strength',105),c=historyEdit('run',2,'run',5);
  const entries=[capture('writer-A',a,{durable:true}),capture('writer-B',b),capture('writer-C',a),capture('writer-D',c,{durable:true})];
  const reviewedRaw=merged(a,b,c),plan=qa.prepare({baseline:baseline(),captures:entries,roster:roster(entries.map(x=>x.receipt.writer)),reviewedRaw});
  const disk=storage(plan.frozenValues),before=disk.entries();
- assert.equal(await qa.stage(disk,disk.locks,plan),'staged');assert.equal(await qa.commit(disk,disk.locks,plan),'imported');
- const reloaded=storage(disk.entries());assert.equal(await qa.commit(reloaded,reloaded.locks,plan),'already-initialised');
+ assert.equal(await adapter.stage(disk,disk.locks),'staged');assert.equal(await adapter.commit(disk,disk.locks),'imported');
+ const reloaded=storage(disk.entries());assert.equal(await adapter.commit(reloaded,reloaded.locks),'already-initialised');
  const archive=reloaded.getItem(adapter.STORE);assert.equal(archive,reviewedRaw);
  assert.equal(JSON.parse(archive).completedWorkouts.length,4);assert.deepEqual(JSON.parse(archive).programme,base().programme);assert.deepEqual(JSON.parse(archive).unknownFuture,base().unknownFuture);
  const clean=storage(),results=await Promise.allSettled([adapter.restoreArchive(clean,archive,sha(archive),clean.locks),adapter.restoreArchive(clean,archive,sha(archive),clean.locks)]);
  assert.equal(results.filter(x=>x.status==='fulfilled').length,1);assert.equal(clean.getItem(adapter.STORE),archive);assert.equal(clean.getItem(MAIN),null);
  // Simulated late legacy write: the QA destination has a disjoint key. This is not the hosted/new app's storage adapter.
  reloaded.setItem(MAIN,qa.readCapture(entries[1]).values[MAIN]);assert.equal(reloaded.getItem(adapter.STORE),archive);
- await assert.rejects(qa.commit(reloaded,reloaded.locks,plan),/changed after review/);
+ assert.throws(()=>qa.verifyFrozen(reloaded,plan),/changed after review/);
+ await assert.rejects(qa.commit(reloaded,reloaded.locks,plan),/No import/);
  for(const [k,v] of Object.entries(before))assert.equal(disk.getItem(k),v);
  fs.writeFileSync(path.join(directory,'reconciled-history.json'),archive);
  report('mixed-capture-reconcile-import-reload-restore',entries,{result:'pass',historySha256:sha(archive),occurrences:plan.occurrences,counts:plan.counts,successfulMainHistoryRestores:1,ancillaryKeysRetainedInCaptureFiles:true,ancillaryProfileRestore:false,repeatedImport:'already-initialised',lateLegacyDestinationUnchanged:true});
@@ -85,14 +88,14 @@ test('identical completion rows with conflicting sets retain both captured varia
  report('conflicting-capture-separate-restore',entries,{result:'safe-refusal',separateRestoreMainDigests:restored,combinedImport:false});
 });
 
-test('reproduced ancillary-change gap is refused by the review gate inside the synthetic lock',async()=>{
+test('review diagnostics retain ancillary-change refusal and import remains closed',async()=>{
  const edit=historyEdit('freeze',1,'run',5),e=capture('freeze-writer',edit),raw=JSON.stringify(edit),plan=qa.prepare({baseline:baseline(),captures:[e],roster:roster(['freeze-writer']),reviewedRaw:raw});
  const old=storage(plan.frozenValues);await adapter.stage(old,old.locks);old.setItem('lhrf_fixture_settings','{"late":true}');assert.equal(await adapter.commit(old,old.locks),'imported');
  for(const mutation of [d=>d.setItem('lhrf_fixture_settings','{"late":true}'),d=>d.setItem('lhrf_new_legacy_setting','late'),d=>d.removeItem('lhrf_fixture_settings')]) {
-  const disk=storage(plan.frozenValues);await qa.stage(disk,disk.locks,plan);mutation(disk);const before=disk.entries();await assert.rejects(qa.commit(disk,disk.locks,plan),/changed after review/);assert.equal(disk.getItem(adapter.STORE),null);assert.deepEqual(disk.entries(),before);
+  const disk=storage(plan.frozenValues);await adapter.stage(disk,disk.locks);mutation(disk);const before=disk.entries();assert.throws(()=>qa.verifyFrozen(disk,plan),/changed after review/);await assert.rejects(qa.commit(disk,disk.locks,plan),/No import/);assert.equal(disk.getItem(adapter.STORE),null);assert.deepEqual(disk.entries(),before);
  }
  const queued=storage(plan.frozenValues);let release;const locked={request:(_n,_o,action)=>new Promise((resolve,reject)=>{release=()=>{try{resolve(action())}catch(error){reject(error)}}})};
- const attempt=qa.stage(queued,locked,plan);queued.setItem('lhrf_fixture_settings','{"queuedLate":true}');release();await assert.rejects(attempt,/changed after review/); // validate after acquiring the queued lock, before any write
+ const attempt=locked.request('beta-v1:cutover',{mode:'exclusive'},()=>qa.verifyFrozen(queued,plan));queued.setItem('lhrf_fixture_settings','{"queuedLate":true}');release();await assert.rejects(attempt,/changed after review/); // validate after acquiring the queued lock, before any write
  assert.equal(queued.getItem(adapter.STAGE),null);
  report('ancillary-freeze-gap', [e],{result:'pass',historicalAdapterPermittedAncillaryChange:true,reviewGateRefusedChangedAddedRemovedKeys:true,queuedChangeRefused:true,legacyWriterFenced:false});
 });

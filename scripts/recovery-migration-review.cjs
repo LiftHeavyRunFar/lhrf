@@ -13,6 +13,10 @@ const adapter = require(adapterPath);
 const {MAIN,LIVE} = adapter;
 const companions = [LIVE,LIVE+'_pendingRun','lhrf_programme_replacement_lock_v1','lhrf_programme_replacement_transaction_v1'];
 const fields = ['completedWorkouts','sets','runs'];
+function freezeReview(value) {
+ if(value&&typeof value==='object') {for(const child of Object.values(value))freezeReview(child);Object.freeze(value);}
+ return value;
+}
 const occurrence = row => JSON.stringify([row.id ?? row.sessionId,row.week]);
 function history(raw) {
  const data=JSON.parse(raw);
@@ -97,9 +101,9 @@ function prepare({baseline,captures,roster,reviewedRaw}) {
   }
  }
  if(!equal(history(reviewedRaw),expected)) throw Error('Reviewed history omits or changes captured edits');
- return {format:'lhrf-synthetic-migration-plan-v1',synthetic:true,reviewedRaw,reviewedSha256:sha(reviewedRaw),
+ return freezeReview({format:'lhrf-synthetic-migration-plan-v1',synthetic:true,reviewOnly:true,boundary:'no-import',reviewedRaw,reviewedSha256:sha(reviewedRaw),
   frozenValues:{...baseline,[MAIN]:reviewedRaw},roster:structuredClone(roster),captureEntries:captures.map(x=>({file:x.file,receipt:structuredClone(x.receipt)})),
-  counts:Object.fromEntries([...fields,'checkins'].map(k=>[k,expected[k].length])),occurrences:expected.completedWorkouts.map(occurrence)};
+  counts:Object.fromEntries([...fields,'checkins'].map(k=>[k,expected[k].length])),occurrences:expected.completedWorkouts.map(occurrence)});
 }
 function verifyFrozen(storage,plan) {
  for(const entry of plan.captureEntries) readCapture(entry);
@@ -110,13 +114,9 @@ function verifyFrozen(storage,plan) {
  if(!equal(actual,expected)) throw Error('Captured legacy values changed after review; retain a fresh capture and stop');
  if(plan.synthetic!==true || plan.format!=='lhrf-synthetic-migration-plan-v1' || sha(plan.reviewedRaw)!==plan.reviewedSha256) throw Error('Invalid reviewed plan');
 }
-function underLock(storage,locks,plan,operation) {
- if(!locks?.request) throw Error('Missing exclusive synthetic cutover lock');
- return locks.request('beta-v1:cutover',{mode:'exclusive'},()=>{
-  verifyFrozen(storage,plan);
-  return adapter[operation](storage,{request:(_name,_options,action)=>action()});
- });
-}
-async function stage(storage,locks,plan) {return underLock(storage,locks,plan,'stage');}
-async function commit(storage,locks,plan) {return underLock(storage,locks,plan,'commit');}
-module.exports={MAIN,LIVE,companions,adapter,sha,receipt,readCapture,prepare,stage,commit,verifyFrozen};
+// A reviewed snapshot and a synthetic roster are evidence, never import authority.
+// Keep all supported write entrypoints closed, including for a valid review or
+// a serialised/altered plan. Reopening this requires a separately reviewed change.
+async function stage() { throw Error('No import: this draft is review-only. Legacy-writer accounting, verified receipts, resolved edits and an enforceable freeze require explicit review; no source is written.'); }
+async function commit() { return stage(); }
+module.exports={MAIN,LIVE,companions,sha,receipt,readCapture,prepare,stage,commit,verifyFrozen};
