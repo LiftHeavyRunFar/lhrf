@@ -397,6 +397,12 @@ async function abruptRecovery(origin, profile) {
    assert.equal(await page.evaluate(key => localStorage.getItem(key), key), main);
    assert.equal(await page.evaluate(key => localStorage.getItem(key), pendingKey), pending);
    console.log('PASS pending-run checkpoint survives abrupt offline relaunch with exact completed history');
+   await page.evaluate(async () => {
+    for (let value = 0; value < 32; value += 1) {
+     localStorage.setItem('lhrf_fictional_known_value', String(value));
+     await window.LHRFDurableCheckpoint.whenSaved();
+    }
+   });
    await activeContext.close();
    await launch(false);
    await activeContext.addInitScript(({key,pendingKey}) => {
@@ -404,6 +410,7 @@ async function abruptRecovery(origin, profile) {
      localStorage.removeItem(key);
      localStorage.removeItem('lhrf_fresh_beta_live_v1114');
      localStorage.removeItem(pendingKey);
+     localStorage.setItem('lhrf_fictional_known_value', '0');
     }
    }, {key,pendingKey});
    page = await activeContext.newPage();
@@ -411,7 +418,11 @@ async function abruptRecovery(origin, profile) {
    await page.goto(origin); await checkpointReady(page);
    assert.equal(await page.evaluate(key => localStorage.getItem(key), key), main);
    assert.equal(await page.evaluate(key => localStorage.getItem(key), pendingKey), pending);
+   assert.equal(await page.evaluate(() => localStorage.getItem('lhrf_fictional_known_value')), '31');
+   console.log('PASS acknowledged ancestor older than the 16 raw snapshots is recognised through its durable fingerprint');
    await page.evaluate(async () => {
+    localStorage.removeItem('lhrf_fictional_known_value');
+    await window.LHRFDurableCheckpoint.whenSaved();
     localStorage.setItem('lhrf_fictional_receipt_probe', 'preserve-receipt');
     await window.LHRFDurableCheckpoint.whenSaved();
    });

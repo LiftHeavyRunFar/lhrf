@@ -86,7 +86,12 @@
       const version = dirty;
       const values = capture();
       const snapshot = {values, digest: await digest(values)};
-      const next = {revision: (envelope?.revision || 0) + 1,
+      const knownValues = {...(envelope?.knownValues || {})};
+      for (const [key, value] of Object.entries(values)) {
+        const fingerprint = await digest(value);
+        knownValues[key] = [fingerprint, ...(knownValues[key] || []).filter(item => item !== fingerprint)].slice(0, 128);
+      }
+      const next = {revision: (envelope?.revision || 0) + 1, knownValues,
         snapshots: [snapshot, ...(envelope?.snapshots || [])].slice(0, 16),
         recoveries: envelope?.recoveries || []};
       await commit(next);
@@ -171,8 +176,9 @@
     const keys = new Set([...Object.keys(local), ...known.flatMap(snapshot => Object.keys(snapshot.values))]);
     for (const key of keys) {
       const value = local[key] ?? null;
-      if (value !== null && !known.some(snapshot => (snapshot.values[key] ?? null) === value)) {
-        stop(Error('Local records differ from every retained checkpoint. Review both copies.'), 'conflict');
+      const fingerprintKnown = value !== null && (envelope.knownValues?.[key] || []).includes(await digest(value));
+      if (value !== null && !fingerprintKnown && !known.some(snapshot => (snapshot.values[key] ?? null) === value)) {
+        stop(Error('Local record ' + key + ' differs from every acknowledged checkpoint. Review both copies.'), 'conflict');
         return;
       }
     }
