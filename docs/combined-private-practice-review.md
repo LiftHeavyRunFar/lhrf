@@ -1,5 +1,29 @@
 # Combined private-practice candidate
 
+## Recovery matrix · 21 November 2026
+
+Runtime identity is #208 `60a89595e1ad3d3a16c152d9dd9069c6bac9cfae`, build `1.40.6-owner-60a89595e1ad`, artifact 14415288569, ZIP SHA-256 `f502a3b618495ded50fe053f037f298c6b39a6d7f8794ad07b3019126f538849`. All 43 runtime-file digests remain mandatory before testing. The QA branch changes test and evidence files only.
+
+The 21 November daily-operations run was complete before this extension. Reuse its exact graceful-restart evidence at QA head `aff9ca3c8e1e42ec8261d5790e8b1bc9b52ccb42`, focused run 44884193392. Both jobs passed without skips. Wider run 44884193327 passed all four jobs with six conditional production-upgrade/Android steps skipped.
+
+| Condition | Evidence and disposition |
+| --- | --- |
+| Offline tab close/reopen, five fictional configurations | Passed at `e49bfb75`, run 44496454365. Reuse existing result. |
+| Balanced athlete completes strength and running offline | Passed at `ffdb3e14`, run 44705617790. Reuse existing result. |
+| Graceful persistent Chromium shutdown and offline relaunch | Passed at `aff9ca3c`, run 44884193392. Reuse existing result. The strength draft survived a whole-browser relaunch, followed by both-discipline completion. |
+| Abrupt SIGKILL with unfinished strength | New bounded case in the existing test. Its current result, exact QA revision and CI log are recorded in #209. Require a verified killed main PID, same persistent profile, offline mode before app navigation, service-worker control, exact main/draft readback, one completion and preservation after offline reload/reconnect. |
+| Abrupt SIGKILL with logged run awaiting workout completion | New bounded case with the same requirements. The run is logged while the workout remains unfinished. Both new cases execute independently and a failure in either fails acceptance. |
+| Local abrupt-browser execution | The execution workspace rejected an AF_UNIX socket with `PermissionError: [Errno 1] Operation not permitted`. Hosted CI is the available browser route. This socket check supplies no crash-recovery pass. |
+| Kill during a storage operation, writes never acknowledged, power loss or OS/disk-buffer loss | Untested. SIGKILL follows observable saved main/draft state without a deliberate flush or graceful close. It cannot establish durability under physical power loss. |
+| Android process eviction, installed-app crash, device storage loss, physical downgrade or clean-profile device restore | Untested by this extension. The completed owner Pixel result retains its recorded scope. |
+| Competing already-loaded/offline legacy writers | #204 still reproduces an unseen overwrite. Separate captured-history restoration passed. Missing captures, receipts or unresolved offline edits block migration. This extension does not protect those writers. |
+| Qualified human coaching and release approval | Remain separate, with human findings pending in the existing coaching packet. |
+
+The abrupt test discovers only the Chromium main process with its exact disposable user-data directory and requires that its parent is this test runner. It sends SIGKILL to that main process and its discovered descendants, waits for context disconnection and verifies the main PID exited before relaunch. It never requests a graceful close or storage flush before termination. Each case uses a separate fictional disk profile and only the isolated localhost runtime. The original prescriptions and app runtime are unchanged. A failed identity check or unverifiable termination supplies no pass.
+
+The private practice installation of this exact #208 package was separately approved and recorded on 20 November in #208, Sites v4. The older installation section below is the retained pre-publication plan. This test authorises no hosting/installation change. Future build-specific approval, physical acceptance and human-review gates remain explicit. Migration and recruitment remain gated.
+
+
 This isolated draft combines #207 f478ad7dac6c401eddedf30facba47d8107f21fc and #206 9c641909a461a78f4f7ddb636adf4eb187fc7dbc, including #205 practice-only connection guards. Both parents remain draft. No catalogue prescriptions, dates, reference maxes, fatigue policy, storage schema or production build are changed by this integration.
 
 ## Exact verification

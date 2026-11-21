@@ -35,7 +35,7 @@ const monday = '2026-11-16';
 const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
   '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
 
-async function offlineAthlete(context, origin, profile, restartBrowser = null) {
+async function offlineAthlete(context, origin, profile, restartBrowser = null, abrupt = false) {
  let page = await context.newPage();
  const errors = [];
  const watch = page => page.on('pageerror', error => errors.push(error.message));
@@ -96,11 +96,12 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null) {
   await row.locator('[data-field=rpe]').fill('7');
   await row.locator('.set-check').click();
  }
+ const rawBeforeClose = await page.evaluate(key => localStorage.getItem(key), key);
  const beforeClose = await state();
  const draft = await page.evaluate(()=>JSON.stringify(window.LHRFLive.get()));
  assert.notEqual(draft,'null');
  if (restartBrowser) {
-  await context.close();
+  if (!abrupt) await context.close();
   context = await restartBrowser();
  } else await page.close();
  page=await context.newPage();watch(page);
@@ -108,6 +109,7 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null) {
  await page.goto(origin);
  assert.equal(await page.evaluate(()=>navigator.onLine),false);
  assert.equal(await page.evaluate(()=>!!navigator.serviceWorker.controller),true);
+ assert.equal(await page.evaluate(key => localStorage.getItem(key), key), rawBeforeClose);
  assert.deepEqual(await state(),beforeClose);
  assert.equal(await page.evaluate(()=>JSON.stringify(window.LHRFLive.get())),draft);
  await page.locator('nav [data-screen="train"]').click();
@@ -221,6 +223,78 @@ async function offlineRunAfterStrength(context, origin, page, strengthState, err
  console.log('PASS balanced second-discipline run offline draft reopen/completion/reconnect preserves exact earlier strength records and both plans');
 }
 
+
+async function killIsolatedBrowser(context, directory) {
+ const processes = [];
+ for (const entry of await fs.readdir('/proc')) {
+  if (!/^\d+$/.test(entry)) continue;
+  try {
+   const args = (await fs.readFile('/proc/' + entry + '/cmdline', 'utf8')).split('\0');
+   const status = await fs.readFile('/proc/' + entry + '/status', 'utf8');
+   processes.push({pid:Number(entry), parent:Number(status.match(/^PPid:\s+(\d+)/m)[1]), args});
+  } catch (error) {
+   if (!['ENOENT', 'ESRCH', 'EACCES'].includes(error.code)) throw error;
+  }
+ }
+ const roots = processes.filter(item => item.args.includes('--user-data-dir=' + directory) &&
+  !item.args.some(argument => argument.startsWith('--type=')));
+ assert.equal(roots.length, 1, 'exactly one Chromium main process owns the isolated profile');
+ const main = roots[0];
+ assert.equal(main.parent, process.pid, 'kill only the browser launched by this test runner');
+ const descendants = [main.pid];
+ for (let index = 0; index < descendants.length; index += 1) {
+  descendants.push(...processes.filter(item => item.parent === descendants[index]).map(item => item.pid));
+ }
+ const closed = context.waitForEvent('close', {timeout:10000});
+ process.kill(main.pid, 'SIGKILL');
+ for (const pid of descendants.slice(1)) {
+  try { process.kill(pid, 'SIGKILL'); }
+  catch (error) { if (error.code !== 'ESRCH') throw error; }
+ }
+ await closed;
+ // Playwright must reap the killed main process before this profile is reopened.
+ for (let attempt = 0; attempt < 100 && fsSync.existsSync('/proc/' + main.pid); attempt += 1) {
+  await new Promise(resolve => setTimeout(resolve, 20));
+ }
+ assert.equal(fsSync.existsSync('/proc/' + main.pid), false, 'killed browser main process exited');
+ console.log('VERIFIED abrupt SIGKILL', JSON.stringify({pid:main.pid, processCount:descendants.length}));
+ return main.pid;
+}
+
+async function abruptRecovery(origin, profile) {
+ const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lhrf208-abrupt-'));
+ let activeContext;
+ let launches = 0;
+ let killedPid;
+ const launch = async offline => {
+  activeContext = await chromium.launchPersistentContext(directory, {
+   ...devices['Pixel 7'], timezoneId:'Europe/London',
+   executablePath:process.env.CHROMIUM_EXECUTABLE || undefined,
+   args:['--no-sandbox'],
+  });
+  launches += 1;
+  activeContext.setDefaultTimeout(10000);
+  await activeContext.route('**/*', route => new URL(route.request().url()).origin === new URL(origin).origin
+   ? route.continue() : route.abort());
+  await activeContext.setOffline(offline);
+  return activeContext;
+ };
+ try {
+  await offlineAthlete(await launch(false), origin, profile, async () => {
+   // No close(), storage flush or graceful browser shutdown before this kill.
+   killedPid = await killIsolatedBrowser(activeContext, directory);
+   return launch(true);
+  }, true);
+  assert.equal(launches, 2);
+  assert.ok(killedPid > 0);
+  console.log('PASS abrupt browser recovery', profile.id,
+   'SIGKILL, same-profile offline relaunch, exact main/draft, one completion and reconnect preservation');
+ } finally {
+  await activeContext?.close();
+  await fs.rm(directory, {recursive:true, force:true});
+ }
+}
+
 async function run() {
   const revision = (await fs.readFile(path.join(root, 'OWNER-TEST-REVISION.txt'), 'utf8')).split('\n')[0];
   assert.equal(revision, candidateRevision);
@@ -238,44 +312,21 @@ async function run() {
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const origin = 'http://localhost:' + server.address().port + '/';
-  let browser;
+  const failures = [];
   try {
-    browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: ['--no-sandbox'] });
-    for (const profile of [{"id":"beginner","programme":"lifting-foundation","days":["Monday","Friday"]},{"id":"powerlifter","programme":"powerlifting-three-day","days":["Monday","Wednesday","Friday"]},{"id":"runner","runningOnly":true,"days":["Tuesday","Saturday"]},{"id":"balanced","programme":"lifting-foundation","days":["Tuesday","Friday"],"addRunning":true},{"id":"returning","programme":"lifting-foundation","days":["Tuesday","Saturday"]}]) {
-      const context = await browser.newContext({ ...devices['Pixel 7'], timezoneId: 'Europe/London' });
-      context.setDefaultTimeout(10000);
-      await context.route('**/*', route => new URL(route.request().url()).origin === new URL(origin).origin ? route.continue() : route.abort());
-      try { await offlineAthlete(context, origin, profile); } finally { await context.close(); }
-
+    // Earlier tab-reopen and graceful-restart cases retain their passing receipts.
+    for (const profile of [
+      {id:'unfinished-strength', programme:'lifting-foundation', days:['Monday','Friday']},
+      {id:'unfinished-running', runningOnly:true, days:['Tuesday','Saturday']},
+    ]) {
+      try { await abruptRecovery(origin, profile); }
+      catch (error) {
+        failures.push(profile.id);
+        console.error('FAIL abrupt browser recovery', profile.id, error);
+      }
     }
-    const persistentDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'lhrf208-browser-restart-'));
-    let activeContext;
-    let launches = 0;
-    const launchPersistent = async (offline) => {
-      activeContext = await chromium.launchPersistentContext(persistentDirectory, {
-        ...devices['Pixel 7'], timezoneId: 'Europe/London',
-        executablePath: process.env.CHROMIUM_EXECUTABLE || undefined,
-        args: ['--no-sandbox'],
-      });
-      launches += 1;
-      activeContext.setDefaultTimeout(10000);
-      await activeContext.route('**/*', route => new URL(route.request().url()).origin === new URL(origin).origin
-        ? route.continue() : route.abort());
-      await activeContext.setOffline(offline);
-      return activeContext;
-    };
-    try {
-      const profile = {id:'balanced-browser-restart', programme:'lifting-foundation',
-        days:['Tuesday','Friday'], addRunning:true};
-      await offlineAthlete(await launchPersistent(false), origin, profile, () => launchPersistent(true));
-      assert.equal(launches, 2, 'exercise two distinct persistent-browser launches');
-      console.log('PASS full persistent Chromium shutdown/relaunch offline, exact draft recovery and both-discipline completion');
-    } finally {
-      await activeContext?.close();
-      await fs.rm(persistentDirectory, {recursive:true, force:true});
-    }
+    assert.deepEqual(failures, [], 'both missing abrupt-recovery cases must pass');
   } finally {
-    await browser?.close();
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
     await fs.rm(root, {recursive: true, force: true});
