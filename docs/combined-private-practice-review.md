@@ -1,5 +1,24 @@
 # Combined private-practice candidate
 
+## Current boundary: review-only, no import · 21 November 2026
+
+[Completed boundary review](qa/recovery-migration-20261121/boundary-review/README.md) and [machine-readable dispositions/results](qa/recovery-migration-20261121/boundary-review/review.json). Exact tested QA source `51c193d10474d8beac8a9dceaf5e636c7995dc9d`; original ab35fc7a / 6dc8b83b captures and results are retained unchanged. This current boundary supersedes the earlier helper's positive synthetic staging path; the frozen #204 adapter remains only a historical test fixture.
+
+The new focused review reproduced a metadata gap: clearing the prepared plan's capture list and writer/freeze metadata still permitted staging. The failing test stopped at staging; no separate pre-fix commit result is claimed. The bounded repair makes plans deeply immutable and labels them `reviewOnly` / `no-import`. Both supported stage and commit entrypoints now refuse unconditionally before touching storage/locks; valid evidence, a serialised plan or an approval-shaped flag cannot enable them. The raw adapter is not exported from the review module. This is an unwired draft boundary, **not** a claim that a hosted app or legacy client is fenced.
+
+Clean-checkout local verification at 51c193d1: **3 new no-import tests plus 2 affected regressions passed, 0 failed**. Every source/stage/destination byte in the synthetic refusal checks and all 34 archived packet-file hashes stayed identical. The old nine checks, #204 browser tests and 85d267c3 crash evidence are reused. Handled cases were omitted by name filtering, not counted as new passes; no new CI/browser run or independent-human acceptance is claimed. Runtime, worker, catalogue and workflow files remain unchanged against the approved 85d267c3 package. No hosted update or authentication retry occurred.
+
+Deterministic review can consolidate identical A/C occurrence data once, retain the same session in distinct weeks and retain the separate run. It grants no write authority. The same-occurrence 100/105 kg dispute, local/durable disagreement and intended settings require explicit human choice. Unfinished draft/pending/transaction records remain archived unresolved. Corrupt checksum containers are retained and rejected. All source variants remain available; none has been selected for real records.
+
+- [x] Review retained synthetic variants; document deterministic versus explicit-choice dispositions.
+- [x] Enforce no-import on the supported QA entrypoints; preserve every retained source copy on refusal.
+- [ ] Future real writer accounting, complete captures and acknowledged receipts, explicit conflict decisions and proven recovery remain absent/unapproved.
+- [ ] An enforceable legacy freeze or separately approved real-use no-import boundary remains a reserved decision. The new client cannot enumerate or freeze already-loaded legacy writers.
+- [ ] Ancillary/draft restoration, any new build/install/real migration/release, recruitment and qualified human coaching approval remain gated.
+- [ ] Physical Android crash acceptance remains deferred; the completed 13106284 Pixel retest stays closed. No device action is requested now.
+
+**Next action:** review the retained per-source findings when a future migration/no-import real-use decision is needed. The bounded draft pack is complete; no additional test cycle is manufactured. Both hosted copies, actual athlete records and prescriptions stay unchanged. No merge, real migration, hosting/installation, production deployment, recruitment, external communication or automation change. £0.
+
 ## Recovery/migration review packet · 21 November 2026
 
 Physical Pixel crash acceptance is explicitly deferred by Mark. Do not reopen the completed 13106284 Pixel retest or ask him to repeat automated cases. Hosted sign-in is not retried. The approved separate 85d267c3 owner-only copy and installed practice version 4 are unchanged.

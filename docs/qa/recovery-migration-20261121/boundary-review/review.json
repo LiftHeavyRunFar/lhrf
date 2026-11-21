@@ -1,0 +1,141 @@
+{
+  "format": "lhrf-no-import-boundary-review-v1",
+  "testedRevision": "51c193d10474d8beac8a9dceaf5e636c7995dc9d",
+  "reviewedPacketRevision": "ab35fc7a1e68e2422110b043127e280194d9482e",
+  "reusedQARevision": "6dc8b83b7428df54aa70808ab1292118ee46c39c",
+  "syntheticOnly": true,
+  "supportedDraftImportEnabled": false,
+  "reviewPlanGrantsAuthority": false,
+  "sourceSha256": {
+    "scripts/recovery-migration-review.cjs": "fa61b80f965c3e2f2635a875b7d7c030599f4934cbb5da61c714dfe5900c6a24",
+    "tests/recovery-no-import.test.cjs": "09253ed0e60cab9fdfe48ea4d1ac34f4ffc111f870fda990d399756766456950",
+    "tests/recovery-migration.test.cjs": "112d9c05e30c43a2d4748e7fb721dabe8ad426efe396c4511e513648ef680f98"
+  },
+  "previousManifestSha256": "dfd4a0dc776aee5e2c4790d3119754c507753b2ab866ded97bf3785854c7fe38",
+  "dispositions": [
+    {
+      "sources": [
+        "writer-A",
+        "writer-C"
+      ],
+      "disposition": "deterministic-review-only",
+      "finding": "Identical complete main/associated-set occurrence; count once in the reviewed proposal. Raw archives have distinct container formats and both remain retained.",
+      "writeDecision": "none"
+    },
+    {
+      "sources": [
+        "writer-A",
+        "writer-B",
+        "writer-D",
+        "reconciled-history"
+      ],
+      "disposition": "deterministic-review-only",
+      "finding": "Different weeks retain distinct occurrences; the separate run is additive. Existing proposal contains four completions, two sets, one run and one check-in; prior fields are exact.",
+      "proposalSha256": "1bccadff03532ae04035b8445dd155105bdfac9f639b8df7686de39cb03654c0",
+      "writeDecision": "none"
+    },
+    {
+      "sources": [
+        "conflict-100",
+        "conflict-105"
+      ],
+      "disposition": "human-choice-required",
+      "finding": "Same completion id/week, conflicting 100 kg and 105 kg associated set. Neither timestamp, checksum nor container revision decides which is correct.",
+      "requiredInput": "Explicit athlete/reviewer determination of the intended set; retain both raw variants.",
+      "writeDecision": "none"
+    },
+    {
+      "sources": [
+        "unresolved-sidecar",
+        "unresolved-sidecar-retained-copy"
+      ],
+      "disposition": "human-choice-required",
+      "finding": "Local and durable main disagree (105 kg versus 100 kg). Startup conflict is genuine. An older known baseline observation is historical evidence, not permission to erase the later edit.",
+      "requiredInput": "Resolve intended occurrence from separately retained evidence; do not select latest or highest revision automatically.",
+      "writeDecision": "none"
+    },
+    {
+      "sources": [
+        "unfinished-0",
+        "unfinished-1",
+        "unfinished-2",
+        "unfinished-3"
+      ],
+      "disposition": "archived-unresolved",
+      "finding": "Live draft, pending run, replacement lock and transaction remain unresolved. Capture presence does not prove completion or safe resumption.",
+      "requiredInput": "Writer-specific finish/recovery evidence and a reviewed decision; ancillary/draft restore remains unapproved.",
+      "writeDecision": "none"
+    },
+    {
+      "sources": [
+        "settings-variant"
+      ],
+      "disposition": "human-choice-required",
+      "finding": "Sunday differs from the prior Tuesday/Saturday setting. This is intent, not an append-only history reconciliation.",
+      "requiredInput": "Explicit intended settings decision; no real settings or prescription changed.",
+      "writeDecision": "none"
+    },
+    {
+      "sources": [
+        "checksum-sidecar",
+        "corrupt-sidecar"
+      ],
+      "disposition": "integrity-refusal",
+      "finding": "An intact source is retained alongside the deliberately wrong durable checksum. Reject the corrupted container; do not rewrite its checksum to make it importable.",
+      "requiredInput": "A fresh independently verified capture if any real source were affected.",
+      "writeDecision": "none"
+    },
+    {
+      "sources": [
+        "freeze-writer"
+      ],
+      "disposition": "no-import",
+      "finding": "Reviewable captured history is not proof that every legacy writer is accounted for or frozen. The old QA adapter ancillary-write gap remains historical evidence.",
+      "requiredInput": "Complete writer accounting/captures/receipts and an enforceable boundary, or a separately approved no-import real-use design.",
+      "writeDecision": "none"
+    }
+  ],
+  "verification": {
+    "newNoImportTestsPassed": 3,
+    "affectedRegressionsPassed": 2,
+    "failed": 0,
+    "cases": [
+      {
+        "case": "altered-review-stage",
+        "result": "refused",
+        "reason": "No import: this draft is review-only. Legacy-writer accounting, verified receipts, resolved edits and an enforceable freeze require explicit review; no source is written."
+      },
+      {
+        "case": "altered-review-commit",
+        "result": "refused",
+        "reason": "No import: this draft is review-only. Legacy-writer accounting, verified receipts, resolved edits and an enforceable freeze require explicit review; no source is written."
+      },
+      {
+        "case": "valid-plan-no-authority",
+        "result": "refused",
+        "sourceUnchanged": true
+      },
+      {
+        "case": "serialised-claimed-approval",
+        "result": "refused",
+        "sourceUnchanged": true
+      }
+    ],
+    "allRetainedFiles": 34,
+    "sourceCopiesUnchanged": true,
+    "scope": "local synthetic; not a deployed policy or legacy freeze"
+  },
+  "preFixFailure": {
+    "sourceRevision": "ab35fc7a1e68e2422110b043127e280194d9482e",
+    "implementationRevision": "6dc8b83b7428df54aa70808ab1292118ee46c39c",
+    "observed": "New test failed: AssertionError: No-import boundary must refuse stage. Removing captureEntries and clearing writer/freeze evidence after prepare still allowed staging.",
+    "commitCaseBeforeFix": "not reached by the failing test; no separate pre-fix commit result claimed"
+  },
+  "limits": [
+    "Default refusal is in an unwired QA module, not either hosted app",
+    "The historical adapter fixture is retained solely for old synthetic evidence; not exposed by the supported review module",
+    "No client-side plan can freeze or enumerate all already-loaded legacy clients",
+    "No hosted UI sign-in, new browser/CI run, physical Android acceptance or human coaching approval performed",
+    "Ancillary/draft restoration and any future real-use/release/import decision remain reserved"
+  ]
+}
