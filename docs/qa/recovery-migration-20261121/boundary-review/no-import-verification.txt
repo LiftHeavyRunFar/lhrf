@@ -1,0 +1,12 @@
+NO_IMPORT_RESULTS {"cases":[{"case":"altered-review-stage","result":"refused","reason":"No import: this draft is review-only. Legacy-writer accounting, verified receipts, resolved edits and an enforceable freeze require explicit review; no source is written."},{"case":"altered-review-commit","result":"refused","reason":"No import: this draft is review-only. Legacy-writer accounting, verified receipts, resolved edits and an enforceable freeze require explicit review; no source is written."},{"case":"valid-plan-no-authority","result":"refused","sourceUnchanged":true},{"case":"serialised-claimed-approval","result":"refused","sourceUnchanged":true}],"allRetainedFiles":34,"sourceCopiesUnchanged":true,"scope":"local synthetic; not a deployed policy or legacy freeze"}
+✔ post-review loss of writer/freeze/capture evidence cannot stage or commit (12.66753ms)
+✔ complete review evidence still grants no import authority and no adapter bypass is exported (3.942207ms)
+✔ a serialised review or claimed complete freeze cannot enable import through the supported entrypoints (3.690342ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 241.603164

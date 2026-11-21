@@ -1,0 +1,29 @@
+{
+  "format": "lhrf-capture-receipt-v1",
+  "synthetic": true,
+  "writer": "writer-B",
+  "origin": "https://fictional-legacy.invalid",
+  "build": "fictional-legacy-v1.40.6",
+  "capturedAt": "2026-11-21T13:00:00.000Z",
+  "recoveryPackage": null,
+  "sha256": "38fbc717829876a2538102dc09c448fd34fbdc9f8f92d8a4d78a41cf4103e9b2",
+  "keyDigests": {
+    "lhrf_beta_v1118_clean": "a942f1d1eca7c4ec82863bbe4788b2efb1df6412371ca332e16b7ddcef9f128f",
+    "lhrf_fixture_settings": "e78bf90424775f81b3a702f4db316bf479e4ba38232eeef3e30673bebcc0e23d",
+    "lhrf_fresh_beta_live_v1114": null,
+    "lhrf_fresh_beta_live_v1114_pendingRun": null,
+    "lhrf_programme_replacement_lock_v1": null,
+    "lhrf_programme_replacement_transaction_v1": null,
+    "lhrf_treadmill_v1": "5e8bafb15c0cb85c3ac0febb5275a47f6f7a2d05ade6d692d2bf02a783e0711b"
+  },
+  "occurrences": [
+    "[\"prior\",0]",
+    "[\"same-strength\",2]"
+  ],
+  "counts": {
+    "completedWorkouts": 2,
+    "sets": 1,
+    "runs": 0,
+    "checkins": 1
+  }
+}

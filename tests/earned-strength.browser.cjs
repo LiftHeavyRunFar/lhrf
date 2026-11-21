@@ -12,6 +12,16 @@ const types = {'.js': 'application/javascript', '.html': 'text/html', '.css': 't
   '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml'};
 const copy = value => JSON.parse(JSON.stringify(value));
 
+
+async function checkpointReady(page) {
+  if (!await page.locator('html[data-lhrf-checkpoint]').count()) return;
+  await page.waitForFunction(() => window.LHRFDurableCheckpoint?.initialised ||
+    ['failed','conflict'].includes(window.LHRFDurableCheckpoint?.state));
+  const state = await page.evaluate(() => window.LHRFDurableCheckpoint.state);
+  assert.ok(!['failed','conflict'].includes(state), 'durable startup must succeed');
+  await page.evaluate(() => window.LHRFDurableCheckpoint.whenSaved());
+}
+
 async function run() {
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -49,7 +59,7 @@ async function run() {
             localStorage.setItem('fictional-earned-seeded', 'true');
           }
         }, {MAIN, state: f.state});
-        await page.goto(url);
+        await page.goto(url); await checkpointReady(page);
         await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
         const baseline = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), MAIN);
         const planBefore = copy(baseline.customRoadmap);
@@ -125,7 +135,7 @@ async function run() {
         assert.equal(approved.strengthProgressionDecisions.length, 1);
 
         await context.setOffline(true);
-        await page.reload();
+        await page.reload(); await checkpointReady(page);
         await page.locator('nav [data-screen="train"]').click();
         assert.equal(await page.evaluate(() => navigator.onLine), false);
         assert.deepEqual(await draft(), approved);
@@ -139,7 +149,7 @@ async function run() {
         await page.locator('#liveFinish').click();
         await page.locator('#finishAndSave').click();
         if (await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
-        await page.reload();
+        await page.reload(); await checkpointReady(page);
         const after = await stored();
         assert.equal(after.completedWorkouts.length, baseline.completedWorkouts.length + 1);
         assert.deepEqual(after.completedWorkouts.slice(0, -1), baseline.completedWorkouts);
@@ -161,7 +171,7 @@ async function run() {
           assert.ok(race);
           assert.ok(race.scheduledDate > f.live.scheduledDate);
           await page.clock.setFixedTime(new Date(race.scheduledDate + 'T09:00:00Z'));
-          await page.reload();
+          await page.reload(); await checkpointReady(page);
           await page.locator('nav [data-screen="today"]').click();
           for (const dot of await page.locator('#dayDots button').all()) {
             if ((await dot.getAttribute('aria-label') || '').toLowerCase().startsWith(race.day.toLowerCase())) {
@@ -186,7 +196,7 @@ async function run() {
           assert.deepEqual(raced.customRoadmap, after.customRoadmap);
           assert.deepEqual(raced.reviewedProgramme, after.reviewedProgramme);
           assert.deepEqual(raced.garminSync, after.garminSync);
-          await page.reload();
+          await page.reload(); await checkpointReady(page);
           assert.deepEqual(await stored(), raced);
           console.log('PASS', id, 'earned completion then race save/reload retains original/adjusted audit, earlier records, reviewed running/strength plans and Garmin sentinel.');
         }

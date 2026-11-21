@@ -1,0 +1,18 @@
+✔ mixed recovered/legacy captures reconcile once, preserve same id in distinct weeks and restore once (19.365795ms)
+✔ unresolved local/durable conflict is retained and never becomes a migration plan (1.773239ms)
+✔ unfinished companions and unrelated main/settings edits require review instead of silent migration (3.362968ms)
+RECOVERY MIGRATION EVIDENCE {"cases":6,"implementationSha256":{"scripts/recovery-migration-review.cjs":"12c98ebeeb4e10320991c8e5a3fa296be627dbcb1840810140acc0793fb344c4","tests/fixtures/beta-cutover-96c9c6a0.cjs":"07444bce5e60fc2e5c2034d6bead57a4a2da819d392134490d50323d376b30d3","src/durable-checkpoint.js":"41214cc82924004f54ef914973dcdd3688fd2dc2112babfac70782602bd546c9","tests/recovery-migration.test.cjs":"7ff9a9ef04566b93d46753e0a421199a3cdafde3c77e34e498e4258a7d58825b"},"syntheticOnly":true}
+✔ identical completion rows with conflicting sets retain both captured variants (5.10695ms)
+✔ reproduced ancillary-change gap is refused by the review gate inside the synthetic lock (3.537358ms)
+✔ durable checksum and receipt metadata corruption remain retained and block the dry run (2.195105ms)
+✔ complete training state is round-trippable without mutating any profile, programme, workout or Garmin record (3.177525ms)
+✔ only allowlisted training device state is read and structured credentials are removed recursively (0.67747ms)
+✔ download uses an attached JSON anchor, cleans up on failure and never writes storage (1.103501ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 188.675015

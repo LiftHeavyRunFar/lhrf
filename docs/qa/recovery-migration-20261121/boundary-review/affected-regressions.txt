@@ -1,0 +1,11 @@
+RECOVERY MIGRATION EVIDENCE {"cases":2,"implementationSha256":{"scripts/recovery-migration-review.cjs":"fa61b80f965c3e2f2635a875b7d7c030599f4934cbb5da61c714dfe5900c6a24","tests/fixtures/beta-cutover-96c9c6a0.cjs":"07444bce5e60fc2e5c2034d6bead57a4a2da819d392134490d50323d376b30d3","src/durable-checkpoint.js":"41214cc82924004f54ef914973dcdd3688fd2dc2112babfac70782602bd546c9","tests/recovery-migration.test.cjs":"112d9c05e30c43a2d4748e7fb721dabe8ad426efe396c4511e513648ef680f98"},"syntheticOnly":true}
+✔ historical #204 fixture: mixed captures reconcile once and restore once (25.41891ms)
+✔ review diagnostics retain ancillary-change refusal and import remains closed (4.476088ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 246.161685

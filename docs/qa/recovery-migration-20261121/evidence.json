@@ -1,0 +1,170 @@
+{
+  "format": "lhrf-synthetic-recovery-migration-evidence-v1",
+  "syntheticOnly": true,
+  "nodeVersion": "v24.22.3",
+  "baseRevision": "6dc8b83b7428df54aa70808ab1292118ee46c39c",
+  "approvedRecoveryPackage": "85d267c334e6ec7b5f6fac49747bd60316d7a0f9",
+  "approvedArtifact": 14702265911,
+  "approvedZipSha256": "b651d4e29c96c37312bf36f10d0b2c8f98cf7394fc1312d31a02ad6b0adc9465",
+  "implementationSha256": {
+    "scripts/recovery-migration-review.cjs": "12c98ebeeb4e10320991c8e5a3fa296be627dbcb1840810140acc0793fb344c4",
+    "tests/fixtures/beta-cutover-96c9c6a0.cjs": "07444bce5e60fc2e5c2034d6bead57a4a2da819d392134490d50323d376b30d3",
+    "src/durable-checkpoint.js": "41214cc82924004f54ef914973dcdd3688fd2dc2112babfac70782602bd546c9",
+    "tests/recovery-migration.test.cjs": "7ff9a9ef04566b93d46753e0a421199a3cdafde3c77e34e498e4258a7d58825b"
+  },
+  "reports": [
+    {
+      "case": "mixed-capture-reconcile-import-reload-restore",
+      "synthetic": true,
+      "captures": [
+        {
+          "file": "writer-A.json",
+          "receipt": "writer-A.receipt.json",
+          "sha256": "73bfabc7dfc3a1a1f7e36d133041f1b9b1bde42c505913aedb0e736bdfc383cc"
+        },
+        {
+          "file": "writer-B.json",
+          "receipt": "writer-B.receipt.json",
+          "sha256": "38fbc717829876a2538102dc09c448fd34fbdc9f8f92d8a4d78a41cf4103e9b2"
+        },
+        {
+          "file": "writer-C.json",
+          "receipt": "writer-C.receipt.json",
+          "sha256": "848a98a11d63a0cb78399ff0b65d281b7fadefc857f79acf2944796451acb9d4"
+        },
+        {
+          "file": "writer-D.json",
+          "receipt": "writer-D.receipt.json",
+          "sha256": "5fb23f9d0f92dade99a04be631ba81fd96ae2a90955b64410ed714a1e26158ed"
+        }
+      ],
+      "result": "pass",
+      "historySha256": "1bccadff03532ae04035b8445dd155105bdfac9f639b8df7686de39cb03654c0",
+      "occurrences": [
+        "[\"prior\",0]",
+        "[\"same-strength\",1]",
+        "[\"same-strength\",2]",
+        "[\"run\",2]"
+      ],
+      "counts": {
+        "completedWorkouts": 4,
+        "sets": 2,
+        "runs": 1,
+        "checkins": 1
+      },
+      "successfulMainHistoryRestores": 1,
+      "ancillaryKeysRetainedInCaptureFiles": true,
+      "ancillaryProfileRestore": false,
+      "repeatedImport": "already-initialised",
+      "lateLegacyDestinationUnchanged": true
+    },
+    {
+      "case": "unresolved-sidecar-export",
+      "synthetic": true,
+      "captures": [
+        {
+          "file": "unresolved-sidecar.json",
+          "receipt": "unresolved-sidecar.receipt.json",
+          "sha256": "ad7e863dfa976b4829b64c2badbcfe494d0d6ecd515716808cb2d9634c0b074c"
+        }
+      ],
+      "result": "safe-refusal",
+      "bothVariantsRetained": true,
+      "destinationCreated": false
+    },
+    {
+      "case": "unfinished-and-settings-variants",
+      "synthetic": true,
+      "captures": [
+        {
+          "file": "unfinished-0.json",
+          "receipt": "unfinished-0.receipt.json",
+          "sha256": "c982c4ed071c6363d064be22d5f167a49e39328a50601838ee7fe2f9594d7c02"
+        },
+        {
+          "file": "unfinished-1.json",
+          "receipt": "unfinished-1.receipt.json",
+          "sha256": "0ddb003ba405b36dcdce1c6ed15406717e98b5704cf055ccfea9101b338902cd"
+        },
+        {
+          "file": "unfinished-2.json",
+          "receipt": "unfinished-2.receipt.json",
+          "sha256": "2f3ec9d65564dab5820259756c125bba2b78baf9d2254079914d29afb1c5b4a2"
+        },
+        {
+          "file": "unfinished-3.json",
+          "receipt": "unfinished-3.receipt.json",
+          "sha256": "3b98f0b6f286c4509c76aad3e8e6c0456de2fdaa7655408352fb44b899ad443f"
+        },
+        {
+          "file": "settings-variant.json",
+          "receipt": "settings-variant.receipt.json",
+          "sha256": "bbda87fc1f1bcd5b2729fd06eeed584cae5068af609a59ddd3fff8a1680e7ac1"
+        }
+      ],
+      "result": "safe-refusal",
+      "sourceUnchanged": true,
+      "destinationCreated": false
+    },
+    {
+      "case": "conflicting-capture-separate-restore",
+      "synthetic": true,
+      "captures": [
+        {
+          "file": "conflict-100.json",
+          "receipt": "conflict-100.receipt.json",
+          "sha256": "f6de7285b4872d08cb26934a26d56f1958db7e72bb3291cd3922c2f66da5974f"
+        },
+        {
+          "file": "conflict-105.json",
+          "receipt": "conflict-105.receipt.json",
+          "sha256": "474009fd9d2d99fb446302608dd44f5b753e635907138dbd19056425d1176181"
+        }
+      ],
+      "result": "safe-refusal",
+      "separateRestoreMainDigests": [
+        "ab8a384838fa73ac005b09497ddca15a65a2d8fd7634edbcf3cea55e87269ef5",
+        "373b402c7b6281500b4b4cb6d0b9c566209257a67d4f8b0da30445a99a6fbd38"
+      ],
+      "combinedImport": false
+    },
+    {
+      "case": "ancillary-freeze-gap",
+      "synthetic": true,
+      "captures": [
+        {
+          "file": "freeze-writer.json",
+          "receipt": "freeze-writer.receipt.json",
+          "sha256": "26bfbb27e10c77ab9d0a281bf198fdf72a5424ff89cda7ee17c6edc06d06565f"
+        }
+      ],
+      "result": "pass",
+      "historicalAdapterPermittedAncillaryChange": true,
+      "reviewGateRefusedChangedAddedRemovedKeys": true,
+      "queuedChangeRefused": true,
+      "legacyWriterFenced": false
+    },
+    {
+      "case": "sidecar-and-receipt-integrity",
+      "synthetic": true,
+      "captures": [
+        {
+          "file": "checksum-sidecar.json",
+          "receipt": "checksum-sidecar.receipt.json",
+          "sha256": "9068f41aee228661eab811c4e66621d6e434602db96724c44ecff264a0d8ff58"
+        }
+      ],
+      "result": "safe-refusal",
+      "corruptArchiveRetained": true,
+      "postReviewCaptureChangeRefused": true,
+      "destinationCreated": false
+    }
+  ],
+  "limits": [
+    "Node storage-model dry run, not browser or physical acceptance",
+    "QA-only #204 adapter is not wired into #209 or either hosted copy",
+    "Real legacy writer census/freeze is not enforceable from the new client",
+    "Unresolved edits and absent receipts remain migration/recruitment blockers",
+    "Qualified human coaching and new build/release approvals remain reserved"
+  ]
+}
