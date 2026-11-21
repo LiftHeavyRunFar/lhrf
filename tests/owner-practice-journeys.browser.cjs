@@ -71,6 +71,18 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null, a
  const session = installed.activeSchedule.filter(item=>profile.runningOnly?item.runs?.length:item.ex?.length)
   .sort((a,b)=>a.scheduledDate.localeCompare(b.scheduledDate))[0];
  assert.ok(session);
+ if (abrupt) {
+  const baselineRaw = await page.evaluate(key => localStorage.getItem(key), key);
+  // Establish a previously persisted profile before the new, unflushed offline edit.
+  await context.close();
+  context = await restartBrowser('baseline');
+  page = await context.newPage(); watch(page);
+  await page.clock.install({time:new Date(monday+'T09:00:00Z')});
+  await page.goto(origin);
+  assert.equal(await page.evaluate(key => localStorage.getItem(key), key), baselineRaw);
+  console.log('VERIFIED established disk baseline', profile.id,
+   crypto.createHash('sha256').update(baselineRaw).digest('hex'));
+ }
  await page.clock.setFixedTime(new Date(session.scheduledDate+'T09:00:00Z'));
  await page.reload();
  await page.waitForFunction(()=>navigator.serviceWorker.controller);
@@ -109,9 +121,17 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null, a
  await page.goto(origin);
  assert.equal(await page.evaluate(()=>navigator.onLine),false);
  assert.equal(await page.evaluate(()=>!!navigator.serviceWorker.controller),true);
- assert.equal(await page.evaluate(key => localStorage.getItem(key), key), rawBeforeClose);
+ const recoveredRaw = await page.evaluate(key => localStorage.getItem(key), key);
+ const recoveredDraft = await page.evaluate(()=>JSON.stringify(window.LHRFLive.get()));
+ console.log('RECOVERY readback', profile.id, JSON.stringify({
+  mainPresent:recoveredRaw !== null, draftPresent:recoveredDraft !== 'null',
+  mainExact:recoveredRaw === rawBeforeClose, draftExact:recoveredDraft === draft,
+  expectedMainBytes:Buffer.byteLength(rawBeforeClose),
+  actualMainBytes:recoveredRaw === null ? 0 : Buffer.byteLength(recoveredRaw),
+ }));
+ assert.ok(recoveredRaw === rawBeforeClose, 'main training state must match its pre-kill bytes');
  assert.deepEqual(await state(),beforeClose);
- assert.equal(await page.evaluate(()=>JSON.stringify(window.LHRFLive.get())),draft);
+ assert.ok(recoveredDraft === draft, 'unfinished draft must match its pre-kill bytes');
  await page.locator('nav [data-screen="train"]').click();
  if(profile.runningOnly) assert.equal(await page.evaluate(()=>window.LHRFLive.get().runLogged),true);
  else {
@@ -280,12 +300,13 @@ async function abruptRecovery(origin, profile) {
   return activeContext;
  };
  try {
-  await offlineAthlete(await launch(false), origin, profile, async () => {
+  await offlineAthlete(await launch(false), origin, profile, async reason => {
+   if (reason === 'baseline') return launch(false);
    // No close(), storage flush or graceful browser shutdown before this kill.
    killedPid = await killIsolatedBrowser(activeContext, directory);
    return launch(true);
   }, true);
-  assert.equal(launches, 2);
+  assert.equal(launches, 3);
   assert.ok(killedPid > 0);
   console.log('PASS abrupt browser recovery', profile.id,
    'SIGKILL, same-profile offline relaunch, exact main/draft, one completion and reconnect preservation');
@@ -316,8 +337,8 @@ async function run() {
   try {
     // Earlier tab-reopen and graceful-restart cases retain their passing receipts.
     for (const profile of [
-      {id:'unfinished-strength', programme:'lifting-foundation', days:['Monday','Friday']},
-      {id:'unfinished-running', runningOnly:true, days:['Tuesday','Saturday']},
+      {id:'unfinished-strength-established-profile', programme:'lifting-foundation', days:['Monday','Friday']},
+      {id:'unfinished-running-established-profile', runningOnly:true, days:['Tuesday','Saturday']},
     ]) {
       try { await abruptRecovery(origin, profile); }
       catch (error) {
