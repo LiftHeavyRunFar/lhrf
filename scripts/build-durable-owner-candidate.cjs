@@ -20,6 +20,13 @@ module.exports = async function buildDurableCandidate(root, revision) {
   html = html.replaceAll('1.40.6-owner-60a89595e1ad', '1.40.6-owner-' + revision.slice(0, 12));
   html = html.replace('Build 60a89595.', 'Build ' + revision.slice(0, 8) + '.');
   await fs.writeFile(index, html);
+  const catalogue = path.join(root, 'catalogue-preview/index.html');
+  await fs.writeFile(catalogue, (await fs.readFile(catalogue, 'utf8'))
+    .replaceAll('1.40.6-owner-60a89595e1ad', '1.40.6-owner-' + revision.slice(0, 12)));
+  const release = '<meta name="lhrf-release" content="1.40.6-owner-' + revision.slice(0, 12) + '">';
+  for (const page of [index, catalogue]) {
+    if (!(await fs.readFile(page, 'utf8')).includes(release)) throw Error('Fixed offline release marker mismatch: ' + page);
+  }
   await fs.copyFile(path.join(__dirname, '../src/durable-checkpoint.js'), path.join(root, 'src/durable-checkpoint.js'));
   const worker = path.join(root, 'sw.js');
   const oldWorker = await fs.readFile(worker, 'utf8');

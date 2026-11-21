@@ -87,7 +87,8 @@
       const values = capture();
       const snapshot = {values, digest: await digest(values)};
       const next = {revision: (envelope?.revision || 0) + 1,
-        snapshots: [snapshot, ...(envelope?.snapshots || [])].slice(0, 16)};
+        snapshots: [snapshot, ...(envelope?.snapshots || [])].slice(0, 16),
+        recoveries: envelope?.recoveries || []};
       await commit(next);
       envelope = next;
       saved = version;
@@ -178,7 +179,7 @@
     const latest = known[0].values;
     if (JSON.stringify(local) !== JSON.stringify(latest)) {
       const next = {...envelope, revision: envelope.revision + 1,
-        recovery: {local, digest: await digest(local)}};
+        recoveries: [{local, digest: await digest(local)}, ...(envelope.recoveries || [])].slice(0, 16)};
       await commit(next);
       envelope = next;
     }

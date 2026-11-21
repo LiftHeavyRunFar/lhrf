@@ -159,6 +159,7 @@ async function offlineAthlete(context, origin, profile, restartBrowser = null, a
  await page.locator('#liveFinish').click();
  await page.locator('#finishAndSave').click();
  if(await page.locator('#liveFeedbackSkip').count()) await page.locator('#liveFeedbackSkip').click();
+ await page.evaluate(() => window.LHRFDurableCheckpoint.whenSaved());
  const finished=await state();
  assert.deepEqual(finished.reviewedProgramme,installed.reviewedProgramme);
  assert.deepEqual(finished.customRoadmap,installed.customRoadmap);
@@ -363,6 +364,20 @@ async function abruptRecovery(origin, profile) {
   assert.ok(killedPid > 0);
   console.log('PASS abrupt browser recovery', profile.id,
    'SIGKILL, same-profile offline relaunch, exact main/draft, one completion and reconnect preservation');
+  let completedPage = activeContext.pages().find(item => item.url().startsWith(origin));
+  const completedRaw = await completedPage.evaluate(key => localStorage.getItem(key), key);
+  await completedPage.evaluate(() => window.LHRFDurableCheckpoint.whenSaved());
+  await killIsolatedBrowser(activeContext, directory);
+  await launch(true);
+  completedPage = await activeContext.newPage();
+  await completedPage.clock.install({time:new Date(monday+'T09:30:00Z')});
+  await completedPage.goto(origin); await checkpointReady(completedPage);
+  assert.equal(await completedPage.evaluate(key => localStorage.getItem(key), key), completedRaw);
+  assert.equal(await completedPage.evaluate(() => window.LHRFLive.get()), null);
+  await activeContext.setOffline(false);
+  await completedPage.reload(); await checkpointReady(completedPage);
+  assert.equal(await completedPage.evaluate(key => localStorage.getItem(key), key), completedRaw);
+  console.log('PASS completed checkpoint', profile.id, 'second SIGKILL retains one completion without replay');
   if (profile.id === 'unfinished-running-established-profile') {
    await checkpointControls(activeContext, origin);
    let page = activeContext.pages().find(item => item.url().startsWith(origin));
@@ -384,6 +399,31 @@ async function abruptRecovery(origin, profile) {
    console.log('PASS pending-run checkpoint survives abrupt offline relaunch with exact completed history');
    await activeContext.close();
    await launch(false);
+   await activeContext.addInitScript(({key,pendingKey}) => {
+    if (location.protocol === 'http:') {
+     localStorage.removeItem(key);
+     localStorage.removeItem('lhrf_fresh_beta_live_v1114');
+     localStorage.removeItem(pendingKey);
+    }
+   }, {key,pendingKey});
+   page = await activeContext.newPage();
+   await page.clock.install({time:new Date('2026-11-17T09:30:00Z')});
+   await page.goto(origin); await checkpointReady(page);
+   assert.equal(await page.evaluate(key => localStorage.getItem(key), key), main);
+   assert.equal(await page.evaluate(key => localStorage.getItem(key), pendingKey), pending);
+   await page.evaluate(async () => {
+    localStorage.setItem('lhrf_fictional_receipt_probe', 'preserve-receipt');
+    await window.LHRFDurableCheckpoint.whenSaved();
+   });
+   const receipts = await page.evaluate(() => window.LHRFDurableCheckpoint.copies().durable.recoveries);
+   assert.ok(receipts.some(receipt => !Object.hasOwn(receipt.local, key)));
+   await page.evaluate(async () => {
+    localStorage.removeItem('lhrf_fictional_receipt_probe');
+    await window.LHRFDurableCheckpoint.whenSaved();
+   });
+   console.log('PASS missing local keys recover before app startup and retain the observed local copy through a later save');
+   await activeContext.close();
+   await launch(false);
    await activeContext.addInitScript(key => {
     if (location.protocol === 'http:') {
      const state = JSON.parse(localStorage.getItem(key));
@@ -398,7 +438,12 @@ async function abruptRecovery(origin, profile) {
    assert.equal(JSON.parse(conflict.local[key]).fictionalRecoveryConflict, true);
    assert.equal(conflict.durable.snapshots[0].values[key], main);
    assert.equal(await page.evaluate(() => typeof window.LHRFLive), 'undefined');
-   console.log('PASS unknown local recovery variant blocks startup and retains local plus durable copies');
+   const downloadEvent = page.waitForEvent('download');
+   await page.getByRole('button', {name:'Download recovery copies',exact:true}).click();
+   const downloaded = JSON.parse(await fs.readFile(await (await downloadEvent).path(), 'utf8'));
+   assert.deepEqual(downloaded.local, conflict.local);
+   assert.deepEqual(downloaded.durable, conflict.durable);
+   console.log('PASS unknown local recovery variant blocks startup and exports exact local plus durable copies');
   }
 
  } finally {
