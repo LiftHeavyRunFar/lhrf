@@ -1,0 +1,32 @@
+{
+  "format": "lhrf-durable-recovery-v1",
+  "local": {
+    "lhrf_beta_v1118_clean": "{\"sets\":[{\"sessionId\":\"draft\",\"week\":1,\"exercise\":\"Bench\",\"weight\":100,\"reps\":5,\"rpe\":7,\"notes\":\"fictional set\"}],\"runs\":[],\"checkins\":[{\"date\":\"2026-11-15\",\"readiness\":3}],\"completedWorkouts\":[{\"id\":\"prior\",\"week\":0},{\"id\":\"draft\",\"week\":1,\"date\":\"2026-11-16\"}],\"programme\":{\"id\":\"fictional-approved-plan\",\"prescription\":\"unchanged\"},\"settings\":{\"days\":[\"Tuesday\",\"Saturday\"]},\"unknownFuture\":{\"preserve\":\"exactly\"}}",
+    "lhrf_fresh_beta_live_v1114": "{\"unfinished\":true}",
+    "lhrf_treadmill_v1": "{\"unit\":\"km\"}",
+    "lhrf_fixture_settings": "{\"keep\":true}"
+  },
+  "durable": {
+    "revision": 3,
+    "snapshots": [
+      {
+        "values": {
+          "lhrf_beta_v1118_clean": "{\"sets\":[{\"sessionId\":\"draft\",\"week\":1,\"exercise\":\"Bench\",\"weight\":100,\"reps\":5,\"rpe\":7,\"notes\":\"fictional set\"}],\"runs\":[],\"checkins\":[{\"date\":\"2026-11-15\",\"readiness\":3}],\"completedWorkouts\":[{\"id\":\"prior\",\"week\":0},{\"id\":\"draft\",\"week\":1,\"date\":\"2026-11-16\"}],\"programme\":{\"id\":\"fictional-approved-plan\",\"prescription\":\"unchanged\"},\"settings\":{\"days\":[\"Tuesday\",\"Saturday\"]},\"unknownFuture\":{\"preserve\":\"exactly\"}}",
+          "lhrf_fresh_beta_live_v1114": "{\"unfinished\":true}",
+          "lhrf_treadmill_v1": "{\"unit\":\"km\"}",
+          "lhrf_fixture_settings": "{\"keep\":true}"
+        },
+        "digest": "80d6f42dcbdb62e254c1e6da5dc9f71f55b68445d84b30ef08b957569b4ee4ce"
+      }
+    ],
+    "recoveries": [
+      {
+        "local": {
+          "lhrf_beta_v1118_clean": "{\"sets\":[],\"runs\":[],\"checkins\":[{\"date\":\"2026-11-15\",\"readiness\":3}],\"completedWorkouts\":[{\"id\":\"prior\",\"week\":0}],\"programme\":{\"id\":\"fictional-approved-plan\",\"prescription\":\"unchanged\"},\"settings\":{\"days\":[\"Tuesday\",\"Saturday\"]},\"unknownFuture\":{\"preserve\":\"exactly\"}}"
+        },
+        "digest": "014a6022dc6df813cca4a1c238086f764c1de2e010d286e54185cd8b08b67709"
+      }
+    ]
+  },
+  "error": null
+}

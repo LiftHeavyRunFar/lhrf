@@ -1,0 +1,29 @@
+{
+  "format": "lhrf-capture-receipt-v1",
+  "synthetic": true,
+  "writer": "settings-variant",
+  "origin": "https://fictional-legacy.invalid",
+  "build": "fictional-legacy-v1.40.6",
+  "capturedAt": "2026-11-21T13:00:00.000Z",
+  "recoveryPackage": null,
+  "sha256": "bbda87fc1f1bcd5b2729fd06eeed584cae5068af609a59ddd3fff8a1680e7ac1",
+  "keyDigests": {
+    "lhrf_beta_v1118_clean": "22d73dd03a54ef758b99a2282e1f96ce2be91e3ce956e5a417a55cc5efe673e8",
+    "lhrf_fixture_settings": "e78bf90424775f81b3a702f4db316bf479e4ba38232eeef3e30673bebcc0e23d",
+    "lhrf_fresh_beta_live_v1114": null,
+    "lhrf_fresh_beta_live_v1114_pendingRun": null,
+    "lhrf_programme_replacement_lock_v1": null,
+    "lhrf_programme_replacement_transaction_v1": null,
+    "lhrf_treadmill_v1": "5e8bafb15c0cb85c3ac0febb5275a47f6f7a2d05ade6d692d2bf02a783e0711b"
+  },
+  "occurrences": [
+    "[\"prior\",0]",
+    "[\"setting-change\",1]"
+  ],
+  "counts": {
+    "completedWorkouts": 2,
+    "sets": 0,
+    "runs": 1,
+    "checkins": 1
+  }
+}

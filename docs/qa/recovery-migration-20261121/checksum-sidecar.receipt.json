@@ -1,0 +1,29 @@
+{
+  "format": "lhrf-capture-receipt-v1",
+  "synthetic": true,
+  "writer": "checksum-sidecar",
+  "origin": "https://fictional-legacy.invalid",
+  "build": "fictional-legacy-v1.40.6",
+  "capturedAt": "2026-11-21T13:00:00.000Z",
+  "recoveryPackage": "85d267c334e6ec7b5f6fac49747bd60316d7a0f9",
+  "sha256": "9068f41aee228661eab811c4e66621d6e434602db96724c44ecff264a0d8ff58",
+  "keyDigests": {
+    "lhrf_beta_v1118_clean": "e7859b776005e6ddb8b67ab07900bec6fdf177c78e5c7b9d136cf41a2ac85112",
+    "lhrf_fixture_settings": "e78bf90424775f81b3a702f4db316bf479e4ba38232eeef3e30673bebcc0e23d",
+    "lhrf_fresh_beta_live_v1114": null,
+    "lhrf_fresh_beta_live_v1114_pendingRun": null,
+    "lhrf_programme_replacement_lock_v1": null,
+    "lhrf_programme_replacement_transaction_v1": null,
+    "lhrf_treadmill_v1": "5e8bafb15c0cb85c3ac0febb5275a47f6f7a2d05ade6d692d2bf02a783e0711b"
+  },
+  "occurrences": [
+    "[\"prior\",0]",
+    "[\"digest\",1]"
+  ],
+  "counts": {
+    "completedWorkouts": 2,
+    "sets": 1,
+    "runs": 0,
+    "checkins": 1
+  }
+}
