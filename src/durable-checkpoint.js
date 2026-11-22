@@ -39,6 +39,8 @@
     exportButton.hidden = !['failed', 'conflict'].includes(state);
   }
   function stop(error, state = 'failed') {
+    // A later rejected save must never demote a storage conflict to a retryable error.
+    if (failure && document.documentElement.dataset.lhrfCheckpoint === 'conflict') return;
     failure = error;
     display(state, error.message + ' Training is paused. Keep both recovery copies.');
   }
@@ -83,6 +85,7 @@
   }
   async function drain() {
     while (saved < dirty) {
+      if (failure) throw failure;
       const version = dirty;
       const values = capture();
       const snapshot = {values, digest: await digest(values)};
@@ -94,10 +97,13 @@
       const next = {revision: (envelope?.revision || 0) + 1, knownValues,
         snapshots: [snapshot, ...(envelope?.snapshots || [])].slice(0, 16),
         recoveries: envelope?.recoveries || []};
+      if (failure) throw failure;
       await commit(next);
       envelope = next;
+      if (failure) throw failure;
       saved = version;
     }
+    if (failure) throw failure;
     if (initialised) display('saved', 'Checkpoint saved on this device.');
   }
   function schedule() {
@@ -136,10 +142,12 @@
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
   };
-  retryButton.onclick = () => {
+  function retry() {
+    if (document.documentElement.dataset.lhrfCheckpoint === 'conflict') return Promise.reject(failure);
     failure = null;
-    schedule().catch(() => {});
-  };
+    return schedule();
+  }
+  retryButton.onclick = () => { retry().catch(() => {}); };
   window.LHRFDurableCheckpoint = {
     get initialised() { return initialised; },
     get state() { return document.documentElement.dataset.lhrfCheckpoint; },
@@ -150,7 +158,7 @@
       if (failure) throw failure;
     },
     copies,
-    retry: () => { failure = null; return schedule(); },
+    retry,
   };
   window.addEventListener('storage', event => {
     if (event.storageArea === localStorage && (!event.key || tracked(event.key))) {

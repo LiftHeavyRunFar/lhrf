@@ -507,6 +507,10 @@ async function checkpointConflictDuringSave(origin) {
   assert.equal(await page.locator('#durableCheckpointGate').isVisible(), true);
   const copies = await page.evaluate(() => window.LHRFDurableCheckpoint.copies());
   assert.deepEqual(copies.durable, before, 'no acknowledgement after the conflict');
+  assert.equal(await page.evaluate(async () => {
+   try { await window.LHRFDurableCheckpoint.retry(); return false; } catch { return true; }
+  }), true, 'a routine retry cannot accept a conflicting legacy write');
+  assert.equal(await page.evaluate(() => window.LHRFDurableCheckpoint.state), 'conflict');
   assert.equal(copies.local.lhrf_fictional_pending_save, 'unacknowledged-edit');
   assert.equal(copies.local.lhrf_fictional_external_edit, 'retain-legacy-edit');
   const downloadEvent = page.waitForEvent('download');
