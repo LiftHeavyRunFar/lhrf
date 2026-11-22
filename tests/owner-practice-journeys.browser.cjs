@@ -476,6 +476,8 @@ async function checkpointConflictDuringSave(origin) {
   await context.route('**/*', route => new URL(route.request().url()).origin === new URL(origin).origin
    ? route.continue() : route.abort());
   const page = await context.newPage();
+  await page.addInitScript(({key,state}) => localStorage.setItem(key, JSON.stringify(state)),
+   {key,state:require('./training-start-fixture.cjs').fixture()});
   await page.goto(origin); await checkpointReady(page);
   const before = await page.evaluate(() => window.LHRFDurableCheckpoint.copies().durable);
   const legacy = await context.newPage();
