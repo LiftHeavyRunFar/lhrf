@@ -479,6 +479,7 @@ async function checkpointConflictDuringSave(origin) {
   await page.goto(origin); await checkpointReady(page);
   const before = await page.evaluate(() => window.LHRFDurableCheckpoint.copies().durable);
   const legacy = await context.newPage();
+  await legacy.route('**/legacy-blank-not-found', route => route.fulfill({contentType:'text/html',body:'<!doctype html><title>Fictional legacy writer</title>'}));
   await legacy.goto(origin + 'legacy-blank-not-found');
   await page.evaluate(() => {
    const original = crypto.subtle.digest.bind(crypto.subtle);
