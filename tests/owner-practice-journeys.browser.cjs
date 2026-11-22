@@ -491,6 +491,7 @@ async function checkpointConflictDuringSave(origin) {
     return original(...args);
    };
    localStorage.setItem('lhrf_fictional_pending_save', 'unacknowledged-edit');
+   window.conflictSaveResult = window.LHRFDurableCheckpoint.whenSaved().then(() => false, () => true);
   });
   await page.waitForFunction(() => typeof window.releaseConflictDigest === 'function');
   // This page has no checkpoint script: an actual separate-page storage event
@@ -498,12 +499,8 @@ async function checkpointConflictDuringSave(origin) {
   await legacy.evaluate(() => localStorage.setItem('lhrf_fictional_external_edit', 'retain-legacy-edit'));
   await page.waitForFunction(() => window.LHRFDurableCheckpoint.state === 'conflict');
   await page.evaluate(() => window.releaseConflictDigest());
-  const rejected = await page.evaluate(async () => {
-   try { await window.LHRFDurableCheckpoint.whenSaved(); return false; } catch { return true; }
-  });
+  const rejected = await page.evaluate(() => window.conflictSaveResult);
   assert.equal(rejected, true);
-  // A following browser task observes the settled drain/finally, not only the event.
-  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
   assert.equal(await page.evaluate(() => window.LHRFDurableCheckpoint.state), 'conflict',
    'finishing an in-flight checkpoint must not dismiss an external-writer conflict');
   assert.equal(await page.locator('#durableCheckpointGate').isVisible(), true);
