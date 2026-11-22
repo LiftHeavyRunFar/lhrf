@@ -464,6 +464,64 @@ async function abruptRecovery(origin, profile) {
  }
 }
 
+
+async function checkpointConflictDuringSave(origin) {
+ const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'lhrf-checkpoint-conflict-'));
+ const context = await chromium.launchPersistentContext(directory, {
+  ...devices['Pixel 7'], timezoneId:'Europe/London',
+  executablePath:process.env.CHROMIUM_EXECUTABLE || undefined, args:['--no-sandbox'],
+ });
+ try {
+  context.setDefaultTimeout(10000);
+  await context.route('**/*', route => new URL(route.request().url()).origin === new URL(origin).origin
+   ? route.continue() : route.abort());
+  const page = await context.newPage();
+  await page.goto(origin); await checkpointReady(page);
+  const before = await page.evaluate(() => window.LHRFDurableCheckpoint.copies().durable);
+  const legacy = await context.newPage();
+  await legacy.goto(origin + 'legacy-blank-not-found');
+  await page.evaluate(() => {
+   const original = crypto.subtle.digest.bind(crypto.subtle);
+   let hold = true;
+   crypto.subtle.digest = async (...args) => {
+    if (hold) {
+     hold = false;
+     await new Promise(resolve => { window.releaseConflictDigest = resolve; });
+    }
+    return original(...args);
+   };
+   localStorage.setItem('lhrf_fictional_pending_save', 'unacknowledged-edit');
+  });
+  await page.waitForFunction(() => typeof window.releaseConflictDigest === 'function');
+  // This page has no checkpoint script: an actual separate-page storage event
+  // models an already loaded legacy writer without relying on cooperative locking.
+  await legacy.evaluate(() => localStorage.setItem('lhrf_fictional_external_edit', 'retain-legacy-edit'));
+  await page.waitForFunction(() => window.LHRFDurableCheckpoint.state === 'conflict');
+  await page.evaluate(() => window.releaseConflictDigest());
+  const rejected = await page.evaluate(async () => {
+   try { await window.LHRFDurableCheckpoint.whenSaved(); return false; } catch { return true; }
+  });
+  assert.equal(rejected, true);
+  // A following browser task observes the settled drain/finally, not only the event.
+  await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
+  assert.equal(await page.evaluate(() => window.LHRFDurableCheckpoint.state), 'conflict',
+   'finishing an in-flight checkpoint must not dismiss an external-writer conflict');
+  assert.equal(await page.locator('#durableCheckpointGate').isVisible(), true);
+  const copies = await page.evaluate(() => window.LHRFDurableCheckpoint.copies());
+  assert.deepEqual(copies.durable, before, 'no acknowledgement after the conflict');
+  assert.equal(copies.local.lhrf_fictional_pending_save, 'unacknowledged-edit');
+  assert.equal(copies.local.lhrf_fictional_external_edit, 'retain-legacy-edit');
+  const downloadEvent = page.waitForEvent('download');
+  await page.getByRole('button', {name:'Download recovery copies',exact:true}).click();
+  const downloaded = JSON.parse(await fs.readFile(await (await downloadEvent).path(), 'utf8'));
+  assert.deepEqual(downloaded.local, copies.local);
+  assert.deepEqual(downloaded.durable, before);
+  console.log('PASS external legacy write during pending checkpoint stays paused, refuses acknowledgement and exports exact copies');
+ } finally {
+  await context.close(); await fs.rm(directory, {recursive:true,force:true});
+ }
+}
+
 async function run() {
   const revision = (await fs.readFile(path.join(root, 'OWNER-TEST-REVISION.txt'), 'utf8')).split('\n')[0];
   assert.equal(revision, candidateRevision);
@@ -500,6 +558,7 @@ async function run() {
       }
     }
     assert.deepEqual(failures, [], 'both missing abrupt-recovery cases must pass');
+    await checkpointConflictDuringSave(origin);
   } finally {
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
