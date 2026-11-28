@@ -25,3 +25,7 @@ test('failed storage writes retain the old programme and drafts',()=>{
  local.setItem=(k,v)=>{if(k===key&&once){once=false;throw Error('Injected failure')}set(k,v)};
  assert.throws(()=>api.clearAndInstall(local,session,key,api.cleanState(source(),options),{expectedRaw:raw,confirmed:true}),/Injected/);assert.equal(local.getItem(key),raw);assert.equal(local.getItem('lhrf_fresh_beta_live_v1114'),'draft');
 });
+
+test('an empty old test store can start the approved owner plan using the existing standard-gym policy',()=>{
+ const next=api.cleanState({},options);assert.equal(next.reviewedProgramme.weeks.length,13);assert.equal(next.onboardingComplete,true);assert.equal(next.equipmentInventory.defaultsPolicy,'commercial-gym-v2');assert.ok(next.activeSchedule.every(s=>s.ex.every(e=>e[3]===0)));
+});

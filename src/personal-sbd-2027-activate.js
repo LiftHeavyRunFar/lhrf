@@ -11,7 +11,7 @@ function withoutHistory(source){
  return next;
 }
 function cleanState(source,{owner,builder,training,registry,gym,now}){
- const next=withoutHistory(source),inventory=source.equipmentInventory||source.customRoadmap?.equipmentInventory;
+ const next=withoutHistory(source),inventory=source.equipmentInventory||source.customRoadmap?.equipmentInventory||gym.effective(null,registry.exercises,registry.equipment);
  const programme=builder.buildProgramme(owner.snapshots(),null,{training,registry,gym,inventory,equipment:[],now,protectedWeek:()=>false});
  const replacement=typeof module==='object'&&module.exports?require('./programme-replacement'):root.LHRFProgrammeReplacement;
  replacement.validateProgramme(programme);
