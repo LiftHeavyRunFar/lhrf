@@ -67,7 +67,10 @@ const mime={'.js':'application/javascript','.css':'text/css','.png':'image/png',
    let live=await page.evaluate(()=>LHRFLive.get());assert.equal(live.ex.length,deadlift.ex.length+1);
    assert.equal(live.ex.at(-1)[5].optional,true);
    await page.reload();live=await page.evaluate(()=>LHRFLive.get());assert.equal(live.ex.length,deadlift.ex.length+1);
-   const extra=page.locator('#liveExercises details').last();if(await extra.getAttribute('open')===null)await extra.locator('summary').click();
+   await page.evaluate(()=>go('train'));
+   const extra=page.locator('#liveExercises > .live-ex[data-exercise-index="'+(live.ex.length-1)+'"]');
+   if(await extra.getAttribute('open')===null)await extra.locator(':scope > summary').click();
+   console.log('Optional form state',await page.evaluate(()=>({screen:document.querySelector('main > section.active')?.id,cards:[...document.querySelectorAll('#liveExercises > .live-ex')].map(e=>({index:e.dataset.exerciseIndex,open:e.open,visible:!!e.querySelector('input[data-field=weight]')?.getClientRects().length}))})));
    await extra.locator('[data-field=weight]').fill('100');await extra.locator('[data-field=rpe]').fill('6');await extra.locator('.set-check').click();
    assert.match(await page.locator('#train .live-status').first().innerText(),new RegExp('0 of '+required+' sets'));
    await page.click('#liveFinish');await page.click('#finishAndSave');await page.click('#liveFeedbackSkip');
