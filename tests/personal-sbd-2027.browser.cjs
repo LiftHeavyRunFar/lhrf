@@ -67,7 +67,7 @@ const mime={'.js':'application/javascript','.css':'text/css','.png':'image/png',
    let live=await page.evaluate(()=>LHRFLive.get());assert.equal(live.ex.length,deadlift.ex.length+1);
    assert.equal(live.ex.at(-1)[5].optional,true);
    await page.reload();live=await page.evaluate(()=>LHRFLive.get());assert.equal(live.ex.length,deadlift.ex.length+1);
-   const extra=page.locator('#liveExercises details').last();await extra.locator('summary').click();
+   const extra=page.locator('#liveExercises details').last();if(await extra.getAttribute('open')===null)await extra.locator('summary').click();
    await extra.locator('[data-field=weight]').fill('100');await extra.locator('[data-field=rpe]').fill('6');await extra.locator('.set-check').click();
    assert.match(await page.locator('#train .live-status').first().innerText(),new RegExp('0 of '+required+' sets'));
    await page.click('#liveFinish');await page.click('#finishAndSave');await page.click('#liveFeedbackSkip');
@@ -75,6 +75,24 @@ const mime={'.js':'application/javascript','.css':'text/css','.png':'image/png',
    assert.deepEqual(completed.sets.slice(0,before.sets.length),before.sets);
    assert.equal(completed.sets.at(-1).optional,true);assert.equal(completed.sets.at(-1).role,'optional');
    assert.deepEqual(completed.runs,before.runs);assert.deepEqual(completed.reviewedProgramme,frozen);
+   await page.clock.setFixedTime(new Date('2026-12-08T10:00:00Z'));
+   await page.evaluate(()=>LHRFSyncReviewedCalendar());
+   assert.equal(await page.evaluate(()=>data.activeCustomWeek),2,'Skipping optional Saturday does not hold programme progression');
+   const bench=await page.evaluate(()=>data.activeSchedule.find(s=>s.name==='Bench · main'));
+   assert.ok(bench.ex.every(e=>e[3]===0),'No historical max or automatic kg replaces RPE-only loading');
+   await page.evaluate(id=>openWorkout(id),bench.id);await page.click('#previewStart');
+   if(await page.locator('#readinessModal').isVisible())await page.click('#readinessContinue');
+   const tricepsIndex=bench.ex.findIndex(e=>e[5].exerciseId==='triceps-pushdown');
+   const triceps=page.locator('#liveExercises > details[data-exercise-index="'+tricepsIndex+'"]');
+   if(await triceps.getAttribute('open')===null)await triceps.locator('summary').click();
+   await triceps.getByRole('button',{name:'Add optional set of '+bench.ex[tricepsIndex][0],exact:true}).click();
+   assert.equal(await page.locator('#liveExercises > details[data-exercise-index="'+bench.ex.length+'"]').count(),1,'Manually requested triceps work must stay visible');
+   await page.evaluate(()=>cancelLiveWorkout());
+   await page.clock.setFixedTime(new Date('2027-02-16T10:00:00Z'));
+   await page.evaluate(()=>LHRFSyncReviewedCalendar());
+   const finalWeek=await page.evaluate(()=>({week:data.activeCustomWeek,sessions:data.activeSchedule}));
+   assert.equal(finalWeek.week,12);assert.deepEqual(finalWeek.sessions.map(s=>s.scheduledDate),['2027-02-16','2027-02-18','2027-02-20']);
+   assert.ok(finalWeek.sessions.every(s=>s.ex.length===1&&s.ex[0][4]===9));
    // Rolling the programme back retains the optional set just recorded.
    const rollback=await page.evaluate(async()=>{
     const p=LHRFProgrammeReplacement.createRollback(data,LHRFCoach,{now:new Date().toISOString()}),b=await LHRFProgrammeReplacement.backupFor(data,LHRFStorage.local,LHRFTrainingBackup,new Date().toISOString());
