@@ -42,3 +42,16 @@ test('all loading remains RPE-first with no made-up squat or deadlift reference 
 test('meet week removes Thursday, Friday and Sunday work',()=>{
  assert.deepEqual(strength[12].sessions.map(s=>s.day),[1,5]);assert.equal(running[12].sessions.length,0);
 });
+
+test('the 13-week owner plan converts to the existing native workout schema without changing inputs',()=>{
+ const native=require('../src/native-catalogue.js'),training=require('../src/catalogue-training.js');
+ const registry=require('../src/exercise-registry.js'),gym=require('../src/gym-equipment.js');
+ const fullInventory=require('./equipment-fixtures.cjs').fullInventory();
+ const original=plan.snapshots(),before=JSON.stringify(original);
+ const built=native.buildProgramme(original,null,{training,registry,gym,inventory:fullInventory,equipment:[],now:'2026-11-28T12:00:00Z',protectedWeek:()=>false});
+ require('../src/programme-replacement.js').validateProgramme(built);
+ assert.equal(built.config.weeks,13);
+ assert.deepEqual(built.weeks[0].sessions.map(s=>s.day),['Tue','Tue','Thu','Fri','Sun']);
+ assert.equal(built.weeks[12].sessions.find(s=>s.eventDate)?.eventDate,'2027-02-27');
+ assert.equal(JSON.stringify(original),before);
+});
