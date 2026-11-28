@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.40.6"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script src="./src/training-storage.js"></script><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.41.0"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script src="./src/training-storage.js"></script><script>
 /* Explicit one-time fresh start, invoked only via ?fresh=1 on this device.
    Clear the beta and trial records before any app code reads storage. */
 (function(){
@@ -211,7 +211,7 @@ button{border-radius:12px!important}button:not(.ghost):not(.secondary){backgroun
 .lhrf-run-prescription>p{color:#b4d4e9;font-size:13px}
 
 #programmeReplacement{overflow-wrap:anywhere}#programmeReplacement section{min-width:0}#programmeReplacement input[type="checkbox"]{width:auto;margin-right:8px}#programmeReplacement label{display:block;margin:12px 0}
-</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/training-flow.js"></script><script src="./src/android-polish.js"></script><script src="./src/run-presentation.js"></script><script src="./src/training-review.js"></script><script src="./src/programme-replacement.js"></script><script src="./src/training-backup.js"></script><script src="./src/running-workouts.js"></script><script src="./src/coaching-evidence.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/gym-equipment.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script><script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script><script src="./src/garmin-workout.js"></script><script src="./src/intervals-sync.js"></script><style>
+</style><meta name="theme-color" content="#03070e"><meta name="application-name" content="LHRF"><meta name="apple-mobile-web-app-capable" content="yes"><link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-lhrf-192-v2.png"><link rel="icon" type="image/png" href="./icon-lhrf-192-v2.png"><script src="./src/training-flow.js"></script><script src="./src/android-polish.js"></script><script src="./src/run-presentation.js"></script><script src="./src/training-review.js"></script><script src="./src/earned-strength.js"></script><script src="./src/training-start-review.js"></script><script src="./src/programme-replacement.js"></script><script src="./src/training-backup.js"></script><script src="./src/running-workouts.js"></script><script src="./src/coaching-evidence.js"></script><script src="./src/running-preparation.js"></script><script src="./src/coach-constraints.js"></script><script src="./src/gym-equipment.js"></script><script src="./src/exercise-registry.js"></script><script src="./src/coach-engine.js"></script><script src="./src/coach-adapters.js"></script><script src="./src/coach-intake.js"></script><script src="./src/garmin-workout.js"></script><script src="./src/intervals-sync.js"></script><style>
 /* A single, unboxed masthead; the original logo blends into the page surface. */
 body{background:#03070e!important}
 header#appHeader{position:sticky!important;top:0;z-index:20;max-width:none;min-height:0;margin:0!important;padding:calc(4px + env(safe-area-inset-top)) 16px 4px!important;background:#03070e;border:0;border-radius:0;box-shadow:none;text-align:center}
@@ -485,7 +485,7 @@ function renderPlanDashboard(){
  const strengthCount=sessionsThisWeek.filter(s=>(s.ex||[]).length).length;
  const runCount=sessionsThisWeek.filter(s=>(s.runs||[]).length||s.run).length;
  const goalLabel=({Squat:'Squat',Bench:'Bench',Deadlift:'Deadlift',Running:'Running'})[c.priority]||c.priority||'Balanced';
- $('planDashProgramme').innerHTML='<div class="row" style="justify-content:space-between;align-items:center;gap:8px"><div><b>'+(data.customRoadmap?'Active programme':'Programme preview')+'</b><div class="muted small" style="margin-top:5px">'+goalLabel+' priority · '+strengthCount+' strength sessions · '+runCount+' running sessions / week</div></div><span class="tag">'+(data.customRoadmap?'ACTIVE':'PREVIEW')+'</span></div>'+(data.customRoadmap?'':'<div class="muted small" style="margin-top:9px">This plan has not been activated. Open settings to review and activate it.</div>');
+ $('planDashProgramme').innerHTML='<div class="row" style="justify-content:space-between;align-items:center;gap:8px"><div><b>'+(data.customRoadmap?'Active programme':'Programme preview')+'</b><div class="muted small" style="margin-top:5px">'+(savedCatalogue?'Structured programme':goalLabel+' priority')+' · '+strengthCount+' strength sessions · '+runCount+' running sessions / week</div></div><span class="tag">'+(data.customRoadmap?'ACTIVE':'PREVIEW')+'</span></div>'+(data.customRoadmap?'':'<div class="muted small" style="margin-top:9px">This plan has not been activated. Open settings to review and activate it.</div>');
  // Use actual generated sessions rather than an illustrative shape. This is a planning projection,
  // not completed tonnage; intensity is calculated from load / exercise-specific estimated 1RM.
  const metrics=[];
@@ -545,7 +545,7 @@ function scheduledDate(session){
  base.setHours(12,0,0,0);base.setDate(base.getDate()-(base.getDay()+6)%7+(start?(Number(data.activeCustomWeek||1)-1)*7:0)+index);
  return base;
 }
-function redundantOptionalExercise(e,ex){return !!e?.[5]?.optional&&/triceps.*(pushdown|extension)|(pushdown|extension).*triceps/i.test(e[0])&&ex.some(other=>other!==e&&!other?.[5]?.optional&&/triceps.*(pushdown|extension)|(pushdown|extension).*triceps/i.test(other[0]))}
+function redundantOptionalExercise(e,ex){return !!e?.[5]?.optional&&e[5].extraFor==null&&/triceps.*(pushdown|extension)|(pushdown|extension).*triceps/i.test(e[0])&&ex.some(other=>other!==e&&!other?.[5]?.optional&&/triceps.*(pushdown|extension)|(pushdown|extension).*triceps/i.test(other[0]))}
 function workoutParts(session){
  if(!session||session.component||!(session.ex?.length&&session.runs?.length))return session?[session]:[];
  return [{...session,id:session.id+'::strength',parentId:session.id,component:'strength',name:'Strength · '+session.name.split(' + ')[0],runs:[],run:false},{...session,id:session.id+'::run',parentId:session.id,component:'run',name:'Run · '+session.runs.map(r=>r.name).join(', '),ex:[],run:true}];
@@ -1293,12 +1293,40 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    root.appendChild(d);
    const rows=d.querySelector('#liveSets_'+i);
    conditionalWorkoutControl(e,i,rows);
+   // Manual bonus sets never increase the required prescription. No automatic fatigue
+   // inference from unperformed optional work; preserve draft before every write.
+   if(!e[5]?.warmup){
+    const addOptional=document.createElement('button');addOptional.type='button';
+    addOptional.className='secondary';addOptional.textContent='+ Optional set';
+    addOptional.setAttribute('aria-label','Add optional set of '+e[0]);
+    rows.before(addOptional);
+    addOptional.onclick=()=>{
+     if(lhrfExternalStorageChanged){document.getElementById('liveError').textContent='Training changed in another tab. Reload before adding sets.';return}
+     const prior=JSON.parse(JSON.stringify(live));
+     const source=live.ex[i];
+     const extra=[source[0],1,source[2],source[3],source[4],
+       {...(source[5]||{}),optional:true,role:'optional',category:'optional',priority:'optional',extraFor:i}];
+     live.ex.push(extra);
+     expanded=live.ex.length-1;
+     if(!persist()){live=prior;document.getElementById('liveError').textContent='Optional set could not be saved. Your existing sets remain unchanged.';return}
+     status();
+    };
+   }
+   window.LHRFEarnedStrength?.mount({state:data,live,index:i,anchor:rows,now:new Date().toISOString(),update:next=>{
+    if(lhrfExternalStorageChanged)throw Error('Training changed in another tab. Reopen this workout before deciding.');
+    const before=live;live=next;
+    if(!persist()){live=before;throw Error('Could not save this choice. Your workout is unchanged; retry when storage is available.');}
+    status();
+   }});
    for(let j=0;j<e[1];j++){
     const k=i+'_'+j,entry=live.entries[k]||{weight:practical.value||'',reps:e[2],rpe:'',done:false};
     const row=document.createElement('div');row.className='live-set';row.innerHTML=`<span class="set-num">${j+1}</span><div><label>${practical.type==='assistance-kg'?'Assistance kg':practical.type==='per-hand-kg'?'kg per hand':'kg'}</label><input type="number" min="0" step="any" data-field="weight" value="${esc(entry.weight)}"></div><div><label>${e[5]?.doseUnit==='seconds'?'Seconds':'Reps'}</label><input type="number" min="1" step="1" data-field="reps" value="${esc(entry.reps)}"></div><div><label>RPE</label><input type="number" min="1" max="10" step=".5" data-field="rpe" value="${esc(entry.rpe)}"></div><button class="set-check ${entry.done?'checked':''}" aria-label="Mark set ${j+1} complete">${entry.done?'✓':'○'}</button>`;
     row.querySelectorAll('input').forEach(input=>input.addEventListener('input',()=>{const fresh=!live.entries[k],v=live.entries[k]||(live.entries[k]={...entry});if(fresh)v.weightEdited=false;if(v.done)v.correcting=true;v[input.dataset.field]=input.value;if(input.dataset.field==='weight'){v.weightEdited=true;delete v.weightHint}if(v.done){v.done=false;row.querySelector('button').classList.remove('checked');row.querySelector('button').textContent='○'}if(lastSetAction?.key===k)lastSetAction=null;if(!persist())document.getElementById('liveError').textContent='Changes could not be saved. Your entries remain here; retry recording when storage is available.';updateHeader()}));
     row.querySelector('button').onclick=()=>{if(!row.isConnected||lastSetAction?.key===k&&Date.now()-lastSetAction.at<300)return;const beforeSet=JSON.parse(JSON.stringify(live));if(!equipmentStartAllowed({id:live.id,ex:[e]},live.v2Trial?.profile?.equipmentInventory||currentEquipmentInventory()))return;const v=live.entries[k]||(live.entries[k]={...entry});const recording=!v.done,correcting=!!v.correcting;if(!v.done){const w=Number(row.querySelector('[data-field="weight"]').value),r=Number(row.querySelector('[data-field="reps"]').value),rpe=Number(row.querySelector('[data-field="rpe"]').value);if(!((e[5]?.loadType==='bodyweight'||e[5]?.loadType==='assistance-kg'?w>=0:w>0)&&r>0&&rpe>=1&&rpe<=10)){alert('Enter weight, reps and RPE before logging this set.');return}v.weight=w;v.reps=r;v.rpe=rpe}if(!live.trainingPrescription)live.trainingPrescription={ex:JSON.parse(JSON.stringify(live.ex))};v.done=!v.done;if(v.done)delete v.correcting;else v.correcting=true;
      if(recording&&!correcting&&e[5]?.conditionalSingleAccepted&&e[5].conditionalSingleAccepted.date!==localWorkoutDate()){live=beforeSet;document.getElementById('liveError').textContent='Use rep practice before recording a new set on a different date.';return;}
+     if(recording&&!correcting&&e[5]?.earnedStrengthDecision&&e[5].earnedStrengthDecision.date!==LHRFEarnedStrength.localDay(new Date())){
+      live=beforeSet;document.getElementById('liveError').textContent='This bench approval has expired. Use the original prescription before recording new sets.';return;
+     }
      if(v.done&&e[5]?.role==='top'&&!e[5]?.conditionalSingleAccepted){
       const topWeight=Number(v.weight),topRpe=Number(v.rpe),topReps=Number(v.reps);
       // RIR-adjusted e1RM; solve back-off load from target reps and RPE.
@@ -1353,7 +1381,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
     alert('Skip the extra running visit today. Resume your familiar running days when ready.');return;
    }
   }
-  live={id:current.id,parentId:current.parentId||null,component:current.component||(current.ex?.length?'strength':'run'),day:current.day,name:current.name,ex:JSON.parse(JSON.stringify(current.ex||[])),runs:JSON.parse(JSON.stringify(current.runs||[])),run:!!current.run,runLogged:false,runEntry:null,entries:{},notes:'',sourceProgrammeWeek:current.sourceProgrammeWeek||Number(data.activeCustomWeek)||1,started:new Date().toISOString(),...(current.timeAdaptation?{timeAdaptation:JSON.parse(JSON.stringify(current.timeAdaptation))}:{} )};
+  live={catalogueOccurrenceId:current.catalogueOccurrenceId||null,scheduledDate:current.scheduledDate||null,eventDate:current.eventDate||null,id:current.id,parentId:current.parentId||null,component:current.component||(current.ex?.length?'strength':'run'),day:current.day,name:current.name,ex:JSON.parse(JSON.stringify(current.ex||[])),runs:JSON.parse(JSON.stringify(current.runs||[])),run:!!current.run,runLogged:false,runEntry:null,entries:{},notes:'',sourceProgrammeWeek:current.sourceProgrammeWeek||Number(data.activeCustomWeek)||1,started:new Date().toISOString(),...(current.timeAdaptation?{timeAdaptation:JSON.parse(JSON.stringify(current.timeAdaptation))}:{} )};
   if(change){if(change.kind==='accessory'){const e=live.ex[change.index];if(e&&e[1]>1){e[1]--;live.lastCoachNote='Readiness adjustment accepted: '+e[0]+' reduced by one set for this workout.'}}else if(change.kind==='run'){live.runs=change.runs;live.lastCoachNote='Readiness adjustment accepted: recovery run replaces today’s harder run.'}}
   if(live.runs.some(run=>run.conditionalAerobicBuild)){
    const now=Date.now();
@@ -1456,7 +1484,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    const evidence=meta.runtimeLoadEvidence;
    const reason=evidence?.reason&&evidence.suggestedKg===ex[3]
     ?`<p class="muted small">${esc(evidence.reason)}</p>`:'';
-   return `<div class="entry preview-exercise"><strong>${esc(ex[0])}</strong><p class="muted small">Prescribed${role}</p><p>${ex[1]} × ${esc(ex[2])} · ${load} · RPE ${esc(ex[4])}</p>${reason}</div>`;
+   return `<div class="entry preview-exercise"><strong>${esc(ex[0])}</strong><p class="muted small">${meta.optional?"Optional":"Prescribed"}${role}</p><p>${ex[1]} × ${esc(ex[2])} · ${load} · RPE ${esc(ex[4])}</p>${reason}</div>`;
   }).join('');
   const prescribedRuns=(completedRun?[]:session.runs||[]).map(r=>`<section class="run-workout-flow compact-run-preview"><strong>${esc(r.name)}</strong><p>${r.distanceKnown===false?esc(r.minutes)+' min target':r.distanceKm?esc(distanceLabel(r.distanceKm)):'Distance not prescribed'} · ${esc(r.pace||((r.steps||[]).some(s=>/\d:\d{2}/.test(s.pace||''))||r.distanceKnown===false?'Follow prescribed effort':'Add a recent running PB to set pace'))}</p>${r.structure?'<p class="small">'+esc(r.structure)+'</p>':''}${r.conditionalAerobicBuild&&r.minutes>r.conditionalAerobicBuild.startingMinutes?'<p class="muted small">Longer dose depends on recent easy runs and recovery.</p>':''}<details><summary>Intervals & coach’s notes</summary>${runStepsHtml(r).replace('class="run-workout-flow"','class="run-expanded-flow"')}</details></section>`).join('');
   const format=LHRFRunPresentation;
@@ -1530,9 +1558,9 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    live=null;persist();clearRunningToolsSelection();status();go('train');showLiveFeedback(trialFeedbackSession);return;
   }
   const beforeFinish=JSON.parse(JSON.stringify(data));
-  live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],...(e[5]?.exerciseId?{exerciseId:e[5].exerciseId,variantId:e[5].variantId,loadType:e[5].loadType,doseUnit:e[5].doseUnit}:{}),set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
+  live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],...(e[5]?.exerciseId?{exerciseId:e[5].exerciseId,variantId:e[5].variantId,loadType:e[5].loadType,doseUnit:e[5].doseUnit}:{}),set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,...(e[5]?.optional?{optional:true,category:'optional'}:{}),week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
   if(live.runLogged&&live.runEntry){data.runs=data.runs||[];data.runs.push({date:stamp,km:live.runEntry.km,min:live.runEntry.min,rpe:live.runEntry.rpe,type:live.runs?.[0]?.role||'run',sessionId:live.id,session:live.name,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,notes:note})}
-  data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,parentId:live.parentId||null,component:live.component||null,name:live.name,day:live.day,date:stamp,week:live.sourceProgrammeWeek||data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged,notes:note,prescription:JSON.parse(JSON.stringify({ex:live.ex,runs:live.runs||[]})),...(live.timeAdaptation?{timeAdaptation:live.timeAdaptation,originalPrescription:live.timeAdaptation.originalPrescription}:{})});
+  data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,parentId:live.parentId||null,component:live.component||null,name:live.name,day:live.day,date:stamp,week:live.sourceProgrammeWeek||data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged,notes:note,...(live.strengthProgressionDecisions?.length?{strengthProgressionDecisions:JSON.parse(JSON.stringify(live.strengthProgressionDecisions)),originalPrescription:JSON.parse(JSON.stringify(live.originalPrescription))}:{}),prescription:JSON.parse(JSON.stringify({ex:live.ex,runs:live.runs||[]})),...(live.timeAdaptation?{timeAdaptation:live.timeAdaptation,originalPrescription:live.timeAdaptation.originalPrescription}:{})});
   const finishedSession={id:live.id,name:live.name,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,completedRun:!!live.runLogged};
   if(!save()){data=beforeFinish;document.getElementById('liveError').textContent='Could not save. Your workout remains open; retry when storage is available.';return}live=null;persist();clearRunningToolsSelection();status();populate();refresh();go('train');showLiveFeedback(finishedSession);
 
@@ -1672,7 +1700,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
  <div class="catalogue-setup-content"></div>
  <div class="actions setup-footer"><button type="button" class="catalogue-link" data-open-competition>Competition programme</button><button type="button" class="secondary" data-close>Close setup</button></div>
 </dialog>
-<script src="./src/programme-catalogue.js"></script><script src="./src/catalogue-training.js"></script><script src="./catalogue-preview/app.js"></script><script src="./src/native-catalogue.js"></script>
+<script src="./src/programme-catalogue.js"></script><script src="./src/catalogue-training.js"></script><script src="./src/meet-entry.js"></script><script src="./catalogue-preview/app.js"></script><script src="./src/native-catalogue.js"></script>
 <div id="firstRun" hidden role="dialog" aria-modal="true" aria-label="Set up your hybrid training">
  <div class="fr-wrap">
  <div class="fr-mark"><span class="fr-brand">LHRF</span><span>LIFT HEAVY. RUN FAR.</span></div><div class="fr-step-label" id="frStepLabel" aria-live="polite"></div>
@@ -2520,6 +2548,37 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  if(savedDraft)ui.restore(savedDraft);
  else if(!data.onboardingComplete&&query.get('setup')!=='custom'&&!query.has('programme')&&!LHRFStorage.local.getItem('lhrf_pending_programme'))ui.open();
  window.LHRFCatalogueAfterReplacement=ui.afterReplacement;
+ window.LHRFTrainingStartReview?.mount({state:()=>data,active});
  window.addEventListener('focus',ui.refresh);
+})();
+</script><script src="./src/personal-sbd-2027.js"></script><script src="./src/personal-sbd-2027-activate.js"></script><script>
+(function(){
+ // Personal owner entry: do not alter, reset or auto-replace original training data.
+ const plan=document.getElementById('planDashboard'),firstRun=document.getElementById('firstRun');
+ const url=new URLSearchParams(location.search);
+ const key='lhrf-personal-2027-view';
+ const installed=data.programmeActivation?.status==='active'&&data.customRoadmap?.cataloguePlans?.some(p=>p.id==='owner-sbd-2027-strength');
+ const ownerMode=installed||url.get('owner')==='2027'||LHRFStorage.local.getItem(key)==='1';
+ if(!ownerMode){
+   const entry=document.createElement('button');entry.type='button';entry.className='secondary';
+   entry.textContent='My February powerlifting plan';
+   entry.onclick=()=>{const target=new URL(location.href);target.searchParams.set('owner','2027');location.assign(target)};
+   plan.before(entry);return;
+ }
+ if(url.get('owner')==='2027')LHRFStorage.local.setItem(key,'1');
+ if(!plan||!window.LHRFPersonalSBD2027)return;
+ document.getElementById('catalogueSetupDialog')?.close();
+ if(firstRun){firstRun.hidden=true;document.body.style.overflow=''}
+ if(installed){
+   for(const id of ['cataloguePlanActions','planAdvanced','restartOnboardingLink','startNewProgramme']){const el=document.getElementById(id);if(el)el.hidden=true}
+   return; // The normal Today and Plan screens now use the installed 13-week calendar.
+ }
+ const card=document.createElement('section');card.className='card';card.id='ownerSbd2027';card.setAttribute('aria-label','My February 2027 meet programme');
+ plan.before(card);window.LHRFPersonalSBD2027.render(card);window.LHRFPersonalSBDActivation?.mount(card);
+ for(const id of ['cataloguePlanActions','planAdvanced','restartOnboardingLink','startNewProgramme']){const el=document.getElementById(id);if(el)el.hidden=true}
+ for(const el of document.querySelectorAll('[data-open-competition]'))el.hidden=true;
+ plan.hidden=true; // Prevent showing the old programme as if it were the new one.
+ if(firstRun){firstRun.hidden=true;document.body.style.overflow=''}
+ if(!window.LHRFLive?.get?.() && typeof go==='function')go('plan');
 })();
 </script></body></html>

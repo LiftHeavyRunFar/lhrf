@@ -22,6 +22,7 @@
   };
   let state;
   let preview = null;
+  let meetProposal = null;
   let currentPage = 'catalogue';
 
   function node(tag, attrs = {}, ...children) {
@@ -188,29 +189,60 @@
 
   function makeSettings() {
     const programme = activeProgramme();
-    $('entry').textContent = programme.entry;
+    const duration = node('p', { class: 'meta' });
+    const guidance = node('p', { class: 'hint' }, programme.entry);
+    $('entry').replaceChildren(duration, programme.id.startsWith('marathon-two-run')
+      ? node('details', { class: 'setup-optional' }, node('summary', {}, 'Who this plan is for'), guidance)
+      : guidance);
     const settings = $('settings');
     const days = $('training-days');
+    const monday = $('monday');
+    const firstWeek = $('first-calendar-week');
+    monday.disabled = firstWeek.hidden = false;
     const extension = $('continuation-option');
     extension.replaceChildren();
     const continuation = node('input', { type: 'checkbox', name: 'continuation' });
     if (programme.continuationWeeks) extension.append(node('label', {}, continuation,
       'Include the optional ' + programme.continuationWeeks + '-week continuation'));
-    const renderDays = () => days.replaceChildren(weekdayFields(catalogue.previewProgramme(programme.id,
-      { continuation: continuation.checked })));
+    const renderDays = () => {
+      const snapshot = catalogue.previewProgramme(programme.id, { continuation: continuation.checked });
+      duration.textContent = snapshot.durationWeeks + ' weeks · ' + snapshot.sessionsPerWeek +
+        (programme.discipline === 'running' ? ' runs per week' : ' lifting days per week');
+      days.replaceChildren(weekdayFields(snapshot));
+    };
     renderDays();
     settings.replaceChildren();
-    const optional = node('details', { class: 'setup-optional' }, node('summary', {},
-      programme.discipline === 'strength' ? 'Add reference maxes (optional)' : 'Add a recent race time (optional)'));
+    if ((!native || native.meetEnabled) && ['powerlifting-three-day','powerlifting-four-day'].includes(programme.id)) {
+      const toggle = node('input', { type: 'checkbox', name: 'meetEntry' });
+      const details = node('div', { hidden: true },
+        label('Actual competition date', 'actualMeetDate', { type: 'date', required: true }),
+        node('p', { class: 'hint' }, 'We’ll work backwards from your meet date.'),
+        node('label', {}, 'Is this plan similar to your recent lifting?', node('select', { name: 'recentWork' },
+          node('option', { value: 'unknown' }, 'Not sure'), node('option', { value: 'comparable' }, 'Similar'), node('option', { value: 'not-comparable' }, 'Different'))),
+        node('label', {}, 'Have you recently had an easier week?', node('select', { name: 'recentDeload' },
+          node('option', { value: 'unknown' }, 'Not sure'), node('option', { value: 'recent' }, 'Yes'), node('option', { value: 'none' }, 'No'))));
+      const oldStrength = state.plans.filter(p => p.snapshot.discipline === 'strength' && state.occurrences.some(o=>o.planId===p.id && o.status==='planned'));
+      if (oldStrength.length) details.append(node('label', {}, 'Strength programme to switch from', node('select', { name: 'activePlanId', required: true },
+        node('option', { value: '' }, 'Choose a programme'), oldStrength.map(p=>node('option', { value: p.id }, p.snapshot.title + ' · ' + p.start)))));
+      toggle.addEventListener('change', () => {
+        details.hidden = !toggle.checked;
+        monday.disabled = firstWeek.hidden = toggle.checked;
+        for (const input of details.querySelectorAll('input, select')) input.disabled = !toggle.checked;
+      });
+      for (const input of details.querySelectorAll('input, select')) input.disabled=true;
+      settings.append(node('fieldset', {}, node('legend', {}, 'Preparing for a competition?'),
+        node('label', {}, toggle, 'I have a competition in 6–12 weeks'), details));
+    }
+    const optional = node('details', { class: 'setup-optional' }, node('summary', {}, 'Add a recent race time (optional)'));
     if (programme.discipline === 'strength' && programme.id !== 'lifting-foundation') {
       const number = { type: 'number', step: 'any', min: '1', inputmode: 'decimal' };
-      optional.append(node('fieldset', {}, node('legend', {}, 'Reference maxes'),
+      settings.append(node('fieldset', {}, node('legend', {}, 'Your recent best lifts (optional)'),
         node('div', { class: 'grid' }, label('Squat (kg)', 'squat', number), label('Bench (kg)', 'bench', number),
           label('Deadlift (kg)', 'deadlift', number),
           label('Plate increment (kg)', 'increment', { ...number, min: '0.1', value: 2.5 })),
-        node('p', { class: 'hint' }, 'Add a recent max for suggested weights.')));
+        node('p', { class: 'hint' }, 'Enter recent best weights to see suggested starting weights. Leave blank if unsure.')));
     }
-    if (programme.discipline === 'running' && programme.id !== 'running-base') {
+    if (programme.discipline === 'running' && programme.id !== 'running-base' && !['marathon-two-run', 'marathon-two-run-16'].includes(programme.id)) {
       const race = programme.id.startsWith('10k') ? '10K' : programme.id === 'half-marathon' ? 'half marathon' : 'marathon';
       optional.append(label('Recent ' + race + ' time (minutes)', 'raceMinutes',
         { type: 'number', inputmode: 'decimal', min: 1, step: 'any', placeholder: race === '10K' ? 'e.g. 55' : '' }),
@@ -256,7 +288,15 @@
         recentHalfSeconds: programme.id === 'half-marathon' ? raceSeconds : null,
         recentMarathonSeconds: programme.id.startsWith('marathon') ? raceSeconds : null,
       });
-      preview = training.enrol(native ? native.state() : state, scheduleFromForm(snapshot, form), start, 'preview');
+      meetProposal = null;
+      if (form.has('meetEntry')) {
+        if (native) state = native.state();
+        if (!globalThis.LHRFMeetEntry) throw Error('Meet preparation is not available in this view.');
+        const activePlanId=form.get('activePlanId') || null;
+        if (state.plans.some(p=>p.snapshot.discipline==='strength'&&state.occurrences.some(o=>o.planId===p.id&&o.status==='planned')) && !activePlanId) throw Error('Choose the strength programme you want to switch from.');
+        meetProposal=globalThis.LHRFMeetEntry.propose({snapshot,today:localDay(),meetDate:form.get('actualMeetDate'),days:form.getAll('trainingDay').map(Number),recentWork:form.get('recentWork'),recentDeload:form.get('recentDeload'),state,activePlanId});
+        preview=globalThis.LHRFMeetEntry.apply(state,meetProposal,'preview');
+      } else preview = training.enrol(native ? native.state() : state, scheduleFromForm(snapshot, form), start, 'preview');
       renderPreview();
       showMessage('');
       $('catalogue-title').focus();
@@ -270,7 +310,7 @@
   };
   const stepNames = { 'warm-up': 'Warm-up', recovery: 'Recovery', work: 'Work', 'cool-down': 'Cool-down', race: 'Race' };
 
-  function sessionDose(session) {
+  function sessionDose(session, showNotes = true) {
     if (session.kind === 'event') return session.exerciseIds.map(id => node('li', {}, humanise(id)));
     if (session.kind === 'run') return session.steps.map(step => node('li', {},
       stepNames[step.role] + ' · ' + (step.distanceMetres ? kmText(step.distanceMetres) : step.durationSeconds / 60 + ' min') +
@@ -284,7 +324,7 @@
       return node('li', {}, node('strong', {}, humanise(group.exerciseId)),
         ' · ' + group.sets + ' × ' + group.reps + unit + (group.perSide ? ' each side' : '') +
         weight + ' · RPE ' + (group.rpeMode === 'cap' ? '≤' : '') + effort,
-        replacement || group.technique || group.purpose
+        showNotes && (replacement || group.technique || group.purpose)
           ? node('small', {}, replacement + (group.technique ?? group.purpose ?? '')) : null);
     });
   }
@@ -304,7 +344,7 @@
       const names = pair => pair.map(item => dateText(item.date) + ' · ' + item.session.title).join(' / ');
       return node('section', { class: 'panel', 'aria-label': 'Fatigue review' }, heading('Fatigue review', 'h3'),
         conflicts.length ? node('p', { class: 'hint' },
-          'A demanding run falls within a day of a harder lower-body session. Change your days in Edit setup if you need more recovery.') :
+          'These runs and lower-body sessions are on the same or neighbouring days. This can make recovery harder. You can keep these days, or choose Edit setup below to change your running days.') :
           node('p', { class: 'hint' }, 'Your hard runs and harder lower-body sessions are on separate, non-consecutive days.'),
         conflicts.length ? node('ul', { class: 'warnings' }, conflicts.slice(0, 3).map(pair => node('li', {}, names(pair)))) : null,
         conflicts.length > 3 ? node('details', {}, node('summary', {}, 'See all ' + conflicts.length + ' pairings'),
@@ -313,7 +353,7 @@
     if (!conflicts.length) return node('div');
     return node('details', { class: 'panel', open: Boolean(weekFilter) },
       node('summary', {}, conflicts.length + ' lower-body and run pairing' + (conflicts.length === 1 ? '' : 's') + ' to review'),
-      node('p', { class: 'hint' }, 'These sessions are on the same or adjacent days. Decide whether their placement suits you.'),
+      node('p', { class: 'hint' }, 'These sessions are on the same or neighbouring days and may feel demanding. You can keep your chosen days or use Edit setup below to change them.'),
       node('ul', { class: 'warnings' }, conflicts.map(([first, next]) => node('li', {},
         dateText(first.date) + ' · ' + first.session.title + ' / ' + dateText(next.date) + ' · ' + next.session.title))));
   }
@@ -347,6 +387,63 @@
       first === 5 && openingVariations ? node('p', { class: 'hint' }, 'Return to the standard variations.') : null);
   }
 
+  function meetReviewPanel(candidate, proposal) {
+    const calendar = training.calendar(candidate).filter(item => item.planId === 'preview');
+    const opening = calendar.filter(item => item.week === 1);
+    const final = calendar.filter(item => item.week === proposal.weeks);
+    const { recentWork, recentDeload, moved, retainedEvents, overlaps } = proposal.reviewFacts;
+    const dateList = dates => dates.map(date => shortDate.format(training.parseDate(date))).join(', ');
+    const dateTitle = item => dateText(item.date) + ' · ' + item.session.title;
+    const warning = [
+      recentWork === 'unknown' ? 'Unsure about recent lifting? Check week one before accepting.' :
+        recentWork === 'not-comparable' ? 'Recent lifting differs. Ask a coach to review the start.' : null,
+      !proposal.recentLogged.length ? 'No logged lifts to compare.' : null,
+      recentDeload === 'recent' ? 'You reported a recent easier week. Check the next one below.' :
+        recentDeload === 'unknown' ? 'Unsure about your last easier week? Check the dates below.' : null,
+      proposal.excludedEasier.length ? 'Earlier easier weeks are outside this plan · template ' +
+        proposal.excludedEasier.map(week => 'week ' + week).join(', ') : null,
+      moved ? 'Some taper sessions fall outside your usual days.' : null,
+      retainedEvents.length ? 'Existing events still scheduled · ' + dateList(retainedEvents) : null,
+      overlaps.length ? 'Check these dates with completed lifting · ' + dateList(overlaps) : null,
+    ].filter(Boolean);
+    return node('section', { class: 'panel meet-review', 'aria-label': 'Meet preparation review' },
+      heading('Meet preparation review', 'h3'),
+      node('p', { class: 'meta' }, proposal.weeks + ' weeks · Starts ' + dateText(proposal.start)),
+      node('p', { class: 'meta' }, 'Template week ' + proposal.sourceFirst + ' · Meet ' + dateText(proposal.meetDate)),
+      warning.length ? node('ul', { class: 'warnings' }, warning.map(text => node('li', {}, text))) : null,
+      node('p', {}, 'Easier weeks · ' + (proposal.easier.length
+        ? dateList(proposal.easier.map(w => training.addDays(proposal.start, 7 * (w - proposal.sourceFirst))))
+        : 'None in this plan')),
+      proposal.notScheduled.length ? node('section', {}, heading('Past sessions left out', 'h4'),
+        node('ul', {}, proposal.notScheduled.map(item => node('li', {}, dateText(item.date) + ' · ' + item.title)))) : null,
+      heading('Proposed first week', 'h3'),
+      opening.map(item => node('article', {},
+        node('details', { class: 'setup-optional' }, node('summary', {}, dateTitle(item)),
+          node('ul', { class: 'dose' }, sessionDose(item.session, false))),
+        (item.session.groups || []).flatMap(group => {
+          const original = group.openingVariationFor ?? group.substitutedFor;
+          return original && original !== group.exerciseId
+            ? [node('p', { class: 'meta' }, humanise(group.exerciseId) + ' replaces ' + humanise(original))]
+            : [];
+        }))),
+      proposal.recentLogged.length ? node('details', { class: 'setup-optional' },
+        node('summary', {}, 'Recent lifting logs'), proposal.recentLogged.map(log => node('article', {},
+          heading(log.loggedAt ? log.loggedAt.slice(0, 10) : 'Date unknown', 'h4'),
+          node('p', { class: 'meta' }, log.partial === true ? 'Partial workout' : log.partial === false ? 'Completed workout' : 'Completion unknown'),
+          node('ul', {}, log.sets.map(set => node('li', {},
+            [humanise(set.exerciseId || 'unknown exercise'),
+              set.dose == null ? 'Reps unknown' : set.dose + (set.doseUnit === 'seconds' ? ' sec' : ' reps'),
+              set.weightKg == null ? 'Weight unknown' : set.weightKg + ' kg',
+              set.rpe == null ? 'RPE unknown' : 'RPE ' + set.rpe].join(' · '))))))) : null,
+      heading('Final week and meet', 'h3'),
+      final.map(item => node('article', {}, heading(dateTitle(item), 'h4'))),
+      proposal.supersededDetails.length ? node('details', { class: 'setup-optional' },
+        node('summary', {}, proposal.supersededDetails.length + ' future lifting sessions will be replaced'),
+        node('ul', {}, proposal.supersededDetails.map(item => node('li', {}, dateText(item.date) + ' · ' + item.title)))) : null,
+      node('p', { class: 'hint' }, 'Your completed workouts and running plan stay.'),
+      node('label', {}, node('input', { type: 'checkbox', name: 'reviewMeet' }), 'I’ve reviewed this meet plan.'));
+  }
+
   function renderPreview() {
     const region = $('preview');
     region.hidden = !preview;
@@ -357,21 +454,26 @@
     const { snapshot, start } = preview.plans.at(-1);
     $('plan-form').hidden = true;
     $('catalogue-title').textContent = snapshot.title;
-    const add = button('Get my programme', async () => {
+    const add = button(meetProposal ? 'Accept meet plan' : 'Get my programme', async () => {
       if (native) {
         add.disabled = true;
         try {
-          await native.approve(snapshot, start, new FormData($('plan-form')).getAll('equipment'));
+          if (meetProposal && !$('preview').querySelector('[name="reviewMeet"]')?.checked) throw Error('Tick “I’ve reviewed this meet plan” to continue.');
+          await native.approve(snapshot, start, new FormData($('plan-form')).getAll('equipment'), meetProposal, meetProposal ? JSON.stringify(state) : null);
+          meetProposal = null;
           preview = null;
           renderPreview();
         } catch (error) {
           showMessage(error.message, true);
+          $('message').focus({ preventScroll: true });
           $('message').scrollIntoView({ block: 'nearest' });
         } finally { add.disabled = false; }
         return;
       }
       tryAction(() => {
-        commit(training.enrol(state, snapshot, start, globalThis.crypto.randomUUID()));
+        if (meetProposal && !$('preview').querySelector('[name="reviewMeet"]')?.checked) throw Error('Tick “I’ve reviewed this meet plan” to continue.');
+        commit(meetProposal ? globalThis.LHRFMeetEntry.apply(state, meetProposal, globalThis.crypto.randomUUID()) : training.enrol(state, snapshot, start, globalThis.crypto.randomUUID()));
+        meetProposal = null;
         preview = null;
         renderPreview();
         showSetup();
@@ -383,8 +485,12 @@
     }, 'primary');
     const edit = button('Edit setup', () => {
       preview = null;
+      meetProposal = null;
       renderPreview();
       showSetup(snapshot.discipline);
+      const dayControl = $('training-days').querySelector('input[name="trainingDay"]');
+      dayControl?.focus();
+      $('training-days').scrollIntoView({ block: 'start' });
     }, 'secondary');
     const blocks = [];
     for (let offset = 0; offset < snapshot.weeks.length; offset += 4) {
@@ -399,10 +505,21 @@
         node('dt', {}, shortDate.format(training.parseDate(date))),
         node('dd', {}, firstWeek.filter(item => item.date === date)
           .map(item => node('div', {}, item.session.title)))))));
-    region.replaceChildren(node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start)),
-      week, conflictPanel(preview, 'preview'),
+    const isTwoRunMarathon = ['marathon-two-run', 'marathon-two-run-16'].includes(snapshot.id);
+    const runDays = isTwoRunMarathon ? training.scheduleOptions(snapshot).days.slice().sort((a, b) => a - b) : [];
+    const templateRace = isTwoRunMarathon
+      ? training.calendar(preview).find(item => item.plan.id === 'preview' && item.session.id === 'race') : null;
+    const adjacent = runDays.length === 2 && (runDays[1] - runDays[0] === 1 || runDays[0] + 7 - runDays[1] === 1);
+    const overview = meetProposal ? meetReviewPanel(preview, meetProposal) :
+      node('p', { class: 'meta' }, snapshot.durationWeeks + ' weeks · week of ' + dateText(start));
+    region.replaceChildren(...[overview,
+      templateRace ? node('p', { class: 'warn' }, 'Template marathon: ' + dateText(templateRace.date) +
+        ' (week ' + snapshot.durationWeeks + '). Compare this with your actual event date: dates are not automatically aligned, and this does not assess suitability. If your event is sooner, the full ' + snapshot.durationWeeks + '-week plan will not fit; do not skip ahead without individual coaching.') : null,
+      meetProposal ? null : week, adjacent ? node('p', { class: 'warn', role: 'status' },
+        'Your two running days are consecutive. Consider spacing them to allow recovery; check the long run against harder lower-body training too.') : null,
+      conflictPanel(preview, 'preview'),
       node('div', { class: 'actions preview-actions' }, add, edit),
-      node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks));
+      meetProposal ? null : node('details', { class: 'setup-optional' }, node('summary', {}, 'Programme by block'), ...blocks)].filter(Boolean));
   }
 
   let calendarWeek = null;
@@ -660,8 +777,9 @@
         restoreControl('programme');
         restoreControl('runCount');
         restoreControl('continuation');
+        restoreControl('meetEntry');
         for (const input of Array.from(form.elements)) {
-          if (!input.name || ['programme', 'runCount', 'continuation'].includes(input.name)) continue;
+          if (!input.name || ['programme', 'runCount', 'continuation', 'meetEntry'].includes(input.name)) continue;
           if (input.type === 'checkbox') input.checked = fields.getAll(input.name).includes(input.value);
           else if (fields.has(input.name)) input.value = fields.get(input.name);
         }
@@ -669,6 +787,7 @@
         if (draft.preview) form.requestSubmit();
       },
       open: (discipline, lockDiscipline) => {
+      state = native.state();
       $('change-discipline').hidden = Boolean(lockDiscipline);
       preview = null;
       renderPreview();
