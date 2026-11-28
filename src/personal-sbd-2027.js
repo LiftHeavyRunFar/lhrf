@@ -20,8 +20,8 @@
   [[2,3,6],[2,3,6],[1,1,6],[2,3,6],[2,3,5]],
   [[1,1,8,3,2,7.5],[3,2,8],[1,1,8],[1,1,8,2,2,7.5],[2,3,5.5]],
   [[1,1,9,2,2,8],[3,2,8],[1,1,8.5],[1,1,9,2,2,7.5],[2,2,5.5]],
-  [[1,1,9,2,2,7.5],[1,1,9,2,2,7],[1,1,9],[1,1,9,1,2,7],[2,2,5]],
-  [[1,1,7,2,2,6.5],[2,2,6],[1,1,6.5],[1,1,7,1,2,6],[2,2,5]],
+  [[1,1,8,2,2,7],[2,2,7],[1,1,7],[1,1,8,1,2,6.5],[2,2,5]],
+  [[0,0,0],[0,0,0],[1,1,9],[1,1,9],[0,0,0]],
   [[2,2,5],[2,1,5],[0,0,0],[0,0,0],[0,0,0]],
  ];
  const group=(exerciseId,sets,reps,rpe,kind='lift',purpose='',perSide=false)=>({
@@ -66,6 +66,21 @@
        groups:meet?[]:[...primary('competition-squat',squat),...primary('paused-bench',technique),
          assist('leg-curl',scaled(w,2,1),10,7)],
        note:'Keep the third bench exposure light. If squats aggravate back/leg symptoms, do not force the top set or make up volume.'};
+     // Week 12 is deliberately date-led, not weekday-template-led:
+     // final RPE 9 pulls Tue 16 Feb (11 days), squat Thu 18 Feb (9 days),
+     // bench Sat 20 Feb (7 days). No further heavy singles before the meet.
+     if(w===12){
+       const lastDeadlift={id:'last-deadlift-single',day:1,title:'Final heavy deadlift single',kind:'strength',
+         groups:[...primary('competition-deadlift',[1,1,9])],
+         note:'11 days out. Work to a controlled RPE 9 only if symptoms allow; no back-offs or additional pulling. Stop if back/leg symptoms occur.'};
+       const lastSquat={id:'last-squat-single',day:3,title:'Final heavy squat single',kind:'strength',
+         groups:[...primary('competition-squat',[1,1,9])],
+         note:'9 days out. A controlled competition-standard single, without additional squat volume.'};
+       const lastBench={id:'last-bench-single',day:5,title:'Final heavy competition bench single',kind:'strength',
+         groups:[...primary('competition-bench',[1,1,9])],
+         note:'7 days out. Competition pause and commands; no back-off sets. This Saturday is a bench day, not an optional run.'};
+       return {week:w,phase:'Final heavy singles',sessions:[lastDeadlift,lastSquat,lastBench]};
+     }
      const sessions=meet?[tue]:[tue,thu,fri,sun];
      if(meet)sessions.push({id:'meet',day:5,title:'Full powerlifting competition',kind:'event',
        exerciseIds:['competition-squat','competition-bench','competition-deadlift'],
@@ -75,7 +90,7 @@
  }
  function runningWeeks(){
    return rows.map((_,index)=>{
-     const w=index+1,mins=w===13?0:[4,8,12].includes(w)?20:w>=10?20:25;
+     const w=index+1,mins=[12,13].includes(w)?0:[4,8].includes(w)?20:w>=10?20:25;
      return {week:w,sessions:mins?[{id:'tue-easy',day:1,title:'Easy run · maintenance',kind:'run',
        durationSeconds:mins*60,steps:[{role:'work',effort:'easy',durationSeconds:mins*60}],
        note:'Conversational only. Saturday is optional, not assigned, and skipping it is neutral.'}]:[]};
@@ -91,7 +106,7 @@
      sessions:plans.flatMap(p=>p.snapshot.weeks[i].sessions).sort((a,b)=>a.day-b.day)}));
    host.replaceChildren();const h=document.createElement('h2');h.textContent='My 13-week powerlifting plan';host.append(h);
    const intro=document.createElement('p');intro.className='muted small';
-   intro.textContent='1 December 2026 → 27 February 2027 · Tuesday bench + easy run · Thursday deadlift · Friday bench · Sunday squat + technique bench · Saturday run only if you want to. Monday and Wednesday rest.';host.append(intro);
+   intro.textContent='1 December 2026 → 27 February 2027 · Usual Tue bench + easy run, Thu deadlift, Fri bench, Sun squat + light bench. Final heavy singles move to 16, 18 and 20 February to hit the meet countdown exactly.';host.append(intro);
    const label=document.createElement('label');label.textContent='Week ';label.htmlFor='ownerWeek';
    const select=document.createElement('select');select.id='ownerWeek';
    byWeek.forEach(w=>{const o=document.createElement('option');o.value=w.week;o.textContent='Week '+w.week+' · '+w.start+' · '+w.phase;select.append(o)});
@@ -105,7 +120,7 @@
        if(s.kind==='run'){const p=document.createElement('p');p.textContent=(s.durationSeconds/60)+' min easy conversational run';section.append(p)}
        if(s.note){const p=document.createElement('p');p.className='muted small';p.textContent=s.note;section.append(p)}
        body.append(section)}
-     const optional=document.createElement('p');optional.className='muted small';optional.textContent='Saturday: optional easy 20–40 minute run if you feel like it. No missed-session penalty or catch-up.';body.append(optional);
+     if(w.week<12){const optional=document.createElement('p');optional.className='muted small';optional.textContent='Saturday: optional easy 20–40 minute run if you feel like it. No missed-session penalty or catch-up.';body.append(optional);}
    }
    select.onchange=paint;select.value='1';paint();
    const status=document.createElement('p');status.className='muted small';status.textContent='Programme draft in the app; not yet activated against saved workouts. Your recorded history is unchanged.';host.append(status);
