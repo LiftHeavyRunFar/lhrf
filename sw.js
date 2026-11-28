@@ -9,6 +9,7 @@ SHELL.push(
   './src/catalogue-training.js',
   './src/native-catalogue.js',
   './src/personal-sbd-2027.js',
+  './src/personal-sbd-2027-activate.js',
   './src/training-storage.js',
   './src/competition-programme.js',
 );
