@@ -2532,13 +2532,13 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  window.LHRFTrainingStartReview?.mount({state:()=>data,active});
  window.addEventListener('focus',ui.refresh);
 })();
-</script><script src="./src/personal-sbd-2027.js"></script><script>
+</script><script src="./src/personal-sbd-2027.js"></script><script src="./src/personal-sbd-2027-activate.js"></script><script>
 (function(){
  // Personal owner entry: do not alter, reset or auto-replace original training data.
  const plan=document.getElementById('planDashboard'),firstRun=document.getElementById('firstRun');
  if(!plan||!window.LHRFPersonalSBD2027)return;
  const card=document.createElement('section');card.className='card';card.id='ownerSbd2027';card.setAttribute('aria-label','My February 2027 meet programme');
- plan.before(card);window.LHRFPersonalSBD2027.render(card);
+ plan.before(card);window.LHRFPersonalSBD2027.render(card);window.LHRFPersonalSBDActivation?.mount(card);
  for(const id of ['cataloguePlanActions','planAdvanced','restartOnboardingLink']){const el=document.getElementById(id);if(el)el.hidden=true}
  plan.hidden=true; // Prevent showing the old programme as if it were the new one.
  if(firstRun){firstRun.hidden=true;document.body.style.overflow=''}
