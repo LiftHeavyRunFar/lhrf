@@ -18,12 +18,14 @@
     <p>Install the latest app version in this browser and keep your programme and training history.</p>
     <button id="update" type="button">Update now</button>
     <a href="./">Open LHRF</a>
+    <button id="cleanStart" type="button" style="margin-top:16px">Start my 13-week programme fresh</button>
     <p id="status" role="status"></p>
   </main>
   <script src="./src/training-storage.js"></script>
   <script>
     const button=document.getElementById('update');
     const status=document.getElementById('status');
+    const cleanButton=document.getElementById('cleanStart');
     if(LHRFStorage.competition)document.querySelector('main a').href='./?mode=competition';
     function checkWorkout(){
       if(LHRFStorage.hasActiveWorkout()){
@@ -46,10 +48,10 @@
         check();
       });
     }
-    button.onclick=async()=>{
-      button.disabled=true;
+    async function update(cleanStart=false){
+      button.disabled=true;cleanButton.disabled=true;
       try{
-        checkWorkout();
+        if(!cleanStart)checkWorkout();
         if(!('serviceWorker' in navigator))throw new Error('Open this page in the browser you normally use for LHRF.');
         status.textContent='Checking for the latest version…';
         const registration=await navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'});
@@ -57,7 +59,7 @@
         if(registration.installing)await waitFor(registration.installing,['installed','activating','activated']);
         const waiting=registration.waiting;
         if(waiting){
-          checkWorkout();
+          if(!cleanStart)checkWorkout();
           waiting.postMessage('LHRF_ACTIVATE_UPDATE');
           await waitFor(waiting,['activated']);
         }else if(registration.active){
@@ -66,12 +68,15 @@
           throw new Error('The update is still downloading. Try again in a moment.');
         }
         status.textContent='LHRF is ready. Tap Open LHRF.';
+        if(cleanStart){const target=new URL('./',location.href);target.searchParams.set('owner','2027');target.searchParams.set('clean','1');if(LHRFStorage.competition)target.searchParams.set('mode','competition');location.assign(target.href);}
       }catch(error){
         status.textContent=error.message;
       }finally{
-        button.disabled=false;
+        button.disabled=false;cleanButton.disabled=false;
       }
-    };
+    }
+    button.onclick=()=>update(false);
+    cleanButton.onclick=()=>update(true);
   </script>
 </body>
 </html>
