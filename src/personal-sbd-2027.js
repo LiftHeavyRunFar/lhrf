@@ -19,9 +19,9 @@
   [[1,1,8,3,3,7.5],[3,3,7.5],[1,1,7.5],[1,3,8,2,3,7.5],[3,3,6]],
   [[2,3,6],[2,3,6],[1,1,6],[2,3,6],[2,3,5]],
   [[1,1,8,3,2,7.5],[3,2,8],[1,1,8],[1,1,8,2,2,7.5],[2,3,5.5]],
-  [[1,1,8.5,2,2,8],[3,2,8],[1,1,8],[1,1,8.5,2,2,7.5],[2,2,5.5]],
-  [[1,1,8.5,2,2,7.5],[1,1,8.5,2,2,7],[1,1,8],[1,1,8.5,1,2,7],[2,2,5]],
-  [[1,1,8,2,2,6.5],[2,2,6],[1,1,6.5],[1,1,7,1,2,6],[2,2,5]],
+  [[1,1,9,2,2,8],[3,2,8],[1,1,8.5],[1,1,9,2,2,7.5],[2,2,5.5]],
+  [[1,1,9,2,2,7.5],[1,1,9,2,2,7],[1,1,9],[1,1,9,1,2,7],[2,2,5]],
+  [[1,1,7,2,2,6.5],[2,2,6],[1,1,6.5],[1,1,7,1,2,6],[2,2,5]],
   [[2,2,5],[2,1,5],[0,0,0],[0,0,0],[0,0,0]],
  ];
  const group=(exerciseId,sets,reps,rpe,kind='lift',purpose='',perSide=false)=>({
@@ -31,6 +31,21 @@
  const primary=(id,triples)=>{const out=[];for(let i=0;i<triples.length;i+=3)if(triples[i]>0)out.push(group(id,triples[i],triples[i+1],triples[i+2]));return out};
  const assist=(id,s,r,rpe=7,purpose='',perSide=false)=>group(id,s,r,rpe,'accessory',purpose,perSide);
  const scaled=(w,normal,light=1)=>[4,8,12,13].includes(w)?light:normal;
+ // Not part of required volume. Each suggested back-off is individually optional.
+ // Early block: fives; strength block: triples; specific block: doubles. No late taper pulls.
+ const deadliftBackoffs=[
+  [2,5,6],[2,5,6.5],[2,5,7],null,
+  [2,3,7],[2,3,7],[1,3,7],null,
+  [1,2,7],[1,2,7],[1,2,6.5],null,null
+ ];
+ const optionalDeadlift=(w)=>{
+   const dose=deadliftBackoffs[w-1];if(!dose)return [];
+   return Array.from({length:dose[0]},(_,index)=>({
+     ...group('competition-deadlift',1,dose[1],dose[2], 'lift',
+       'Optional back-off '+(index+1)+' of '+dose[0]+'. Stop before symptoms; no catch-up.'),
+     optional:true,role:'optional',rpeMode:'cap'
+   }));
+ };
  function strengthWeeks(){
    return rows.map((line,index)=>{
      const w=index+1,[tuesday,friday,deadlift,squat,technique]=line,meet=w===13;
@@ -39,11 +54,11 @@
          ...(meet?[]:[assist('chest-supported-row',scaled(w,3,2),10),assist('triceps-pushdown',scaled(w,2,1),12)])],
        note:'Target RPE controls load. 160 kg is a reference, not a mandatory percentage.'};
      const thu={id:'thu-deadlift',day:3,title:meet?'Rest · meet approaches':'Deadlift · controlled exposure',kind:'strength',
-       groups:meet?[]:[...primary('competition-deadlift',deadlift),
+       groups:meet?[]:[...primary('competition-deadlift',deadlift),...optionalDeadlift(w),
          assist('leg-press',scaled(w,3,2),8,7,'Primary lower-body volume; belt squat if available.'),
          assist('split-squat',scaled(w,2,1),8,7,'Each leg; choose supported variant if preferred.',true),
          assist('leg-curl',scaled(w,2,1),12,7)],
-       note:'Only one working single or double; no mandatory deadlift back-off sets. Stop pulling if back or radiating leg symptoms occur; choose supported leg work only if symptom-free. No forced weekly increase.'};
+       note:'Top single/double is the only required pull. Back-off fives, triples or doubles are optional and must be pain-free; stop for back or radiating leg symptoms. Leg press and split squats supply most lower-body volume. No forced weekly increase.'};
      const fri={id:'fri-bench',day:4,title:meet?'Rest · meet tomorrow':'Bench · second main',kind:'strength',
        groups:meet?[]:[...primary('paused-bench',friday),assist('lat-pulldown',scaled(w,3,2),10),assist('triceps-pushdown',scaled(w,2,1),12)],
        note:'Competition-style pause; quality reps, no grinders.'};
@@ -86,7 +101,7 @@
      const head=document.createElement('p');head.className='muted';head.textContent=w.start+' to '+w.end+' · '+w.phase;body.append(head);
      for(const s of w.sessions){const section=document.createElement('section');section.className='entry';const name=document.createElement('h3');
        name.textContent=days[s.day]+' '+addDays(w.start,s.day)+' · '+s.title;section.append(name);
-       for(const g of s.groups||[]){const p=document.createElement('p');p.textContent=g.exerciseId.replaceAll('-',' ')+' — '+g.sets+' × '+g.reps+' @ RPE '+g.rpe+(g.purpose?' · '+g.purpose:'');section.append(p)}
+       for(const g of s.groups||[]){const p=document.createElement('p');p.textContent=(g.optional?'OPTIONAL · ':'')+g.exerciseId.replaceAll('-',' ')+' — '+g.sets+' × '+g.reps+' @ RPE '+g.rpe+(g.purpose?' · '+g.purpose:'');section.append(p)}
        if(s.kind==='run'){const p=document.createElement('p');p.textContent=(s.durationSeconds/60)+' min easy conversational run';section.append(p)}
        if(s.note){const p=document.createElement('p');p.className='muted small';p.textContent=s.note;section.append(p)}
        body.append(section)}
