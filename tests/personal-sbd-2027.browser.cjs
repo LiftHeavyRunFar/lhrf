@@ -44,8 +44,8 @@ const mime={'.js':'application/javascript','.css':'text/css','.png':'image/png',
    await activate.click();await page.getByText('Injected write failure',{exact:false}).waitFor();
    assert.deepEqual(await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key),before);
    await page.evaluate(()=>{Storage.prototype.setItem=window.originalStorageSet});
-   await activate.click();await page.waitForFunction(key=>JSON.parse(localStorage.getItem(key)).programmeActivation?.status==='active',key);
-   await page.waitForLoadState('load');
+   await Promise.all([page.waitForEvent('load'),activate.click()]);
+   await page.waitForFunction(key=>JSON.parse(localStorage.getItem(key)).programmeActivation?.status==='active',key);
    let state=await page.evaluate(key=>JSON.parse(localStorage.getItem(key)),key);
    api.verifyPreservation(before,state);assert.equal(state.reviewedProgramme.weeks.length,13);
    assert.equal(await page.locator('#ownerSbd2027').count(),0,'Normal app replaces the draft viewer after activation');

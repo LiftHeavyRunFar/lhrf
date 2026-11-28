@@ -97,9 +97,9 @@ jobs:
           replace_once("scripts/build-native-owner-candidate.mjs",
                        "af48c572c07b080b066cfe1378099fdcab00f04d", sha)
           for file in ["index.html", "catalogue-preview/index.html"]:
-              replace_once(file, 'name="lhrf-release" content="1.40.6"',
+              replace_once(file, 'name="lhrf-release" content="1.41.0"',
                            f'name="lhrf-release" content="{release}"')
-          replace_once("sw.js", "const CACHE = 'lhrf-shell-v1.40.6';",
+          replace_once("sw.js", "const CACHE = 'lhrf-shell-v1.41.0';",
                        f"const CACHE = 'lhrf-shell-v{release}';")
           replace_once("sw.js", "const SHELL = [", "const SHELL = ['./refresh.html',")
           # Sites redirects the owner practice update page from /refresh.html to /refresh.

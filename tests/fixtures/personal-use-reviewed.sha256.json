@@ -8,7 +8,7 @@
   "icon-lhrf-512-v2.png": "b3de2f39882abaef41619619d5fb33f3ffd2001341a875be72e54d474c83bb45",
   "icon-lhrf-maskable-v2.png": "c9895a26f364ab944f3d9b3b3952d28559389ac0a03ebe2ba4771ce801a7de2b",
   "icon-lhrf.svg": "fd75207a795ba60462fbf03e5f0e1b4c55d6a843c28702740031b497b760f59a",
-  "index.html": "10d6b715a41926c02a99ab444298b3f8bf237a916a30504ed50f3185e1674d52",
+  "index.html": "cb65db56078be132c22199b2d5d21d71d24711cfc9fc1600673abd739cae6f05",
   "manifest.webmanifest": "4e8f633bd4710b5397de15c57bbdf4296f40ed395735c1fafb24a1677881d423",
   "refresh.html": "198df2e4ec45c8882b94c92bc1823148e1017b21a8570a475af1ce3664a9b4fb",
   "src/android-polish.js": "bae44171f2c9866cea30eb93696dd8e14d34d4cdac59fc1ef94aa7a3eb215d9d",
@@ -25,11 +25,13 @@
   "src/meet-entry.js": "49290251211b94b9ea6969bcd0203ef72d98dc4f7d447526730850e427a38c02",
   "src/mobile-ux.css": "9ff7ecf20ec2576be7c6c9b76a8505988b28ceb6ce04df72bab18004d195bb3a",
   "src/mobile-ux.js": "ef6416eb7966d8b0d805dcd60c32d7c19504ee77c5b91b30b6c2d9c3473c3fe7",
-  "src/native-catalogue.js": "a6a342520ba2b03c95a7322bf791dc4c84a096e83e6f8bed4cc856ce2d2f9ae3",
+  "src/native-catalogue.js": "948b6a3c29d0263f75e1f2cd431984b1c1ae269d2f07e517d4c21d470f517c46",
   "src/performance-history.js": "402f94029813825b4ca5dd2876d07830ac8da591e69c44a0dffd446315db858d",
+  "src/personal-sbd-2027-activate.js": "9d751cf865799a5aeb53607af8ad8c5789849ca6677d4e2f48369a3f07729e5a",
+  "src/personal-sbd-2027.js": "29d02bd15952ef99088ee44cf97ef6709de85bea75833abb7628fb799c5baad0",
   "src/programme-catalogue.js": "3a29da90977abc7f5ad8b1a136598f8988a4e8c592eb83c715fa6bda494b544a",
   "src/programme-install.js": "caf1f548abd16ccf72f5cb307f857a89c382d92d43d6d0b787fc4d161ad3d00d",
-  "src/programme-replacement.js": "873266c172fc36c4370c6b7d2e77e416c3b3a4c0310b00602896b7b1f57379c4",
+  "src/programme-replacement.js": "dc1cd40668b51fa2d9ecce771bc822de88e55087f7e5ee4734224893bc0a497e",
   "src/run-presentation.js": "8d7ba6d57414765a5dd000193cc9af44421c86d1ac356fa8f256cd1f1a1d78dc",
   "src/running-preparation.js": "cd121e4fecd404f5a864c30b145afdcf1efd6346fd46e113b5d8423fce7751d1",
   "src/running-workouts.js": "45d2a9ddbf704275c8b8bbe9017c176a177f316932643a6718236bd1b75ef3c4",
@@ -42,5 +44,5 @@
   "src/training-storage.js": "f1d552b67bd7c24fb7a5728f6cce294491884437c1e51c42c68d6907a865207c",
   "src/workout-tools.css": "08385cdb5e43441bb408578d6d09531960c74d025d80b9d6ee1174a9004d4e6b",
   "src/workout-tools.js": "e1d3542da72ead4f4fc2d531630cc42d9344ba790dc60a88988866782b67a143",
-  "sw.js": "6b357dee3880b16c1d99586d388ee3f8c58fcbfb44a117bdba7050bb3a08663e"
+  "sw.js": "977fd8294825adc60fa4d31655f913398e726e375bed6f9a1eb0a56f7f30623a"
 }

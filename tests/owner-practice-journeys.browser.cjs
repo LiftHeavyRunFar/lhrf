@@ -14,9 +14,9 @@ const builtRoot = path.resolve(process.env.OWNER_CANDIDATE_ROOT || 'native-owner
 const manifest = require('./fixtures/personal-use-reviewed.sha256.json');
 const qaRevision = process.env.OWNER_SOURCE_SHA;
 assert.match(qaRevision || '', /^[a-f0-9]{40}$/);
-assert.equal(Object.keys(manifest).length, 44);
-// Reviewed combined input = downloaded #211 artifact plus explicit native preview/SW patches.
-// All 44 files must match its pinned digest after build-identity normalisation.
+assert.equal(Object.keys(manifest).length, 46);
+// Reviewed runtime now includes the owner programme and optional-set corrections.
+// Every packaged file must match the reviewed digest after build-identity normalisation.
 // The original #208 fixture is retained separately as provenance.
 for (const [name, digest] of Object.entries(manifest)) {
   let bytes = fsSync.readFileSync(path.join(builtRoot, name));

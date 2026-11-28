@@ -98,3 +98,20 @@ test('native adapter retains optional sets and excludes them from required workl
  assert.ok(optional.every(e=>e[1]===1&&e[5].role==='optional'&&e[5].category==='optional'));
  require('../src/programme-replacement.js').validateProgramme(p);
 });
+
+test('early installation is explicitly reviewed and retains the normal backup, live-workout and start-date gates',async()=>{
+ const native=require('../src/native-catalogue'),training=require('../src/catalogue-training'),registry=require('../src/exercise-registry'),gym=require('../src/gym-equipment');
+ const api=require('../src/programme-replacement'),coach=require('../src/coach-engine'),backupModule=require('../src/training-backup');
+ const inventory=require('./equipment-fixtures.cjs').fullInventory(),old=require('../docs/qa/stage-seven/regressions/Taylor.json').programme;
+ const state={onboardingComplete:true,equipmentInventory:inventory,customRoadmap:old.config,activeSchedule:old.weeks[0].sessions,activeCustomWeek:1,sets:[],runs:[],checkins:[],completedWorkouts:[],athlete:{id:'fictional'}};
+ const now='2026-11-28T16:00:00Z',programme=native.buildProgramme(plan.snapshots(),null,{training,registry,gym,inventory,equipment:[],now,protectedWeek:()=>false});
+ programme.config.preStartActivation='reviewed-future-only';
+ const packet=await api.createPackage(programme,state,{reviewedCommit:'fictional-acceptance'}),p=api.createReplacement(state,packet,coach,{now});
+ const entries=new Map([[api.DATA_KEY,JSON.stringify(state)]]),storage={getItem:k=>entries.get(k)||null,setItem:(k,v)=>entries.set(k,v),removeItem:k=>entries.delete(k)};
+ const backup=await api.backupFor(state,storage,backupModule,now);
+ assert.throws(()=>api.commit(storage,p,{expectedRaw:JSON.stringify(state),backup,confirmed:true,now}),/Verified fresh backup/);
+ await api.verifyBackupFile(backup.text,backup);
+ const result=api.commit(storage,p,{expectedRaw:JSON.stringify(state),backup,backupVerified:true,confirmed:true,now});
+ assert.equal(result.customRoadmap.startDate,'2026-11-30');assert.equal(result.reviewedProgramme.weeks[0].sessions[0].scheduledDate,'2026-12-01');
+ api.verifyPreservation(state,result);
+});

@@ -28,6 +28,7 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE || undefined, args: ['--no-sandbox'] });
     const context = await browser.newContext({ ...devices['Pixel 7'], acceptDownloads: true });
     const page = await context.newPage();
+    await page.clock.setFixedTime(new Date('2026-11-16T12:00:00Z'));
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     const status = () => page.locator('#message');
