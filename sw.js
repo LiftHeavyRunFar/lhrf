@@ -1,4 +1,4 @@
-const CACHE = 'lhrf-shell-v1.41.0';
+const CACHE = 'lhrf-shell-v1.41.1';
 const RELEASE = CACHE.slice('lhrf-shell-v'.length);
 const SHELL = ['./src/training-flow.js','./src/training-mode.js','./src/training-mode.css','./assets/fonts/Goldman-Bold.ttf','./src/performance-history.js','./src/android-polish.js','./src/gym-equipment.js','./src/run-presentation.js','./src/mobile-ux.js','./src/mobile-ux.css','./','./index.html','./manifest.webmanifest','./icon-lhrf.svg','./icon-lhrf-192-v2.png','./icon-lhrf-512-v2.png','./icon-lhrf-maskable-v2.png','./src/earned-strength.js', './src/training-start-review.js','./src/training-review.js','./src/garmin-import.js','./src/local-activity-import.js','./src/local-activity-import-ui.js','./src/intervals-sync.js','./src/garmin-workout.js','./src/workout-tools.js','./src/workout-tools.css','./src/running-workouts.js','./src/coach-constraints.js','./src/coaching-evidence.js','./src/running-preparation.js','./src/exercise-registry.js','./src/coach-engine.js','./src/coach-adapters.js','./src/coach-intake.js','./src/programme-install.js','./src/programme-replacement.js','./src/programme-replacement-ui.js','./src/training-backup.js','./programmes/november-2026.json'];
 SHELL.push(
@@ -61,4 +61,20 @@ self.addEventListener('fetch', event => {
       return (await cache.match(event.request)) || Response.error();
     }
   })());
+});
+
+// An explicitly confirmed clean start refreshes other open app windows too, so a
+// stale installed app cannot resurrect an erased workout from its in-memory draft.
+self.addEventListener('message',event=>{
+ if(event.data!=='LHRF_CLEAN_START_COMPLETE'||!event.source?.url)return;
+ const scope=new URL(self.registration.scope),source=new URL(event.source.url);
+ if(source.origin!==scope.origin||source.searchParams.get('owner')!=='2027'||![scope.pathname,new URL('index.html',scope).pathname].includes(source.pathname))return;
+ event.waitUntil((async()=>{for(const client of await self.clients.matchAll({type:'window',includeUncontrolled:true})){
+  if(client.id===event.source.id)continue;
+  const url=new URL(client.url);
+  if(url.origin!==scope.origin||![scope.pathname,new URL('index.html',scope).pathname].includes(url.pathname))continue;
+  const target=new URL('./',scope);target.searchParams.set('owner','2027');
+  if(url.searchParams.get('mode')==='competition')target.searchParams.set('mode','competition');
+  await client.navigate(target.href);
+ }})());
 });

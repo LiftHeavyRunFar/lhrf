@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.41.0"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script src="./src/training-storage.js"></script><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="lhrf-release" content="1.41.1"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Lift Heavy. Run Far.</title><script src="./src/training-storage.js"></script><script>
 /* Explicit one-time fresh start, invoked only via ?fresh=1 on this device.
    Clear the beta and trial records before any app code reads storage. */
 (function(){
@@ -2558,7 +2558,8 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  const url=new URLSearchParams(location.search);
  const key='lhrf-personal-2027-view';
  const installed=data.programmeActivation?.status==='active'&&data.customRoadmap?.cataloguePlans?.some(p=>p.id==='owner-sbd-2027-strength');
- const ownerMode=installed||url.get('owner')==='2027'||LHRFStorage.local.getItem(key)==='1';
+ const cleanRequest=url.get('clean')==='1';
+ const ownerMode=cleanRequest||installed||url.get('owner')==='2027'||LHRFStorage.local.getItem(key)==='1';
  if(!ownerMode){
    const entry=document.createElement('button');entry.type='button';entry.className='secondary';
    entry.textContent='My February powerlifting plan';
@@ -2569,7 +2570,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  if(!plan||!window.LHRFPersonalSBD2027)return;
  document.getElementById('catalogueSetupDialog')?.close();
  if(firstRun){firstRun.hidden=true;document.body.style.overflow=''}
- if(installed){
+ if(installed&&!cleanRequest){
    for(const id of ['cataloguePlanActions','planAdvanced','restartOnboardingLink','startNewProgramme']){const el=document.getElementById(id);if(el)el.hidden=true}
    return; // The normal Today and Plan screens now use the installed 13-week calendar.
  }
@@ -2579,6 +2580,6 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  for(const el of document.querySelectorAll('[data-open-competition]'))el.hidden=true;
  plan.hidden=true; // Prevent showing the old programme as if it were the new one.
  if(firstRun){firstRun.hidden=true;document.body.style.overflow=''}
- if(!window.LHRFLive?.get?.() && typeof go==='function')go('plan');
+ if((cleanRequest||!window.LHRFLive?.get?.()) && typeof go==='function')go('plan');
 })();
 </script></body></html>

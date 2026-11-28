@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/personal-sbd-2027.test.cjs tests/programme-replacement.test.cjs
+      - run: node --test tests/personal-sbd-2027.test.cjs tests/personal-clean-start.test.cjs tests/programme-replacement.test.cjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - name: Select browser
         run: |
@@ -28,3 +28,10 @@ jobs:
       - run: node tests/personal-sbd-2027.browser.cjs
         env:
           LHRF_PERSONAL_PRODUCTION_ROOT: /tmp/lhrf-personal-production
+      - name: Prepare current 1.41.0 for blocked-update reproduction
+        run: |
+          mkdir -p /tmp/lhrf-clean-production
+          git archive aa4d25b8c0d768ff53d6797ab0b185d2c5741553 | tar -x -C /tmp/lhrf-clean-production
+      - run: node tests/personal-clean-start.browser.cjs
+        env:
+          LHRF_CLEAN_BASE: /tmp/lhrf-clean-production

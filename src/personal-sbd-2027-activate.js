@@ -1,7 +1,52 @@
-/* Owner 2027 programme installation through EXISTING reviewed replacement gate.
-   No reset, no onboarding, and never writes without verified download + explicit confirmation.
-   The owner-only plan is shown for every week even if installation is refused. */
+/* Owner 2027 installation: verified history-preserving replacement, or an explicitly
+   confirmed clean start. Both use the same complete native programme. */
 (function(root){'use strict';
+const DATA_KEY='lhrf_beta_v1118_clean';
+const historyFields=['sets','runs','plannedRuns','checkins','completedWorkouts','decisions','sessionFeedback','weeklyCheckins','weeklyReviews','programmeArchive','programmeReplacementHistory'];
+function withoutHistory(source){
+ const next=JSON.parse(JSON.stringify(source||{}));
+ for(const field of historyFields)next[field]=[];
+ next.overrides={};
+ for(const field of ['customRoadmap','activeSchedule','activeCustomWeek','reviewedProgramme','programmeActivation','strengthEvidenceReview','garminSync','eventRecoveryDecisions','readinessDay','block','_backup','activeWorkout','liveWorkout','pendingRun','workoutHistory','trainingHistory','garminRecords','garminActivities'])delete next[field];
+ return next;
+}
+function cleanState(source,{owner,builder,training,registry,gym,now}){
+ const next=withoutHistory(source),inventory=source.equipmentInventory||source.customRoadmap?.equipmentInventory||gym.effective(null,registry.exercises,registry.equipment);
+ const programme=builder.buildProgramme(owner.snapshots(),null,{training,registry,gym,inventory,equipment:[],now,protectedWeek:()=>false});
+ const replacement=typeof module==='object'&&module.exports?require('./programme-replacement'):root.LHRFProgrammeReplacement;
+ replacement.validateProgramme(programme);
+ const id=programme.config.programmeId,week=Math.min(13,Math.max(1,replacement.weekAt(programme.config,now.slice(0,10))));
+ next.onboardingComplete=true;next.equipmentInventory=inventory;next.customRoadmap=programme.config;
+ next.activeCustomWeek=week;next.activeSchedule=JSON.parse(JSON.stringify(programme.weeks[week-1].sessions));
+ next.reviewedProgramme={id,config:programme.config,weeks:programme.weeks};
+ next.programmeActivation={id,at:now,status:'active',cleanStart:true};
+ return next;
+}
+function clearAndInstall(local,session,selectedKey,next,{expectedRaw,confirmed=false}={}){
+ if(!confirmed)throw Error('Confirm deleting previous training before starting fresh.');
+ if(local.getItem(selectedKey)!==expectedRaw)throw Error('Training changed in another tab. Reload before starting fresh.');
+ const historyKey=/^(?:competition:)?(?:lhrf_fresh_beta_live_v1114(?:_pendingRun)?|lhrf-v2-(?:genuine-training-log|coach-decisions|approved-load-overrides|live-handoff)|lhrf_replacement_backup_v1:.*|lhrf_programme_replacement_(?:transaction|lock)_v1|lhrf-catalogue-preview-v1|lhrf_training_view_v1|lhrf_rest_v1|lhrf_treadmill_v1|lhrf_onboarding_test_last_tab_v194|lhrf_pending_programme)$/;
+ const changes=[];
+ for(const store of [local,session])for(let i=0;i<store.length;i++){
+  const key=store.key(i),value=store.getItem(key);
+  if(historyKey.test(key))changes.push({store,key,before:value,after:null});
+  else if(store===local&&(key===DATA_KEY||key==='competition:'+DATA_KEY)&&key!==selectedKey){
+   const previous=JSON.parse(value),clean=withoutHistory(previous);
+   for(const field of ['customRoadmap','activeSchedule','activeCustomWeek','reviewedProgramme','programmeActivation'])clean[field]=JSON.parse(JSON.stringify(next[field]));
+   clean.onboardingComplete=true;clean.equipmentInventory=previous.equipmentInventory||next.equipmentInventory;
+   changes.push({store,key,before:value,after:JSON.stringify(clean)});
+  }
+ }
+ changes.unshift({store:local,key:selectedKey,before:expectedRaw,after:JSON.stringify(next)});
+ try{
+  for(const change of changes){if(change.after===null)change.store.removeItem(change.key);else change.store.setItem(change.key,change.after);
+   if(change.store.getItem(change.key)!==change.after)throw Error('Could not verify the clean programme save.');}
+ }catch(error){
+  for(const change of [...changes].reverse())try{if(change.before===null)change.store.removeItem(change.key);else change.store.setItem(change.key,change.before)}catch{}
+  throw error;
+ }
+ return next;
+}
 function mount(host){
  const owner=root.LHRFPersonalSBD2027,training=root.LHRFCatalogueTraining,
    builder=root.LHRFNativeCatalogue,replacement=root.LHRFProgrammeReplacement;
@@ -11,6 +56,25 @@ function mount(host){
  const button=document.createElement('button');button.type='button';button.textContent='Use this programme in my workouts';
  const area=document.createElement('div');area.className='entry';area.hidden=true;
  host.append(button,area,status);
+ const freshButton=document.createElement('button');freshButton.type='button';freshButton.id='ownerCleanStart';
+ freshButton.textContent='Delete old training and start my programme';
+ const cleanNote=document.createElement('p');cleanNote.className='muted small';
+ cleanNote.textContent='Start with empty training history. Old workouts, runs and unfinished drafts will be deleted. Your settings and connections stay.';
+ host.prepend(freshButton,cleanNote);
+ if(new URLSearchParams(root.location.search).get('clean')==='1')button.hidden=true;
+ freshButton.onclick=()=>{
+  if(!root.confirm('Delete all previous workout logs, runs, check-ins and unfinished drafts on this device, then start the 13-week programme? Your settings and connections stay.'))return;
+  freshButton.disabled=true;
+  try{
+   if(root.LHRFExternalStorageChanged?.())throw Error('Training changed in another tab. Reload before starting fresh.');
+   const key=root.LHRFStorage.key(DATA_KEY),raw=root.localStorage.getItem(key),source=raw?JSON.parse(raw):{};
+   const next=cleanState(source,{owner,builder,training,registry:root.LHRFExercises,gym:root.LHRFGymEquipment,now:new Date().toISOString()});
+   clearAndInstall(root.localStorage,root.sessionStorage,key,next,{expectedRaw:raw,confirmed:true});
+   root.navigator.serviceWorker?.controller?.postMessage('LHRF_CLEAN_START_COMPLETE');
+   const target=new URL(root.location.href);target.searchParams.delete('clean');target.searchParams.set('owner','2027');
+   root.location.replace(target.href);
+  }catch(error){msg(error.message);freshButton.disabled=false}
+ };
  let preview=null,backup=null,raw=null,verified=false,seal=null;
  const msg=text=>{status.textContent=text};
  const fail=error=>{msg(error?.message||String(error));button.disabled=false};
@@ -94,5 +158,5 @@ function mount(host){
    finally{button.disabled=false}
  };
 }
-const api={mount};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFPersonalSBDActivation=api;
+const api={mount,withoutHistory,cleanState,clearAndInstall};if(typeof module==='object'&&module.exports)module.exports=api;else root.LHRFPersonalSBDActivation=api;
 })(globalThis);
