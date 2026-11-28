@@ -24,7 +24,7 @@ const mime={'.js':'application/javascript','.css':'text/css','.png':'image/png',
    const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
    await page.clock.install({time:new Date('2026-11-28T16:00:00Z')});
    const key=(competition?'competition:':'')+api.DATA_KEY;
-   await page.addInitScript(({key,fixture})=>{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(fixture))},{key,fixture});
+   await page.addInitScript(({key,fixture})=>{if(location.protocol!=='http:')return;if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(fixture))},{key,fixture});
    if(previous){
     await page.goto(origin+'/'+(competition?'?mode=competition':''));
     await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
@@ -81,7 +81,6 @@ const mime={'.js':'application/javascript','.css':'text/css','.png':'image/png',
    await page.evaluate(()=>go('train'));
    const extra=page.locator('#liveExercises > .live-ex[data-exercise-index="'+(live.ex.length-1)+'"]');
    if(await extra.getAttribute('open')===null)await extra.locator(':scope > summary').click();
-   console.log('Optional form state',await page.evaluate(()=>({screen:document.querySelector('main > section.active')?.id,cards:[...document.querySelectorAll('#liveExercises > .live-ex')].map(e=>({index:e.dataset.exerciseIndex,open:e.open,visible:!!e.querySelector('input[data-field=weight]')?.getClientRects().length}))})));
    await extra.locator('[data-field=weight]').fill('100');await extra.locator('[data-field=rpe]').fill('6');await extra.locator('.set-check').click();
    assert.match(await page.locator('#train .live-status').first().innerText(),new RegExp('0 of '+required+' sets'));
    await page.click('#liveFinish');await page.click('#finishAndSave');await page.click('#liveFeedbackSkip');
