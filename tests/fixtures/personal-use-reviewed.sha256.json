@@ -27,7 +27,7 @@
   "src/mobile-ux.js": "ef6416eb7966d8b0d805dcd60c32d7c19504ee77c5b91b30b6c2d9c3473c3fe7",
   "src/native-catalogue.js": "948b6a3c29d0263f75e1f2cd431984b1c1ae269d2f07e517d4c21d470f517c46",
   "src/performance-history.js": "402f94029813825b4ca5dd2876d07830ac8da591e69c44a0dffd446315db858d",
-  "src/personal-sbd-2027-activate.js": "0f8bb3a8385dea20e0eb778b300d12ae7c8ff980df9d7d1dfb6cdcafe5463dca",
+  "src/personal-sbd-2027-activate.js": "77e36bd5471fcfa40230e656da0aebb4b5243b76f6404888c8e3d74a86c00522",
   "src/personal-sbd-2027.js": "29d02bd15952ef99088ee44cf97ef6709de85bea75833abb7628fb799c5baad0",
   "src/programme-catalogue.js": "3a29da90977abc7f5ad8b1a136598f8988a4e8c592eb83c715fa6bda494b544a",
   "src/programme-install.js": "caf1f548abd16ccf72f5cb307f857a89c382d92d43d6d0b787fc4d161ad3d00d",
@@ -44,5 +44,5 @@
   "src/training-storage.js": "f1d552b67bd7c24fb7a5728f6cce294491884437c1e51c42c68d6907a865207c",
   "src/workout-tools.css": "08385cdb5e43441bb408578d6d09531960c74d025d80b9d6ee1174a9004d4e6b",
   "src/workout-tools.js": "e1d3542da72ead4f4fc2d531630cc42d9344ba790dc60a88988866782b67a143",
-  "sw.js": "977fd8294825adc60fa4d31655f913398e726e375bed6f9a1eb0a56f7f30623a"
+  "sw.js": "de8d86910851240075acbeb5f97d6c93b8c5083e993f51bd9790e9cd9e5db27a"
 }

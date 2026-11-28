@@ -31,7 +31,9 @@ function clearAndInstall(local,session,selectedKey,next,{expectedRaw,confirmed=f
   const key=store.key(i),value=store.getItem(key);
   if(historyKey.test(key))changes.push({store,key,before:value,after:null});
   else if(store===local&&(key===DATA_KEY||key==='competition:'+DATA_KEY)&&key!==selectedKey){
-   const clean=withoutHistory(JSON.parse(value));clean.activeSchedule=[];clean.onboardingComplete=false;
+   const previous=JSON.parse(value),clean=withoutHistory(previous);
+   for(const field of ['customRoadmap','activeSchedule','activeCustomWeek','reviewedProgramme','programmeActivation'])clean[field]=JSON.parse(JSON.stringify(next[field]));
+   clean.onboardingComplete=true;clean.equipmentInventory=previous.equipmentInventory||next.equipmentInventory;
    changes.push({store,key,before:value,after:JSON.stringify(clean)});
   }
  }
@@ -68,6 +70,7 @@ function mount(host){
    const key=root.LHRFStorage.key(DATA_KEY),raw=root.localStorage.getItem(key),source=raw?JSON.parse(raw):{};
    const next=cleanState(source,{owner,builder,training,registry:root.LHRFExercises,gym:root.LHRFGymEquipment,now:new Date().toISOString()});
    clearAndInstall(root.localStorage,root.sessionStorage,key,next,{expectedRaw:raw,confirmed:true});
+   root.navigator.serviceWorker?.controller?.postMessage('LHRF_CLEAN_START_COMPLETE');
    const target=new URL(root.location.href);target.searchParams.delete('clean');target.searchParams.set('owner','2027');
    root.location.replace(target.href);
   }catch(error){msg(error.message);freshButton.disabled=false}

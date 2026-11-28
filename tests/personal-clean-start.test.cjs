@@ -18,7 +18,7 @@ test('confirmation and source checks precede any deletion; both stores lose old 
  assert.throws(()=>api.clearAndInstall(local,session,key,next,{expectedRaw:'changed',confirmed:true}),/changed/);
  api.clearAndInstall(local,session,key,next,{expectedRaw:raw,confirmed:true});
  assert.deepEqual(JSON.parse(local.getItem(key)),next);assert.equal(local.getItem('lhrf_fresh_beta_live_v1114'),null);assert.equal(local.getItem('competition:lhrf_fresh_beta_live_v1114_pendingRun'),null);assert.equal(local.getItem('lhrf_replacement_backup_v1:old'),null);
- assert.equal(local.getItem('lhrf_intervals_connection_v1'),'keep-secret');assert.equal(local.getItem('lhrf_preferences_v1'),'90');assert.equal(session.length,0);assert.deepEqual(JSON.parse(local.getItem('competition:'+key)).runs,[]);
+ assert.equal(local.getItem('lhrf_intervals_connection_v1'),'keep-secret');assert.equal(local.getItem('lhrf_preferences_v1'),'90');assert.equal(session.length,0);assert.deepEqual(JSON.parse(local.getItem('competition:'+key)).runs,[]);assert.equal(JSON.parse(local.getItem('competition:'+key)).reviewedProgramme.weeks.length,13);assert.equal(JSON.parse(local.getItem('competition:'+key)).onboardingComplete,true);
 });
 test('failed storage writes retain the old programme and drafts',()=>{
  const key='lhrf_beta_v1118_clean',raw=JSON.stringify(source()),local=store({[key]:raw,lhrf_fresh_beta_live_v1114:'draft'}),session=store(),set=local.setItem;let once=true;

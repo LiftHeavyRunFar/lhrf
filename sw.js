@@ -62,3 +62,19 @@ self.addEventListener('fetch', event => {
     }
   })());
 });
+
+// An explicitly confirmed clean start refreshes other open app windows too, so a
+// stale installed app cannot resurrect an erased workout from its in-memory draft.
+self.addEventListener('message',event=>{
+ if(event.data!=='LHRF_CLEAN_START_COMPLETE'||!event.source?.url)return;
+ const scope=new URL(self.registration.scope),source=new URL(event.source.url);
+ if(source.origin!==scope.origin||source.searchParams.get('owner')!=='2027'||![scope.pathname,new URL('index.html',scope).pathname].includes(source.pathname))return;
+ event.waitUntil((async()=>{for(const client of await self.clients.matchAll({type:'window',includeUncontrolled:true})){
+  if(client.id===event.source.id)continue;
+  const url=new URL(client.url);
+  if(url.origin!==scope.origin||![scope.pathname,new URL('index.html',scope).pathname].includes(url.pathname))continue;
+  const target=new URL('./',scope);target.searchParams.set('owner','2027');
+  if(url.searchParams.get('mode')==='competition')target.searchParams.set('mode','competition');
+  await client.navigate(target.href);
+ }})());
+});

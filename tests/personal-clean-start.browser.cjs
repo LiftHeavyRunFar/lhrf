@@ -14,6 +14,7 @@ const fixture={onboardingComplete:true,equipmentInventory:require('./equipment-f
   await page.goto(origin+'/'+(competition?'?mode=competition':''));await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
   const selected=(competition?'competition:':'')+key;
   const before=await page.evaluate(k=>localStorage.getItem(k),selected);
+  const held=await context.newPage();await held.goto(origin+'/'+(!competition?'?mode=competition':''));
   previous=false;await page.goto(origin+'/refresh.html'+(competition?'?mode=competition':''));
   await page.click('#update');await page.getByText('Finish your workout or pending run in LHRF, then return here to update.',{exact:true}).waitFor();
   assert.equal(await page.evaluate(k=>localStorage.getItem(k),selected),before);
@@ -22,6 +23,7 @@ const fixture={onboardingComplete:true,equipmentInventory:require('./equipment-f
   assert.equal(await page.evaluate(k=>localStorage.getItem(k),selected),before,'Code update must retain history until explicit erase confirmation');
   page.once('dialog',d=>d.dismiss());await page.click('#ownerCleanStart');assert.equal(await page.evaluate(k=>localStorage.getItem(k),selected),before);
   page.once('dialog',d=>d.accept());await Promise.all([page.waitForEvent('load'),page.click('#ownerCleanStart')]);
+  await held.waitForURL(/owner=2027/);assert.equal(await held.locator('#catalogueSetupDialog').isVisible(),false);assert.equal(await held.evaluate(()=>LHRFLive.get()),null,'The installed app must not resume its erased in-memory draft');
   const state=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),selected);
   assert.equal(state.programmeActivation.status,'active');assert.equal(state.programmeActivation.cleanStart,true);assert.equal(state.reviewedProgramme.weeks.length,13);
   assert.deepEqual(state.sets,[]);assert.deepEqual(state.runs,[]);assert.deepEqual(state.completedWorkouts,[]);assert.deepEqual(state.settings,fixture.settings);assert.deepEqual(state.equipmentInventory,fixture.equipmentInventory);
