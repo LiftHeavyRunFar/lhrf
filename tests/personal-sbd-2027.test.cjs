@@ -8,19 +8,19 @@ test('13 complete dated weeks with the Saturday meet in week 13',()=>{
  assert.equal(strength.length,13);assert.equal(running.length,13);assert.equal(plan.START,'2026-11-30');assert.equal(plan.MEET,'2027-02-27');
  assert.deepEqual(strength[12].sessions.filter(x=>x.kind==='event').map(x=>[x.id,x.day]),[['meet',5]]);
 });
-test('four fixed strength visits per week, no Monday or Wednesday, except competition week',()=>{
- for(let i=0;i<12;i++)assert.deepEqual(strength[i].sessions.filter(x=>x.kind==='strength').map(x=>x.day),[1,3,4,6]);
+test('four fixed strength visits per week except the deliberate final-single week and meet week',()=>{
+ for(let i=0;i<11;i++)assert.deepEqual(strength[i].sessions.filter(x=>x.kind==='strength').map(x=>x.day),[1,3,4,6]);
 });
 test('third bench exposure on squat day is always light',()=>{
- for(let i=0;i<12;i++){
+ for(let i=0;i<11;i++){
  const sun=strength[i].sessions.find(x=>x.id==='sun-squat');
  const bench=sun.groups.filter(x=>x.exerciseId==='paused-bench');
  assert.equal(bench.length,1);assert.ok(bench.every(x=>x.rpe<=6));
  }
 });
 test('deadlift top exposure is one single/double; extra volume is optional and tapers',()=>{
- const expected=[2,2,2,0,2,2,1,0,1,1,1,0];
- for(let i=0;i<12;i++){
+ const expected=[2,2,2,0,2,2,1,0,1,1,1];
+ for(let i=0;i<11;i++){
   const thu=strength[i].sessions.find(x=>x.id==='thu-deadlift');
   const pulls=thu.groups.filter(x=>x.exerciseId==='competition-deadlift');
   const required=pulls.filter(x=>!x.optional),optional=pulls.filter(x=>x.optional);
@@ -31,12 +31,31 @@ test('deadlift top exposure is one single/double; extra volume is optional and t
   assert.ok(thu.groups.some(x=>x.exerciseId==='split-squat'));
  }
 });
-test('peak singles reach RPE nine before the taper and taper genuinely reduces work',()=>{
- for(const day of ['tue-bench','thu-deadlift','sun-squat']){
-  const peak=strength[10].sessions.find(s=>s.id===day).groups.filter(x=>x.kind==='lift'&&!x.optional&&x.reps===1);
-  assert.ok(peak.some(x=>x.rpe===9),day);
+test('final RPE 9 singles are exactly 11, 9 and 7 days from the actual meet',()=>{
+ const training=require('../src/catalogue-training.js');
+ const target={
+  'competition-deadlift':{date:'2027-02-16',daysOut:11},
+  'competition-squat':{date:'2027-02-18',daysOut:9},
+  'competition-bench':{date:'2027-02-20',daysOut:7}
+ };
+ const week12=strength[11];
+ assert.deepEqual(week12.sessions.map(x=>x.day),[1,3,5]);
+ assert.equal(running[11].sessions.length,0);
+ for(const [lift,expected] of Object.entries(target)){
+  const relevant=strength.flatMap((w,i)=>w.sessions.filter(s=>s.kind==='strength').flatMap(s=>
+    (s.groups||[]).filter(g=>g.exerciseId===lift&&g.sets===1&&g.reps===1&&!g.optional).map(g=>
+      ({date:training.addDays(plan.START,i*7+s.day),rpe:g.rpe}))));
+  const final=relevant.at(-1);
+  assert.ok(final, lift);
+  assert.equal(final.date,expected.date,lift);
+  assert.equal(final.rpe,9,lift);
+  assert.equal((Date.parse(plan.MEET)-Date.parse(final.date))/86400000,expected.daysOut,lift);
  }
- assert.ok(strength[11].sessions.find(s=>s.id==='thu-deadlift').groups.every(x=>!x.optional));
+ assert.ok(week12.sessions.every(s=>s.groups.length===1&&s.groups[0].sets===1));
+});
+test('week 11 reduces heavy work before the final singles',()=>{
+ for(const s of strength[10].sessions)for(const g of s.groups||[])
+  if(g.kind==='lift'&&!g.optional&&g.reps===1)assert.ok(g.rpe<9);
 });
 test('optional Saturday never becomes planned running or fatigue evidence',()=>{
  for(let i=0;i<13;i++) {
