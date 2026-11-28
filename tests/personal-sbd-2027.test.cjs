@@ -18,14 +18,25 @@ test('third bench exposure on squat day is always light',()=>{
  assert.equal(bench.length,1);assert.ok(bench.every(x=>x.rpe<=6));
  }
 });
-test('deadlift exposure never exceeds one working single or double',()=>{
+test('deadlift top exposure is one single/double; extra volume is optional and tapers',()=>{
+ const expected=[2,2,2,0,2,2,1,0,1,1,1,0];
  for(let i=0;i<12;i++){
- const thu=strength[i].sessions.find(x=>x.id==='thu-deadlift');
- const pulls=thu.groups.filter(x=>x.exerciseId==='competition-deadlift');
- assert.equal(pulls.length,1);assert.equal(pulls[0].sets,1);assert.ok(pulls[0].reps<=2);assert.ok(pulls[0].rpe<=8);
- assert.ok(thu.groups.some(x=>x.exerciseId==='leg-press'));
- assert.ok(thu.groups.some(x=>x.exerciseId==='split-squat'));
+  const thu=strength[i].sessions.find(x=>x.id==='thu-deadlift');
+  const pulls=thu.groups.filter(x=>x.exerciseId==='competition-deadlift');
+  const required=pulls.filter(x=>!x.optional),optional=pulls.filter(x=>x.optional);
+  assert.equal(required.length,1);assert.equal(required[0].sets,1);assert.ok(required[0].reps<=2);
+  assert.ok(required[0].rpe<=9);
+  assert.equal(optional.length,expected[i]);assert.ok(optional.every(x=>x.sets===1&&x.rpe<=7));
+  assert.ok(thu.groups.some(x=>x.exerciseId==='leg-press'));
+  assert.ok(thu.groups.some(x=>x.exerciseId==='split-squat'));
  }
+});
+test('peak singles reach RPE nine before the taper and taper genuinely reduces work',()=>{
+ for(const day of ['tue-bench','thu-deadlift','sun-squat']){
+  const peak=strength[10].sessions.find(s=>s.id===day).groups.filter(x=>x.kind==='lift'&&!x.optional&&x.reps===1);
+  assert.ok(peak.some(x=>x.rpe===9),day);
+ }
+ assert.ok(strength[11].sessions.find(s=>s.id==='thu-deadlift').groups.every(x=>!x.optional));
 });
 test('optional Saturday never becomes planned running or fatigue evidence',()=>{
  for(let i=0;i<13;i++) {
@@ -36,7 +47,7 @@ test('optional Saturday never becomes planned running or fatigue evidence',()=>{
 test('all loading remains RPE-first with no made-up squat or deadlift reference maximum',()=>{
  for(const week of strength)for(const s of week.sessions)for(const g of s.groups||[]){
  assert.equal(g.referencePercent,null);assert.equal(g.suggestedWeightKg,null);
- assert.ok(g.rpe>=5&&g.rpe<=8.5);
+ assert.ok(g.rpe>=5&&g.rpe<=9);
  }
 });
 test('meet week removes Thursday, Friday and Sunday work',()=>{
@@ -54,4 +65,17 @@ test('the 13-week owner plan converts to the existing native workout schema with
  assert.deepEqual(built.weeks[0].sessions.map(s=>s.day),['Tue','Tue','Thu','Fri','Sun']);
  assert.equal(built.weeks[12].sessions.find(s=>s.eventDate)?.eventDate,'2027-02-27');
  assert.equal(JSON.stringify(original),before);
+});
+
+test('native adapter retains optional sets and excludes them from required workload',()=>{
+ const native=require('../src/native-catalogue.js'),training=require('../src/catalogue-training.js');
+ const registry=require('../src/exercise-registry.js'),gym=require('../src/gym-equipment.js');
+ const inventory=require('./equipment-fixtures.cjs').fullInventory();
+ const p=native.buildProgramme(plan.snapshots(),null,{training,registry,gym,inventory,equipment:[],now:'2026-11-28T12:00:00Z',protectedWeek:()=>false});
+ const dl=p.weeks[0].sessions.find(s=>s.name.includes('Deadlift'));
+ const optional=dl.ex.filter(e=>e[5].optional);
+ const required=dl.ex.filter(e=>e[5].exerciseId==='competition-deadlift'&&!e[5].optional);
+ assert.equal(optional.length,2);assert.equal(required.length,1);
+ assert.ok(optional.every(e=>e[1]===1&&e[5].role==='optional'&&e[5].category==='optional'));
+ require('../src/programme-replacement.js').validateProgramme(p);
 });
