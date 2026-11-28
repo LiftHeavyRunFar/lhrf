@@ -1293,6 +1293,25 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    root.appendChild(d);
    const rows=d.querySelector('#liveSets_'+i);
    conditionalWorkoutControl(e,i,rows);
+   // Manual bonus sets never increase the required prescription. No automatic fatigue
+   // inference from unperformed optional work; preserve draft before every write.
+   if(!e[5]?.warmup){
+    const addOptional=document.createElement('button');addOptional.type='button';
+    addOptional.className='secondary';addOptional.textContent='+ Optional set';
+    addOptional.setAttribute('aria-label','Add optional set of '+e[0]);
+    rows.before(addOptional);
+    addOptional.onclick=()=>{
+     if(lhrfExternalStorageChanged){document.getElementById('liveError').textContent='Training changed in another tab. Reload before adding sets.';return}
+     const prior=JSON.parse(JSON.stringify(live));
+     const source=live.ex[i];
+     const extra=[source[0],1,source[2],source[3],source[4],
+       {...(source[5]||{}),optional:true,role:'optional',category:'optional',priority:'optional',extraFor:i}];
+     live.ex.push(extra);
+     expanded=live.ex.length-1;
+     if(!persist()){live=prior;document.getElementById('liveError').textContent='Optional set could not be saved. Your existing sets remain unchanged.';return}
+     status();
+    };
+   }
    window.LHRFEarnedStrength?.mount({state:data,live,index:i,anchor:rows,now:new Date().toISOString(),update:next=>{
     if(lhrfExternalStorageChanged)throw Error('Training changed in another tab. Reopen this workout before deciding.');
     const before=live;live=next;
