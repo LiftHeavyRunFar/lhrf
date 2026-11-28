@@ -13,12 +13,12 @@ test('explicit clean start builds the same 13-week programme without old history
  assert.deepEqual(next.reviewedProgramme.weeks[11].sessions.map(s=>[s.scheduledDate,s.ex[0][4]]),[['2027-02-16',9],['2027-02-18',9],['2027-02-20',9]]);
 });
 test('confirmation and source checks precede any deletion; both stores lose old drafts and history, while connections stay',()=>{
- const raw=JSON.stringify(source()),key='lhrf_beta_v1118_clean',local=store({[key]:raw,['competition:'+key]:raw,lhrf_fresh_beta_live_v1114:'draft','competition:lhrf_fresh_beta_live_v1114_pendingRun':'pending','lhrf_replacement_backup_v1:old':'old-history',lhrf_intervals_connection_v1:'keep-secret',lhrf_rest_v1:'90'}),session=store({'lhrf-v2-genuine-training-log':'old','lhrf_training_view_v1':'old'}),next=api.cleanState(source(),options);
+ const raw=JSON.stringify(source()),key='lhrf_beta_v1118_clean',local=store({[key]:raw,['competition:'+key]:raw,lhrf_fresh_beta_live_v1114:'draft','competition:lhrf_fresh_beta_live_v1114_pendingRun':'pending','lhrf_replacement_backup_v1:old':'old-history',lhrf_intervals_connection_v1:'keep-secret',lhrf_preferences_v1:'90'}),session=store({'lhrf-v2-genuine-training-log':'old','lhrf_training_view_v1':'old'}),next=api.cleanState(source(),options);
  assert.throws(()=>api.clearAndInstall(local,session,key,next,{expectedRaw:raw}),/Confirm/);assert.equal(local.getItem(key),raw);
  assert.throws(()=>api.clearAndInstall(local,session,key,next,{expectedRaw:'changed',confirmed:true}),/changed/);
  api.clearAndInstall(local,session,key,next,{expectedRaw:raw,confirmed:true});
  assert.deepEqual(JSON.parse(local.getItem(key)),next);assert.equal(local.getItem('lhrf_fresh_beta_live_v1114'),null);assert.equal(local.getItem('competition:lhrf_fresh_beta_live_v1114_pendingRun'),null);assert.equal(local.getItem('lhrf_replacement_backup_v1:old'),null);
- assert.equal(local.getItem('lhrf_intervals_connection_v1'),'keep-secret');assert.equal(local.getItem('lhrf_rest_v1'),'90');assert.equal(session.length,0);assert.deepEqual(JSON.parse(local.getItem('competition:'+key)).runs,[]);
+ assert.equal(local.getItem('lhrf_intervals_connection_v1'),'keep-secret');assert.equal(local.getItem('lhrf_preferences_v1'),'90');assert.equal(session.length,0);assert.deepEqual(JSON.parse(local.getItem('competition:'+key)).runs,[]);
 });
 test('failed storage writes retain the old programme and drafts',()=>{
  const key='lhrf_beta_v1118_clean',raw=JSON.stringify(source()),local=store({[key]:raw,lhrf_fresh_beta_live_v1114:'draft'}),session=store(),set=local.setItem;let once=true;

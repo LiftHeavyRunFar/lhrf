@@ -1,6 +1,5 @@
-/* Owner 2027 programme installation through EXISTING reviewed replacement gate.
-   No reset, no onboarding, and never writes without verified download + explicit confirmation.
-   The owner-only plan is shown for every week even if installation is refused. */
+/* Owner 2027 installation: verified history-preserving replacement, or an explicitly
+   confirmed clean start. Both use the same complete native programme. */
 (function(root){'use strict';
 const DATA_KEY='lhrf_beta_v1118_clean';
 const historyFields=['sets','runs','plannedRuns','checkins','completedWorkouts','decisions','sessionFeedback','weeklyCheckins','weeklyReviews','programmeArchive','programmeReplacementHistory'];
@@ -26,7 +25,7 @@ function cleanState(source,{owner,builder,training,registry,gym,now}){
 function clearAndInstall(local,session,selectedKey,next,{expectedRaw,confirmed=false}={}){
  if(!confirmed)throw Error('Confirm deleting previous training before starting fresh.');
  if(local.getItem(selectedKey)!==expectedRaw)throw Error('Training changed in another tab. Reload before starting fresh.');
- const historyKey=/^(?:competition:)?(?:lhrf_fresh_beta_live_v1114(?:_pendingRun)?|lhrf-v2-(?:genuine-training-log|coach-decisions|approved-load-overrides|live-handoff)|lhrf_replacement_backup_v1:.*|lhrf_programme_replacement_(?:transaction|lock)_v1|lhrf-catalogue-preview-v1|lhrf_training_view_v1|lhrf_onboarding_test_last_tab_v194|lhrf_pending_programme)$/;
+ const historyKey=/^(?:competition:)?(?:lhrf_fresh_beta_live_v1114(?:_pendingRun)?|lhrf-v2-(?:genuine-training-log|coach-decisions|approved-load-overrides|live-handoff)|lhrf_replacement_backup_v1:.*|lhrf_programme_replacement_(?:transaction|lock)_v1|lhrf-catalogue-preview-v1|lhrf_training_view_v1|lhrf_rest_v1|lhrf_treadmill_v1|lhrf_onboarding_test_last_tab_v194|lhrf_pending_programme)$/;
  const changes=[];
  for(const store of [local,session])for(let i=0;i<store.length;i++){
   const key=store.key(i),value=store.getItem(key);
