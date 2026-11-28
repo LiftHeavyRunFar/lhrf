@@ -114,7 +114,11 @@ function commit(storage,preview,{expectedRaw,backup,backupVerified=false,confirm
  const live=liveFrom(storage);if(live.liveWorkout||live.pendingRun)throw Error('A workout is now active. Nothing was replaced.');
  const before=JSON.parse(expectedRaw);if(backup.sourceCanonical!==canonical(before))throw Error('The backup does not match the current preview. Create a fresh backup.');verifyPreservation(before,preview.next);if(preview.alreadyApplied)return before;equipmentReview(before,preview.next.reviewedProgramme.weeks,preview.next.customRoadmap,today(now));
  if(today(now)!==preview.asOfDate)throw Error('The preview is from another day. Create a fresh preview and backup.');
- if(!preview.id.startsWith('rollback-')&&today(now)<preview.activationNotBefore)throw Error('Activation is available from '+preview.activationNotBefore+'. Preview only today.');
+ if(!preview.id.startsWith('rollback-')&&today(now)<preview.activationNotBefore){
+  const c=preview.next.reviewedProgramme.config;
+  if(c.preStartActivation!=='reviewed-future-only'||preview.next.reviewedProgramme.weeks.some(w=>w.sessions.some(s=>!s.preservedFromProgrammeId&&dateOf(c,w.week,s)<c.startDate)))
+   throw Error('Activation is available from '+preview.activationNotBefore+'. Preview only today.');
+ }
  const afterRaw=JSON.stringify(preview.next),backupKey='lhrf_replacement_backup_v1:'+preview.id+':'+Date.parse(now),journal={id:preview.id,phase:'prepared',backupKey,backupDigest:backup.digest,at:now,programmeId:preview.next.customRoadmap.programmeId};
  if(storage.getItem(LOCK_KEY))throw Error('Another programme transaction is in progress. Reload to inspect its status.');
  storage.setItem(LOCK_KEY,preview.id);

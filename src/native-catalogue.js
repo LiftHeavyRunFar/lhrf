@@ -94,7 +94,7 @@
           return [exercise.label, group.sets, group.reps, group.suggestedWeightKg || 0, group.rpe, {
             exerciseId: exercise.id, loadType: exercise.loadType, doseUnit: group.doseUnit || exercise.doseUnit,
             perSide: group.perSide === true, role: group.optional ? 'optional' : 'straight', optional: group.optional === true, category: group.optional ? 'optional' : group.kind === 'lift' ? 'primary' : 'accessory',
-            priority: group.kind === 'lift' ? 'essential' : 'supporting', effortGovernsLoad: true,
+            priority: group.optional ? 'optional' : group.kind === 'lift' ? 'essential' : 'supporting', effortGovernsLoad: true,
             competition: group.exerciseId.startsWith('competition-'), cue: notes.filter(Boolean).join(' '),
           }];
         });

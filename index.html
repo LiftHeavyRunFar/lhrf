@@ -545,7 +545,7 @@ function scheduledDate(session){
  base.setHours(12,0,0,0);base.setDate(base.getDate()-(base.getDay()+6)%7+(start?(Number(data.activeCustomWeek||1)-1)*7:0)+index);
  return base;
 }
-function redundantOptionalExercise(e,ex){return !!e?.[5]?.optional&&/triceps.*(pushdown|extension)|(pushdown|extension).*triceps/i.test(e[0])&&ex.some(other=>other!==e&&!other?.[5]?.optional&&/triceps.*(pushdown|extension)|(pushdown|extension).*triceps/i.test(other[0]))}
+function redundantOptionalExercise(e,ex){return !!e?.[5]?.optional&&e[5].extraFor==null&&/triceps.*(pushdown|extension)|(pushdown|extension).*triceps/i.test(e[0])&&ex.some(other=>other!==e&&!other?.[5]?.optional&&/triceps.*(pushdown|extension)|(pushdown|extension).*triceps/i.test(other[0]))}
 function workoutParts(session){
  if(!session||session.component||!(session.ex?.length&&session.runs?.length))return session?[session]:[];
  return [{...session,id:session.id+'::strength',parentId:session.id,component:'strength',name:'Strength · '+session.name.split(' + ')[0],runs:[],run:false},{...session,id:session.id+'::run',parentId:session.id,component:'run',name:'Run · '+session.runs.map(r=>r.name).join(', '),ex:[],run:true}];
@@ -1484,7 +1484,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    const evidence=meta.runtimeLoadEvidence;
    const reason=evidence?.reason&&evidence.suggestedKg===ex[3]
     ?`<p class="muted small">${esc(evidence.reason)}</p>`:'';
-   return `<div class="entry preview-exercise"><strong>${esc(ex[0])}</strong><p class="muted small">Prescribed${role}</p><p>${ex[1]} × ${esc(ex[2])} · ${load} · RPE ${esc(ex[4])}</p>${reason}</div>`;
+   return `<div class="entry preview-exercise"><strong>${esc(ex[0])}</strong><p class="muted small">${meta.optional?"Optional":"Prescribed"}${role}</p><p>${ex[1]} × ${esc(ex[2])} · ${load} · RPE ${esc(ex[4])}</p>${reason}</div>`;
   }).join('');
   const prescribedRuns=(completedRun?[]:session.runs||[]).map(r=>`<section class="run-workout-flow compact-run-preview"><strong>${esc(r.name)}</strong><p>${r.distanceKnown===false?esc(r.minutes)+' min target':r.distanceKm?esc(distanceLabel(r.distanceKm)):'Distance not prescribed'} · ${esc(r.pace||((r.steps||[]).some(s=>/\d:\d{2}/.test(s.pace||''))||r.distanceKnown===false?'Follow prescribed effort':'Add a recent running PB to set pace'))}</p>${r.structure?'<p class="small">'+esc(r.structure)+'</p>':''}${r.conditionalAerobicBuild&&r.minutes>r.conditionalAerobicBuild.startingMinutes?'<p class="muted small">Longer dose depends on recent easy runs and recovery.</p>':''}<details><summary>Intervals & coach’s notes</summary>${runStepsHtml(r).replace('class="run-workout-flow"','class="run-expanded-flow"')}</details></section>`).join('');
   const format=LHRFRunPresentation;
@@ -1558,7 +1558,7 @@ populate();refresh();buildRunPlan();initBlock();initCustom();$('strengthFocus').
    live=null;persist();clearRunningToolsSelection();status();go('train');showLiveFeedback(trialFeedbackSession);return;
   }
   const beforeFinish=JSON.parse(JSON.stringify(data));
-  live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],...(e[5]?.exerciseId?{exerciseId:e[5].exerciseId,variantId:e[5].variantId,loadType:e[5].loadType,doseUnit:e[5].doseUnit}:{}),set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
+  live.ex.forEach((e,i)=>{for(let j=0;j<e[1];j++){const v=live.entries[i+'_'+j];if(v?.done)data.sets.push({date:stamp,session:live.name,exercise:e[0],...(e[5]?.exerciseId?{exerciseId:e[5].exerciseId,variantId:e[5].variantId,loadType:e[5].loadType,doseUnit:e[5].doseUnit}:{}),set:j+1,reps:+v.reps,weight:+v.weight,rpe:+v.rpe,target:e[4],role:e[5]?.role||null,...(e[5]?.optional?{optional:true,category:'optional'}:{}),week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,sessionId:live.id,notes:note})}});
   if(live.runLogged&&live.runEntry){data.runs=data.runs||[];data.runs.push({date:stamp,km:live.runEntry.km,min:live.runEntry.min,rpe:live.runEntry.rpe,type:live.runs?.[0]?.role||'run',sessionId:live.id,session:live.name,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,notes:note})}
   data.completedWorkouts=data.completedWorkouts||[];data.completedWorkouts.push({id:live.id,parentId:live.parentId||null,component:live.component||null,name:live.name,day:live.day,date:stamp,week:live.sourceProgrammeWeek||data.activeCustomWeek||1,completedSets:done.length,plannedSets:total(),completedRun:!!live.runLogged,notes:note,...(live.strengthProgressionDecisions?.length?{strengthProgressionDecisions:JSON.parse(JSON.stringify(live.strengthProgressionDecisions)),originalPrescription:JSON.parse(JSON.stringify(live.originalPrescription))}:{}),prescription:JSON.parse(JSON.stringify({ex:live.ex,runs:live.runs||[]})),...(live.timeAdaptation?{timeAdaptation:live.timeAdaptation,originalPrescription:live.timeAdaptation.originalPrescription}:{})});
   const finishedSession={id:live.id,name:live.name,week:Number(live.sourceProgrammeWeek||data.activeCustomWeek)||1,completedRun:!!live.runLogged};
@@ -2557,15 +2557,22 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  const plan=document.getElementById('planDashboard'),firstRun=document.getElementById('firstRun');
  const url=new URLSearchParams(location.search);
  const key='lhrf-personal-2027-view';
- const ownerMode=url.get('owner')==='2027'||LHRFStorage.local.getItem(key)==='1';
+ const installed=data.programmeActivation?.status==='active'&&data.customRoadmap?.cataloguePlans?.some(p=>p.id==='owner-sbd-2027-strength');
+ const ownerMode=installed||url.get('owner')==='2027'||LHRFStorage.local.getItem(key)==='1';
  if(!ownerMode){
    const entry=document.createElement('button');entry.type='button';entry.className='secondary';
    entry.textContent='My February powerlifting plan';
-   entry.onclick=()=>location.assign(new URL('./?owner=2027',location.href));
+   entry.onclick=()=>{const target=new URL(location.href);target.searchParams.set('owner','2027');location.assign(target)};
    plan.before(entry);return;
  }
  if(url.get('owner')==='2027')LHRFStorage.local.setItem(key,'1');
  if(!plan||!window.LHRFPersonalSBD2027)return;
+ document.getElementById('catalogueSetupDialog')?.close();
+ if(firstRun){firstRun.hidden=true;document.body.style.overflow=''}
+ if(installed){
+   for(const id of ['cataloguePlanActions','planAdvanced','restartOnboardingLink','startNewProgramme']){const el=document.getElementById(id);if(el)el.hidden=true}
+   return; // The normal Today and Plan screens now use the installed 13-week calendar.
+ }
  const card=document.createElement('section');card.className='card';card.id='ownerSbd2027';card.setAttribute('aria-label','My February 2027 meet programme');
  plan.before(card);window.LHRFPersonalSBD2027.render(card);window.LHRFPersonalSBDActivation?.mount(card);
  for(const id of ['cataloguePlanActions','planAdvanced','restartOnboardingLink','startNewProgramme']){const el=document.getElementById(id);if(el)el.hidden=true}

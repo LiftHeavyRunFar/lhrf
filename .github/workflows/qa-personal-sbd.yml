@@ -1,0 +1,22 @@
+name: Personal 13-week programme acceptance
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  personal-programme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/personal-sbd-2027.test.cjs tests/programme-replacement.test.cjs
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - name: Select browser
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then
+            echo "CHROMIUM_EXECUTABLE=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - run: node tests/personal-sbd-2027.browser.cjs

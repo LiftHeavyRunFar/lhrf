@@ -121,10 +121,14 @@ const mime = { '.html': 'text/html', '.js': 'application/javascript', '.css': 't
     await dialog.locator('[name="g0-0-weightKg"]').fill('100');
     await dialog.locator('[name="g0-0-dose"]').fill('5');
     await dialog.locator('[name="g0-0-rpe"]').fill('7');
+    assert.equal(await dialog.locator('#workout-error').innerText(), '', 'Draft save must succeed before reload');
+    assert.ok(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('lhrf-catalogue-preview-v1')).drafts).some(d => d.groups?.[0]?.[0]?.dose === '5')), 'Actual reps must be in persisted draft');
 
     await context.setOffline(true);
     await page.reload({ waitUntil: 'load' });
     await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+    // Reload opens the current calendar week; reopen the occurrence we edited.
+    await page.getByLabel('Calendar week', { exact: true }).selectOption('2026-11-16');
     await open('Squat and support');
     assert.equal(await dialog.locator('[name="g0-0-dose"]').inputValue(), '5');
     await dialog.getByRole('button', { name: 'Save workout' }).click();

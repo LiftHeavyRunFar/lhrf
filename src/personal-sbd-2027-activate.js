@@ -6,7 +6,8 @@ function mount(host){
  const owner=root.LHRFPersonalSBD2027,training=root.LHRFCatalogueTraining,
    builder=root.LHRFNativeCatalogue,replacement=root.LHRFProgrammeReplacement;
  if(!host||!owner||!training||!builder||!replacement)return;
- const status=document.createElement('p');status.setAttribute('role','status');status.className='muted small';
+ const storage=root.LHRFStorage.local;
+ const status=document.createElement('p');status.setAttribute('role','status');status.className='muted small';status.id='ownerActivationStatus';
  const button=document.createElement('button');button.type='button';button.textContent='Use this programme in my workouts';
  const area=document.createElement('div');area.className='entry';area.hidden=true;
  host.append(button,area,status);
@@ -14,11 +15,11 @@ function mount(host){
  const msg=text=>{status.textContent=text};
  const fail=error=>{msg(error?.message||String(error));button.disabled=false};
  const block=()=>Boolean(root.LHRFLive?.get?.()) ||
-   Boolean(root.localStorage.getItem(replacement.LIVE_KEY+'_pendingRun')) ||
-   Boolean(root.localStorage.getItem(replacement.LIVE_KEY));
+   Boolean(storage.getItem(replacement.LIVE_KEY+'_pendingRun')) ||
+   Boolean(storage.getItem(replacement.LIVE_KEY));
  const fresh=()=>{if(root.LHRFExternalStorageChanged?.())throw Error('Another app tab changed training data. Reload before making a programme change.');
    if(block())throw Error('Finish your active workout and pending run before changing programmes.');
-   const value=root.localStorage.getItem(replacement.DATA_KEY);
+   const value=storage.getItem(replacement.DATA_KEY);
    if(!value)throw Error('Your existing athlete record was not found. No data has been changed.');
    const state=JSON.parse(value);
    if(!state.onboardingComplete||!state.customRoadmap)throw Error('Existing training data needs review before safe activation. No fresh onboarding is required.');
@@ -30,6 +31,7 @@ function mount(host){
      training,registry,gym,inventory:state.equipmentInventory||state.customRoadmap?.equipmentInventory,
      equipment:[],now,protectedWeek:()=>false
    });
+   candidate.config.preStartActivation='reviewed-future-only';
    replacement.validateProgramme(candidate);
    return candidate;
  };
@@ -59,7 +61,8 @@ function mount(host){
        try{
          const current=fresh();
          if(current.value!==raw)throw Error('Training changed. Start again with a fresh programme review.');
-         backup=await replacement.backupFor(current.state,root.localStorage,root.LHRFTrainingBackup,new Date().toISOString());
+         verified=false;valid();
+         backup=await replacement.backupFor(current.state,storage,root.LHRFTrainingBackup,new Date().toISOString());
          const blob=new Blob([backup.text],{type:'application/json'}),link=root.URL.createObjectURL(blob);
          const a=document.createElement('a');a.href=link;a.download='lhrf-before-dec2026-meet-plan.json';document.body.append(a);a.click();a.remove();
          root.setTimeout(()=>root.URL.revokeObjectURL(link),60000);
@@ -78,7 +81,9 @@ function mount(host){
        commit.disabled=true;
        try{
          const now=new Date().toISOString();
-         const next=replacement.commit(root.localStorage,preview,{expectedRaw:raw,backup,backupVerified:verified,
+         const current=fresh();
+         if(current.value!==raw)throw Error('Training changed. Start again with a fresh programme review.');
+         const next=replacement.commit(storage,preview,{expectedRaw:raw,backup,backupVerified:verified,
            confirmed:agree.checked,now});
          if(!next?.reviewedProgramme?.weeks?.length)throw Error('The new programme was not confirmed in the training record.');
          root.location.reload();
