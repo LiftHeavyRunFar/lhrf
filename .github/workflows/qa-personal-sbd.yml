@@ -21,4 +21,10 @@ jobs:
           else
             npx playwright install --with-deps chromium
           fi
+      - name: Prepare exact current production baseline
+        run: |
+          mkdir -p /tmp/lhrf-personal-production
+          git archive 87046db2925e1db2dd6e0af71d4b0c72b3d60395 | tar -x -C /tmp/lhrf-personal-production
       - run: node tests/personal-sbd-2027.browser.cjs
+        env:
+          LHRF_PERSONAL_PRODUCTION_ROOT: /tmp/lhrf-personal-production

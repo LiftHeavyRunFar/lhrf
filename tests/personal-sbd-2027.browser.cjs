@@ -1,6 +1,7 @@
 // Synthetic Pixel acceptance on the normal app, including the real replacement gate.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {createServer}=require('node:http'),{chromium,devices}=require('playwright');
+const {reopenForWaitingUpdate}=require('./workout-update-helpers.cjs');
 const api=require('../src/programme-replacement'),clone=x=>JSON.parse(JSON.stringify(x));
 const prior=require('../docs/qa/stage-seven/regressions/Taylor.json').programme;
 const fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInventory(),onboardingComplete:true,
@@ -11,17 +12,27 @@ const fixture={equipmentInventory:require('./equipment-fixtures.cjs').fullInvent
  decisions:[],overrides:{},readinessDay:'2026-11-28',athlete:{id:'synthetic'},settings:{keep:true},goals:{strength:'Bench',running:'Fitness'}};
 const mime={'.js':'application/javascript','.css':'text/css','.png':'image/png','.webmanifest':'application/manifest+json'};
 (async()=>{
- const server=createServer((req,res)=>{try{let file=new URL(req.url,'http://localhost').pathname;if(file.endsWith('/'))file+='index.html';const full=path.resolve(__dirname,'..','.'+file);assert.ok(full.startsWith(path.resolve(__dirname,'..')+path.sep));res.setHeader('content-type',mime[path.extname(full)]||'text/html');res.end(fs.readFileSync(full))}catch{res.writeHead(404).end()}});
+ const previous=process.env.LHRF_PERSONAL_PRODUCTION_ROOT;let servingPrevious=!!previous;
+ const server=createServer((req,res)=>{try{let file=new URL(req.url,'http://localhost').pathname;if(file.endsWith('/'))file+='index.html';const base=servingPrevious?path.resolve(previous):path.resolve(__dirname,'..'),full=path.resolve(base,'.'+file);assert.ok(full.startsWith(base+path.sep));res.setHeader('cache-control','no-store');res.setHeader('content-type',mime[path.extname(full)]||'text/html');res.end(fs.readFileSync(full))}catch{res.writeHead(404).end()}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const origin='http://localhost:'+server.address().port;
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});
  try{
   for(const competition of [false,true]){
+   servingPrevious=!!previous;
    const ctx=await browser.newContext({...devices['Pixel 7'],timezoneId:'Europe/London',acceptDownloads:true});
    const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
    await page.clock.install({time:new Date('2026-11-28T16:00:00Z')});
    const key=(competition?'competition:':'')+api.DATA_KEY;
    await page.addInitScript(({key,fixture})=>{if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(fixture))},{key,fixture});
+   if(previous){
+    await page.goto(origin+'/'+(competition?'?mode=competition':''));
+    await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
+    const original=await page.evaluate(key=>localStorage.getItem(key),key);
+    servingPrevious=false;await page.evaluate(async()=>{await(await navigator.serviceWorker.getRegistration()).update()});
+    await reopenForWaitingUpdate(page);
+    assert.equal(await page.evaluate(key=>localStorage.getItem(key),key),original,'Production code upgrade preserves the exact saved athlete record');
+   }
    await page.goto(origin+'/?owner=2027'+(competition?'&mode=competition':''));
    await page.waitForFunction(()=>navigator.serviceWorker.controller!==null);
    assert.equal(await page.locator('#catalogueSetupDialog').isVisible(),false);
